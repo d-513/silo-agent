@@ -6,6 +6,16 @@ public struct ChatGroup<Item>: Identifiable {
     public let title: String
     public var items: [Item]
     public var id: String { title }
+
+    /// The recent groups start open and the month groups folded.
+    public var opensByDefault: Bool {
+        ["Today", "Yesterday", "Previous 7 days", "Previous 30 days", "Team"].contains(title)
+    }
+
+    public init(title: String, items: [Item]) {
+        self.title = title
+        self.items = items
+    }
 }
 
 public func chatGroups<Item>(_ items: [Item], updatedAt: (Item) -> Date?, now: Date = Date(),

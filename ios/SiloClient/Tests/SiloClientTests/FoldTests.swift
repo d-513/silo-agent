@@ -188,3 +188,28 @@ final class SlashTests: XCTestCase {
         XCTAssertEqual(commandSaid(r), "Done.")
     }
 }
+
+final class FoldCallTests: XCTestCase {
+    private func event(_ kind: String, seconds: Int32 = 0, spoken: Bool = false) -> Silo_V1_RunEvent {
+        var e = Silo_V1_RunEvent()
+        e.kind = kind
+        if spoken || seconds > 0 {
+            var s = Silo_V1_Spoken()
+            s.seconds = seconds
+            e.spoken = s
+        }
+        return e
+    }
+
+    func testACallIsMarkedAtBothEnds() {
+        let blocks = foldEvents([event("call_start"), event("user", spoken: true), event("call_end", seconds: 42)])
+        XCTAssertEqual(blocks.map(\.kind), [.call, .user, .call])
+        XCTAssertTrue(blocks[1].spoken)
+        XCTAssertEqual(blocks[2].count, 42)
+    }
+
+    func testACallNobodySpokeInIsOneLine() {
+        let blocks = foldEvents([event("call_start"), event("call_end", seconds: 3)])
+        XCTAssertEqual(blocks.map(\.source), ["end"])
+    }
+}

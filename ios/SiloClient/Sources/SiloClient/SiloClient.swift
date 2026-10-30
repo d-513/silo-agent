@@ -52,9 +52,8 @@ public enum SiloRunEvent: Sendable {
 
 /// Thin, typed wrapper over the generated Connect client for `silo.v1.UI`.
 ///
-/// Cookie-based auth comes for free: `URLSessionHTTPClient` uses
-/// `URLSessionConfiguration.default`, which persists `Set-Cookie` responses in
-/// `HTTPCookieStorage.shared` for later requests on the same host.
+/// Cookie-based auth comes for free: `URLSessionHTTPClient` persists `Set-Cookie` responses in the
+/// store `SiloSession` names, for later requests on the same host.
 public final class SiloClient: Sendable {
     private let protocolClient: ProtocolClient
     let host: String
@@ -67,7 +66,7 @@ public final class SiloClient: Sendable {
             codec: ProtoCodec()
         )
         self.protocolClient = ProtocolClient(
-            httpClient: URLSessionHTTPClient(configuration: .default),
+            httpClient: URLSessionHTTPClient(configuration: SiloSession.configuration()),
             config: config
         )
     }
@@ -324,13 +323,16 @@ public final class SiloClient: Sendable {
         public var models: [Silo_V1_ModelOption]
         public var defaultModel: String
         public var voiceEnabled: Bool
+        public var speechEnabled: Bool
+        public var callEnabled: Bool
     }
 
     public func listModels(botID: String) async throws -> ModelList {
         var request = Silo_V1_ListModelsRequest()
         request.botID = botID
         let response = try unwrap(await ui.listModels(request: request, headers: [:]))
-        return ModelList(models: response.models, defaultModel: response.defaultModel, voiceEnabled: response.voiceEnabled)
+        return ModelList(models: response.models, defaultModel: response.defaultModel, voiceEnabled: response.voiceEnabled,
+                         speechEnabled: response.speechEnabled, callEnabled: response.callEnabled)
     }
 
     public func setChatModel(botID: String, chatID: String, model: String) async throws -> Silo_V1_Chat {
@@ -746,7 +748,7 @@ public final class SiloClient: Sendable {
     /// GETs a cookie-authed CP route (e.g. `ArtifactInfo.downloadPath`) and returns its bytes.
     public func download(path: String) async throws -> Data {
         guard let url = URL(string: host + path) else { throw SiloError.invalidArgument("Bad download URL") }
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await URLSession(configuration: SiloSession.configuration()).data(from: url)
         guard let http = response as? HTTPURLResponse else { throw SiloError.server("No response") }
         switch http.statusCode {
         case 200..<300: return data

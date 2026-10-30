@@ -1,17 +1,21 @@
+import CoreSpotlight
 import CoreText
+import Intents
 import SiloClient
 import SwiftUI
 import UIKit
 
 @main
 struct SiloApp: App {
+    @UIApplicationDelegateAdaptor(SiloAppDelegate.self) private var delegate
     @State private var model: AppModel
     /// The Workspaces and the one the app is in; it reads the session and Bots from `model`.
     @State private var spaces: SpaceModel
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
-        let model = AppModel()
+        SiloGroup.boot()
+        let model = AppModel.shared
         _model = State(initialValue: model)
         _spaces = State(initialValue: SpaceModel(app: model))
         Self.registerFonts()
@@ -62,6 +66,9 @@ struct SiloApp: App {
             .foregroundStyle(Theme.ink)
             .tint(Theme.cobalt)
             .task {
+                #if DEBUG
+                DebugLaunch.coldLink(model)
+                #endif
                 await model.restoreSession()
                 #if DEBUG
                 await DebugLaunch.run(model)
@@ -69,6 +76,28 @@ struct SiloApp: App {
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { Task { await model.resume() } }
+                if phase == .background { SiloSurfaces.scheduleRefresh() }
+            }
+            .onChange(of: model.bots) { model.publish() }
+            .onChange(of: model.approvals) { model.publish() }
+            .onChange(of: model.user?.id) { _, id in
+                #if DEBUG
+                guard ProcessInfo.processInfo.environment["SILO_DEV_EMAIL"] == nil else { return }
+                #endif
+                if id != nil { SiloSurfaces.prepareNotifications() }
+            }
+            .onOpenURL { url in
+                if let link = SiloLink(url: url) { model.open(link) }
+            }
+            .onContinueUserActivity(CSSearchableItemActionType) { activity in
+                if let id = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String,
+                   let url = URL(string: id), let link = SiloLink(url: url) { model.open(link) }
+            }
+            .onContinueUserActivity("INStartCallIntent") { activity in
+                // Pressing a Bot in the phone's Recents.
+                guard let intent = activity.interaction?.intent as? INStartCallIntent,
+                      let bot = intent.contacts?.first?.personHandle?.value else { return }
+                model.open(.call(bot: bot))
             }
         }
     }
@@ -109,7 +138,7 @@ private struct Reconnecting: View {
                     .foregroundStyle(Theme.ink2)
                     .padding(.top, 8)
                 HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
+                    Spinner(size: 13, color: Theme.ink3)
                     Text("Trying again…").font(.silo(13)).foregroundStyle(Theme.ink3)
                 }
                 .padding(.top, 16)
@@ -117,7 +146,7 @@ private struct Reconnecting: View {
                     .buttonStyle(.quiet)
                     .padding(.top, 24)
             } else {
-                ProgressView().frame(maxWidth: .infinity)
+                Spinner().frame(maxWidth: .infinity)
             }
             Spacer()
             Spacer()

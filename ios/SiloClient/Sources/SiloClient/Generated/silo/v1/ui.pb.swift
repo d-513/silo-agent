@@ -690,6 +690,9 @@ public nonisolated struct Silo_V1_Bot: @unchecked Sendable {
     set {_uniqueStorage()._name = newValue}
   }
 
+  /// Status is the Bot as the viewer sees it, worked out per request, the most
+  /// pressing first: needs_you (an approval they may answer), working,
+  /// waiting (paused only on someone else's answer), on_call, then machine.
   public var status: String {
     get {_storage._status}
     set {_uniqueStorage()._status = newValue}
@@ -834,14 +837,14 @@ public nonisolated struct Silo_V1_Bot: @unchecked Sendable {
     set {_uniqueStorage()._people = newValue}
   }
 
-  /// Listed only (ListBots), for the Workspace's overview: when its newest
-  /// run started (RFC 3339, "" never), and the next automation that will
-  /// fire on its own, by name and time.
+  /// When its newest run started (RFC 3339, "" never).
   public var lastActiveAt: String {
     get {_storage._lastActiveAt}
     set {_uniqueStorage()._lastActiveAt = newValue}
   }
 
+  /// Listed only (ListBots), for the Workspace's overview: the next automation
+  /// that will fire on its own, by name and time.
   public var nextRunName: String {
     get {_storage._nextRunName}
     set {_uniqueStorage()._nextRunName = newValue}
@@ -850,6 +853,29 @@ public nonisolated struct Silo_V1_Bot: @unchecked Sendable {
   public var nextRunAt: String {
     get {_storage._nextRunAt}
     set {_uniqueStorage()._nextRunAt = newValue}
+  }
+
+  /// How the Bot sounds (SetBotVoice): "" and 0 follow the defaults.
+  public var speechModel: String {
+    get {_storage._speechModel}
+    set {_uniqueStorage()._speechModel = newValue}
+  }
+
+  public var voice: String {
+    get {_storage._voice}
+    set {_uniqueStorage()._voice = newValue}
+  }
+
+  public var speechSpeed: Double {
+    get {_storage._speechSpeed}
+    set {_uniqueStorage()._speechSpeed = newValue}
+  }
+
+  /// Machine is its box, whatever the Bot is doing: stopped, starting or online.
+  /// Controls that need the box read this, never status.
+  public var machine: String {
+    get {_storage._machine}
+    set {_uniqueStorage()._machine = newValue}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -1719,7 +1745,7 @@ public nonisolated struct Silo_V1_OtherBot: Sendable {
   public init() {}
 }
 
-/// BotActivity is one live run of a Bot, for the sidebar's status line.
+/// BotActivity is one live run or call of a Bot, as the viewer may see it.
 public nonisolated struct Silo_V1_BotActivity: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1727,7 +1753,8 @@ public nonisolated struct Silo_V1_BotActivity: Sendable {
 
   public var chatID: String = String()
 
-  /// chat, main, automation, channel or subagent.
+  /// chat, main, automation, channel, subagent or call; hidden for a
+  /// conversation the viewer may not read, which carries only its state.
   public var kind: String = String()
 
   /// The chat's title, the automation's or channel's name, the subagent's.
@@ -1738,6 +1765,21 @@ public nonisolated struct Silo_V1_BotActivity: Sendable {
 
   /// For a subagent: its lead chat, which the strip links to.
   public var leadChatID: String = String()
+
+  /// working, needs_you (paused on an approval the viewer may answer),
+  /// waiting (paused on someone else's answer) or on_call.
+  public var state: String = String()
+
+  /// While waiting: who may answer (email); empty when it takes a manager.
+  public var waitingOn: String = String()
+
+  /// The taskboard task it is on, in the Bot's words; "" with no current one.
+  public var task: String = String()
+
+  /// Progress on the board that task is from.
+  public var taskDone: Int32 = 0
+
+  public var taskTotal: Int32 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -4026,6 +4068,15 @@ public nonisolated struct Silo_V1_ModelOption: Sendable {
   /// "decision" (a model that answers typed questions with probabilities).
   public var kind: String = String()
 
+  /// A transcription or speech model's live abilities (llm.SpeechCaps):
+  /// live hears as you speak / keeps a voice connected, words gives word
+  /// timings, end_of_turn judges when you have finished.
+  public var live: Bool = false
+
+  public var words: Bool = false
+
+  public var endOfTurn: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -4057,6 +4108,149 @@ public nonisolated struct Silo_V1_ListModelsResponse: Sendable {
   /// voice_enabled is true when transcribe_model is set and its provider is
   /// configured, so the composer can offer dictation.
   public var voiceEnabled: Bool = false
+
+  /// speech_enabled offers Read aloud; call_enabled offers Talk (both need
+  /// voice on and a speech model; a call also needs speech-to-text).
+  public var speechEnabled: Bool = false
+
+  public var callEnabled: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_ListVoicesRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var botID: String = String()
+
+  /// model is a speech model from the allowed list; empty is the Bot's own.
+  public var model: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_Voice: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  /// label is the id made readable ("en_paul_neutral" → "Paul, neutral").
+  public var label: String = String()
+
+  /// language is an ISO-639-1 code read from the id, "" when it names none.
+  public var language: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_ListVoicesResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// model is the speech model the voices are of.
+  public var model: String = String()
+
+  /// voices is empty when the provider does not list them: then a voice is
+  /// typed, or left to the provider.
+  public var voices: [Silo_V1_Voice] = []
+
+  /// default_voice is what the Bot speaks with when it picks none.
+  public var defaultVoice: String = String()
+
+  /// models are the allowed speech models; default_model the operator's.
+  public var models: [Silo_V1_ModelOption] = []
+
+  public var defaultModel: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_SetBotVoiceRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var botID: String = String()
+
+  /// speech_model "" follows the operator's default.
+  public var speechModel: String = String()
+
+  /// voice "" picks one for the Bot's language.
+  public var voice: String = String()
+
+  /// speed is a multiplier from 0.5 to 2; 0 is the model's own.
+  public var speed: Double = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_PrepareSpeechRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var botID: String = String()
+
+  /// text is markdown, made speakable on the server.
+  public var text: String = String()
+
+  /// model, voice and speed override the Bot's own, for a preview.
+  public var model: String = String()
+
+  public var voice: String = String()
+
+  public var speed: Double = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_PrepareSpeechResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// url streams the audio (GET, the session cookie); it works once.
+  public var url: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// Spoken is what a call adds to an event of its chat.
+public nonisolated struct Silo_V1_Spoken: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var callID: String = String()
+
+  /// unheard is the part of a reply the human cut off (the event's body is
+  /// what they heard).
+  public var unheard: String = String()
+
+  /// seconds is a finished call's length (call_end).
+  public var seconds: Int32 = 0
+
+  /// interrupted is the Bot's words a spoken turn cut off, if it did.
+  public var interrupted: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -4526,6 +4720,17 @@ public nonisolated struct Silo_V1_RunEvent: @unchecked Sendable {
     get {_storage._author}
     set {_uniqueStorage()._author = newValue}
   }
+
+  /// spoken is set on what was said on a voice call: a turn the human spoke,
+  /// and the call's start and end.
+  public var spoken: Silo_V1_Spoken {
+    get {_storage._spoken ?? Silo_V1_Spoken()}
+    set {_uniqueStorage()._spoken = newValue}
+  }
+  /// Returns true if `spoken` has been explicitly set.
+  public var hasSpoken: Bool {_storage._spoken != nil}
+  /// Clears the value of `spoken`. Subsequent reads from it will return its default value.
+  public mutating func clearSpoken() {_uniqueStorage()._spoken = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -5118,6 +5323,10 @@ public nonisolated struct Silo_V1_Approval: Sendable {
   /// not the Bot's manager; Always would change the rule).
   public var onceOnly: Bool = false
 
+  /// The chat the slip belongs to: a subagent's approval is its lead chat's.
+  /// Empty for a background run.
+  public var chatID: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -5607,11 +5816,35 @@ public nonisolated struct Silo_V1_Settings: Sendable {
   /// the allowlist of text models. An id is in one list only.
   public var decisionModels: [Silo_V1_ModelOption] = []
 
+  /// allowed is every kind's allowlist, text and decision included, in the
+  /// order of the kinds registry. A role's model is on its kind's list even
+  /// when silo.yaml does not list it.
+  public var allowed: [Silo_V1_KindModels] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _autoenableConnectors: Silo_V1_AutoenableConnectors? = nil
+}
+
+/// KindModels is the allowlist of one kind of model.
+public nonisolated struct Silo_V1_KindModels: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// kind is "text", "decision", "transcription", "speech" or "embedding".
+  public var kind: String = String()
+
+  public var models: [Silo_V1_ModelOption] = []
+
+  /// listed are the ids silo.yaml lists (models adds a role's own model).
+  public var listed: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 }
 
 public nonisolated struct Silo_V1_Provider: Sendable {
@@ -5631,8 +5864,13 @@ public nonisolated struct Silo_V1_Provider: Sendable {
 
   public var cacheTtls: [String] = []
 
-  /// kinds are the kinds of model the provider serves: "text", "decision".
+  /// kinds are the kinds of model the provider serves: "text", "decision",
+  /// "transcription", "speech", "embedding".
   public var kinds: [String] = []
+
+  /// live_kinds are the kinds some of its models serve live (transcription
+  /// as you speak, a voice that stays connected for a call).
+  public var liveKinds: [String] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -5666,8 +5904,8 @@ public nonisolated struct Silo_V1_SetModelsRequest: Sendable {
 
   public var models: [String] = []
 
-  /// kind picks the allowlist to replace: "text" (the default when empty) or
-  /// "decision".
+  /// kind picks the allowlist to replace: "text" (the default when empty),
+  /// "decision", "transcription", "speech" or "embedding".
   public var kind: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -5704,8 +5942,19 @@ public nonisolated struct Silo_V1_ProviderModel: Sendable {
   /// context_window is in tokens; 0 when the provider does not report one.
   public var contextWindow: Int32 = 0
 
-  /// kind is "text" or "decision": the allowlist the model belongs in.
+  /// kind is the allowlist the model belongs in: "text", "decision",
+  /// "transcription", "speech" or "embedding".
   public var kind: String = String()
+
+  /// voices are a speech model's voice ids, where the provider lists them.
+  public var voices: [String] = []
+
+  /// A transcription or speech model's live abilities, as on ModelOption.
+  public var live: Bool = false
+
+  public var words: Bool = false
+
+  public var endOfTurn: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -6292,6 +6541,13 @@ public nonisolated struct Silo_V1_EgressStatus: Sendable {
   public var caFingerprint: String = String()
 
   public var feeds: [Silo_V1_FeedStatus] = []
+
+  /// The resolvers the gateway is told to use, and where they came from:
+  /// "settings" (egress.dns), "system" (the control plane's resolv.conf) or
+  /// "" (none found; the gateway uses what its engine gave it).
+  public var dnsServers: [String] = []
+
+  public var dnsSource: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -10183,7 +10439,7 @@ nonisolated extension Silo_V1_CheckOIDCResponse: SwiftProtobuf.Message, SwiftPro
 
 nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Bot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}status\0\u{3}last_task\0\u{1}crest\0\u{3}worker_connected\0\u{1}description\0\u{1}soul\0\u{4}\u{2}auto_approve\0\u{1}model\0\u{3}feed_unread\0\u{3}mail_address\0\u{3}time_zone\0\u{3}time_zone_pinned\0\u{1}language\0\u{3}output_policy\0\u{3}audit_unseen\0\u{3}dashboard_asks\0\u{3}desktop_paused\0\u{1}proactivity\0\u{3}heartbeat_custom\0\u{1}activity\0\u{3}space_id\0\u{1}role\0\u{1}people\0\u{3}last_active_at\0\u{3}next_run_name\0\u{3}next_run_at\0\u{c}\u{9}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}status\0\u{3}last_task\0\u{1}crest\0\u{3}worker_connected\0\u{1}description\0\u{1}soul\0\u{4}\u{2}auto_approve\0\u{1}model\0\u{3}feed_unread\0\u{3}mail_address\0\u{3}time_zone\0\u{3}time_zone_pinned\0\u{1}language\0\u{3}output_policy\0\u{3}audit_unseen\0\u{3}dashboard_asks\0\u{3}desktop_paused\0\u{1}proactivity\0\u{3}heartbeat_custom\0\u{1}activity\0\u{3}space_id\0\u{1}role\0\u{1}people\0\u{3}last_active_at\0\u{3}next_run_name\0\u{3}next_run_at\0\u{3}speech_model\0\u{1}voice\0\u{3}speech_speed\0\u{1}machine\0\u{c}\u{9}\u{1}")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -10214,6 +10470,10 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
     var _lastActiveAt: String = String()
     var _nextRunName: String = String()
     var _nextRunAt: String = String()
+    var _speechModel: String = String()
+    var _voice: String = String()
+    var _speechSpeed: Double = 0
+    var _machine: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -10252,6 +10512,10 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
       _lastActiveAt = source._lastActiveAt
       _nextRunName = source._nextRunName
       _nextRunAt = source._nextRunAt
+      _speechModel = source._speechModel
+      _voice = source._voice
+      _speechSpeed = source._speechSpeed
+      _machine = source._machine
     }
   }
 
@@ -10298,6 +10562,10 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
         case 27: try { try decoder.decodeSingularStringField(value: &_storage._lastActiveAt) }()
         case 28: try { try decoder.decodeSingularStringField(value: &_storage._nextRunName) }()
         case 29: try { try decoder.decodeSingularStringField(value: &_storage._nextRunAt) }()
+        case 30: try { try decoder.decodeSingularStringField(value: &_storage._speechModel) }()
+        case 31: try { try decoder.decodeSingularStringField(value: &_storage._voice) }()
+        case 32: try { try decoder.decodeSingularDoubleField(value: &_storage._speechSpeed) }()
+        case 33: try { try decoder.decodeSingularStringField(value: &_storage._machine) }()
         default: break
         }
       }
@@ -10390,6 +10658,18 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
       if !_storage._nextRunAt.isEmpty {
         try visitor.visitSingularStringField(value: _storage._nextRunAt, fieldNumber: 29)
       }
+      if !_storage._speechModel.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._speechModel, fieldNumber: 30)
+      }
+      if !_storage._voice.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._voice, fieldNumber: 31)
+      }
+      if _storage._speechSpeed.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._speechSpeed, fieldNumber: 32)
+      }
+      if !_storage._machine.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._machine, fieldNumber: 33)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -10427,6 +10707,10 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
         if _storage._lastActiveAt != rhs_storage._lastActiveAt {return false}
         if _storage._nextRunName != rhs_storage._nextRunName {return false}
         if _storage._nextRunAt != rhs_storage._nextRunAt {return false}
+        if _storage._speechModel != rhs_storage._speechModel {return false}
+        if _storage._voice != rhs_storage._voice {return false}
+        if _storage._speechSpeed != rhs_storage._speechSpeed {return false}
+        if _storage._machine != rhs_storage._machine {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -12354,7 +12638,7 @@ nonisolated extension Silo_V1_OtherBot: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 nonisolated extension Silo_V1_BotActivity: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".BotActivity"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}chat_id\0\u{1}kind\0\u{1}title\0\u{1}step\0\u{3}lead_chat_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}chat_id\0\u{1}kind\0\u{1}title\0\u{1}step\0\u{3}lead_chat_id\0\u{1}state\0\u{3}waiting_on\0\u{1}task\0\u{3}task_done\0\u{3}task_total\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -12367,6 +12651,11 @@ nonisolated extension Silo_V1_BotActivity: SwiftProtobuf.Message, SwiftProtobuf.
       case 3: try { try decoder.decodeSingularStringField(value: &self.title) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.step) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.leadChatID) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.state) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.waitingOn) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.task) }()
+      case 9: try { try decoder.decodeSingularInt32Field(value: &self.taskDone) }()
+      case 10: try { try decoder.decodeSingularInt32Field(value: &self.taskTotal) }()
       default: break
       }
     }
@@ -12388,6 +12677,21 @@ nonisolated extension Silo_V1_BotActivity: SwiftProtobuf.Message, SwiftProtobuf.
     if !self.leadChatID.isEmpty {
       try visitor.visitSingularStringField(value: self.leadChatID, fieldNumber: 5)
     }
+    if !self.state.isEmpty {
+      try visitor.visitSingularStringField(value: self.state, fieldNumber: 6)
+    }
+    if !self.waitingOn.isEmpty {
+      try visitor.visitSingularStringField(value: self.waitingOn, fieldNumber: 7)
+    }
+    if !self.task.isEmpty {
+      try visitor.visitSingularStringField(value: self.task, fieldNumber: 8)
+    }
+    if self.taskDone != 0 {
+      try visitor.visitSingularInt32Field(value: self.taskDone, fieldNumber: 9)
+    }
+    if self.taskTotal != 0 {
+      try visitor.visitSingularInt32Field(value: self.taskTotal, fieldNumber: 10)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -12397,6 +12701,11 @@ nonisolated extension Silo_V1_BotActivity: SwiftProtobuf.Message, SwiftProtobuf.
     if lhs.title != rhs.title {return false}
     if lhs.step != rhs.step {return false}
     if lhs.leadChatID != rhs.leadChatID {return false}
+    if lhs.state != rhs.state {return false}
+    if lhs.waitingOn != rhs.waitingOn {return false}
+    if lhs.task != rhs.task {return false}
+    if lhs.taskDone != rhs.taskDone {return false}
+    if lhs.taskTotal != rhs.taskTotal {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -17192,7 +17501,7 @@ nonisolated extension Silo_V1_Chat: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension Silo_V1_ModelOption: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ModelOption"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}provider\0\u{1}label\0\u{3}thinking_levels\0\u{1}kind\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}provider\0\u{1}label\0\u{3}thinking_levels\0\u{1}kind\0\u{1}live\0\u{1}words\0\u{3}end_of_turn\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -17205,6 +17514,9 @@ nonisolated extension Silo_V1_ModelOption: SwiftProtobuf.Message, SwiftProtobuf.
       case 3: try { try decoder.decodeSingularStringField(value: &self.label) }()
       case 4: try { try decoder.decodeRepeatedStringField(value: &self.thinkingLevels) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.kind) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.live) }()
+      case 7: try { try decoder.decodeSingularBoolField(value: &self.words) }()
+      case 8: try { try decoder.decodeSingularBoolField(value: &self.endOfTurn) }()
       default: break
       }
     }
@@ -17226,6 +17538,15 @@ nonisolated extension Silo_V1_ModelOption: SwiftProtobuf.Message, SwiftProtobuf.
     if !self.kind.isEmpty {
       try visitor.visitSingularStringField(value: self.kind, fieldNumber: 5)
     }
+    if self.live != false {
+      try visitor.visitSingularBoolField(value: self.live, fieldNumber: 6)
+    }
+    if self.words != false {
+      try visitor.visitSingularBoolField(value: self.words, fieldNumber: 7)
+    }
+    if self.endOfTurn != false {
+      try visitor.visitSingularBoolField(value: self.endOfTurn, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -17235,6 +17556,9 @@ nonisolated extension Silo_V1_ModelOption: SwiftProtobuf.Message, SwiftProtobuf.
     if lhs.label != rhs.label {return false}
     if lhs.thinkingLevels != rhs.thinkingLevels {return false}
     if lhs.kind != rhs.kind {return false}
+    if lhs.live != rhs.live {return false}
+    if lhs.words != rhs.words {return false}
+    if lhs.endOfTurn != rhs.endOfTurn {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -17272,7 +17596,7 @@ nonisolated extension Silo_V1_ListModelsRequest: SwiftProtobuf.Message, SwiftPro
 
 nonisolated extension Silo_V1_ListModelsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ListModelsResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}models\0\u{3}default_model\0\u{3}title_model\0\u{3}voice_enabled\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}models\0\u{3}default_model\0\u{3}title_model\0\u{3}voice_enabled\0\u{3}speech_enabled\0\u{3}call_enabled\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -17284,6 +17608,8 @@ nonisolated extension Silo_V1_ListModelsResponse: SwiftProtobuf.Message, SwiftPr
       case 2: try { try decoder.decodeSingularStringField(value: &self.defaultModel) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.titleModel) }()
       case 4: try { try decoder.decodeSingularBoolField(value: &self.voiceEnabled) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.speechEnabled) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.callEnabled) }()
       default: break
       }
     }
@@ -17302,6 +17628,12 @@ nonisolated extension Silo_V1_ListModelsResponse: SwiftProtobuf.Message, SwiftPr
     if self.voiceEnabled != false {
       try visitor.visitSingularBoolField(value: self.voiceEnabled, fieldNumber: 4)
     }
+    if self.speechEnabled != false {
+      try visitor.visitSingularBoolField(value: self.speechEnabled, fieldNumber: 5)
+    }
+    if self.callEnabled != false {
+      try visitor.visitSingularBoolField(value: self.callEnabled, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -17310,6 +17642,303 @@ nonisolated extension Silo_V1_ListModelsResponse: SwiftProtobuf.Message, SwiftPr
     if lhs.defaultModel != rhs.defaultModel {return false}
     if lhs.titleModel != rhs.titleModel {return false}
     if lhs.voiceEnabled != rhs.voiceEnabled {return false}
+    if lhs.speechEnabled != rhs.speechEnabled {return false}
+    if lhs.callEnabled != rhs.callEnabled {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_ListVoicesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListVoicesRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}bot_id\0\u{1}model\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.botID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.model) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.botID.isEmpty {
+      try visitor.visitSingularStringField(value: self.botID, fieldNumber: 1)
+    }
+    if !self.model.isEmpty {
+      try visitor.visitSingularStringField(value: self.model, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ListVoicesRequest, rhs: Silo_V1_ListVoicesRequest) -> Bool {
+    if lhs.botID != rhs.botID {return false}
+    if lhs.model != rhs.model {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_Voice: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".Voice"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}label\0\u{1}language\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.label) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.language) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if !self.label.isEmpty {
+      try visitor.visitSingularStringField(value: self.label, fieldNumber: 2)
+    }
+    if !self.language.isEmpty {
+      try visitor.visitSingularStringField(value: self.language, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_Voice, rhs: Silo_V1_Voice) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.label != rhs.label {return false}
+    if lhs.language != rhs.language {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_ListVoicesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ListVoicesResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}model\0\u{1}voices\0\u{3}default_voice\0\u{1}models\0\u{3}default_model\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.model) }()
+      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.voices) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.defaultVoice) }()
+      case 4: try { try decoder.decodeRepeatedMessageField(value: &self.models) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.defaultModel) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.model.isEmpty {
+      try visitor.visitSingularStringField(value: self.model, fieldNumber: 1)
+    }
+    if !self.voices.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.voices, fieldNumber: 2)
+    }
+    if !self.defaultVoice.isEmpty {
+      try visitor.visitSingularStringField(value: self.defaultVoice, fieldNumber: 3)
+    }
+    if !self.models.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.models, fieldNumber: 4)
+    }
+    if !self.defaultModel.isEmpty {
+      try visitor.visitSingularStringField(value: self.defaultModel, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ListVoicesResponse, rhs: Silo_V1_ListVoicesResponse) -> Bool {
+    if lhs.model != rhs.model {return false}
+    if lhs.voices != rhs.voices {return false}
+    if lhs.defaultVoice != rhs.defaultVoice {return false}
+    if lhs.models != rhs.models {return false}
+    if lhs.defaultModel != rhs.defaultModel {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_SetBotVoiceRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SetBotVoiceRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}bot_id\0\u{3}speech_model\0\u{1}voice\0\u{1}speed\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.botID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.speechModel) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.voice) }()
+      case 4: try { try decoder.decodeSingularDoubleField(value: &self.speed) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.botID.isEmpty {
+      try visitor.visitSingularStringField(value: self.botID, fieldNumber: 1)
+    }
+    if !self.speechModel.isEmpty {
+      try visitor.visitSingularStringField(value: self.speechModel, fieldNumber: 2)
+    }
+    if !self.voice.isEmpty {
+      try visitor.visitSingularStringField(value: self.voice, fieldNumber: 3)
+    }
+    if self.speed.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.speed, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_SetBotVoiceRequest, rhs: Silo_V1_SetBotVoiceRequest) -> Bool {
+    if lhs.botID != rhs.botID {return false}
+    if lhs.speechModel != rhs.speechModel {return false}
+    if lhs.voice != rhs.voice {return false}
+    if lhs.speed != rhs.speed {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_PrepareSpeechRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PrepareSpeechRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}bot_id\0\u{1}text\0\u{1}model\0\u{1}voice\0\u{1}speed\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.botID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.model) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.voice) }()
+      case 5: try { try decoder.decodeSingularDoubleField(value: &self.speed) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.botID.isEmpty {
+      try visitor.visitSingularStringField(value: self.botID, fieldNumber: 1)
+    }
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 2)
+    }
+    if !self.model.isEmpty {
+      try visitor.visitSingularStringField(value: self.model, fieldNumber: 3)
+    }
+    if !self.voice.isEmpty {
+      try visitor.visitSingularStringField(value: self.voice, fieldNumber: 4)
+    }
+    if self.speed.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.speed, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_PrepareSpeechRequest, rhs: Silo_V1_PrepareSpeechRequest) -> Bool {
+    if lhs.botID != rhs.botID {return false}
+    if lhs.text != rhs.text {return false}
+    if lhs.model != rhs.model {return false}
+    if lhs.voice != rhs.voice {return false}
+    if lhs.speed != rhs.speed {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_PrepareSpeechResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PrepareSpeechResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}url\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_PrepareSpeechResponse, rhs: Silo_V1_PrepareSpeechResponse) -> Bool {
+    if lhs.url != rhs.url {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_Spoken: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".Spoken"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{1}unheard\0\u{1}seconds\0\u{1}interrupted\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.callID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.unheard) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.seconds) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.interrupted) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.callID.isEmpty {
+      try visitor.visitSingularStringField(value: self.callID, fieldNumber: 1)
+    }
+    if !self.unheard.isEmpty {
+      try visitor.visitSingularStringField(value: self.unheard, fieldNumber: 2)
+    }
+    if self.seconds != 0 {
+      try visitor.visitSingularInt32Field(value: self.seconds, fieldNumber: 3)
+    }
+    if !self.interrupted.isEmpty {
+      try visitor.visitSingularStringField(value: self.interrupted, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_Spoken, rhs: Silo_V1_Spoken) -> Bool {
+    if lhs.callID != rhs.callID {return false}
+    if lhs.unheard != rhs.unheard {return false}
+    if lhs.seconds != rhs.seconds {return false}
+    if lhs.interrupted != rhs.interrupted {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -18175,7 +18804,7 @@ nonisolated extension Silo_V1_StreamRunRequest: SwiftProtobuf.Message, SwiftProt
 
 nonisolated extension Silo_V1_RunEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".RunEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}run_id\0\u{1}kind\0\u{1}body\0\u{1}tool\0\u{3}chat_id\0\u{1}id\0\u{1}attachments\0\u{3}created_at\0\u{1}quotes\0\u{1}quoted\0\u{1}card\0\u{3}setup_offer\0\u{1}author\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}run_id\0\u{1}kind\0\u{1}body\0\u{1}tool\0\u{3}chat_id\0\u{1}id\0\u{1}attachments\0\u{3}created_at\0\u{1}quotes\0\u{1}quoted\0\u{1}card\0\u{3}setup_offer\0\u{1}author\0\u{1}spoken\0")
 
   fileprivate class _StorageClass {
     var _runID: String = String()
@@ -18191,6 +18820,7 @@ nonisolated extension Silo_V1_RunEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
     var _card: Silo_V1_DashboardCard? = nil
     var _setupOffer: Silo_V1_SetupOffer? = nil
     var _author: String = String()
+    var _spoken: Silo_V1_Spoken? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -18214,6 +18844,7 @@ nonisolated extension Silo_V1_RunEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
       _card = source._card
       _setupOffer = source._setupOffer
       _author = source._author
+      _spoken = source._spoken
     }
   }
 
@@ -18245,6 +18876,7 @@ nonisolated extension Silo_V1_RunEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
         case 11: try { try decoder.decodeSingularMessageField(value: &_storage._card) }()
         case 12: try { try decoder.decodeSingularMessageField(value: &_storage._setupOffer) }()
         case 13: try { try decoder.decodeSingularStringField(value: &_storage._author) }()
+        case 14: try { try decoder.decodeSingularMessageField(value: &_storage._spoken) }()
         default: break
         }
       }
@@ -18296,6 +18928,9 @@ nonisolated extension Silo_V1_RunEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
       if !_storage._author.isEmpty {
         try visitor.visitSingularStringField(value: _storage._author, fieldNumber: 13)
       }
+      try { if let v = _storage._spoken {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -18318,6 +18953,7 @@ nonisolated extension Silo_V1_RunEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
         if _storage._card != rhs_storage._card {return false}
         if _storage._setupOffer != rhs_storage._setupOffer {return false}
         if _storage._author != rhs_storage._author {return false}
+        if _storage._spoken != rhs_storage._spoken {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -19468,7 +20104,7 @@ nonisolated extension Silo_V1_ApprovalField: SwiftProtobuf.Message, SwiftProtobu
 
 nonisolated extension Silo_V1_Approval: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Approval"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}bot_id\0\u{3}run_id\0\u{1}connector\0\u{1}action\0\u{3}args_json\0\u{1}status\0\u{1}title\0\u{1}summary\0\u{1}fields\0\u{1}source\0\u{1}auto\0\u{1}person\0\u{3}once_only\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}bot_id\0\u{3}run_id\0\u{1}connector\0\u{1}action\0\u{3}args_json\0\u{1}status\0\u{1}title\0\u{1}summary\0\u{1}fields\0\u{1}source\0\u{1}auto\0\u{1}person\0\u{3}once_only\0\u{3}chat_id\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -19490,6 +20126,7 @@ nonisolated extension Silo_V1_Approval: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 12: try { try decoder.decodeSingularBoolField(value: &self.auto) }()
       case 13: try { try decoder.decodeSingularStringField(value: &self.person) }()
       case 14: try { try decoder.decodeSingularBoolField(value: &self.onceOnly) }()
+      case 15: try { try decoder.decodeSingularStringField(value: &self.chatID) }()
       default: break
       }
     }
@@ -19538,6 +20175,9 @@ nonisolated extension Silo_V1_Approval: SwiftProtobuf.Message, SwiftProtobuf._Me
     if self.onceOnly != false {
       try visitor.visitSingularBoolField(value: self.onceOnly, fieldNumber: 14)
     }
+    if !self.chatID.isEmpty {
+      try visitor.visitSingularStringField(value: self.chatID, fieldNumber: 15)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -19556,6 +20196,7 @@ nonisolated extension Silo_V1_Approval: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.auto != rhs.auto {return false}
     if lhs.person != rhs.person {return false}
     if lhs.onceOnly != rhs.onceOnly {return false}
+    if lhs.chatID != rhs.chatID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -20543,7 +21184,7 @@ nonisolated extension Silo_V1_ConfigField: SwiftProtobuf.Message, SwiftProtobuf.
 
 nonisolated extension Silo_V1_Settings: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Settings"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}fields\0\u{1}yaml\0\u{3}yaml_path\0\u{3}search_engines\0\u{1}providers\0\u{1}models\0\u{3}default_model\0\u{3}title_model\0\u{3}connector_vars\0\u{3}content_host\0\u{3}autoenable_connectors\0\u{3}oidc_redirect_url\0\u{3}decision_models\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}fields\0\u{1}yaml\0\u{3}yaml_path\0\u{3}search_engines\0\u{1}providers\0\u{1}models\0\u{3}default_model\0\u{3}title_model\0\u{3}connector_vars\0\u{3}content_host\0\u{3}autoenable_connectors\0\u{3}oidc_redirect_url\0\u{3}decision_models\0\u{1}allowed\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -20564,6 +21205,7 @@ nonisolated extension Silo_V1_Settings: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 11: try { try decoder.decodeSingularMessageField(value: &self._autoenableConnectors) }()
       case 12: try { try decoder.decodeSingularStringField(value: &self.oidcRedirectURL) }()
       case 13: try { try decoder.decodeRepeatedMessageField(value: &self.decisionModels) }()
+      case 14: try { try decoder.decodeRepeatedMessageField(value: &self.allowed) }()
       default: break
       }
     }
@@ -20613,6 +21255,9 @@ nonisolated extension Silo_V1_Settings: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.decisionModels.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.decisionModels, fieldNumber: 13)
     }
+    if !self.allowed.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.allowed, fieldNumber: 14)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -20630,6 +21275,47 @@ nonisolated extension Silo_V1_Settings: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs._autoenableConnectors != rhs._autoenableConnectors {return false}
     if lhs.oidcRedirectURL != rhs.oidcRedirectURL {return false}
     if lhs.decisionModels != rhs.decisionModels {return false}
+    if lhs.allowed != rhs.allowed {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_KindModels: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".KindModels"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}models\0\u{1}listed\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.kind) }()
+      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.models) }()
+      case 3: try { try decoder.decodeRepeatedStringField(value: &self.listed) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.kind.isEmpty {
+      try visitor.visitSingularStringField(value: self.kind, fieldNumber: 1)
+    }
+    if !self.models.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.models, fieldNumber: 2)
+    }
+    if !self.listed.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.listed, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_KindModels, rhs: Silo_V1_KindModels) -> Bool {
+    if lhs.kind != rhs.kind {return false}
+    if lhs.models != rhs.models {return false}
+    if lhs.listed != rhs.listed {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -20637,7 +21323,7 @@ nonisolated extension Silo_V1_Settings: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 nonisolated extension Silo_V1_Provider: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Provider"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}description\0\u{1}fields\0\u{3}supports_cache\0\u{3}cache_ttls\0\u{1}kinds\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}description\0\u{1}fields\0\u{3}supports_cache\0\u{3}cache_ttls\0\u{1}kinds\0\u{3}live_kinds\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -20652,6 +21338,7 @@ nonisolated extension Silo_V1_Provider: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 5: try { try decoder.decodeSingularBoolField(value: &self.supportsCache) }()
       case 6: try { try decoder.decodeRepeatedStringField(value: &self.cacheTtls) }()
       case 7: try { try decoder.decodeRepeatedStringField(value: &self.kinds) }()
+      case 8: try { try decoder.decodeRepeatedStringField(value: &self.liveKinds) }()
       default: break
       }
     }
@@ -20679,6 +21366,9 @@ nonisolated extension Silo_V1_Provider: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.kinds.isEmpty {
       try visitor.visitRepeatedStringField(value: self.kinds, fieldNumber: 7)
     }
+    if !self.liveKinds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.liveKinds, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -20690,6 +21380,7 @@ nonisolated extension Silo_V1_Provider: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.supportsCache != rhs.supportsCache {return false}
     if lhs.cacheTtls != rhs.cacheTtls {return false}
     if lhs.kinds != rhs.kinds {return false}
+    if lhs.liveKinds != rhs.liveKinds {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -20812,7 +21503,7 @@ nonisolated extension Silo_V1_ListProviderModelsRequest: SwiftProtobuf.Message, 
 
 nonisolated extension Silo_V1_ProviderModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ProviderModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{3}context_window\0\u{1}kind\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{3}context_window\0\u{1}kind\0\u{1}voices\0\u{1}live\0\u{1}words\0\u{3}end_of_turn\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -20824,6 +21515,10 @@ nonisolated extension Silo_V1_ProviderModel: SwiftProtobuf.Message, SwiftProtobu
       case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
       case 3: try { try decoder.decodeSingularInt32Field(value: &self.contextWindow) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.kind) }()
+      case 5: try { try decoder.decodeRepeatedStringField(value: &self.voices) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.live) }()
+      case 7: try { try decoder.decodeSingularBoolField(value: &self.words) }()
+      case 8: try { try decoder.decodeSingularBoolField(value: &self.endOfTurn) }()
       default: break
       }
     }
@@ -20842,6 +21537,18 @@ nonisolated extension Silo_V1_ProviderModel: SwiftProtobuf.Message, SwiftProtobu
     if !self.kind.isEmpty {
       try visitor.visitSingularStringField(value: self.kind, fieldNumber: 4)
     }
+    if !self.voices.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.voices, fieldNumber: 5)
+    }
+    if self.live != false {
+      try visitor.visitSingularBoolField(value: self.live, fieldNumber: 6)
+    }
+    if self.words != false {
+      try visitor.visitSingularBoolField(value: self.words, fieldNumber: 7)
+    }
+    if self.endOfTurn != false {
+      try visitor.visitSingularBoolField(value: self.endOfTurn, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -20850,6 +21557,10 @@ nonisolated extension Silo_V1_ProviderModel: SwiftProtobuf.Message, SwiftProtobu
     if lhs.name != rhs.name {return false}
     if lhs.contextWindow != rhs.contextWindow {return false}
     if lhs.kind != rhs.kind {return false}
+    if lhs.voices != rhs.voices {return false}
+    if lhs.live != rhs.live {return false}
+    if lhs.words != rhs.words {return false}
+    if lhs.endOfTurn != rhs.endOfTurn {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -22049,7 +22760,7 @@ nonisolated extension Silo_V1_FeedStatus: SwiftProtobuf.Message, SwiftProtobuf._
 
 nonisolated extension Silo_V1_EgressStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EgressStatus"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}enabled\0\u{1}problem\0\u{3}healthy_at\0\u{1}networks\0\u{3}ca_fingerprint\0\u{1}feeds\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}enabled\0\u{1}problem\0\u{3}healthy_at\0\u{1}networks\0\u{3}ca_fingerprint\0\u{1}feeds\0\u{3}dns_servers\0\u{3}dns_source\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -22063,6 +22774,8 @@ nonisolated extension Silo_V1_EgressStatus: SwiftProtobuf.Message, SwiftProtobuf
       case 4: try { try decoder.decodeSingularInt32Field(value: &self.networks) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.caFingerprint) }()
       case 6: try { try decoder.decodeRepeatedMessageField(value: &self.feeds) }()
+      case 7: try { try decoder.decodeRepeatedStringField(value: &self.dnsServers) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.dnsSource) }()
       default: break
       }
     }
@@ -22087,6 +22800,12 @@ nonisolated extension Silo_V1_EgressStatus: SwiftProtobuf.Message, SwiftProtobuf
     if !self.feeds.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.feeds, fieldNumber: 6)
     }
+    if !self.dnsServers.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.dnsServers, fieldNumber: 7)
+    }
+    if !self.dnsSource.isEmpty {
+      try visitor.visitSingularStringField(value: self.dnsSource, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -22097,6 +22816,8 @@ nonisolated extension Silo_V1_EgressStatus: SwiftProtobuf.Message, SwiftProtobuf
     if lhs.networks != rhs.networks {return false}
     if lhs.caFingerprint != rhs.caFingerprint {return false}
     if lhs.feeds != rhs.feeds {return false}
+    if lhs.dnsServers != rhs.dnsServers {return false}
+    if lhs.dnsSource != rhs.dnsSource {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -2,221 +2,245 @@ import Observation
 import SiloClient
 import SwiftUI
 
-/// The signed-out app in two steps: connect to a server (checked before any password is typed),
-/// then sign in to it. A remembered server starts on the second step.
+/// The signed-out app, one instrument in two steps: connect to a server (checked before any password
+/// is typed), then sign in to it, with the second factor after a right password. A remembered server
+/// starts on the second step. Nothing is swapped: the title and the button stay and change their
+/// words, the address field becomes the band of the server it reached, and the next step's fields
+/// unfold between them.
 struct SignInView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var still
+    @FocusState private var focus: Field?
+
+    private enum Step: Hashable { case connect, account, code }
+    private enum Field: Hashable { case server, email, password, code }
+
+    private var step: Step {
+        if model.serverURL.isEmpty { return .connect }
+        return model.needsCode ? .code : .account
+    }
+
+    private var passwordOff: Bool { step == .account && model.serverOptions?.password == false }
+
+    private var title: String {
+        switch step {
+        case .connect: "Welcome to Silo"
+        case .account: "Sign in"
+        case .code: "Two-factor code"
+        }
+    }
+
+    private var lede: String? {
+        switch step {
+        case .connect: "Your Bots live on your own server. Connect to it to talk to them, approve what they ask, and see what they made."
+        case .code: "Enter the 6-digit code from your authenticator app, or one of your recovery codes."
+        case .account:
+            passwordOff
+                ? "This server signs in with \(model.serverOptions?.oidcLabel.isEmpty == false ? model.serverOptions!.oidcLabel : "single sign-on") only, which the app cannot do yet. Sign in on the web client."
+                : nil
+        }
+    }
+
+    private var busy: Bool { step == .connect ? model.checkingServer : model.signingIn }
+
+    /// The button's word. It is the same button from the first step to the last.
+    private var word: String {
+        if step == .connect { return model.checkingServer ? "Connecting…" : "Continue" }
+        return model.signingIn ? "Signing in…" : "Sign in"
+    }
+
+    /// Whether there is something to send. A press while busy is the model's to ignore, so the button
+    /// keeps its ink, and its spinner, through the wait.
+    private var ready: Bool {
+        switch step {
+        case .connect: !model.serverInput.trimmingCharacters(in: .whitespaces).isEmpty
+        case .account: !model.email.isEmpty && !model.password.isEmpty
+        case .code: !model.code.isEmpty
+        }
+    }
+
+    private var fold: Animation { still ? Motion.quiet(0.12) : Motion.fold }
+    private var arrive: AnyTransition { still ? .opacity : .rise }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                AuthMark()
-                    .padding(.bottom, 44)
-                Group {
-                    if model.serverURL.isEmpty {
-                        ConnectStep()
-                    } else if model.needsCode {
-                        CodeStep()
-                    } else {
-                        AccountStep()
+        GeometryReader { box in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    AuthMark()
+                    StepRail(at: step == .connect ? 0 : 1)
+                        .padding(.top, 20)
+                    if step == .connect {
+                        CrestRow().padding(.top, 32).transition(.opacity)
                     }
+                    head.padding(.top, step == .connect ? 20 : 32)
+                    fields.padding(.top, 28)
+                    if !passwordOff {
+                        submit.padding(.top, 20).transition(.opacity)
+                    }
+                    foot
                 }
-                .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
-                                        removal: .opacity))
+                .padding(.horizontal, 28)
+                .padding(.vertical, 28)
+                .frame(maxWidth: 456, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: box.size.height)
             }
-            .padding(.horizontal, 28)
-            .padding(.top, 56)
-            .padding(.bottom, 32)
-            .frame(maxWidth: 460, alignment: .leading)
-            .frame(maxWidth: .infinity)
+            .scrollDismissesKeyboard(.interactively)
+            .scrollBounceBehavior(.basedOnSize)
         }
-        .scrollDismissesKeyboard(.interactively)
-        .scrollBounceBehavior(.basedOnSize)
         .background(Theme.canvas.ignoresSafeArea())
-        .animation(.snappy(duration: 0.35), value: model.serverURL.isEmpty)
-        .animation(.snappy(duration: 0.35), value: model.needsCode)
-    }
-}
-
-// MARK: - Steps
-
-/// Where the person's Silo is.
-private struct ConnectStep: View {
-    @Environment(AppModel.self) private var model
-    @FocusState private var focused: Bool
-
-    var body: some View {
-        @Bindable var model = model
-        VStack(alignment: .leading, spacing: 0) {
-            CrestRow().padding(.bottom, 22)
-            Text("Welcome to Silo")
-                .font(.silo(32, .medium))
-                .tracking(-0.6)
-                .foregroundStyle(Theme.ink)
-            Text("Your Bots live on your own server. Connect to it to talk to them, approve what they ask, and see what they made.")
-                .font(.silo(15))
-                .lineSpacing(3)
-                .foregroundStyle(Theme.ink2)
-                .padding(.top, 10)
-
-            AuthField(label: "Server address", error: model.serverError != nil) {
-                TextField("", text: $model.serverInput, prompt: Text("silo.example.com").foregroundStyle(Theme.ink3))
-                    .font(.siloMono(16))
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-                    .textContentType(.URL)
-                    .submitLabel(.continue)
-                    .focused($focused)
-                    .onSubmit { Task { await model.connect() } }
+        .animation(fold, value: step)
+        .animation(fold, value: passwordOff)
+        .animation(Motion.state, value: model.serverError)
+        .animation(Motion.state, value: model.signInError)
+        .task(id: step) {
+            switch step {
+            case .connect:
+                focus = model.serverInput.isEmpty ? .server : nil
+            case .account:
+                focus = model.email.isEmpty ? .email : .password
+                await model.loadServerOptions()
+            case .code:
+                focus = .code
             }
-            .padding(.top, 32)
-
-            if let error = model.serverError { AuthError(text: error).padding(.top, 10) }
-
-            Button {
-                Task { await model.connect() }
-            } label: {
-                HStack(spacing: 8) {
-                    if model.checkingServer { ProgressView().tint(Theme.onInk) }
-                    Text(model.checkingServer ? "Connecting…" : "Continue")
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.ink)
-            .disabled(model.checkingServer || model.serverInput.trimmingCharacters(in: .whitespaces).isEmpty)
-            .padding(.top, 20)
-
-            Text("The address is whatever you open Silo at in a browser. Whoever set Silo up can tell you.")
-                .font(.silo(13))
-                .lineSpacing(2)
-                .foregroundStyle(Theme.ink3)
-                .padding(.top, 16)
         }
-        .onAppear { focused = model.serverInput.isEmpty }
+        .sensoryFeedback(.success, trigger: step) { _, new in new != .connect }
+        .sensoryFeedback(.error, trigger: model.serverError) { _, new in new != nil }
+        .sensoryFeedback(.error, trigger: model.signInError) { _, new in new != nil }
     }
-}
 
-/// Email and password, under the server they go to.
-private struct AccountStep: View {
-    @Environment(AppModel.self) private var model
-    @FocusState private var field: Field?
+    /// The title stays where it is and changes its word; the sentence under it follows.
+    private var head: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ZStack(alignment: .topLeading) {
+                Text(title)
+                    .font(.silo(40, .medium))
+                    .tracking(-0.8)
+                    .lineHeight(.multiple(factor: 48 / 52))
+                    .foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .id(title)
+                    .transition(wordChange)
+            }
+            if let lede {
+                ZStack(alignment: .topLeading) {
+                    Text(lede)
+                        .font(.silo(15))
+                        .lineHeight(.multiple(factor: 24 / 19.5))
+                        .foregroundStyle(Theme.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .id(lede)
+                        .transition(.opacity)
+                }
+                .transition(.opacity)
+            }
+        }
+    }
 
-    private enum Field { case email, password }
-
-    private var passwordOff: Bool { model.serverOptions?.password == false }
-
-    var body: some View {
+    @ViewBuilder
+    private var fields: some View {
         @Bindable var model = model
-        VStack(alignment: .leading, spacing: 0) {
-            ServerChip()
-            Text("Sign in")
-                .font(.silo(32, .medium))
-                .tracking(-0.6)
-                .foregroundStyle(Theme.ink)
-                .padding(.top, 18)
-
-            if passwordOff {
-                Text("This server signs in with \(model.serverOptions?.oidcLabel.isEmpty == false ? model.serverOptions!.oidcLabel : "single sign-on") only, which the app cannot do yet. Sign in on the web client.")
-                    .font(.silo(15))
-                    .lineSpacing(3)
-                    .foregroundStyle(Theme.ink2)
-                    .padding(.top, 10)
-            } else {
-                AuthField(label: "Email") {
-                    TextField("", text: $model.email, prompt: Text("you@example.com").foregroundStyle(Theme.ink3))
-                        .font(.silo(16))
+        VStack(alignment: .leading, spacing: 14) {
+            // The field and the band share a place: what you typed becomes what you are connected to.
+            ZStack(alignment: .bottom) {
+                if step == .connect {
+                    SiloField(label: "Server address", prompt: "silo.example.com", text: $model.serverInput, mono: true, error: model.serverError)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                        .keyboardType(.emailAddress)
-                        .textContentType(.username)
-                        .submitLabel(.next)
-                        .focused($field, equals: .email)
-                        .onSubmit { field = .password }
+                        .keyboardType(.URL)
+                        .textContentType(.URL)
+                        .submitLabel(.continue)
+                        .focused($focus, equals: .server)
+                        .onSubmit { Task { await model.connect() } }
+                        .transition(.opacity)
+                } else {
+                    ServerBand().transition(.opacity)
                 }
-                .padding(.top, 28)
-
-                AuthField(label: "Password") {
-                    SecureField("", text: $model.password)
-                        .font(.silo(16))
-                        .textContentType(.password)
-                        .submitLabel(.go)
-                        .focused($field, equals: .password)
-                        .onSubmit { Task { await model.signIn() } }
-                }
-                .padding(.top, 14)
-
-                if let error = model.signInError { AuthError(text: error).padding(.top, 10) }
-
-                Button {
-                    Task { await model.signIn() }
-                } label: {
-                    HStack(spacing: 8) {
-                        if model.signingIn { ProgressView().tint(Theme.onInk) }
-                        Text(model.signingIn ? "Signing in…" : "Sign in")
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.ink)
-                .disabled(model.signingIn || model.email.isEmpty || model.password.isEmpty)
-                .padding(.top, 20)
             }
-        }
-        .task { await model.loadServerOptions() }
-        .onAppear { field = model.email.isEmpty ? .email : .password }
-    }
-}
-
-/// The second factor, once the password was right.
-private struct CodeStep: View {
-    @Environment(AppModel.self) private var model
-    @FocusState private var focused: Bool
-
-    var body: some View {
-        @Bindable var model = model
-        VStack(alignment: .leading, spacing: 0) {
-            ServerChip()
-            Text("Two-factor code")
-                .font(.silo(32, .medium))
-                .tracking(-0.6)
-                .foregroundStyle(Theme.ink)
-                .padding(.top, 18)
-            Text("Enter the 6-digit code from your authenticator app, or one of your recovery codes.")
-                .font(.silo(15))
-                .lineSpacing(3)
-                .foregroundStyle(Theme.ink2)
-                .padding(.top, 10)
-
-            AuthField(label: "Code") {
-                TextField("", text: $model.code)
-                    .font(.siloMono(20))
-                    .tracking(2)
+            if step == .account && !passwordOff {
+                SiloField(label: "Email", prompt: "you@example.com", text: $model.email)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.emailAddress)
+                    .textContentType(.username)
+                    .submitLabel(.next)
+                    .focused($focus, equals: .email)
+                    .onSubmit { focus = .password }
+                    .transition(arrive)
+                SiloField(label: "Password", text: $model.password, secure: true, error: model.signInError)
+                    .textContentType(.password)
+                    .submitLabel(.go)
+                    .focused($focus, equals: .password)
+                    .onSubmit { Task { await model.signIn() } }
+                    .transition(arrive)
+            }
+            if step == .code {
+                SiloField(label: "Code", text: $model.code, mono: true, error: model.signInError)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .textContentType(.oneTimeCode)
                     .submitLabel(.go)
-                    .focused($focused)
+                    .focused($focus, equals: .code)
                     .onSubmit { Task { await model.signIn() } }
+                    .transition(arrive)
             }
-            .padding(.top, 28)
-
-            if let error = model.signInError { AuthError(text: error).padding(.top, 10) }
-
-            Button {
-                Task { await model.signIn() }
-            } label: {
-                Text(model.signingIn ? "Signing in…" : "Sign in").frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.ink)
-            .disabled(model.signingIn || model.code.isEmpty)
-            .padding(.top, 20)
-
-            Button("Use another account") { model.cancelCode() }
-                .buttonStyle(.quiet)
-                .frame(maxWidth: .infinity)
-                .padding(.top, 8)
         }
-        .onAppear { focused = true }
+    }
+
+    private var submit: some View {
+        Button {
+            Task {
+                if step == .connect { await model.connect() } else { await model.signIn() }
+            }
+        } label: {
+            HStack(spacing: 8) {
+                if busy {
+                    Spinner(size: 14, color: Theme.onInk)
+                        .transition(.scale(scale: 0.6).combined(with: .opacity))
+                }
+                ZStack {
+                    Text(word)
+                        .id(word)
+                        .transition(wordChange)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.ink)
+        .disabled(!ready)
+        .animation(Motion.state, value: word)
+        .animation(Motion.state, value: ready)
+    }
+
+    @ViewBuilder
+    private var foot: some View {
+        switch step {
+        case .connect:
+            Text("The address is whatever you open Silo at in a browser. Whoever set Silo up can tell you.")
+                .font(.silo(13))
+                .lineHeight(.multiple(factor: 20 / 16.9))
+                .foregroundStyle(Theme.ink3)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 14)
+                .transition(.opacity)
+        case .code:
+            Button {
+                model.cancelCode()
+            } label: {
+                Text("Use another account").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.ghost)
+            .padding(.top, 8)
+            .transition(arrive)
+        case .account:
+            EmptyView()
+        }
+    }
+
+    /// A word changing in place: the old one fades out, the new one comes up 4pt.
+    private var wordChange: AnyTransition {
+        .asymmetric(insertion: still ? .opacity : .opacity.combined(with: .offset(y: 4)), removal: .opacity)
     }
 }
 
@@ -225,15 +249,35 @@ private struct CodeStep: View {
 /// The Silo glyph and name, as on the web's sign-in card.
 struct AuthMark: View {
     var body: some View {
+        let tile = RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
         HStack(spacing: 12) {
             SiloGlyph()
                 .fill(Theme.ink, style: FillStyle(eoFill: true))
                 .frame(width: 22, height: 22)
                 .frame(width: 40, height: 40)
-                .background(Theme.well, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .background(Theme.well, in: tile)
+                .overlay(tile.strokeBorder(Theme.line, lineWidth: 1))
             Text("Silo Agent").font(.silo(15, .medium)).foregroundStyle(Theme.ink)
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// Where you are in the two steps: a hairline with the tabs' 2pt cobalt bar sliding along it.
+private struct StepRail: View {
+    let at: Int
+    var count = 2
+
+    var body: some View {
+        GeometryReader { box in
+            let width = box.size.width / CGFloat(count)
+            ZStack(alignment: .leading) {
+                Theme.line.frame(height: 1)
+                Theme.cobalt.frame(width: width, height: 2).offset(x: width * CGFloat(at))
+            }
+        }
+        .frame(height: 2)
+        .accessibilityHidden(true)
     }
 }
 
@@ -241,14 +285,15 @@ struct AuthMark: View {
 private struct CrestRow: View {
     private static let crests: [Int32] = [61, 54, 16, 34, 75] // cobalt hex, emerald cloud, wine circle, yellow squircle, pink pill
     @State private var shown = false
+    @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
         HStack(spacing: 10) {
             ForEach(Array(Self.crests.enumerated()), id: \.offset) { index, crest in
                 CrestView(index: crest, size: 34)
                     .opacity(shown ? 1 : 0)
-                    .offset(y: shown ? 0 : 8)
-                    .animation(.spring(duration: 0.5, bounce: 0.25).delay(0.08 * Double(index)), value: shown)
+                    .offset(y: shown || still ? 0 : 8)
+                    .animation(Motion.arrival.delay(0.06 * Double(index)), value: shown)
             }
         }
         .accessibilityHidden(true)
@@ -257,60 +302,34 @@ private struct CrestRow: View {
 }
 
 /// The server the next step talks to, with the way back to pick another.
-private struct ServerChip: View {
+private struct ServerBand: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        HStack(spacing: 8) {
-            Circle().fill(Theme.lamp).frame(width: 7, height: 7)
+        HStack(spacing: 10) {
+            Lamp(status: .online)
             Text(serverLabel(model.serverURL))
                 .font(.siloMono(13))
                 .foregroundStyle(Theme.ink2)
                 .lineLimit(1)
                 .truncationMode(.middle)
-            Button("Change") { model.changeServer() }
-                .font(.silo(13, .medium))
-                .foregroundStyle(Theme.cobalt)
-                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button {
+                model.changeServer()
+            } label: {
+                Text("Change")
+                    .font(.silo(13, .medium))
+                    .foregroundStyle(Theme.cobalt)
+                    .padding(.horizontal, 8)
+                    .frame(minHeight: 40)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.press)
         }
-        .padding(.horizontal, 12)
-        .frame(height: 32)
-        .background(Theme.well, in: Capsule())
-    }
-}
-
-/// A labelled field: the label above in ink-3, the field on surface with a hairline.
-private struct AuthField<Field: View>: View {
-    let label: String
-    var error = false
-    @ViewBuilder let field: () -> Field
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text(label).font(.silo(12.5, .medium)).foregroundStyle(Theme.ink3)
-            field()
-                .foregroundStyle(Theme.ink)
-                .tint(Theme.cobalt)
-                .padding(.horizontal, 14)
-                .frame(height: 50)
-                .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
-                        .stroke(error ? Theme.vermilion : Theme.lineStrong)
-                }
-        }
-    }
-}
-
-private struct AuthError: View {
-    let text: String
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Circle().fill(Theme.vermilion).frame(width: 6, height: 6).alignmentGuide(.firstTextBaseline) { $0[.bottom] + 2 }
-            Text(text).font(.silo(13)).foregroundStyle(Theme.vermilion)
-        }
-        .accessibilityElement(children: .combine)
+        .padding(.leading, 14)
+        .padding(.trailing, 6)
+        .frame(minHeight: 44)
+        .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
     }
 }
 

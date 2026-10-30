@@ -47,4 +47,23 @@ extension SiloClient {
             $0.proactivity = level
         }, headers: [:]))
     }
+
+    // MARK: - Read aloud
+
+    /// Readies text to be read aloud and answers where it streams from (`url` is single use).
+    /// `model`, `voice` and `speed` override the Bot's own, for a preview.
+    public func prepareSpeech(botID: String, text: String, model: String = "", voice: String = "", speed: Double = 0) async throws -> URL {
+        let response = try unwrap(await ui.prepareSpeech(request: .with {
+            $0.botID = botID
+            $0.text = text
+            $0.model = model
+            $0.voice = voice
+            $0.speed = speed
+        }, headers: [:]))
+        guard let url = URL(string: host + response.url) else { throw SiloError.server("The voice did not answer.") }
+        return url
+    }
+
+    /// The server this client talks to.
+    public var address: String { host }
 }

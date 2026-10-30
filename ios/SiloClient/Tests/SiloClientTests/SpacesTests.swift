@@ -49,20 +49,21 @@ final class SpacesTests: XCTestCase {
     }
 
     func testMoodAndOrder() {
-        XCTAssertEqual(botMood(status: "needs_you", asks: 2, live: 0), .needsYou)
-        XCTAssertEqual(botMood(status: "online", asks: 1, live: 0), .asks)
-        XCTAssertEqual(botMood(status: "online", asks: 0, live: 1), .working)
-        XCTAssertEqual(botMood(status: "", asks: 0, live: 0), .stopped)
-        XCTAssertEqual(botMood(status: "idle", asks: 0, live: 0), .online)
+        XCTAssertEqual(botMood(status: "needs_you", asks: 2), .needsYou)
+        XCTAssertEqual(botMood(status: "online", asks: 1), .asks)
+        XCTAssertEqual(botMood(status: "working", asks: 0), .working)
+        XCTAssertEqual(botMood(status: "on_call", asks: 0), .working)
+        XCTAssertEqual(botMood(status: "", asks: 0), .resting)
+        XCTAssertEqual(botMood(status: "stopped", asks: 0), .resting)
 
-        let bots: [(String, BotMood)] = [("a", .online), ("b", .working), ("c", .stopped), ("d", .needsYou), ("e", .online), ("f", .asks)]
+        let bots: [(String, BotMood)] = [("a", .resting), ("b", .working), ("c", .resting), ("d", .needsYou), ("e", .resting), ("f", .asks)]
         let groups = overviewGroups(bots) { $0.1 }
         XCTAssertEqual(groups.now.map(\.0), ["d", "f", "b"])
-        XCTAssertEqual(groups.resting.map(\.0), ["a", "e", "c"])
+        XCTAssertEqual(groups.resting.map(\.0), ["a", "c", "e"])
     }
 
     func testPulse() {
-        let pulse = overviewPulse(moods: [.needsYou, .working, .online, .online], asks: 1)
+        let pulse = overviewPulse(moods: [.needsYou, .working, .resting, .resting], asks: 1)
         XCTAssertEqual(pulse.map(\.words), ["1 need you", "1 question", "1 at work", "2 resting"])
     }
 

@@ -15,43 +15,56 @@ struct SpacePeoplePage: View {
     private var role: String { spaces.role }
     private var admin: Bool { canAdminSpace(role) }
 
+    private var note: String {
+        var words = people?.count == 1
+            ? "Only you are in \(spaces.current?.name ?? "this workspace"). Invite people to share its Bots and what they use, without sharing your own."
+            : "Everyone here can be given Bots to use. Admins see every Bot in the workspace, but cannot open one they are not on."
+        if admin, role != "owner", (people?.count ?? 0) > 1 { words += " Only the owner makes admins." }
+        return words
+    }
+
     var body: some View {
-        List {
-            Section {
-                ForEach(people ?? [], id: \.userID) { person in
-                    PersonRow(person: person, callerRole: role, remove: { removing = person }) { next in
-                        await setRole(person, next)
+        PageScroll {
+            if let people {
+                PanelSection(footer: note) {
+                    ForEach(people, id: \.userID) { person in
+                        PersonRow(person: person, callerRole: role, remove: { removing = person }) { next in
+                            await setRole(person, next)
+                        }
                     }
                 }
-            } footer: {
-                if people?.count == 1 {
-                    Text("Only you are in \(spaces.current?.name ?? "this workspace"). Invite people to share its Bots and what they use, without sharing your own.")
-                } else {
-                    Text("Everyone here can be given Bots to use. Admins see every Bot in the workspace, but cannot open one they are not on.")
-                }
+                .rise()
+            } else {
+                SkeletonRows(count: 2, height: 56)
             }
             if admin && !invites.isEmpty {
-                Section("Open invite links") {
+                PanelSection(title: "Open invite links") {
                     ForEach(invites, id: \.id) { invite in
                         HStack(spacing: 10) {
-                            Image(systemName: "link").foregroundStyle(Theme.ink3)
+                            Image(systemName: "link").font(.system(size: 13)).foregroundStyle(Theme.ink3)
                             Text("\(spaceRoleWord(invite.role)) · made by \(invite.createdBy) · until \(shortDay(invite.expiresAt))")
-                                .font(.silo(14)).lineLimit(2)
+                                .font(.silo(13.5))
+                                .foregroundStyle(Theme.ink)
+                                .lineLimit(2)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            ArmedButton(title: "Delete", armedTitle: "Tap again", symbol: "trash", small: true) {
+                                Task { await deleteInvite(invite) }
+                            }
+                            .layoutPriority(1)
                         }
-                        .swipeActions {
-                            Button(role: .destructive) { Task { await deleteInvite(invite) } } label: { Label("Delete", systemImage: "trash") }
-                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .transition(.rise)
                     }
                 }
+                .animation(Motion.arrival, value: invites.map(\.id))
             }
         }
-        .siloList()
-        .overlay { if people == nil { ProgressView() } }
-        .toolbar {
+        .pageActions {
             if admin {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { inviting = true } label: { Label("Invite", systemImage: "person.badge.plus") }
-                }
+                Button { inviting = true } label: { Image(systemName: "person.badge.plus") }
+                    .buttonStyle(.glyph)
+                    .accessibilityLabel("Invite")
             }
         }
         .refreshable { await load() }
@@ -85,6 +98,8 @@ struct SpacePeoplePage: View {
     }
 }
 
+/// One person: their letters, email and how many Bots they are on, then the role as a chip they
+/// cannot change or a small choice they can, and Remove or Leave.
 private struct PersonRow: View {
     let person: Silo_V1_SpacePerson
     let callerRole: String
@@ -92,55 +107,46 @@ private struct PersonRow: View {
     let setRole: (String) async -> Void
 
     private var editable: Bool { !person.you && mayChangePerson(caller: callerRole, theirs: person.role) }
+    private var leaves: Bool { person.you && person.role != "owner" }
+
+    private var roles: [(value: String, label: String)] {
+        (callerRole == "owner" ? ["admin", "member", "guest"] : ["member", "guest"]).map { (value: $0, label: spaceRoleWord($0)) }
+    }
 
     var body: some View {
-        HStack(spacing: 12) {
-            Initials(email: person.email)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(person.email).font(.silo(15, .medium)).lineLimit(1).truncationMode(.middle)
-                    if person.you { Text("you").font(.silo(12)).foregroundStyle(Theme.ink3) }
-                    if person.disabled { WellChip(text: "Disabled", tone: Theme.vermilion) }
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                Initials(email: person.email)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(person.email)
+                            .font(.silo(14.5, .medium))
+                            .foregroundStyle(Theme.ink)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        if person.you { Text("you").font(.silo(12)).foregroundStyle(Theme.ink3) }
+                        if person.disabled { Chip(text: "Disabled", tint: Theme.vermilion, fill: Theme.vermilionPale) }
+                    }
+                    Text(person.bots == 1 ? "On 1 Bot" : "On \(person.bots) Bots").font(.silo(12)).foregroundStyle(Theme.ink3)
                 }
-                Text(person.bots == 1 ? "On 1 Bot" : "On \(person.bots) Bots").font(.silo(12)).foregroundStyle(Theme.ink3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if !editable {
+                    Chip(text: person.role == "owner" ? "Owner" : spaceRoleWord(person.role))
+                }
+                if leaves {
+                    Button("Leave", action: remove).buttonStyle(.ghost).controlSize(.small)
+                }
             }
-            Spacer(minLength: 6)
             if editable {
-                Menu {
-                    Picker("Role", selection: Binding(get: { person.role }, set: { next in Task { await setRole(next) } })) {
-                        Text("Admin").tag("admin").selectionDisabled(callerRole != "owner")
-                        Text("Member").tag("member")
-                        Text("Guest").tag("guest")
-                    }
-                    if callerRole != "owner" { Text("Only the owner makes admins.") }
-                } label: {
-                    HStack(spacing: 3) {
-                        Text(spaceRoleWord(person.role))
-                        Image(systemName: "chevron.up.chevron.down").font(.system(size: 10))
-                    }
-                    .font(.silo(13, .medium))
-                    .foregroundStyle(Theme.ink2)
+                HStack(spacing: 8) {
+                    ChipRadio(options: roles, selection: Binding(get: { person.role }, set: { next in Task { await setRole(next) } }))
+                    Button("Remove", action: remove).buttonStyle(.ghost).controlSize(.small)
                 }
-            } else {
-                WellChip(text: person.role == "owner" ? "Owner" : spaceRoleWord(person.role))
+                .padding(.leading, 40)
             }
         }
-        .padding(.vertical, 2)
-        .swipeActions {
-            if editable || (person.you && person.role != "owner") {
-                Button(action: remove) {
-                    Label(person.you ? "Leave" : "Remove", systemImage: person.you ? "rectangle.portrait.and.arrow.right" : "person.badge.minus")
-                }
-                .tint(Theme.vermilion)
-            }
-        }
-        .contextMenu {
-            if editable || (person.you && person.role != "owner") {
-                Button(action: remove) {
-                    Label(person.you ? "Leave workspace…" : "Remove…", systemImage: "person.badge.minus")
-                }
-            }
-        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
     }
 }
 
@@ -160,45 +166,67 @@ struct SpaceInviteSheet: View {
         "guest": "Only uses the Bots they are given. Does not see the rest of the workspace.",
     ]
 
+    private var roles: [(value: String, label: String)] {
+        (space.role == "owner" ? ["admin", "member", "guest"] : ["member", "guest"]).map { (value: $0, label: spaceRoleWord($0)) }
+    }
+
     var body: some View {
-        NavigationStack {
-            Form {
+        VStack(spacing: 0) {
+            SheetHead(title: "Invite to \(space.name)") {
+                Button("Done") { dismiss() }.buttonStyle(.ghost)
+            }
+            PageScroll {
                 if url.isEmpty {
-                    Section {
-                        Picker("They join as", selection: $role) {
-                            if space.role == "owner" { Text("Admin").tag("admin") }
-                            Text("Member").tag("member")
-                            Text("Guest").tag("guest")
-                        }
-                        .pickerStyle(.segmented)
-                    } header: {
-                        Text("They join as")
-                    } footer: {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("They join as").font(.silo(12, .medium)).foregroundStyle(Theme.ink3)
+                        ChipRadio(options: roles, selection: $role)
                         Text(hints[role] ?? "")
+                            .font(.silo(13))
+                            .foregroundStyle(Theme.ink2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Section {
-                        Button(busy ? "Making…" : "Make link") { Task { await make() } }
-                            .disabled(busy)
+                    Button { Task { await make() } } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "link").font(.system(size: 13, weight: .medium))
+                            Text(busy ? "Making…" : "Make link")
+                        }
                     }
+                    .buttonStyle(.ink)
+                    .disabled(busy)
                 } else {
-                    Section {
-                        Text(url).font(.siloMono(13)).textSelection(.enabled).lineLimit(3)
-                        ShareLink(item: url) { Label("Share link", systemImage: "square.and.arrow.up") }
-                        Button { UIPasteboard.general.string = url } label: { Label("Copy link", systemImage: "doc.on.doc") }
-                    } footer: {
-                        Text("Send this link to the person you are inviting. It works once, for 7 days, and is shown only now.")
+                    Text("Send this link to the person you are inviting. It works once, for 7 days, and is shown only now.")
+                        .font(.silo(13.5))
+                        .foregroundStyle(Theme.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 4) {
+                        Text(url)
+                            .font(.siloMono(13))
+                            .foregroundStyle(Theme.ink)
+                            .textSelection(.enabled)
+                            .lineLimit(3)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        CopyButton(text: url)
                     }
-                    Section {
-                        Button("Make another") { url = "" }
+                    .padding(.leading, 12)
+                    .padding(.vertical, 4)
+                    .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+                    .rise()
+                    HStack(spacing: 8) {
+                        ShareLink(item: url) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "square.and.arrow.up").font(.system(size: 13, weight: .medium))
+                                Text("Share link")
+                            }
+                        }
+                        .buttonStyle(.ink)
+                        Button("Make another") { url = "" }.buttonStyle(.quiet)
                     }
                 }
-                if let failure { Section { Text(failure).foregroundStyle(Theme.vermilion) } }
+                if let failure { ErrorLine(text: failure) }
             }
-            .siloList()
-            .navigationTitle("Invite to \(space.name)")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
+        .sensoryFeedback(.success, trigger: url) { _, new in !new.isEmpty }
+        .siloSheet(detents: [.medium, .large])
     }
 
     private func make() async {
@@ -214,7 +242,7 @@ struct SpaceInviteSheet: View {
 }
 
 /// Removing someone, or leaving: what happens to the Bots only they manage, what leaves with them,
-/// then one confirmed press.
+/// then one armed press.
 struct RemovePersonPage: View {
     @Environment(AppModel.self) private var model
     @Environment(SpaceModel.self) private var spaces
@@ -224,100 +252,92 @@ struct RemovePersonPage: View {
     @State private var plan: Silo_V1_SpaceRemovalPlan?
     @State private var failure: String?
     @State private var choices: [String: Handoff] = [:]
-    @State private var confirming = false
     @State private var busy = false
 
     var body: some View {
-        Form {
-            if let plan {
-                if !plan.lastManaged.isEmpty {
-                    Section {
-                        ForEach(plan.lastManaged, id: \.botID) { bot in handoffRow(bot) }
-                    } header: {
-                        Text("Bots nobody else manages")
-                    } footer: {
-                        Text("A Bot always has a manager. Choose what happens to each.")
+        SiloPage(title: leaving ? "Leave \(spaces.current?.name ?? "")" : "Remove \(plan?.email ?? "")") {
+            PageScroll {
+                if let plan {
+                    if !plan.lastManaged.isEmpty {
+                        PanelSection(title: "Bots nobody else manages", footer: "A Bot always has a manager. Choose what happens to each.") {
+                            ForEach(plan.lastManaged, id: \.botID) { bot in handoffRow(bot) }
+                        }
                     }
-                }
-                let personal = plan.lent.filter { !$0.shared }
-                let shared = plan.lent.filter(\.shared)
-                if !personal.isEmpty {
-                    Section {
-                        ForEach(personal, id: \.id) { lentRow($0) }
-                    } header: { Text("Deleted with them") } footer: {
-                        Text("Personal sign-ins carry their account, so they go too.")
+                    let personal = plan.lent.filter { !$0.shared }
+                    let shared = plan.lent.filter(\.shared)
+                    if !personal.isEmpty {
+                        PanelSection(title: "Deleted with them", footer: "Personal sign-ins carry their account, so they go too.") {
+                            ForEach(personal, id: \.id) { lentRow($0) }
+                        }
                     }
-                }
-                if !shared.isEmpty {
-                    Section {
-                        ForEach(shared, id: \.id) { lentRow($0) }
-                    } header: { Text("Signed out") } footer: {
-                        Text("Shared sign-ins stay in the workspace and wait for someone to sign them in again.")
+                    if !shared.isEmpty {
+                        PanelSection(title: "Signed out", footer: "Shared sign-ins stay in the workspace and wait for someone to sign them in again.") {
+                            ForEach(shared, id: \.id) { lentRow($0) }
+                        }
                     }
-                }
-                if plan.lastManaged.isEmpty && plan.lent.isEmpty {
-                    Section {
+                    if plan.lastManaged.isEmpty && plan.lent.isEmpty {
                         Text(leaving
                              ? "You will lose access to the workspace and its Bots."
                              : "They will lose access to the workspace and its Bots. Their chats stay with the Bots.")
-                            .font(.silo(15)).foregroundStyle(Theme.ink2)
+                            .font(.silo(15))
+                            .foregroundStyle(Theme.ink2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                    ArmedButton(title: leaving ? "Leave workspace" : "Remove \(plan.email)", armedTitle: "Tap again to confirm", wide: true) {
+                        Task { await remove() }
+                    }
+                    .disabled(busy)
+                } else if failure == nil {
+                    SkeletonRows(count: 2, height: 64)
                 }
-                Section {
-                    Button(leaving ? "Leave workspace" : "Remove \(plan.email)", role: .destructive) { confirming = true }
-                        .disabled(busy)
-                }
-            } else if failure == nil {
-                ProgressView().frame(maxWidth: .infinity)
+                if let failure { ErrorLine(text: failure) }
             }
-            if let failure { Section { Text(failure).foregroundStyle(Theme.vermilion) } }
         }
-        .siloList()
-        .navigationTitle(leaving ? "Leave \(spaces.current?.name ?? "")" : "Remove \(plan?.email ?? "")")
-        .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
-        .confirmationDialog(leaving ? "Leave this workspace?" : "Remove them?", isPresented: $confirming, titleVisibility: .visible) {
-            Button(leaving ? "Leave" : "Remove", role: .destructive) { Task { await remove() } }
-        }
     }
 
     @ViewBuilder
     private func handoffRow(_ bot: Silo_V1_LastManaged) -> some View {
         let heirs = bot.others.filter { $0.spaceRole != "guest" }
         let choice = choiceOf(bot)
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 CrestView(index: bot.crest, size: 26)
-                Text(bot.name).font(.silo(15, .medium))
+                Text(bot.name).font(.silo(15, .medium)).foregroundStyle(Theme.ink).lineLimit(1)
             }
-            Picker(bot.name, selection: Binding(get: { choice.action }, set: { action in
-                choices[bot.botID] = Handoff(action: action, userID: action == "manager" ? (heirs.first?.userID ?? "") : "")
-            })) {
-                ForEach(handoffActions(hasHeirs: !heirs.isEmpty, leaving: leaving), id: \.self) { action in
-                    Text(handoffWord(action)).tag(action)
-                }
-            }
-            .pickerStyle(.segmented)
+            ChipRadio(
+                options: handoffActions(hasHeirs: !heirs.isEmpty, leaving: leaving).map { (value: $0, label: handoffWord($0)) },
+                selection: Binding(get: { choice.action }, set: { action in
+                    choices[bot.botID] = Handoff(action: action, userID: action == "manager" ? (heirs.first?.userID ?? "") : "")
+                }))
             if choice.action == "manager" {
-                Picker("New manager", selection: Binding(get: { choice.userID }, set: { choices[bot.botID] = Handoff(action: "manager", userID: $0) })) {
-                    ForEach(heirs, id: \.userID) { Text($0.email).tag($0.userID) }
-                }
+                SiloPicker(
+                    label: "New manager",
+                    options: heirs.map { (value: $0.userID, label: $0.email) },
+                    selection: Binding(get: { choice.userID }, set: { choices[bot.botID] = Handoff(action: "manager", userID: $0) }))
+                    .transition(.rise)
             }
             if choice.action == "delete" {
-                Text("Its machine, files, memories and chats are deleted.").font(.silo(13)).foregroundStyle(Theme.vermilion)
+                Text("Its machine, files, memories and chats are deleted.")
+                    .font(.silo(13))
+                    .foregroundStyle(Theme.vermilion)
+                    .transition(.rise)
             }
         }
-        .padding(.vertical, 4)
+        .padding(14)
+        .animation(Motion.fold, value: choice.action)
     }
 
     private func lentRow(_ item: Silo_V1_Lent) -> some View {
-        HStack {
-            Text(item.name).font(.silo(15, .medium))
+        HStack(spacing: 8) {
+            Text(item.name).font(.silo(14.5, .medium)).foregroundStyle(Theme.ink).lineLimit(1)
             Text(item.kind == "drive" ? "Drive" : "Connector").font(.silo(13)).foregroundStyle(Theme.ink3)
-            Spacer()
+            Spacer(minLength: 8)
             let count = item.bots.count + Int(item.botsHidden)
             if count > 0 { Text("in \(count) Bot\(count == 1 ? "" : "s")").font(.silo(12)).foregroundStyle(Theme.ink3) }
         }
+        .padding(.horizontal, 14)
+        .frame(minHeight: 44)
     }
 
     private func handoffWord(_ action: String) -> String {
@@ -373,26 +393,35 @@ struct SpaceActivityPage: View {
     @Environment(SpaceModel.self) private var spaces
     @State private var events: [Silo_V1_SpaceActivity]?
 
+    private let note = "People joining and leaving, Bots made and deleted, what was given to which Bot, and sign-ins. What a Bot does with it stays with its managers."
+
     var body: some View {
-        List {
-            Section {
-                ForEach(events ?? [], id: \.id) { event in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(spaceActivityLine(kind: event.kind, subject: event.subject, detail: event.detail, botName: event.botName))
-                            .font(.silo(15))
-                        Text([event.actor, relativeTime(event.createdAt)].filter { !$0.isEmpty }.joined(separator: " · "))
-                            .font(.silo(12)).foregroundStyle(Theme.ink3)
+        PageScroll {
+            if let events {
+                if events.isEmpty {
+                    EmptyWell(symbol: "clock.arrow.circlepath", title: "Nothing yet", message: note)
+                } else {
+                    PanelSection(footer: note) {
+                        ForEach(events, id: \.id) { event in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(spaceActivityLine(kind: event.kind, subject: event.subject, detail: event.detail, botName: event.botName))
+                                    .font(.silo(14))
+                                    .foregroundStyle(Theme.ink)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Text([event.actor, relativeTime(event.createdAt)].filter { !$0.isEmpty }.joined(separator: " · "))
+                                    .font(.silo(12))
+                                    .foregroundStyle(Theme.ink3)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 9)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .transition(.rise)
+                        }
                     }
-                    .padding(.vertical, 1)
+                    .animation(Motion.arrival, value: events.map(\.id))
                 }
-            } footer: {
-                Text("People joining and leaving, Bots made and deleted, what was given to which Bot, and sign-ins. What a Bot does with it stays with its managers.")
-            }
-        }
-        .siloList()
-        .overlay {
-            if events == nil { ProgressView() } else if events?.isEmpty == true {
-                ContentUnavailableView("Nothing yet", systemImage: "clock.arrow.circlepath")
+            } else {
+                SkeletonRows(count: 6, height: 52)
             }
         }
         .refreshable { await load() }

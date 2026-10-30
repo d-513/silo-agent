@@ -1,9 +1,9 @@
 import SiloClient
 import SwiftUI
 
-/// The "Needs you" slip: what the Bot wants to do and the choice. Docked in place of the composer
-/// in the chat whose run it paused (`here`), and listed on the Dashboard with the rest. Allow once
-/// and Deny are one tap; changing the rule is one tap further.
+/// The "Needs you" slip: what the Bot wants to do and the choice. Docked in place of the composer in
+/// the chat whose run it paused (`here`), and listed on the Dashboard with the rest. Allow once and
+/// Deny are one press; changing the rule is one further.
 struct ApprovalSlip: View {
     @Environment(AppModel.self) private var model
     let approval: Silo_V1_Approval
@@ -13,71 +13,71 @@ struct ApprovalSlip: View {
 
     var body: some View {
         let description = describeApproval(approval)
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                StatusDot(status: "needs_you", size: 7)
-                Text(source).lineLimit(1)
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 7) {
+                if let bot = model.bot(approval.botID) { CrestView(index: bot.crest, size: 20) }
+                Lamp(status: .needsYou)
+                Text(source).font(.silo(12.5, .medium)).foregroundStyle(Theme.vermilion).lineLimit(1)
             }
-            .font(.silo(12))
-            .foregroundStyle(Theme.ink3)
-
-            Text(description.title)
-                .font(.silo(17, .medium))
-                .foregroundStyle(Theme.ink)
+            Text(description.title).font(.silo(19, .medium)).foregroundStyle(Theme.ink)
             if !description.summary.isEmpty {
                 Text(description.summary)
                     .font(.silo(14))
                     .foregroundStyle(Theme.ink2)
                     .lineLimit(details ? nil : 3)
             }
-            if !description.fields.isEmpty {
-                fields(description.fields)
-            }
-
+            if !description.fields.isEmpty { fields(description.fields) }
             HStack(spacing: 8) {
                 Button { decide("allow_once") } label: {
                     Text(approval.auto ? "Allow" : "Allow once").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.ink)
                 Button { decide("deny") } label: { Text("Deny").frame(maxWidth: .infinity) }
-                    .buttonStyle(.quiet(tint: Theme.vermilion))
+                    .buttonStyle(.ghost(tint: Theme.vermilion))
             }
-            .padding(.top, 4)
-
-            if approval.auto {
-                Text("Auto-approval was not sure about this one. The rule is in Rules.")
-                    .font(.silo(12))
-                    .foregroundStyle(Theme.ink3)
-            } else if approval.onceOnly {
-                // Someone who uses the Bot but does not manage it answers their own chat's call
-                // once: Always would change a rule, which is the managers'.
-                EmptyView()
-            } else {
-                Menu {
-                    Button { decide("always") } label: { Label("Always allow this action", systemImage: "checkmark.circle") }
-                    Button { decide("auto") } label: { Label("Auto-approve this action", systemImage: "sparkles") }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text("Change the rule")
-                        Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold))
-                    }
-                    .font(.silo(13, .medium))
-                    .foregroundStyle(Theme.ink2)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 30)
-                }
-            }
+            .padding(.top, 2)
+            foot
         }
         .disabled(deciding)
-        .padding(.leading, 18)
-        .padding([.trailing, .vertical], 16)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-        .overlay(alignment: .leading) { Theme.vermilion.frame(width: 3) }
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).stroke(Theme.line))
-        .shadow(color: .black.opacity(here ? 0.08 : 0), radius: 16, y: 6)
+        .background(Theme.surface, in: shape)
+        .overlay(shape.stroke(Theme.line))
+        .slipShadow()
+        .sensoryFeedback(.warning, trigger: approval.id)
         .sensoryFeedback(.selection, trigger: deciding)
+    }
+
+    @ViewBuilder
+    private var foot: some View {
+        if approval.auto {
+            Text("Auto-approval was not sure about this one.")
+                .font(.silo(12.5))
+                .foregroundStyle(Theme.ink3)
+                .frame(maxWidth: .infinity)
+        } else if !approval.onceOnly {
+            // Someone who uses the Bot but does not manage it answers their own chat's call once:
+            // Always would change a rule, which is the managers'.
+            SiloMenu {
+                MenuRow(title: "Always allow this action", symbol: "checkmark.shield") { decide("always") }
+                MenuRow(title: "Auto-approve this action", symbol: "sparkles") { decide("auto") }
+            } label: {
+                HStack(spacing: 4) {
+                    Text("Change the rule")
+                    Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold))
+                }
+                .font(.silo(13, .medium))
+                .foregroundStyle(Theme.ink2)
+                .frame(maxWidth: .infinity)
+                .frame(height: 30)
+            }
+        }
+        HStack(spacing: 7) {
+            Circle().fill(Theme.vermilion).frame(width: 6, height: 6).breathing()
+            Text("This run is paused until you choose.").font(.silo(12.5)).foregroundStyle(Theme.ink3)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var source: String {
@@ -95,7 +95,7 @@ struct ApprovalSlip: View {
             ForEach(Array(shown.enumerated()), id: \.offset) { index, field in
                 if index > 0 { Theme.line.frame(height: 1) }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(field.label).font(.silo(11, .medium)).foregroundStyle(Theme.ink3)
+                    Text(field.label).font(.silo(11.5, .medium)).foregroundStyle(Theme.ink3)
                     Text(field.value)
                         .font(.siloMono(12.5))
                         .foregroundStyle(Theme.ink)
@@ -108,12 +108,12 @@ struct ApprovalSlip: View {
             }
         }
         .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
-        .onTapGesture { withAnimation(.snappy) { details.toggle() } }
+        .onTapGesture { withAnimation(Motion.fold) { details.toggle() } }
         if !details && (list.count > 2 || list.contains { $0.value.count > 160 }) {
-            Button { withAnimation(.snappy) { details = true } } label: {
-                Text("Show everything").font(.silo(12, .medium)).foregroundStyle(Theme.ink2)
+            Button { withAnimation(Motion.fold) { details = true } } label: {
+                Text("Show everything").font(.silo(12.5, .medium)).foregroundStyle(Theme.ink2)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.press)
         }
     }
 

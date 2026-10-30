@@ -139,6 +139,28 @@ podman run --rm -v /tmp/worker.test:/worker.test:ro localhost/silo-bot:v1 \
 to end: markdown, docx, a text PDF, a scanned PDF and a PNG are indexed in a
 real box and found through `SearchKnowledge`.
 
+## iOS
+
+| Command | Does |
+| --- | --- |
+| `swift test --package-path ios/SiloClient` | `Logic/`: the ports of the web's pure code |
+| `xcodebuild -project ios/silo-agent.xcodeproj -scheme MyApp -destination 'platform=iOS Simulator,id=<iOS 27 sim>' build` | The app and both extensions |
+| `xcodebuild -project ios/silo-agent.xcodeproj -scheme MyApp -destination 'generic/platform=iOS' -configuration Release CODE_SIGNING_ALLOWED=NO build` | The device build, the only one that compiles CallKit (`CallSystem` is behind `targetEnvironment(simulator)`) |
+
+DEBUG builds sign in and open a screen from the environment, so a build can be checked without tapping. Set these as `SIMCTL_CHILD_<name>` on `xcrun simctl launch`, then `xcrun simctl io <sim> screenshot x.png`:
+
+| Variable | Effect |
+| --- | --- |
+| `SILO_DEV_EMAIL`, `SILO_DEV_PASSWORD`, `SILO_DEV_SERVER` | Sign in (the login is `bootstrap.*` in `silo.yaml`); notifications are not asked for |
+| `SILO_DEV_BOT=<index>` | Select that Bot. Without it `SILO_DEV_PATH` does nothing |
+| `SILO_DEV_PATH=<steps>` | Comma-separated: any `BotTab`, `chat:<n>`, `new`, `sidebar`, `machine`, `workspace`, `space:<tab>`, `settings-list`, `call`, `bar`, `gallery` (every widget and Live Activity view, in the app), `link:<silo url>` (a link in a running app), `call-test` (a real call in a throwaway chat, which it deletes: it stops the engine behind the call's back, fakes an interruption with and without a mute, then the Bot says one line, a few cents; each step logs under `silo-test`) |
+| `SILO_DEV_LINK=<silo url>` | A link at a cold start, before the session is back |
+| `SILO_DEV_MIC=1` | Use the microphone in the simulator. Off by default because voice I/O aborts the app when the Mac has not given the Simulator its microphone, and that cannot be caught; the Bot is heard either way |
+
+A `call` step leaves its chat behind; `call-test` does not.
+
+**What a simulator cannot show:** CallKit, the proximity sensor, the route picker on real hardware, and the echo canceller. `simctl openurl` stops at a system "Open in Silo?" prompt, so links are tested with `link:` and `SILO_DEV_LINK`. `simctl io screenshot` does not draw the Dynamic Island: a Live Activity is confirmed from SpringBoard's log (`SystemAperture:activity:<id>`), and its views in `gallery`.
+
 ## Environment knobs
 
 | Variable | Effect |

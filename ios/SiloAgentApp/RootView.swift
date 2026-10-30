@@ -13,20 +13,22 @@ struct RootView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
-        Group {
-            if model.selectedBot == nil {
-                SpaceHome()
-            } else if sizeClass == .regular {
-                NavigationSplitView {
-                    BotSidebar()
-                        .toolbar(.hidden, for: .navigationBar)
-                } detail: {
-                    BotStack()
-                }
-            } else {
-                Drawer()
+        VStack(spacing: 0) {
+            let call = CallModel.shared
+            if call.snap != nil && !call.expanded {
+                CallBar(call: call)
+            }
+            shell.frame(maxHeight: .infinity)
+        }
+        .overlay {
+            let call = CallModel.shared
+            if call.snap != nil && call.expanded {
+                CallStage(call: call).transition(.opacity.combined(with: .offset(y: 24)))
             }
         }
+        .animation(Motion.quiet(0.32), value: CallModel.shared.expanded)
+        .animation(Motion.state, value: CallModel.shared.snap == nil)
+        .background(Theme.canvas.ignoresSafeArea())
         .task(id: model.selectedBotID) { await model.chooseBot(model.selectedBotID) }
         // The Workspaces, for whoever is signed in; listed again now and then for new ones.
         .task(id: model.user?.id) {
@@ -38,6 +40,28 @@ struct RootView: View {
         }
         .onChange(of: model.selectedBot?.spaceID, initial: true) { spaces.follow(model.selectedBot) }
         .overlay(alignment: .top) { ErrorBanner() }
+        .siloOverlayHost()
+        .toggleStyle(.silo)
+        #if DEBUG
+        .overlay { if model.showGallery { WidgetGallery() } }
+        #endif
+    }
+
+    @ViewBuilder
+    private var shell: some View {
+        Group {
+            if model.selectedBot == nil {
+                SpaceHome()
+            } else if sizeClass == .regular {
+                HStack(spacing: 0) {
+                    BotSidebar().frame(width: 300)
+                    Theme.line.frame(width: 1).ignoresSafeArea()
+                    BotStack()
+                }
+            } else {
+                Drawer()
+            }
+        }
     }
 }
 
@@ -78,7 +102,7 @@ private struct Drawer: View {
                         .ignoresSafeArea()
                 }
             }
-            .animation(.snappy(duration: 0.32), value: model.sidebarOpen)
+            .animation(Motion.quiet(0.32), value: model.sidebarOpen)
         }
     }
 
@@ -115,7 +139,7 @@ struct BotStack: View {
                     switch route {
                     case .page(let tab): BotPage(tab: tab)
                     case .settings: SectionPage(title: "Settings", tabs: [.settings, .people, .rules, .secrets, .tunnels, .container, .audit, .workspace])
-                    case .workspace: WorkspacePage()
+                    case .workspace: SiloPage(title: "Workspace") { WorkspacePage() }
                     case .space(let tab): SpaceTabPage(tab: tab)
                     }
                 }
@@ -126,39 +150,36 @@ struct BotStack: View {
 }
 
 /// No Bot open: the current Workspace's page at the root, with the Workspace switcher and the
-/// account in its bar. A new Workspace, or one with none of the user's Bots, lands here.
+/// account in its head. A new Workspace, or one with none of the user's Bots, lands here.
 private struct SpaceHome: View {
     @Environment(AppModel.self) private var model
+    @Environment(SpaceModel.self) private var spaces
     @State private var path: [BotRoute] = []
     @State private var account = false
     @State private var newSpace = false
 
     var body: some View {
         NavigationStack(path: $path) {
-            WorkspacePage()
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
+            SiloPage(title: spaces.current?.name ?? "Workspace", back: false) {
+                WorkspacePage()
+                    .pageActions {
                         SpaceSwitcher(newSpace: { newSpace = true }) {
-                            HStack(spacing: 4) {
-                                Text("Workspaces").font(.silo(15, .medium))
-                                Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
-                            }
-                            .foregroundStyle(Theme.ink)
+                            Image(systemName: "chevron.up.chevron.down").font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(Theme.ink2).frame(width: 40, height: 40)
                         }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
                         Button { account = true } label: {
-                            Image(systemName: "person.crop.circle").foregroundStyle(Theme.ink2)
+                            Image(systemName: "person.crop.circle")
                         }
+                        .buttonStyle(.glyph)
                         .accessibilityLabel(model.user?.email ?? "Account")
                     }
-                }
-                .navigationDestination(for: BotRoute.self) { route in
-                    if case .space(let tab) = route { SpaceTabPage(tab: tab) } else { WorkspacePage() }
-                }
+            }
+            .navigationDestination(for: BotRoute.self) { route in
+                if case .space(let tab) = route { SpaceTabPage(tab: tab) } else { SiloPage(title: "Workspace") { WorkspacePage() } }
+            }
         }
-        .sheet(isPresented: $account) { AccountView(modal: true) }
-        .sheet(isPresented: $newSpace) { NewSpaceSheet() }
+        .sheet(isPresented: $account) { AccountView(modal: true).siloSheet() }
+        .sheet(isPresented: $newSpace) { NewSpaceSheet().siloSheet() }
     }
 }
 
@@ -170,16 +191,15 @@ struct SpaceSwitcher<Content: View>: View {
     @ViewBuilder let label: () -> Content
 
     var body: some View {
-        Menu {
-            Picker("Workspaces", selection: Binding(get: { spaces.currentID ?? "" }, set: { spaces.open($0) })) {
-                ForEach(spaces.spaces) { space in
-                    let role = spaceRoleWord(space.role)
-                    Text(role.isEmpty ? space.name : "\(space.name) · \(role)").tag(space.id)
+        SiloMenu {
+            MenuHeading(text: "Workspaces")
+            ForEach(spaces.spaces) { space in
+                MenuRow(title: space.name, detail: spaceRoleWord(space.role), checked: space.id == spaces.currentID) {
+                    spaces.open(space.id)
                 }
             }
-            .pickerStyle(.inline)
-            Divider()
-            Button(action: newSpace) { Label("New workspace", systemImage: "plus") }
+            MenuDivider()
+            MenuRow(title: "New workspace", symbol: "plus", action: newSpace)
         } label: {
             label()
         }
@@ -218,46 +238,37 @@ struct ErrorBanner: View {
     }
 }
 
-/// The Customize or Settings list: one row per page, as the web's section tabs.
+/// The Settings list: one row per page, as the web's section tabs.
 struct SectionPage: View {
+    @Environment(AppModel.self) private var model
     let title: String
     let tabs: [BotTab]
 
     var body: some View {
-        List {
-            Section {
-                ForEach(tabs) { tab in
-                    NavigationLink(value: BotRoute.page(tab)) {
-                        Label {
-                            Text(tab == .settings ? "General" : tab.title).font(.silo(15))
-                        } icon: {
-                            Image(systemName: tab.symbol).foregroundStyle(Theme.ink2)
+        SiloPage(title: title) {
+            PageScroll {
+                Panel {
+                    ForEach(tabs) { tab in
+                        PanelRow(symbol: tab.symbol, title: tab == .settings ? "General" : tab.title, chevron: true) {
+                            model.path.append(.page(tab))
                         }
                     }
                 }
-            } footer: {
-                if title == "Settings" {
-                    Text("Desktop and Console stay on the web client. Connectors, skills and drives are the workspace's: they are on the Workspace page.")
-                }
+                Text("Desktop and Console stay on the web client. Connectors, skills and drives are the workspace's: they are on the Workspace page.")
+                    .font(.silo(12.5))
+                    .foregroundStyle(Theme.ink3)
+                    .padding(.horizontal, 4)
             }
         }
-        .siloList()
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.large)
     }
 }
 
-/// A pushed Bot page with its title; each page supplies its own toolbar items.
+/// A pushed Bot page in the page frame; each page puts its own actions in the head with `.pageActions`.
 struct BotPage: View {
     let tab: BotTab
 
     var body: some View {
-        content
-            // Paper behind every list and form on the page; rows stay surface.
-            .scrollContentBackground(.hidden)
-            .background(Theme.canvas.ignoresSafeArea())
-            .navigationTitle(tab == .settings ? "General" : tab.title)
-            .navigationBarTitleDisplayMode(.large)
+        SiloPage(title: tab == .settings ? "General" : tab.title) { content }
     }
 
     @ViewBuilder

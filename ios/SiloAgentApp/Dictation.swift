@@ -62,7 +62,9 @@ final class Dictation: NSObject {
         recorder?.stop()
         ticker?.cancel()
         recorder = nil
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        if !CallModel.shared.live {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
         defer { if let url { try? FileManager.default.removeItem(at: url) } }
         guard let url, let data = try? Data(contentsOf: url), !data.isEmpty else {
             state = .idle

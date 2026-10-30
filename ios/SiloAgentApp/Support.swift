@@ -104,53 +104,6 @@ extension SpaceTab {
     }
 }
 
-func statusColor(_ status: String) -> Color {
-    switch status {
-    case "working", "online", "idle":
-        return Theme.lamp
-    case "needs_you":
-        return Theme.vermilion
-    default:
-        return Theme.ink3
-    }
-}
-
-/// States are plain words: Needs you, Working, Online, Stopped.
-func statusLabel(_ status: String) -> String {
-    let word = status == "idle" ? "online" : status.replacingOccurrences(of: "_", with: " ")
-    return word.prefix(1).uppercased() + word.dropFirst()
-}
-
-struct StatusDot: View {
-    let status: String
-    var size: CGFloat = 8
-
-    var body: some View {
-        Circle()
-            .fill(statusColor(status))
-            .frame(width: size, height: size)
-            .overlay {
-                if status == "working" {
-                    Circle().stroke(statusColor(status).opacity(0.3), lineWidth: 3)
-                }
-            }
-            .accessibilityLabel(statusLabel(status))
-    }
-}
-
-struct StatusLine: View {
-    let status: String
-
-    var body: some View {
-        HStack(spacing: 6) {
-            StatusDot(status: status, size: 8)
-            Text(statusLabel(status))
-                .font(.silo(.caption, .medium))
-                .foregroundStyle(statusColor(status))
-        }
-    }
-}
-
 /// Human-readable sizes for file/attachment rows.
 func formatBytes(_ count: Int64) -> String {
     let formatter = ByteCountFormatter()

@@ -4,8 +4,8 @@ import SwiftUI
 
 extension Silo_V1_ArtifactItem: @retroactive Identifiable {}
 
-/// Files, skills and apps this Bot has handed over across conversations, newest first. Tap to open
-/// the latest version; older versions are in the row's menu.
+/// Files, skills and apps this Bot has handed over across conversations, newest first. Press to
+/// open the latest version; older versions are in the card's menu.
 struct ArtifactsPage: View {
     @Environment(AppModel.self) private var model
     @State private var items: [Silo_V1_ArtifactItem] = []
@@ -16,51 +16,102 @@ struct ArtifactsPage: View {
     @State private var deleting: Silo_V1_ArtifactItem?
 
     var body: some View {
-        List {
-            ForEach(items) { item in
-                Button { Task { await open(item, item.versions.last) } } label: {
-                    ArtifactRow(item: item, opening: opening == item.id)
-                }
-                .buttonStyle(.plain)
-                .swipeActions {
-                    Button(role: .destructive) { deleting = item } label: { Label("Delete", systemImage: "trash") }
-                }
-                .contextMenu {
-                    Button { Task { await open(item, item.versions.last) } } label: {
-                        Label(item.type == "app" ? "Open App" : "Open", systemImage: item.type == "app" ? "macwindow" : "eye")
+        PageScroll(spacing: 14) {
+            if !loaded {
+                SkeletonRows(count: 4, height: 64)
+            } else if items.isEmpty {
+                EmptyWell(symbol: "shippingbox", title: "No artifacts yet",
+                          message: "When the Bot hands you a file, a skill or an app, it is kept here across versions.")
+            } else {
+                ForEach(items) { item in
+                    VStack(alignment: .leading, spacing: 6) {
+                        caption(item)
+                        card(item)
                     }
-                    if item.versions.count > 1 {
-                        Menu("Versions") {
-                            ForEach(item.versions.reversed(), id: \.n) { v in
-                                Button("v\(v.n) · \(relativeTime(v.createdAt))") { Task { await open(item, v) } }
-                                    .disabled(v.gone)
-                            }
-                        }
-                    }
-                    if !item.chatID.isEmpty, let chat = model.chats.first(where: { $0.id == item.chatID }) {
-                        Button { model.openChat(chat) } label: { Label("Open Chat", systemImage: "bubble.left.and.bubble.right") }
-                    }
-                    Button(role: .destructive) { deleting = item } label: { Label("Delete", systemImage: "trash") }
                 }
-            }
-        }
-        .listStyle(.plain)
-        .overlay {
-            if loaded && items.isEmpty {
-                ContentUnavailableView("No artifacts yet", systemImage: "shippingbox",
-                                       description: Text("When the Bot hands you a file, a skill or an app, it is kept here across versions."))
             }
         }
         .quickLookPreview($preview)
         .sheet(item: $app) { SafariView(url: $0.url).ignoresSafeArea() }
-        .confirmationDialog("Delete this artifact?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
-                            titleVisibility: .visible, presenting: deleting) { item in
-            Button("Delete \(item.title.isEmpty ? "artifact" : item.title)", role: .destructive) { Task { await delete(item) } }
-        } message: { _ in
-            Text("Every kept version is forgotten. Files in the workspace stay.")
+        .confirmSlip(item: $deleting, title: { _ in "Delete this artifact?" }, message: "Every kept version is forgotten. Files in the workspace stay.",
+                     action: { "Delete \($0.title.isEmpty ? "artifact" : $0.title)" }) { item in
+            Task { await delete(item) }
         }
         .refreshable { await load() }
         .task(id: model.selectedBotID) { await load() }
+    }
+
+    /// When it was handed over, where from, and the path it came from.
+    private func caption(_ item: Silo_V1_ArtifactItem) -> some View {
+        HStack(spacing: 5) {
+            Text(When.stamp(item.updatedAt.isEmpty ? item.createdAt : item.updatedAt)).font(.siloMono(12)).layoutPriority(1)
+            let source = sourceWords(item)
+            if !source.isEmpty {
+                Text("·").accessibilityHidden(true)
+                Text(source).lineLimit(1)
+            }
+            if !item.path.isEmpty {
+                Text("·").accessibilityHidden(true)
+                Text(item.path).font(.siloMono(12)).lineLimit(1).truncationMode(.middle)
+            }
+        }
+        .font(.silo(12))
+        .foregroundStyle(Theme.ink3)
+        .padding(.horizontal, 4)
+    }
+
+    private func sourceWords(_ item: Silo_V1_ArtifactItem) -> String {
+        switch item.sourceKind {
+        case "automation": return "Automation · \(item.sourceName)"
+        case "channel": return "Channel · \(item.sourceName)"
+        default: return item.sourceName
+        }
+    }
+
+    private func card(_ item: Silo_V1_ArtifactItem) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+        return HStack(spacing: 4) {
+            Button { Task { await open(item, item.versions.last) } } label: {
+                ArtifactRow(item: item)
+            }
+            .buttonStyle(.press)
+            if opening == item.id {
+                Spinner(size: 15).frame(width: 40, height: 40)
+            } else {
+                menu(item)
+            }
+        }
+        .padding(.leading, 12)
+        .padding(.trailing, 4)
+        .padding(.vertical, 10)
+        .background(Theme.surface, in: shape)
+        .overlay(shape.stroke(Theme.line))
+    }
+
+    private func menu(_ item: Silo_V1_ArtifactItem) -> some View {
+        SiloMenu {
+            MenuRow(title: item.type == "app" ? "Open app" : "Open", symbol: item.type == "app" ? "macwindow" : "eye") {
+                Task { await open(item, item.versions.last) }
+            }
+            if !item.chatID.isEmpty, let chat = model.chats.first(where: { $0.id == item.chatID }) {
+                MenuRow(title: "Open chat", symbol: "bubble.left.and.bubble.right") { model.openChat(chat) }
+            }
+            if item.versions.count > 1 {
+                MenuDivider()
+                MenuHeading(text: "Versions")
+                ForEach(item.versions.reversed(), id: \.n) { v in
+                    MenuRow(title: "v\(v.n) · \(relativeTime(v.createdAt))", enabled: !v.gone) { Task { await open(item, v) } }
+                }
+            }
+            MenuDivider()
+            MenuRow(title: "Delete", symbol: "trash", destructive: true) { deleting = item }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Theme.ink2)
+                .frame(width: 40, height: 40)
+        }
+        .accessibilityLabel("More for \(item.title.isEmpty ? item.path : item.title)")
     }
 
     private func load() async {
@@ -88,26 +139,23 @@ struct ArtifactsPage: View {
         guard let botID = model.selectedBotID else { return }
         do {
             try await model.client.deleteArtifact(botID: botID, id: item.id)
-            items.removeAll { $0.id == item.id }
+            withAnimation(Motion.state) { items.removeAll { $0.id == item.id } }
         } catch { await model.report(error) }
     }
 }
 
 private struct ArtifactRow: View {
     let item: Silo_V1_ArtifactItem
-    let opening: Bool
 
     var body: some View {
         HStack(spacing: 12) {
             thumbnail
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.silo(.headline)).lineLimit(1)
-                Text(subtitle).font(.silo(.caption)).foregroundStyle(.secondary).lineLimit(1)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.silo(14.5, .medium)).foregroundStyle(Theme.ink).lineLimit(1)
+                Text(subtitle).font(.silo(12.5)).foregroundStyle(Theme.ink3).lineLimit(1)
             }
-            Spacer(minLength: 6)
-            if opening { ProgressView() } else { Text(relativeTime(item.updatedAt)).font(.silo(.caption)).foregroundStyle(.secondary) }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.vertical, 4)
         .contentShape(Rectangle())
     }
 
@@ -123,37 +171,29 @@ private struct ArtifactRow: View {
         var parts: [String] = [item.type == "app" ? "App" : item.type == "skill" ? "Skill" : "File"]
         if item.versions.count > 1 { parts.append("v\(item.versions.count)") }
         if let size = latest?.size, size > 0 { parts.append(formatBytes(size)) }
-        switch item.sourceKind {
-        case "automation": parts.append("Automation · \(item.sourceName)")
-        case "channel": parts.append("Channel · \(item.sourceName)")
-        default: if !item.sourceName.isEmpty { parts.append(item.sourceName) }
-        }
         return parts.joined(separator: " · ")
     }
 
     @ViewBuilder
     private var thumbnail: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
         if let data = latest.flatMap({ imageData($0.previewImage) }), let image = UIImage(data: data) {
-            Image(uiImage: image).resizable().scaledToFill().frame(width: 44, height: 44)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-        } else {
-            Image(systemName: symbol)
+            Image(uiImage: image).resizable().scaledToFill().frame(width: 44, height: 44).clipShape(shape)
+        } else if item.type == "app" || item.type == "skill" {
+            Image(systemName: item.type == "app" ? "macwindow" : "scroll")
                 .font(.system(size: 18))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.ink2)
                 .frame(width: 44, height: 44)
-                .background(Theme.well, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        }
-    }
-
-    private var symbol: String {
-        if item.type == "app" { return "macwindow" }
-        if item.type == "skill" { return "scroll" }
-        switch ((latest?.name ?? item.path) as NSString).pathExtension.lowercased() {
-        case "pdf": return "doc.richtext"
-        case "png", "jpg", "jpeg", "gif", "webp", "heic": return "photo"
-        case "csv", "xlsx", "xls": return "tablecells"
-        case "zip", "tar", "gz": return "doc.zipper"
-        default: return "doc"
+                .background(Theme.well, in: shape)
+        } else {
+            // The extension in a small well; a PDF's is vermilion.
+            let ext = ((latest?.name ?? item.path) as NSString).pathExtension.uppercased().prefix(4)
+            Text(ext.isEmpty ? "FILE" : String(ext))
+                .font(.silo(10.5, .semibold))
+                .tracking(0.4)
+                .foregroundStyle(ext == "PDF" ? Theme.vermilion : Theme.ink2)
+                .frame(width: 44, height: 44)
+                .background(ext == "PDF" ? Theme.vermilionPale : Theme.well, in: shape)
         }
     }
 
@@ -179,39 +219,36 @@ struct AuditPage: View {
     @State private var loaded = false
 
     var body: some View {
-        List {
-            Section {
-                Picker("Show", selection: $view) {
-                    Text("Needs attention").tag("attention")
-                    Text("Everything").tag("")
-                }
-                .pickerStyle(.segmented)
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-            } footer: {
-                if let summary {
-                    Text("\(summary.requests) requests · \(summary.blocked) blocked · \(summary.flagged) flagged in the last \(summary.trafficDays) days. Lines are kept for \(summary.detailDays) days.")
+        PageScroll(spacing: 12) {
+            Segmented(options: [(value: "attention", label: "Needs attention"), (value: "", label: "Everything")], selection: $view)
+            SearchBox(prompt: "Search the timeline", text: $query) { Task { await load(reset: true) } }
+            if let summary {
+                Text("\(summary.requests) requests · \(summary.blocked) blocked · \(summary.flagged) flagged in the last \(summary.trafficDays) days. Lines are kept for \(summary.detailDays) days.")
+                    .font(.silo(12.5))
+                    .foregroundStyle(Theme.ink3)
+                    .padding(.horizontal, 4)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if !loaded {
+                SkeletonRows(count: 5, height: 56)
+            } else if events.isEmpty {
+                EmptyWell(symbol: "checkmark.shield", title: view == "attention" ? "Nothing needs your attention" : "Nothing on the timeline yet")
+            } else {
+                Panel {
+                    ForEach(events) { event in
+                        AuditRow(event: event)
+                    }
                 }
             }
-            Section {
-                ForEach(events) { event in
-                    AuditRow(event: event)
-                }
-                if more {
-                    Button("Load Older") { Task { await load(reset: false) } }
-                }
+            if more {
+                Button("Load older") { Task { await load(reset: false) } }
+                    .buttonStyle(.quiet)
+                    .controlSize(.small)
+                    .frame(maxWidth: .infinity)
             }
         }
-        .searchable(text: $query, prompt: "Search the timeline")
-        .onSubmit(of: .search) { Task { await load(reset: true) } }
         .onChange(of: query) { _, value in if value.isEmpty { Task { await load(reset: true) } } }
         .onChange(of: view) { Task { await load(reset: true) } }
-        .overlay {
-            if loaded && events.isEmpty {
-                ContentUnavailableView(view == "attention" ? "Nothing needs your attention" : "Nothing on the timeline yet",
-                                       systemImage: "checkmark.shield")
-            }
-        }
         .refreshable { await load(reset: true) }
         .task(id: model.selectedBotID) {
             await load(reset: true)
@@ -244,21 +281,27 @@ private struct AuditRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 verdict
-                Text(event.action).font(.siloMono(.subheadline)).lineLimit(1)
+                Text(event.action).font(.siloMono(12.5)).foregroundStyle(Theme.ink).lineLimit(1)
                 Spacer(minLength: 6)
-                Text(relativeTime(event.at)).font(.silo(.caption)).foregroundStyle(.secondary)
+                Text(When.run(event.at)).font(.silo(12)).foregroundStyle(Theme.ink3).lineLimit(1)
             }
-            Text(line).font(.silo(.caption)).foregroundStyle(.secondary).lineLimit(3)
+            Text(line).font(.silo(12.5)).foregroundStyle(Theme.ink2).lineLimit(3)
             if !event.chatID.isEmpty {
                 Button {
                     if let chat = model.chats.first(where: { $0.id == event.chatID }) { model.openChat(chat) } else { model.showChat(event.chatID) }
                 } label: {
-                    Text(event.chatTitle.isEmpty ? "Open the conversation" : event.chatTitle).font(.silo(.caption)).lineLimit(1)
+                    Text(event.chatTitle.isEmpty ? "Open the conversation" : event.chatTitle)
+                        .font(.silo(12.5))
+                        .foregroundStyle(Theme.cobalt)
+                        .lineLimit(1)
+                        .frame(minHeight: 26)
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.press)
             }
         }
-        .padding(.vertical, 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
     }
 
     private var line: String {
@@ -294,22 +337,14 @@ private struct AuditRow: View {
         ][event.reason] ?? event.reason
     }
 
-    private var verdict: some View {
-        let (label, color): (String, Color) = {
-            switch event.decision {
-            case "deny", "auto_deny", "block": return ("Denied", Theme.vermilion)
-            case "output_withhold": return ("Withheld", Theme.vermilion)
-            case "allow", "auto_allow", "allow_once": return ("Allowed", Theme.emerald)
-            case "flag", "output_flag": return ("Flagged", Theme.cobalt)
-            case "output_unchecked": return ("Unchecked", .secondary)
-            default: return (event.decision.isEmpty ? "Unknown" : event.decision, .secondary)
-            }
-        }()
-        return Text(label)
-            .font(.silo(.caption2, .semibold))
-            .foregroundStyle(color)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(color.opacity(0.12), in: Capsule())
+    private var verdict: Chip {
+        switch event.decision {
+        case "deny", "auto_deny", "block": return Chip(text: "Denied", tint: Theme.vermilion, fill: Theme.vermilionPale)
+        case "output_withhold": return Chip(text: "Withheld", tint: Theme.vermilion, fill: Theme.vermilionPale)
+        case "allow", "auto_allow", "allow_once": return Chip(text: "Allowed", tint: Theme.emerald, fill: Theme.emerald.opacity(0.1))
+        case "flag", "output_flag": return Chip(text: "Flagged", tint: Theme.cobalt, fill: Theme.cobaltPale)
+        case "output_unchecked": return Chip(text: "Unchecked")
+        default: return Chip(text: event.decision.isEmpty ? "Unknown" : event.decision)
+        }
     }
 }

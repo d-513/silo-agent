@@ -399,6 +399,19 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `transcribe`(request: Silo_V1_TranscribeRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_TranscribeResponse>
 
+    /// ListVoices is a speech model's voices, for a Bot's voice picker.
+    @available(iOS 13, *)
+    func `listVoices`(request: Silo_V1_ListVoicesRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListVoicesResponse>
+
+    /// SetBotVoice is how a Bot sounds: its speech model, voice and speed.
+    @available(iOS 13, *)
+    func `setBotVoice`(request: Silo_V1_SetBotVoiceRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Bot>
+
+    /// PrepareSpeech readies text to be read aloud in a Bot's voice and
+    /// answers the URL that streams it (single use, a few minutes).
+    @available(iOS 13, *)
+    func `prepareSpeech`(request: Silo_V1_PrepareSpeechRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_PrepareSpeechResponse>
+
     @available(iOS 13, *)
     func `send`(request: Silo_V1_SendRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SendResponse>
 
@@ -1295,6 +1308,21 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `listVoices`(request: Silo_V1_ListVoicesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListVoicesResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListVoices", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `setBotVoice`(request: Silo_V1_SetBotVoiceRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Bot> {
+        return await self.client.unary(path: "/silo.v1.UI/SetBotVoice", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `prepareSpeech`(request: Silo_V1_PrepareSpeechRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_PrepareSpeechResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/PrepareSpeech", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `send`(request: Silo_V1_SendRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_SendResponse> {
         return await self.client.unary(path: "/silo.v1.UI/Send", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -1914,6 +1942,9 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let setChatThinking = Connect.MethodSpec(name: "SetChatThinking", service: "silo.v1.UI", type: .unary)
             public static let listModels = Connect.MethodSpec(name: "ListModels", service: "silo.v1.UI", type: .unary)
             public static let transcribe = Connect.MethodSpec(name: "Transcribe", service: "silo.v1.UI", type: .unary)
+            public static let listVoices = Connect.MethodSpec(name: "ListVoices", service: "silo.v1.UI", type: .unary)
+            public static let setBotVoice = Connect.MethodSpec(name: "SetBotVoice", service: "silo.v1.UI", type: .unary)
+            public static let prepareSpeech = Connect.MethodSpec(name: "PrepareSpeech", service: "silo.v1.UI", type: .unary)
             public static let send = Connect.MethodSpec(name: "Send", service: "silo.v1.UI", type: .unary)
             public static let stopRun = Connect.MethodSpec(name: "StopRun", service: "silo.v1.UI", type: .unary)
             public static let streamRun = Connect.MethodSpec(name: "StreamRun", service: "silo.v1.UI", type: .serverStream)

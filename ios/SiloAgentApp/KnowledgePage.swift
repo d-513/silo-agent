@@ -11,76 +11,53 @@ struct KnowledgePage: View {
     @State private var enabled = true
     @State private var loaded = false
     @State private var picking = false
-    @State private var removing: Silo_V1_KnowledgeFolder?
     @State private var query = ""
     @State private var hits: [Silo_V1_KnowledgeHit]?
     @State private var searching = false
 
+    private var online: Bool { model.selectedBot?.machine == "online" }
+
     var body: some View {
-        List {
+        PageScroll {
             if !enabled {
-                Section {
-                    Label("The operator turned knowledge off, so nothing new is indexed and the Bot cannot search.", systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(Theme.vermilion)
-                }
+                ErrorLine(text: "The operator turned knowledge off, so nothing new is indexed and the Bot cannot search.")
             }
-            if let hits {
-                Section(searching ? "Searching…" : (hits.isEmpty ? "Nothing matches" : "Matches")) {
+            if !loaded || !folders.isEmpty || hits != nil {
+                SearchBox(prompt: "Search the documents", text: $query, searching: searching) { Task { await search() } }
+            }
+            if !loaded {
+                SkeletonRows(count: 3, height: 64)
+            } else if let hits {
+                PanelSection(title: searching ? "Searching…" : (hits.isEmpty ? "Nothing matches" : "Matches")) {
                     ForEach(Array(hits.enumerated()), id: \.offset) { _, hit in
                         HitRow(hit: hit)
                     }
                 }
+            } else if folders.isEmpty {
+                EmptyWell(symbol: "text.book.closed", title: "No folders yet",
+                          message: "Pick a folder of documents and the Bot can search it by meaning and by exact words, with the file and page cited.") {
+                    Button("Add folder") { picking = true }.buttonStyle(.ink).controlSize(.small).disabled(!enabled)
+                }
             } else {
-                Section {
+                PanelSection(title: "Indexed folders",
+                             footer: "PDFs, Word and OpenDocument files, HTML, Markdown, plain text and code. Scanned pages and images are read with OCR. Changes are picked up every few minutes.") {
                     ForEach(folders) { folder in
-                        FolderRow(folder: folder, canSync: model.selectedBot?.workerConnected == true)
-                            .swipeActions {
-                                Button(role: .destructive) { removing = folder } label: { Label("Remove", systemImage: "trash") }
-                                Button { Task { await sync(folder) } } label: { Label("Sync", systemImage: "arrow.triangle.2.circlepath") }
-                                    .tint(Theme.cobalt)
-                                    .disabled(model.selectedBot?.workerConnected != true)
-                            }
-                            .contextMenu {
-                                Button { Task { await sync(folder) } } label: { Label("Sync now", systemImage: "arrow.triangle.2.circlepath") }
-                                    .disabled(model.selectedBot?.workerConnected != true)
-                                Button(role: .destructive) { removing = folder } label: { Label("Remove", systemImage: "trash") }
-                            }
+                        FolderRow(folder: folder, canSync: online,
+                                  onSync: { Task { await sync(folder) } },
+                                  onRemove: { Task { await remove(folder) } })
                     }
-                } header: {
-                    if !folders.isEmpty { Text("Indexed folders") }
-                } footer: {
-                    Text("PDFs, Word and OpenDocument files, HTML, Markdown, plain text and code. Scanned pages and images are read with OCR. Changes are picked up every few minutes.")
                 }
             }
         }
-        .searchable(text: $query, prompt: "Search the documents")
-        .onSubmit(of: .search) { Task { await search() } }
+        .pageActions {
+            Button { picking = true } label: { Image(systemName: "plus") }
+                .buttonStyle(.glyph)
+                .disabled(!enabled)
+                .accessibilityLabel("Add folder")
+        }
         .onChange(of: query) { _, value in if value.isEmpty { hits = nil } }
-        .overlay {
-            if loaded && folders.isEmpty && hits == nil {
-                ContentUnavailableView {
-                    Label("No folders yet", systemImage: "text.book.closed")
-                } description: {
-                    Text("Pick a folder of documents and the Bot can search it by meaning and by exact words, with the file and page cited.")
-                } actions: {
-                    Button("Add Folder") { picking = true }.buttonStyle(.ink)
-                }
-            }
-        }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { picking = true } label: { Label("Add Folder", systemImage: "plus") }
-                    .disabled(!enabled)
-            }
-        }
         .sheet(isPresented: $picking) {
             FolderPicker(taken: folders.map(\.path)) { path in await add(path) }
-        }
-        .confirmationDialog("Remove this folder?", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
-                            titleVisibility: .visible, presenting: removing) { folder in
-            Button("Stop indexing \(folder.path)", role: .destructive) { Task { await remove(folder) } }
-        } message: { _ in
-            Text("The files stay; the Bot can no longer search them.")
         }
         .refreshable { await load() }
         .task(id: model.selectedBotID) {
@@ -124,7 +101,7 @@ struct KnowledgePage: View {
         guard let botID = model.selectedBotID else { return }
         do {
             try await model.client.removeKnowledgeFolder(botID: botID, id: folder.id)
-            folders.removeAll { $0.id == folder.id }
+            withAnimation(Motion.state) { folders.removeAll { $0.id == folder.id } }
         } catch { await model.report(error) }
     }
 
@@ -142,34 +119,36 @@ struct KnowledgePage: View {
 private struct FolderRow: View {
     let folder: Silo_V1_KnowledgeFolder
     let canSync: Bool
+    let onSync: () -> Void
+    let onRemove: () -> Void
+    @State private var open = false
+
+    private var syncing: Bool { folder.status == "syncing" }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Image(systemName: folder.drive ? "externaldrive" : "folder").foregroundStyle(.secondary)
-                Text(folder.path).font(.siloMono(.body)).lineLimit(1).truncationMode(.middle)
-            }
-            status
-            if folder.status == "idle", !folder.detail.isEmpty {
-                Text(folder.detail).font(.silo(.footnote)).foregroundStyle(.secondary)
-            }
-            if folder.skipped > 0 {
-                DisclosureGroup {
-                    ForEach(folder.issues, id: \.path) { issue in
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(issue.path).font(.siloMono(.caption))
-                            Text(issue.detail).font(.silo(.caption)).foregroundStyle(.secondary)
-                        }
-                    }
-                    if folder.skipped > folder.issues.count {
-                        Text("…and \(Int(folder.skipped) - folder.issues.count) more").font(.silo(.caption)).foregroundStyle(.secondary)
-                    }
-                } label: {
-                    Text("\(folder.skipped) not indexed").font(.silo(.footnote)).foregroundStyle(.secondary)
+        HStack(alignment: .top, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(folder.path).font(.siloMono(13.5)).foregroundStyle(Theme.ink).lineLimit(1).truncationMode(.middle)
+                    if folder.drive { Chip(text: "drive") }
                 }
+                status
+                if folder.status == "idle", !folder.detail.isEmpty {
+                    Text(folder.detail).font(.silo(12.5)).foregroundStyle(Theme.ink2)
+                }
+                if folder.skipped > 0 { skipped }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 6)
+            Button(action: onSync) { Image(systemName: "arrow.triangle.2.circlepath") }
+                .buttonStyle(.glyph(tint: Theme.ink2, side: 34))
+                .disabled(!canSync || syncing)
+                .accessibilityLabel("Sync now")
+            ArmedGlyph(symbol: "trash", label: "Stop indexing \(folder.path)", action: onRemove)
         }
-        .padding(.vertical, 2)
+        .padding(.leading, 14)
+        .padding(.trailing, 6)
+        .padding(.vertical, 6)
     }
 
     @ViewBuilder
@@ -177,18 +156,48 @@ private struct FolderRow: View {
         switch folder.status {
         case "syncing":
             HStack(spacing: 6) {
-                ProgressView().controlSize(.mini)
+                Spinner(size: 12)
                 Text(folder.files > 0 ? "Indexing… \(folder.files) files so far" : "Indexing…")
             }
-            .font(.silo(.footnote))
-            .foregroundStyle(.secondary)
+            .font(.silo(12.5))
+            .foregroundStyle(Theme.ink2)
         case "error":
-            Text(folder.detail.isEmpty ? "Sync failed." : folder.detail).font(.silo(.footnote)).foregroundStyle(Theme.vermilion)
+            Text(folder.detail.isEmpty ? "Sync failed." : folder.detail).font(.silo(12.5)).foregroundStyle(Theme.vermilion)
         default:
             Text(["\(folder.files) files", "\(folder.chunks) passages", folder.lastSyncAt.isEmpty ? "" : "synced \(relativeTime(folder.lastSyncAt))"]
                 .filter { !$0.isEmpty }.joined(separator: " · "))
-                .font(.silo(.footnote))
-                .foregroundStyle(.secondary)
+                .font(.silo(12.5))
+                .foregroundStyle(Theme.ink2)
+        }
+    }
+
+    private var skipped: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Button {
+                withAnimation(Motion.fold) { open.toggle() }
+            } label: {
+                HStack(spacing: 5) {
+                    Text("\(folder.skipped) not indexed").font(.silo(12.5)).foregroundStyle(Theme.ink2)
+                    FoldChevron(open: open, size: 9)
+                }
+                .frame(minHeight: 26)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.press)
+            if open {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(folder.issues, id: \.path) { issue in
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(issue.path).font(.siloMono(12)).foregroundStyle(Theme.ink2)
+                            Text(issue.detail).font(.silo(12)).foregroundStyle(Theme.ink3)
+                        }
+                    }
+                    if folder.skipped > folder.issues.count {
+                        Text("…and \(Int(folder.skipped) - folder.issues.count) more").font(.silo(12)).foregroundStyle(Theme.ink3)
+                    }
+                }
+                .transition(.opacity)
+            }
         }
     }
 }
@@ -198,94 +207,94 @@ private struct HitRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(hit.path).font(.siloMono(.subheadline)).lineLimit(1).truncationMode(.middle)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(hit.path).font(.siloMono(12.5)).foregroundStyle(Theme.ink).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 6)
-                if !hit.locator.isEmpty { Text(hit.locator).font(.silo(.caption)).foregroundStyle(.secondary) }
+                if !hit.locator.isEmpty { Text(hit.locator).font(.siloMono(12)).foregroundStyle(Theme.ink3) }
             }
-            Text(hit.snippet).font(.silo(.subheadline)).foregroundStyle(.secondary).lineLimit(5).textSelection(.enabled)
-            if !hit.indexedAt.isEmpty { Text("indexed \(shortDay(hit.indexedAt))").font(.silo(.caption2)).foregroundStyle(.tertiary) }
+            Text(hit.snippet).font(.silo(13.5)).foregroundStyle(Theme.ink2).lineLimit(5).textSelection(.enabled)
+            if !hit.indexedAt.isEmpty {
+                Text("indexed \(shortDay(hit.indexedAt))").font(.siloMono(11)).foregroundStyle(Theme.ink3)
+            }
         }
-        .padding(.vertical, 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
     }
 }
 
-/// Browse the workspace's folders and pick one to index. Drives are shown with a note: indexing
-/// reads every file over the network.
+/// Browse the workspace's folders one level at a time and pick one to index. Drives are shown with
+/// a note: indexing reads every file over the network.
 private struct FolderPicker: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     let taken: [String]
     let add: (String) async -> Bool
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                if model.selectedBot?.workerConnected == true {
-                    FolderLevel(path: "", taken: taken, add: pick)
-                } else {
-                    NeedMachine(what: "Picking a folder")
-                }
-            }
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-            }
-        }
-    }
-
-    private func pick(_ path: String) async {
-        if await add(path) { dismiss() }
-    }
-}
-
-private struct FolderLevel: View {
-    @Environment(AppModel.self) private var model
-    let path: String
-    let taken: [String]
-    let add: (String) async -> Void
-    @State private var dirs: [Silo_V1_FileEntry] = []
-    @State private var loaded = false
+    @State private var path = ""
     @State private var adding = false
 
+    private var online: Bool { model.selectedBot?.machine == "online" }
+
     var body: some View {
-        List {
-            if let blocked {
-                Section { Text(blocked).foregroundStyle(.secondary) }
-            } else if path.hasPrefix("drives/") {
-                Section {
-                    Label("This folder is on a drive. Indexing reads every file over the network, so a large folder can be slow.", systemImage: "externaldrive")
-                        .font(.silo(.footnote))
-                        .foregroundStyle(.secondary)
+        VStack(spacing: 0) {
+            SheetHead(title: "Add folder", onCancel: { dismiss() }) {
+                if online {
+                    Button {
+                        adding = true
+                        Task {
+                            if await add(path) { dismiss() }
+                            adding = false
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if adding { Spinner(size: 13, color: Theme.onInk) }
+                            Text(adding ? "Adding…" : "Index")
+                        }
+                    }
+                    .buttonStyle(.ink)
+                    .disabled(blocked != nil || adding)
                 }
             }
-            Section {
-                ForEach(dirs, id: \.path) { dir in
-                    NavigationLink(dir.name) { FolderLevel(path: dir.path, taken: taken, add: add) }
-                }
+            if online {
+                crumbs
+                FolderLevel(path: path, blocked: blocked) { path = $0 }
+            } else {
+                NeedMachine(what: "Picking a folder").frame(maxHeight: .infinity)
             }
         }
-        .overlay { if loaded && dirs.isEmpty && path.isEmpty { ContentUnavailableView("No folders", systemImage: "folder") } }
-        .navigationTitle(path.isEmpty ? "Workspace" : (path.split(separator: "/").last.map(String.init) ?? path))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button(adding ? "Adding…" : "Index") {
-                    adding = true
-                    Task { await add(path); adding = false }
+        .background(Theme.surface)
+        .siloSheet()
+    }
+
+    /// The trail to here; a press goes back up.
+    private var crumbs: some View {
+        let parts = path.split(separator: "/").map(String.init)
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 2) {
+                crumb("workspace", to: "", last: parts.isEmpty)
+                ForEach(Array(parts.enumerated()), id: \.offset) { index, part in
+                    Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.ink3)
+                    crumb(part, to: parts[...index].joined(separator: "/"), last: index == parts.count - 1)
                 }
-                .disabled(blocked != nil || adding)
             }
+            .padding(.horizontal, 12)
         }
-        .task {
-            guard let botID = model.selectedBotID else { return }
-            do {
-                dirs = try await model.client.listFiles(botID: botID, path: path).filter {
-                    $0.dir && !$0.name.hasPrefix(".") && !(path.isEmpty && ["bot", "tmp"].contains($0.name))
-                }
-                .sorted { $0.name.lowercased() < $1.name.lowercased() }
-            } catch { await model.report(error) }
-            loaded = true
+        .defaultScrollAnchor(.trailing)
+        .frame(height: 40)
+        .overlay(alignment: .bottom) { Theme.line.frame(height: 1) }
+    }
+
+    private func crumb(_ label: String, to target: String, last: Bool) -> some View {
+        Button { path = target } label: {
+            Text(label)
+                .font(.silo(13, last ? .medium : .regular))
+                .foregroundStyle(last ? Theme.ink : Theme.ink2)
+                .padding(.horizontal, 6)
+                .frame(height: 30)
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.press)
+        .disabled(last)
     }
 
     /// Why this folder cannot be indexed; nil when it can.
@@ -295,5 +304,55 @@ private struct FolderLevel: View {
         if taken.contains(where: { path == $0 || path.hasPrefix($0 + "/") }) { return "Already indexed." }
         if taken.contains(where: { $0.hasPrefix(path + "/") }) { return "Holds a folder that is already indexed." }
         return nil
+    }
+}
+
+private struct FolderLevel: View {
+    @Environment(AppModel.self) private var model
+    let path: String
+    let blocked: String?
+    let open: (String) -> Void
+    @State private var dirs: [Silo_V1_FileEntry]?
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if let blocked {
+                    Text(blocked).font(.silo(13)).foregroundStyle(Theme.ink3)
+                } else if path.hasPrefix("drives/") {
+                    Text("This folder is on a drive. Indexing reads every file over the network, so a large folder can be slow.")
+                        .font(.silo(12.5))
+                        .foregroundStyle(Theme.ink2)
+                }
+                if let dirs {
+                    if dirs.isEmpty {
+                        Text(path.isEmpty ? "No folders." : "No subfolders.").font(.silo(13)).foregroundStyle(Theme.ink3)
+                    } else {
+                        Panel {
+                            ForEach(dirs, id: \.path) { dir in
+                                PanelRow(symbol: "folder", title: dir.name, chevron: true) { open(dir.path) }
+                            }
+                        }
+                    }
+                } else {
+                    SkeletonRows(count: 4, height: 44)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .task(id: path) {
+            dirs = nil
+            guard let botID = model.selectedBotID else { return }
+            do {
+                dirs = try await model.client.listFiles(botID: botID, path: path).filter {
+                    $0.dir && !$0.name.hasPrefix(".") && !(path.isEmpty && ["bot", "tmp"].contains($0.name))
+                }
+                .sorted { $0.name.lowercased() < $1.name.lowercased() }
+            } catch {
+                dirs = []
+                await model.report(error)
+            }
+        }
     }
 }

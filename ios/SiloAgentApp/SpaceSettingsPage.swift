@@ -1,6 +1,25 @@
 import SiloClient
 import SwiftUI
 
+/// The name of a Workspace and the letters on its tile, with the tile as it will look.
+private struct SpaceNameFields: View {
+    @Binding var name: String
+    @Binding var mark: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            SpaceMarkView(mark: spaceMark(name: name, given: mark), size: 44)
+                .padding(.top, 22)
+            VStack(alignment: .leading, spacing: 12) {
+                SiloField(label: "Name", prompt: "Acme labs", text: $name)
+                SiloField(label: "Letters on its tile", prompt: spaceMark(name: name), text: $mark)
+                    .textInputAutocapitalization(.characters)
+                    .onChange(of: mark) { _, value in if value.count > 2 { mark = String(value.prefix(2)) } }
+            }
+        }
+    }
+}
+
 /// The Workspace's own settings: its name and letters (admins), leaving it (anyone but the owner)
 /// or handing it to an admin (the owner), the Bots an admin is not on, and deleting it (the owner).
 struct SpaceSettingsPage: View {
@@ -8,13 +27,9 @@ struct SpaceSettingsPage: View {
     @Environment(SpaceModel.self) private var spaces
     @State private var name = ""
     @State private var mark = ""
-    @State private var saving = false
     @State private var people: [Silo_V1_SpacePerson] = []
     @State private var heir = ""
-    @State private var transferring = false
     @State private var others: [Silo_V1_OtherBot] = []
-    @State private var deletingBot: Silo_V1_OtherBot?
-    @State private var deleting = false
     @State private var leaving: Silo_V1_SpacePerson?
     @State private var failure: String?
 
@@ -27,98 +42,98 @@ struct SpaceSettingsPage: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                HStack(spacing: 14) {
-                    SpaceMarkView(mark: spaceMark(name: name, given: mark), size: 44)
-                    VStack(spacing: 8) {
-                        TextField("Name", text: $name)
-                        TextField("Letters on its tile", text: $mark)
-                            .textInputAutocapitalization(.characters)
-                            .onChange(of: mark) { _, value in if value.count > 2 { mark = String(value.prefix(2)) } }
+        PageScroll {
+            PanelSection(title: "General") {
+                VStack(alignment: .leading, spacing: 14) {
+                    SpaceNameFields(name: $name, mark: $mark)
+                        .disabled(!canAdminSpace(role))
+                    if canAdminSpace(role) {
+                        SaveButton(enabled: changed && !name.trimmingCharacters(in: .whitespaces).isEmpty) { await save() }
+                            .controlSize(.small)
                     }
                 }
-                .disabled(!canAdminSpace(role))
-                if changed {
-                    Button(saving ? "Saving…" : "Save") { Task { await save() } }
-                        .disabled(saving || name.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            } header: { Text("General") }
+                .padding(14)
+            }
 
             membership
 
             if canAdminSpace(role) && !others.isEmpty {
-                Section {
-                    ForEach(others, id: \.id) { bot in
-                        HStack(spacing: 12) {
-                            CrestView(index: bot.crest, size: 34).opacity(0.6)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(bot.name).font(.silo(15, .medium)).foregroundStyle(Theme.ink2)
-                                Text(([bot.people.prefix(3).joined(separator: ", ")] + (bot.people.count > 3 ? ["+\(bot.people.count - 3)"] : []))
-                                    .joined(separator: " ") + " · \(bot.grants) grant\(bot.grants == 1 ? "" : "s")")
-                                    .font(.silo(12)).foregroundStyle(Theme.ink3).lineLimit(1)
-                            }
-                        }
-                        .swipeActions {
-                            Button(role: .destructive) { deletingBot = bot } label: { Label("Delete", systemImage: "trash") }
-                        }
-                    }
-                } header: { Text("Other Bots") } footer: {
-                    Text("Bots in this workspace you are not on. As an admin you can delete one (swipe), but not open it.")
+                PanelSection(title: "Other Bots", footer: "Bots in this workspace you are not on. As an admin you can delete one, with its machine, files, memories and chats, but not open it.") {
+                    ForEach(others, id: \.id) { otherRow($0) }
                 }
             }
 
             if role == "owner" {
-                Section {
-                    Button("Delete workspace", role: .destructive) { deleting = true }
-                } header: { Text("Dangerous") } footer: {
-                    Text("Only an empty workspace can go, and never your last one. Move or delete its Bots first.")
+                PanelSection(title: "Dangerous", footer: "Only an empty workspace can go, and never your last one. Move or delete its Bots first.") {
+                    ArmedButton(title: "Delete workspace", armedTitle: "Tap again to delete \(space?.name ?? "it")", wide: true) {
+                        Task { await deleteSpace() }
+                    }
+                    .padding(6)
                 }
             }
-            if let failure { Section { Text(failure).foregroundStyle(Theme.vermilion) } }
+            if let failure { ErrorLine(text: failure).transition(.rise) }
         }
-        .siloList()
         .task(id: spaces.currentID) { await load() }
         .refreshable { await load() }
         .navigationDestination(item: $leaving) { me in RemovePersonPage(userID: me.userID, leaving: true) }
-        .confirmationDialog("Transfer ownership?", isPresented: $transferring, titleVisibility: .visible) {
-            Button("Transfer") { Task { await transfer() } }
-        } message: {
-            Text("\(people.first { $0.userID == heir }?.email ?? "They") becomes the owner; you become an admin.")
-        }
-        .confirmationDialog("Delete \(deletingBot?.name ?? "this Bot")?", isPresented: Binding(get: { deletingBot != nil }, set: { if !$0 { deletingBot = nil } }), titleVisibility: .visible, presenting: deletingBot) { bot in
-            Button("Delete \(bot.name)", role: .destructive) { Task { await deleteBot(bot) } }
-        } message: { _ in Text("Its machine, files, memories and chats are deleted.") }
-        .confirmationDialog("Delete \(space?.name ?? "this workspace")?", isPresented: $deleting, titleVisibility: .visible) {
-            Button("Delete workspace", role: .destructive) { Task { await deleteSpace() } }
-        }
+        .sensoryFeedback(.impact(weight: .medium), trigger: others.count) { old, new in new < old }
     }
 
     @ViewBuilder
     private var membership: some View {
         if role == "owner" {
             if people.count > 1 {
-                Section {
+                PanelSection(title: "Ownership", footer: admins.isEmpty ? nil : "The admin you pick becomes the owner; you become an admin.") {
                     if admins.isEmpty {
                         Text("Make someone an admin first: only an admin can become the owner.")
-                            .font(.silo(14)).foregroundStyle(Theme.ink2)
+                            .font(.silo(14))
+                            .foregroundStyle(Theme.ink2)
+                            .padding(14)
                     } else {
-                        Picker("New owner", selection: $heir) {
-                            ForEach(admins, id: \.userID) { Text($0.email).tag($0.userID) }
+                        VStack(alignment: .leading, spacing: 12) {
+                            SiloPicker(label: "New owner", options: admins.map { (value: $0.userID, label: $0.email) }, selection: $heir)
+                            ArmedButton(title: "Transfer ownership", armedTitle: "Tap again: \(people.first { $0.userID == heir }?.email ?? "they") owns it", wide: true) {
+                                Task { await transfer() }
+                            }
+                            .disabled(heir.isEmpty)
                         }
-                        Button("Transfer ownership") { transferring = true }.disabled(heir.isEmpty)
+                        .padding(14)
                     }
-                } header: { Text("Ownership") } footer: {
-                    if !admins.isEmpty { Text("The admin you pick becomes the owner; you become an admin.") }
                 }
             }
         } else if let me = people.first(where: \.you) {
-            Section {
-                Button("Leave workspace…", role: .destructive) { leaving = me }
-            } header: { Text("Membership") } footer: {
-                Text("You lose access to its Bots. Bots only you manage need a new manager first.")
+            PanelSection(title: "Membership", footer: "You lose access to its Bots. Bots only you manage need a new manager first.") {
+                PanelRow(symbol: "rectangle.portrait.and.arrow.right", title: "Leave workspace…", chevron: true) { leaving = me }
             }
         }
+    }
+
+    /// A Bot the admin is not on: dimmed, never a link, and only Delete on it.
+    private func otherRow(_ bot: Silo_V1_OtherBot) -> some View {
+        HStack(spacing: 12) {
+            CrestView(index: bot.crest, size: 40).opacity(0.6)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(bot.name).font(.silo(15, .medium)).foregroundStyle(Theme.ink2).lineLimit(1)
+                HStack(spacing: 6) {
+                    HStack(spacing: -4) {
+                        ForEach(bot.people.prefix(3), id: \.self) { Initials(email: $0, size: 20) }
+                    }
+                    if bot.people.count > 3 {
+                        Text("+\(bot.people.count - 3)").font(.silo(11.5)).foregroundStyle(Theme.ink3)
+                    }
+                    Text("\(bot.grants) grant\(bot.grants == 1 ? "" : "s")").font(.silo(12)).foregroundStyle(Theme.ink3).lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            ArmedButton(title: "Delete", armedTitle: "Tap again", symbol: "trash", small: true) {
+                Task { await deleteBot(bot) }
+            }
+            .layoutPriority(1)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .accessibilityElement(children: .contain)
+        .accessibilityHint("Only people on \(bot.name) can open it.")
     }
 
     private func load() async {
@@ -134,14 +149,17 @@ struct SpaceSettingsPage: View {
         } catch { await model.report(error) }
     }
 
-    private func save() async {
-        guard let space else { return }
-        saving = true
-        defer { saving = false }
+    private func save() async -> Bool {
+        guard let space else { return false }
         do {
             _ = try await model.client.updateSpace(id: space.id, name: name.trimmingCharacters(in: .whitespaces), mark: mark.trimmingCharacters(in: .whitespaces))
             await spaces.load()
-        } catch { failure = describe(error) }
+            failure = nil
+            return true
+        } catch {
+            failure = describe(error)
+            return false
+        }
     }
 
     private func transfer() async {
@@ -156,7 +174,7 @@ struct SpaceSettingsPage: View {
     private func deleteBot(_ bot: Silo_V1_OtherBot) async {
         do {
             try await model.client.deleteBot(bot.id)
-            others.removeAll { $0.id == bot.id }
+            withAnimation(Motion.state) { others.removeAll { $0.id == bot.id } }
         } catch { failure = describe(error) }
     }
 
@@ -182,32 +200,19 @@ struct NewSpaceSheet: View {
     @State private var failure: String?
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    HStack(spacing: 14) {
-                        SpaceMarkView(mark: spaceMark(name: name, given: mark), size: 44)
-                        VStack(spacing: 8) {
-                            TextField("Acme labs", text: $name)
-                            TextField("Letters on its tile", text: $mark)
-                                .textInputAutocapitalization(.characters)
-                                .onChange(of: mark) { _, value in if value.count > 2 { mark = String(value.prefix(2)) } }
-                        }
-                    }
-                } footer: {
-                    Text("A workspace holds Bots and what they share. Each Bot still has its own machine.")
-                }
-                if let failure { Section { Text(failure).foregroundStyle(Theme.vermilion) } }
+        VStack(spacing: 0) {
+            SheetHead(title: "New workspace", onCancel: { dismiss() }) {
+                Button(busy ? "Creating…" : "Create") { Task { await create() } }
+                    .buttonStyle(.ink)
+                    .disabled(busy || name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            .siloList()
-            .navigationTitle("New workspace")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(busy ? "Creating…" : "Create") { Task { await create() } }
-                        .disabled(busy || name.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
+            PageScroll {
+                Text("A workspace holds Bots and what they share. Each Bot still has its own machine.")
+                    .font(.silo(13.5))
+                    .foregroundStyle(Theme.ink2)
+                    .fixedSize(horizontal: false, vertical: true)
+                SpaceNameFields(name: $name, mark: $mark)
+                if let failure { ErrorLine(text: failure) }
             }
         }
     }

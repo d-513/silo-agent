@@ -13,48 +13,46 @@ struct ChannelsPage: View {
     @State private var loaded = false
     @State private var editing: Silo_V1_Channel?
     @State private var adding = false
-    @State private var deleting: Silo_V1_Channel?
+    @State private var seen = FirstSeen()
+    @State private var removed = 0
 
     var body: some View {
-        List {
-            ForEach(channels) { channel in
-                Button { editing = channel } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(channel.name).font(.silo(.headline)).foregroundStyle(.primary)
-                            Spacer()
-                            Toggle("Enabled", isOn: Binding(get: { channel.enabled }, set: { value in Task { await setEnabled(channel, value) } }))
-                                .labelsHidden()
-                        }
-                        Text(channel.adapterName.isEmpty ? channel.adapter : channel.adapterName).font(.silo(.caption)).foregroundStyle(.secondary)
-                        if let need = needsTarget(channel) {
-                            Text(need).font(.silo(.caption, .semibold)).foregroundStyle(Theme.vermilion)
-                        } else if !channel.targetTitle.isEmpty {
-                            Text("→ \(channel.targetTitle)").font(.silo(.caption)).foregroundStyle(.secondary)
-                        }
-                        if !channel.statusDetail.isEmpty {
-                            Text(channel.statusDetail).font(.silo(.caption)).foregroundStyle(channel.status == "error" ? Theme.vermilion : .secondary).lineLimit(2)
-                        }
-                    }
+        PageScroll(spacing: 12) {
+            if !loaded {
+                SkeletonRows(count: 2, height: 120)
+            } else if channels.isEmpty {
+                EmptyWell(symbol: "antenna.radiowaves.left.and.right", title: "No channels", message: "Let the Bot talk in Telegram and other chats.") {
+                    Button("Add channel") { adding = true }.buttonStyle(.quiet).controlSize(.small)
                 }
-                .swipeActions { Button(role: .destructive) { deleting = channel } label: { Label("Delete", systemImage: "trash") } }
+            } else {
+                ForEach(channels) { channel in
+                    ChannelCard(channel: channel, need: needsTarget(channel)) {
+                        editing = channel
+                    } enable: { value in
+                        Task { await setEnabled(channel, value) }
+                    } delete: {
+                        Task { await delete(channel) }
+                    }
+                    .rise(when: seen.isNew(channel.id))
+                }
             }
         }
-        .overlay {
-            if loaded && channels.isEmpty {
-                ContentUnavailableView("No channels", systemImage: "antenna.radiowaves.left.and.right", description: Text("Let the Bot talk in Telegram and other chats."))
-            }
+        .pageActions {
+            Button { adding = true } label: { Image(systemName: "plus") }
+                .buttonStyle(.glyph)
+                .accessibilityLabel("Add channel")
         }
-        .toolbar { ToolbarItem(placement: .primaryAction) { Button { adding = true } label: { Label("Add", systemImage: "plus") } } }
         .refreshable { await load() }
         .task(id: model.selectedBotID) { await load() }
         .sheet(item: $editing) { channel in
             ChannelForm(adapter: adapters.first { $0.slug == channel.adapter }, existing: channel) { await load() }
+                .siloSheet()
         }
-        .sheet(isPresented: $adding) { AddChannelSheet(adapters: adapters) { await load() } }
-        .confirmationDialog("Delete this channel?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible, presenting: deleting) { channel in
-            Button("Delete \(channel.name)", role: .destructive) { Task { await delete(channel) } }
+        .sheet(isPresented: $adding) {
+            AddChannelSheet(adapters: adapters) { await load() }
+                .siloSheet()
         }
+        .sensoryFeedback(.success, trigger: removed)
     }
 
     private func needsTarget(_ channel: Silo_V1_Channel) -> String? {
@@ -67,7 +65,10 @@ struct ChannelsPage: View {
         do {
             async let list = model.client.listBotChannels(botID: botID)
             async let kinds = model.client.listChannelAdapters()
-            (channels, adapters) = try await (list, kinds)
+            let (fresh, known) = try await (list, kinds)
+            seen.note(fresh.map(\.id))
+            adapters = known
+            withAnimation(loaded ? Motion.state : nil) { channels = fresh }
         } catch { await model.report(error) }
         loaded = true
     }
@@ -90,31 +91,103 @@ struct ChannelsPage: View {
     private func delete(_ channel: Silo_V1_Channel) async {
         do {
             try await model.client.deleteChannel(botID: channel.botID, id: channel.id)
-            channels.removeAll { $0.id == channel.id }
+            withAnimation(Motion.fold) { channels.removeAll { $0.id == channel.id } }
+            removed += 1
         } catch { await model.report(error) }
     }
 }
 
+/// One channel: who it is, what it is bound to, its state, and the ways into it. One that needs you
+/// wears the ribbon.
+private struct ChannelCard: View {
+    let channel: Silo_V1_Channel
+    let need: String?
+    let edit: () -> Void
+    let enable: (Bool) -> Void
+    let delete: () -> Void
+
+    private var look: StatusLook { channelLook(channel.status) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
+                Button(action: edit) {
+                    info.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                }
+                .buttonStyle(.press)
+                MachineSwitch(label: "Enabled", isOn: Binding(get: { channel.enabled }, set: enable))
+            }
+            .padding(14)
+            Theme.line.frame(height: 1)
+            HStack(spacing: 0) {
+                Button(action: edit) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "pencil").font(.system(size: 12))
+                        Text("Configure")
+                    }
+                }
+                .buttonStyle(.ghost)
+                .controlSize(.small)
+                Spacer(minLength: 0)
+                ArmedButton(title: "Delete", symbol: "trash", small: true, action: delete)
+            }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 4)
+        }
+        .machineFolio(ribbon: need != nil || look.lamp == .needsYou)
+    }
+
+    private var info: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text(channel.name).font(.silo(15, .semibold)).foregroundStyle(Theme.ink).lineLimit(1)
+                Chip(text: channel.adapterName.isEmpty ? channel.adapter : channel.adapterName, tint: Theme.ink3)
+                if !channel.enabled { Chip(text: "Disabled", tint: Theme.ink3) }
+                if !channel.inbound { Chip(text: "Send-only", tint: Theme.ink3) }
+            }
+            if let need {
+                Text(need).font(.silo(12.5, .medium)).foregroundStyle(Theme.vermilion)
+            } else if !channel.targetTitle.isEmpty {
+                Text("Chat: \(channel.targetTitle)").font(.silo(12.5)).foregroundStyle(Theme.ink3).lineLimit(1)
+            }
+            StatusWord(look: look)
+            if !channel.statusDetail.isEmpty {
+                Text(channel.statusDetail)
+                    .font(.silo(12.5))
+                    .foregroundStyle(channel.status == "error" ? Theme.vermilion : Theme.ink3)
+                    .lineLimit(2)
+            }
+        }
+    }
+}
+
+/// Which adapter, then its form, in the same sheet.
 private struct AddChannelSheet: View {
     @Environment(\.dismiss) private var dismiss
     let adapters: [Silo_V1_ChannelAdapter]
     let onSaved: () async -> Void
+    @State private var picked: Silo_V1_ChannelAdapter?
 
     var body: some View {
-        NavigationStack {
-            List(adapters) { adapter in
-                NavigationLink {
-                    ChannelForm(adapter: adapter, existing: nil) { await onSaved(); dismiss() }
-                } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(adapter.name).font(.silo(.headline))
-                        Text(adapter.description_p).font(.silo(.caption)).foregroundStyle(.secondary).lineLimit(2)
+        if let picked {
+            ChannelForm(adapter: picked, existing: nil, onSaved: { await onSaved() }, cancel: "Back", onCancel: {
+                withAnimation(Motion.state) { self.picked = nil }
+            })
+            .transition(.opacity)
+        } else {
+            VStack(spacing: 0) {
+                SheetHead(title: "Add channel", onCancel: { dismiss() })
+                PageScroll(spacing: 12) {
+                    Panel {
+                        ForEach(adapters) { adapter in
+                            PanelRow(title: adapter.name, detail: adapter.description_p, chevron: true) {
+                                withAnimation(Motion.state) { picked = adapter }
+                            }
+                        }
                     }
                 }
             }
-            .navigationTitle("Add channel")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .transition(.opacity)
         }
     }
 }
@@ -126,6 +199,8 @@ private struct ChannelForm: View {
     let adapter: Silo_V1_ChannelAdapter?
     let existing: Silo_V1_Channel?
     let onSaved: () async -> Void
+    var cancel = "Cancel"
+    var onCancel: (() -> Void)?
 
     @State private var name = ""
     @State private var enabled = true
@@ -134,41 +209,37 @@ private struct ChannelForm: View {
     @State private var config: [String: String] = [:]
     @State private var secrets: [String: String] = [:]
     @State private var failure: String?
-    @State private var saving = false
 
     var body: some View {
-        Form {
-            Section("Name") { TextField("Name", text: $name) }
-            if let adapter {
-                let plain = adapter.fields.filter { !$0.secret && !$0.advanced }
-                let secret = adapter.fields.filter(\.secret)
-                if !plain.isEmpty {
-                    Section("Settings") { ForEach(plain, id: \.key) { field in fieldRow(field) } }
-                }
-                if !secret.isEmpty {
-                    Section {
-                        ForEach(secret, id: \.key) { field in
-                            SecureField(field.label + (existing?.secretsSet.contains(field.key) == true ? " (set)" : ""), text: binding(secrets, field.key, secret: true))
-                        }
-                    } header: { Text("Secrets") } footer: { Text("Leave blank to keep the stored value.") }
-                }
-                if adapter.requiresTarget {
-                    Section { Text("Picking which chat this channel reads and writes happens on the web client.").font(.silo(.footnote)) }
-                }
+        VStack(spacing: 0) {
+            SheetHead(title: existing == nil ? "New channel" : "Edit channel", cancel: cancel, onCancel: onCancel ?? { dismiss() }) {
+                SaveButton(enabled: !name.trimmingCharacters(in: .whitespaces).isEmpty) { await save() }
             }
-            Section {
-                Toggle("Enabled", isOn: $enabled)
-                Toggle("Reply to incoming messages", isOn: $inbound)
-            } footer: { Text("Off makes it send-only: the Bot can post through it but does not read it.") }
-            Section("Extra instructions") { TextEditor(text: $prompt).frame(minHeight: 70) }
-            if let failure { Section { Text(failure).foregroundStyle(Theme.vermilion) } }
-        }
-        .navigationTitle(existing == nil ? "New channel" : "Edit channel")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button(saving ? "Saving…" : "Save") { Task { await save() } }
-                    .disabled(saving || name.trimmingCharacters(in: .whitespaces).isEmpty)
+            PageScroll(spacing: 16) {
+                SiloField(label: "Name", prompt: "Name", text: $name)
+                if let adapter {
+                    let plain = adapter.fields.filter { !$0.secret && !$0.advanced }
+                    let secret = adapter.fields.filter(\.secret)
+                    ForEach(plain, id: \.key) { field in fieldRow(field) }
+                    if !secret.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            ForEach(secret, id: \.key) { field in
+                                let set = existing?.secretsSet.contains(field.key) == true
+                                SiloField(label: field.label, prompt: set ? "••••••••" : "", text: binding(field.key, secret: true), mono: true, secure: true)
+                            }
+                            Text("Leave blank to keep the stored value.").font(.silo(12.5)).foregroundStyle(Theme.ink3)
+                        }
+                    }
+                    if adapter.requiresTarget {
+                        MachineNote(text: "Picking which chat this channel reads and writes happens on the web client.")
+                    }
+                }
+                PanelSection(footer: "Off makes it send-only: the Bot can post through it but does not read it.") {
+                    PanelRow(title: "Enabled", trailing: { MachineSwitch(label: "Enabled", isOn: $enabled) })
+                    PanelRow(title: "Reply to incoming messages", trailing: { MachineSwitch(label: "Reply to incoming messages", isOn: $inbound) })
+                }
+                MachineEditor(label: "Extra instructions", text: $prompt, minHeight: 90)
+                if let failure { ErrorLine(text: failure) }
             }
         }
         .onAppear(perform: load)
@@ -177,17 +248,15 @@ private struct ChannelForm: View {
     @ViewBuilder
     private func fieldRow(_ field: Silo_V1_ChannelField) -> some View {
         if !field.options.isEmpty {
-            Picker(field.label, selection: binding(config, field.key)) {
-                ForEach(field.options, id: \.value) { Text($0.label).tag($0.value) }
-            }
+            SiloPicker(label: field.label, options: field.options.map { (value: $0.value, label: $0.label) }, selection: binding(field.key))
         } else {
-            TextField(field.label, text: binding(config, field.key))
+            SiloField(label: field.label, text: binding(field.key))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
         }
     }
 
-    private func binding(_ dict: [String: String], _ key: String, secret: Bool = false) -> Binding<String> {
+    private func binding(_ key: String, secret: Bool = false) -> Binding<String> {
         Binding(
             get: { (secret ? secrets : config)[key] ?? "" },
             set: { if secret { secrets[key] = $0 } else { config[key] = $0 } }
@@ -206,10 +275,8 @@ private struct ChannelForm: View {
         }
     }
 
-    private func save() async {
-        guard let botID = model.selectedBotID else { return }
-        saving = true
-        defer { saving = false }
+    private func save() async -> Bool {
+        guard let botID = model.selectedBotID else { return false }
         let filled = secrets.filter { !$0.value.isEmpty }
         do {
             if let existing {
@@ -239,8 +306,10 @@ private struct ChannelForm: View {
             }
             await onSaved()
             dismiss()
+            return true
         } catch {
             failure = (error as? SiloError)?.errorDescription ?? error.localizedDescription
+            return false
         }
     }
 }

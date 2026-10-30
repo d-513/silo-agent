@@ -171,47 +171,54 @@ struct CrestPicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Shape").font(.silo(.caption)).foregroundStyle(.secondary)
+                Text("Shape").font(.silo(12, .medium)).foregroundStyle(Theme.ink3)
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 8) {
                     ForEach(0..<SHAPE_COUNT, id: \.self) { shape in
+                        let on = shape == selection.shape
+                        let cell = RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
                         Button {
-                            value = packCrest(shape: shape, color: selection.color)
+                            withAnimation(Motion.quiet(0.2)) { value = packCrest(shape: shape, color: selection.color) }
                         } label: {
                             CrestView(index: packCrest(shape: shape, color: selection.color), size: 36)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 6)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(shape == selection.shape ? Color.accentColor.opacity(0.15) : .clear)
-                                )
+                                .background(on ? Theme.cobaltPale : .clear, in: cell)
+                                .overlay(cell.strokeBorder(on ? Theme.cobalt : .clear, lineWidth: 1))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.press)
                         .accessibilityLabel(CREST_SHAPE_NAMES[shape])
+                        .accessibilityAddTraits(on ? .isSelected : [])
                     }
                 }
             }
             VStack(alignment: .leading, spacing: 8) {
-                Text("Color").font(.silo(.caption)).foregroundStyle(.secondary)
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6), spacing: 10) {
+                Text("Color").font(.silo(12, .medium)).foregroundStyle(Theme.ink3)
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6), spacing: 12) {
                     ForEach(0..<CREST_COLORS.count, id: \.self) { color in
+                        let on = color == selection.color
                         Button {
-                            value = packCrest(shape: selection.shape, color: color)
+                            withAnimation(Motion.quiet(0.2)) { value = packCrest(shape: selection.shape, color: color) }
                         } label: {
                             Circle()
                                 .fill(CREST_COLORS[color])
-                                .frame(height: 30)
-                                .overlay(Circle().stroke(.quaternary, lineWidth: 1))
+                                .overlay(Circle().stroke(Theme.line, lineWidth: 1))
                                 .overlay {
-                                    if color == selection.color {
-                                        Circle().stroke(Color.accentColor, lineWidth: 2.5)
+                                    if on {
+                                        Circle().stroke(Theme.surface, lineWidth: 2).padding(-1)
+                                        Circle().stroke(Theme.cobalt, lineWidth: 2).padding(-3)
                                     }
                                 }
+                                .frame(height: 30)
+                                .frame(maxWidth: .infinity)
+                                .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.press)
                         .accessibilityLabel("Color \(color + 1)")
+                        .accessibilityAddTraits(on ? .isSelected : [])
                     }
                 }
             }
         }
+        .sensoryFeedback(.selection, trigger: value)
     }
 }

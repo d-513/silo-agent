@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Two sides per action, grouped as the CP sections (Bot, Secrets, each connector): Calls (may it
 /// run: Allow / Auto / Ask / Deny) and Results (what happens to its result before the Bot reads
-/// it: Pass / Flag / Check / Withhold). A rule the operator locked is a floor: only stricter modes
+/// it: Pass / Check / Flag / Withhold). A rule the operator locked is a floor: only stricter modes
 /// are offered.
 struct RulesPage: View {
     @Environment(AppModel.self) private var model
@@ -14,61 +14,44 @@ struct RulesPage: View {
     @State private var savedPolicy = ""
     @State private var outputPolicy = ""
     @State private var savedOutputPolicy = ""
+    /// Which sections are open; the Bot's starts open, and a filter opens them all.
+    @State private var opened: [String: Bool] = ["bot": true]
 
     private static let callModes: [(String, String)] = [("allow", "Allow"), ("auto", "Auto"), ("ask", "Ask"), ("deny", "Deny")]
-    private static let outputModes: [(String, String)] = [("pass", "Pass"), ("flag", "Flag"), ("check", "Check"), ("withhold", "Withhold")]
+    private static let outputModes: [(String, String)] = [("pass", "Pass"), ("check", "Check"), ("flag", "Flag"), ("withhold", "Withhold")]
 
     private var modes: [(String, String)] { side == .output ? Self.outputModes : Self.callModes }
+    private var total: Int { sided.reduce(0) { $0 + $1.rules.count } }
 
     var body: some View {
-        List {
-            Section {
-                Picker("Side", selection: $side) {
-                    Text("Calls").tag(RuleSide.decision)
-                    Text("Results").tag(RuleSide.output)
-                }
-                .pickerStyle(.segmented)
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-            } footer: {
-                Text(side == .output
-                     ? "Pass hands a result over as it is, Flag frames it as untrusted, Check has the filter model judge it, Withhold keeps it from the Bot."
-                     : "Allow runs the action, Auto asks the approval model, Ask asks you, Deny refuses it.")
-            }
+        PageScroll(spacing: 14) {
+            Segmented(options: [(RuleSide.decision, "Calls"), (RuleSide.output, "Results")], selection: $side.animation(Motion.state))
+            RuleLegend(side: side)
             if side == .output, list?.filterEnabled == false {
-                Section {
-                    Text("The operator has the output filter turned off. These rules are kept, but every result passes until it is on again.")
-                        .foregroundStyle(.secondary)
-                }
+                MachineNote(text: "The operator has the output filter turned off. These rules are kept, but every result passes until it is on again.")
             }
             policySection
-            ForEach(filtered, id: \.id) { section in
-                Section {
-                    ForEach(section.rules, id: \.key) { rule in
-                        RuleRow(rule: rule, side: side, modes: modes) { value in Task { await set(rule, value) } }
+            if total > 5 {
+                SiloField(prompt: "Filter actions", text: $query)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+            }
+            if list == nil {
+                SkeletonRows(count: 4, height: 52)
+            } else if filtered.isEmpty {
+                EmptyWell(symbol: "checklist", title: query.isEmpty ? "No rules" : "No matching rules found for “\(query)”")
+            } else {
+                ForEach(filtered, id: \.id) { section in
+                    RuleSectionCard(section: section, side: side, modes: modes, open: !query.isEmpty || opened[section.id] == true) {
+                        withAnimation(Motion.fold) { opened[section.id] = !(opened[section.id] ?? false) }
+                    } setAll: { value in
+                        Task { await setSection(section, value) }
+                    } setRule: { rule, value in
+                        Task { await set(rule, value) }
                     }
-                } header: {
-                    HStack(spacing: 8) {
-                        RuleSectionMark(section: section)
-                        Text(section.title)
-                        Spacer()
-                        Menu("All") {
-                            ForEach(modes, id: \.0) { mode in
-                                Button(mode.1) { Task { await setSection(section, mode.0) } }
-                                    .disabled(!section.rules.allSatisfy { ruleModeAllowed(mode.0, floor: floor($0), side: side) })
-                            }
-                        }
-                        .font(.silo(.footnote))
-                        .textCase(nil)
-                    }
-                } footer: {
-                    let summary = side == .output ? section.outputSummary : section.summary
-                    if !summary.isEmpty { Text(summary) }
                 }
             }
         }
-        .searchable(text: $query, prompt: "Filter actions")
-        .overlay { if list != nil && filtered.isEmpty && query.isEmpty { ContentUnavailableView("No rules", systemImage: "checklist") } }
         .refreshable { await load() }
         .task(id: model.selectedBotID) {
             policy = model.selectedBot?.autoApprove ?? ""
@@ -82,49 +65,49 @@ struct RulesPage: View {
     @ViewBuilder
     private var policySection: some View {
         if side == .output {
-            Section {
-                TextField("Empty: the built-in policy", text: $outputPolicy, axis: .vertical).lineLimit(3...10)
-                if outputPolicy.trimmingCharacters(in: .whitespaces).isEmpty, let base = list?.defaultOutputPolicy, !base.isEmpty {
-                    Button("Start from the Built-in Policy") { outputPolicy = base }
+            PanelSection(title: "Output policy", footer: "Read by the filter model for a result set to Check. It says what makes a result suspicious (flagged) or malicious (withheld). Empty means the built-in policy, which looks for attempts to direct the Bot.") {
+                VStack(alignment: .leading, spacing: 10) {
+                    MachineEditor(prompt: "Empty: the built-in policy. Write your own to change what is flagged or withheld.", text: $outputPolicy, mono: true)
+                    HStack(spacing: 8) {
+                        SaveButton(title: "Save policy", enabled: outputPolicy != savedOutputPolicy) { await saveOutputPolicy() }
+                            .controlSize(.small)
+                        if outputPolicy.trimmingCharacters(in: .whitespaces).isEmpty, let base = list?.defaultOutputPolicy, !base.isEmpty {
+                            Button("Start from the built-in policy") { outputPolicy = base }
+                                .buttonStyle(.quiet)
+                                .controlSize(.small)
+                        }
+                    }
                 }
-                if outputPolicy != savedOutputPolicy {
-                    Button("Save Policy") { Task { await saveOutputPolicy() } }
-                }
-            } header: {
-                Text("Output policy")
-            } footer: {
-                Text("Read by the filter model for a result set to Check. It says what makes a result suspicious (flagged) or malicious (withheld).")
+                .padding(12)
             }
         } else {
-            Section {
-                TextField("e.g. Allow read-only actions; ask before anything that sends or deletes", text: $policy, axis: .vertical)
-                    .lineLimit(3...8)
-                if policy != savedPolicy {
-                    Button("Save Policy") { Task { await savePolicy() } }
+            PanelSection(title: "Auto-approve policy", footer: "Read by the approval model when a rule is set to Auto, next to the action the Bot asks for and your last message in that conversation. Empty means every Auto rule asks.") {
+                VStack(alignment: .leading, spacing: 10) {
+                    MachineEditor(prompt: "e.g. Auto-approve read-only file reads, web searches, and screenshots. Ask before anything that writes, deletes, sends a message, or touches a secret.",
+                                  text: $policy, mono: true)
+                    SaveButton(title: "Save policy", enabled: policy != savedPolicy) { await savePolicy() }
+                        .controlSize(.small)
                 }
-            } header: {
-                Text("Auto-approval policy")
-            } footer: {
-                Text("Actions set to Auto are judged by the approval model against this text.")
+                .padding(12)
             }
         }
     }
 
-    private func floor(_ rule: Silo_V1_Rule) -> String { ruleFloor(rule, side: side) }
-
     /// The sections this side shows: only actions whose result the Bot reads have an output rule.
-    private var filtered: [Silo_V1_RuleSection] {
-        var sections = list?.sections ?? []
-        if side == .output {
-            sections = sections.compactMap { s in
-                var copy = s
-                copy.rules = s.rules.filter { !$0.output.isEmpty }
-                return copy.rules.isEmpty ? nil : copy
-            }
+    private var sided: [Silo_V1_RuleSection] {
+        let sections = list?.sections ?? []
+        guard side == .output else { return sections }
+        return sections.compactMap { s in
+            var copy = s
+            copy.rules = s.rules.filter { !$0.output.isEmpty }
+            return copy.rules.isEmpty ? nil : copy
         }
+    }
+
+    private var filtered: [Silo_V1_RuleSection] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !q.isEmpty else { return sections }
-        return sections.compactMap { section in
+        guard !q.isEmpty else { return sided }
+        return sided.compactMap { section in
             var copy = section
             if section.title.lowercased().contains(q) { return copy }
             copy.rules = section.rules.filter { ($0.title + " " + $0.action + " " + $0.connector).lowercased().contains(q) }
@@ -180,20 +163,133 @@ struct RulesPage: View {
         list?.sections = sections
     }
 
-    private func savePolicy() async {
-        guard let bot = model.selectedBot else { return }
+    private func savePolicy() async -> Bool {
+        guard let bot = model.selectedBot else { return false }
         do {
             model.applyBot(try await model.client.updateBot(bot, autoApprove: policy))
             savedPolicy = policy
-        } catch { await model.report(error) }
+            return true
+        } catch {
+            await model.report(error)
+            return false
+        }
     }
 
-    private func saveOutputPolicy() async {
-        guard let bot = model.selectedBot else { return }
+    private func saveOutputPolicy() async -> Bool {
+        guard let bot = model.selectedBot else { return false }
         do {
             model.applyBot(try await model.client.setOutputPolicy(bot, policy: outputPolicy))
             savedOutputPolicy = outputPolicy
-        } catch { await model.report(error) }
+            return true
+        } catch {
+            await model.report(error)
+            return false
+        }
+    }
+}
+
+/// What each of the four choices does, above the rules.
+private struct RuleLegend: View {
+    let side: RuleSide
+
+    private var entries: [(dot: Color, title: String, text: String)] {
+        side == .output
+            ? [(Theme.lamp, "Pass", "The Bot reads the result as it is"),
+               (Theme.ink2, "Check", "The filter model passes, flags or withholds it by your policy"),
+               (Theme.line, "Flag", "Always handed over marked as untrusted, with no model asked"),
+               (Theme.vermilion, "Withhold", "The Bot never reads the result")]
+            : [(Theme.lamp, "Allow", "Runs immediately without asking"),
+               (Theme.ink2, "Auto", "The approval model decides from your policy"),
+               (Theme.line, "Ask", "Pauses the run and opens an approval slip"),
+               (Theme.vermilion, "Deny", "Refuses execution automatically")]
+    }
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.flexible(), alignment: .topLeading), GridItem(.flexible(), alignment: .topLeading)], alignment: .leading, spacing: 10) {
+            ForEach(entries, id: \.title) { entry in
+                HStack(alignment: .top, spacing: 8) {
+                    Circle().fill(entry.dot).frame(width: 8, height: 8).padding(.top, 5)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(entry.title).font(.silo(13, .medium)).foregroundStyle(Theme.ink)
+                        Text(entry.text).font(.silo(12)).foregroundStyle(Theme.ink3).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+    }
+}
+
+/// One folio of rules (the Bot, its secrets, one connector): a head that folds, a switch for the
+/// whole section, and a row per action.
+private struct RuleSectionCard: View {
+    let section: Silo_V1_RuleSection
+    let side: RuleSide
+    let modes: [(String, String)]
+    let open: Bool
+    let toggle: () -> Void
+    let setAll: (String) -> Void
+    let setRule: (Silo_V1_Rule, String) -> Void
+
+    /// The section's one value, or nothing while its rules differ.
+    private var shared: String {
+        let values = section.rules.map { side == .output ? $0.output : $0.decision }
+        guard let first = values.first, values.allSatisfy({ $0 == first }) else { return "" }
+        return first
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button(action: toggle) {
+                HStack(alignment: .top, spacing: 10) {
+                    MachineChevron(open: open).padding(.top, 6)
+                    RuleSectionMark(section: section)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 8) {
+                            Text(section.title).font(.silo(15, .medium)).foregroundStyle(Theme.ink).lineLimit(1)
+                            Text(section.rules.count == 1 ? "1 action" : "\(section.rules.count) actions")
+                                .font(.siloMono(11))
+                                .foregroundStyle(Theme.ink3)
+                                .padding(.horizontal, 6)
+                                .frame(height: 20)
+                                .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous))
+                                .fixedSize()
+                        }
+                        let summary = side == .output ? section.outputSummary : section.summary
+                        if !summary.isEmpty {
+                            Text(summary).font(.silo(12.5)).foregroundStyle(Theme.ink2).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(RowPressStyle())
+            .accessibilityValue(open ? "Open" : "Closed")
+            if !section.rules.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    SectionLabel(text: shared.isEmpty ? "All · mixed" : "All")
+                    RuleSegment(modes: modes, value: shared, side: side, small: true,
+                                allowed: { mode in section.rules.allSatisfy { ruleModeAllowed(mode, floor: ruleFloor($0, side: side), side: side) } },
+                                set: setAll)
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 12)
+            }
+            if open {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(section.rules, id: \.key) { rule in
+                        Theme.line.frame(height: 1)
+                        RuleRow(rule: rule, side: side, modes: modes) { setRule(rule, $0) }
+                    }
+                }
+                .transition(.opacity)
+            }
+        }
+        .machineFolio()
     }
 }
 
@@ -208,7 +304,66 @@ func ruleFloor(_ rule: Silo_V1_Rule, side: RuleSide, workspace: Bool = true) -> 
     return ruleStrictness(space, side: side) > ruleStrictness(op, side: side) ? space : op
 }
 
-/// One action's mode, as a menu that offers only what its floor allows.
+/// The four-way switch of one rule or a whole section: the kit's `Segmented`, with the modes below
+/// a floor off and only the lit word carrying a tone. No lit pill while a section's rules differ.
+struct RuleSegment: View {
+    let modes: [(String, String)]
+    let value: String
+    let side: RuleSide
+    var small = false
+    var allowed: (String) -> Bool = { _ in true }
+    let set: (String) -> Void
+    @Namespace private var pill
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(modes, id: \.0) { mode in
+                let on = mode.0 == value
+                let offered = allowed(mode.0)
+                Button {
+                    if !on { set(mode.0) }
+                } label: {
+                    Text(mode.1)
+                        .font(.silo(small ? 12.5 : 13, .medium))
+                        .foregroundStyle(on ? tone(mode.0) : Theme.ink3)
+                        .opacity(offered ? 1 : 0.4)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: small ? 28 : 32)
+                        .background {
+                            if on {
+                                RoundedRectangle(cornerRadius: Theme.Radius.sm - 1, style: .continuous)
+                                    .fill(Theme.surface)
+                                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.sm - 1, style: .continuous).stroke(Theme.line))
+                                    .matchedGeometryEffect(id: "pill", in: pill)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!offered)
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .padding(3)
+        .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+        .animation(Motion.quiet(0.28), value: value)
+        .sensoryFeedback(.selection, trigger: value)
+    }
+
+    private func tone(_ mode: String) -> Color {
+        switch mode {
+        case "allow", "pass": return Theme.emerald
+        case "deny", "withhold": return Theme.vermilion
+        case "auto", "check": return Theme.ink2
+        default: return Theme.ink
+        }
+    }
+}
+
+/// One action and the switch for the side of its rule the page is showing; a floor turns off what
+/// it does not allow.
 struct RuleRow: View {
     let rule: Silo_V1_Rule
     let side: RuleSide
@@ -225,54 +380,38 @@ struct RuleRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    if !floor.isEmpty {
-                        Image(systemName: "lock.fill").font(.silo(.caption2)).foregroundStyle(.secondary)
-                            .accessibilityLabel(fromWorkspace ? "Set by the workspace" : "Locked by the operator")
-                    }
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
                     Text(rule.title.isEmpty ? rule.action : rule.title)
-                        .font(rule.connector == "secrets" ? .system(.subheadline, design: .monospaced) : .subheadline)
+                        .font(rule.connector == "secrets" ? .siloMono(13, .medium) : .silo(14, .medium))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(2)
+                    if rule.connector == "secrets" { Chip(text: "Secret", tint: Theme.ink3) }
                 }
                 if !rule.title.isEmpty, rule.title != rule.action, rule.action != "*", rule.connector != "secrets" {
-                    Text(rule.action)
-                        .font(.siloMono(.caption))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Spacer(minLength: 8)
-            Menu {
-                Picker("Mode", selection: Binding(get: { value }, set: set)) {
-                    ForEach(modes, id: \.0) { mode in
-                        Text(mode.1).tag(mode.0)
-                            .selectionDisabled(!ruleModeAllowed(mode.0, floor: floor, side: side))
-                    }
+                    Text(rule.action).font(.siloMono(11.5)).foregroundStyle(Theme.ink3).lineLimit(1)
                 }
                 if !floor.isEmpty {
-                    Text(fromWorkspace ? "Set by the workspace: at least \(label(floor))." : "The operator set at least \(label(floor)).")
+                    HStack(spacing: 4) {
+                        Image(systemName: "lock.fill").font(.system(size: 9))
+                        Text(fromWorkspace ? "Set by the workspace: \(label(floor))" : "Operator: \(label(floor))")
+                            .font(.silo(11.5, .medium))
+                    }
+                    .foregroundStyle(Theme.ink2)
+                    .padding(.horizontal, 7)
+                    .frame(height: 20)
+                    .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous))
                 }
-            } label: {
-                HStack(spacing: 3) {
-                    Text(label(value))
-                    Image(systemName: "chevron.up.chevron.down").font(.silo(.caption2))
-                }
-                .font(.silo(.subheadline))
-                .foregroundStyle(tone)
             }
+            RuleSegment(modes: modes, value: value, side: side,
+                        allowed: { ruleModeAllowed($0, floor: floor, side: side) }, set: set)
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
     }
 
     private func label(_ mode: String) -> String { modes.first { $0.0 == mode }?.1 ?? mode.capitalized }
-
-    private var tone: Color {
-        switch value {
-        case "allow", "pass": return Theme.emerald
-        case "deny", "withhold": return Theme.vermilion
-        case "flag": return Theme.cobalt
-        default: return .secondary
-        }
-    }
 }
 
 extension Silo_V1_Rule {

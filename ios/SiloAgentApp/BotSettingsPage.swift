@@ -10,51 +10,42 @@ struct BotSettingsPage: View {
     @State private var botModel = ""
     /// The Bot as `GetBot` has it: the list leaves SOUL out, so the form starts from this.
     @State private var full: Silo_V1_Bot?
-    @State private var saving = false
-    @State private var confirmDelete = false
+    @State private var saved = 0
 
     var body: some View {
-        Form {
-            Section("Name") { TextField("Name", text: $name) }
-            Section("Description") { TextField("What is this Bot for?", text: $description, axis: .vertical) }
-            Section {
-                TextEditor(text: $soul).frame(minHeight: 140)
-            } header: {
-                Text("SOUL")
-            } footer: {
-                Text("Who the Bot is and how it behaves. Injected into every run.")
-            }
-            Section {
-                Picker("Default model", selection: $botModel) {
-                    Text("Operator default").tag("")
-                    ForEach(model.models, id: \.id) { Text($0.label.isEmpty ? $0.id : $0.label).tag($0.id) }
+        PageScroll(spacing: 20) {
+            PanelSection(title: "General", footer: "A chat's own model choice overrides this.") {
+                VStack(alignment: .leading, spacing: 14) {
+                    SiloField(label: "Name", prompt: "Name", text: $name)
+                    SiloField(label: "Description", prompt: "What is this Bot for?", text: $description, axis: .vertical, lines: 1...4)
+                    SiloPicker(label: "Default model", options: modelOptions, selection: $botModel)
                 }
-            } footer: {
-                Text("A chat's own model choice overrides this.")
+                .padding(14)
+            }
+            PanelSection(title: "SOUL", footer: "Who the Bot is and how it behaves. Injected into every run.") {
+                MachineEditor(text: $soul, mono: true, minHeight: 180).padding(14)
             }
             ProactivitySection()
             TimeZoneSection()
+            if model.speechEnabled { VoiceSection() }
             if model.selectedBot?.mailAddress.isEmpty == false { MailSettingsSection() }
-            Section {
-                Button("Delete Bot", role: .destructive) { confirmDelete = true }
-            } footer: {
-                Text("Removes the machine, the Bot, and its workspace.")
+            PanelSection(title: "Dangerous") {
+                PanelRow(title: "Delete Bot", detail: "Removes the machine, the Bot, and its workspace. This cannot be undone.", trailing: {
+                    ArmedButton(title: "Delete", symbol: "trash", small: true) { Task { await delete() } }
+                })
             }
         }
-        .toolbar {
-            if dirty {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(saving ? "Saving…" : "Save") { Task { await save() } }
-                        .disabled(saving || name.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
+        .pageActions {
+            SaveButton(enabled: dirty && !name.trimmingCharacters(in: .whitespaces).isEmpty) { await save() }
+                .controlSize(.small)
+                .padding(.trailing, 6)
         }
         .task(id: model.selectedBotID) { await load() }
-        .confirmationDialog("Delete this Bot?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Delete Bot and its data", role: .destructive) { Task { await delete() } }
-        } message: {
-            Text("This cannot be undone.")
-        }
+        .sensoryFeedback(.success, trigger: saved)
+    }
+
+    private var modelOptions: [(value: String, label: String)] {
+        [(value: "", label: "Operator default")] + model.models.map { (value: $0.id, label: $0.label.isEmpty ? $0.id : $0.label) }
     }
 
     private var dirty: Bool {
@@ -79,15 +70,18 @@ struct BotSettingsPage: View {
         botModel = bot.model
     }
 
-    private func save() async {
-        guard let bot = full else { return }
-        saving = true
-        defer { saving = false }
+    private func save() async -> Bool {
+        guard let bot = full else { return false }
         do {
-            let saved = try await model.client.updateBot(bot, name: name, description: description, soul: soul, model: botModel)
-            full = saved
-            model.applyBot(saved)
-        } catch { await model.report(error) }
+            let fresh = try await model.client.updateBot(bot, name: name, description: description, soul: soul, model: botModel)
+            full = fresh
+            model.applyBot(fresh)
+            saved += 1
+            return true
+        } catch {
+            await model.report(error)
+            return false
+        }
     }
 
     private func delete() async {
@@ -106,31 +100,38 @@ struct TimeZoneSection: View {
 
     var body: some View {
         if let bot = model.selectedBot {
-            Section {
-                Picker("Time zone", selection: Binding(get: { bot.timeZonePinned }, set: { pinned in
-                    Task { await set(zone: pinned ? (bot.timeZone.isEmpty ? TimeZone.current.identifier : bot.timeZone) : TimeZone.current.identifier, pinned: pinned) }
-                })) {
-                    Text("Follow my device").tag(false)
-                    Text("Fixed").tag(true)
-                }
-                .pickerStyle(.segmented)
+            PanelSection(title: "Time zone", footer: bot.timeZonePinned
+                ? "The Bot stays in this zone wherever you are. Automations run on its clock."
+                : "The Bot moves with you: each message carries your device's zone. Automations run on its clock.") {
+                Segmented(options: [(false, "Follow my device"), (true, "Fixed")], selection: pinned(bot))
+                    .padding(10)
                 if bot.timeZonePinned {
                     NavigationLink {
-                        ZonePicker(selected: bot.timeZone) { zone in Task { await set(zone: zone, pinned: true) } }
+                        SiloPage(title: "Time zone") {
+                            ZonePicker(selected: bot.timeZone) { zone in Task { await set(zone: zone, pinned: true) } }
+                        }
                     } label: {
-                        LabeledContent("Zone", value: zoneLabel(bot.timeZone))
+                        PanelRow(title: "Zone", chevron: true, trailing: {
+                            Text(zoneLabel(bot.timeZone)).font(.silo(13.5)).foregroundStyle(Theme.ink2).lineLimit(1)
+                        })
                     }
+                    .buttonStyle(RowPressStyle())
                 } else {
-                    LabeledContent("Now", value: zoneLabel(bot.timeZone.isEmpty ? TimeZone.current.identifier : bot.timeZone))
+                    PanelRow(title: "Now", trailing: {
+                        Text(zoneLabel(bot.timeZone.isEmpty ? TimeZone.current.identifier : bot.timeZone))
+                            .font(.silo(13.5))
+                            .foregroundStyle(Theme.ink2)
+                            .lineLimit(1)
+                    })
                 }
-            } header: {
-                Text("Time zone")
-            } footer: {
-                Text(bot.timeZonePinned
-                     ? "The Bot stays in this zone wherever you are. Automations run on its clock."
-                     : "The Bot moves with you: each message carries your device's zone. Automations run on its clock.")
             }
         }
+    }
+
+    private func pinned(_ bot: Silo_V1_Bot) -> Binding<Bool> {
+        Binding(get: { bot.timeZonePinned }, set: { pinned in
+            Task { await set(zone: pinned ? (bot.timeZone.isEmpty ? TimeZone.current.identifier : bot.timeZone) : TimeZone.current.identifier, pinned: pinned) }
+        })
     }
 
     private func set(zone: String, pinned: Bool) async {
@@ -159,25 +160,44 @@ private struct ZonePicker: View {
     }
 
     var body: some View {
-        List(zones, id: \.self) { zone in
-            Button {
-                pick(zone)
-                dismiss()
-            } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(zone.split(separator: "/").last.map { $0.replacingOccurrences(of: "_", with: " ") } ?? zone).foregroundStyle(.primary)
-                        Text(zone).font(.silo(.caption)).foregroundStyle(.secondary)
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                SiloField(prompt: "City or region", text: $query)
+                    .autocorrectionDisabled()
+                if zones.isEmpty {
+                    EmptyWell(symbol: "globe", title: "No zone by that name")
+                } else {
+                    LazyVStack(spacing: 0) {
+                        ForEach(zones, id: \.self) { zone in
+                            if zone != zones.first { Theme.line.frame(height: 1) }
+                            row(zone)
+                        }
                     }
-                    Spacer()
-                    Text(TimeZone(identifier: zone)?.abbreviation() ?? "").font(.siloMono(.caption)).foregroundStyle(.secondary)
-                    if zone == selected { Image(systemName: "checkmark").foregroundStyle(Theme.cobalt) }
+                    .background(Theme.surface, in: shape)
+                    .clipShape(shape)
+                    .overlay(shape.stroke(Theme.line, lineWidth: 1))
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 14)
+            .padding(.bottom, 32)
+            .frame(maxWidth: 760)
+            .frame(maxWidth: .infinity)
         }
-        .searchable(text: $query, prompt: "City or region")
-        .navigationTitle("Time Zone")
-        .navigationBarTitleDisplayMode(.inline)
+        .scrollDismissesKeyboard(.interactively)
+    }
+
+    private func row(_ zone: String) -> some View {
+        PanelRow(title: zone.split(separator: "/").last.map { $0.replacingOccurrences(of: "_", with: " ") } ?? zone, detail: zone, action: {
+            pick(zone)
+            dismiss()
+        }, trailing: {
+            Text(TimeZone(identifier: zone)?.abbreviation() ?? "").font(.siloMono(12)).foregroundStyle(Theme.ink3)
+            if zone == selected {
+                Image(systemName: "checkmark").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.cobalt)
+            }
+        })
     }
 }
 
@@ -196,21 +216,16 @@ private struct ProactivitySection: View {
     var body: some View {
         let bot = model.selectedBot
         let current = Self.levels.first { $0.id == bot?.proactivity } ?? Self.levels[0]
-        Section {
-            Picker("Proactivity", selection: Binding(get: { current.id }, set: { level in Task { await choose(level) } })) {
-                ForEach(Self.levels, id: \.id) { Text($0.label).tag($0.id) }
-            }
-            .pickerStyle(.segmented)
-            .disabled(busy)
-        } header: {
-            Text("Proactivity")
-        } footer: {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(current.note)
-                if bot?.heartbeatCustom == true {
-                    Text("The Heartbeat runs on a schedule set by hand (Automations). Choosing a level puts it back on that level's schedule.")
-                }
-            }
+        let custom = bot?.heartbeatCustom == true
+            ? " The Heartbeat runs on a schedule set by hand (Automations). Choosing a level puts it back on that level's schedule."
+            : ""
+        let choice = Binding<String>(get: { current.id }, set: { level in
+            Task { await choose(level) }
+        })
+        PanelSection(title: "Proactivity", footer: current.note + custom) {
+            Segmented(options: Self.levels.map { (value: $0.id, label: $0.label) }, selection: choice)
+                .disabled(busy)
+                .padding(10)
         }
     }
 
@@ -219,5 +234,186 @@ private struct ProactivitySection: View {
         busy = true
         defer { busy = false }
         do { model.applyBot(try await model.client.setProactivity(bot, level: level)) } catch { await model.report(error) }
+    }
+}
+
+/// How the Bot sounds, for Read aloud and calls: a speech model from the operator's list, one of its
+/// voices, and a speed. It saves on its own, apart from Save, and Hear it tries a choice first.
+/// Web: `web/src/BotVoice.tsx`.
+private struct VoiceSection: View {
+    @Environment(AppModel.self) private var model
+    /// The model in the picker; empty follows the operator's default.
+    @State private var chosen = ""
+    @State private var list: Silo_V1_ListVoicesResponse?
+    @State private var busy = false
+    /// A voice typed for a provider that lists none.
+    @State private var typed = ""
+    @State private var heard = false
+
+    /// What a voice can be set to; 0 is the model's own.
+    private static let speeds: [Double] = [0.85, 0, 1.15, 1.3]
+
+    var body: some View {
+        if let bot = model.selectedBot {
+            PanelSection(title: "Voice", footer: "How \(bot.name) sounds when it reads a reply aloud or talks with you on a call.") {
+                VStack(alignment: .leading, spacing: 14) {
+                    speechRow(bot)
+                    voiceRow(bot)
+                    speedRow(bot)
+                }
+                .padding(14)
+            }
+            .task(id: bot.id) {
+                chosen = bot.speechModel
+                typed = bot.voice
+                await load(bot.id)
+            }
+        }
+    }
+
+    private func speechRow(_ bot: Silo_V1_Bot) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            SiloPicker(label: "Speech model", options: modelOptions, selection: Binding(get: { chosen }, set: { speech in
+                chosen = speech
+                typed = ""
+                Task {
+                    await save(speechModel: speech, voice: "")
+                    await load(bot.id)
+                }
+            }))
+            .disabled(busy)
+            hint("From the operator's allowed speech models. Voices differ from one to the next.")
+        }
+    }
+
+    private func voiceRow(_ bot: Silo_V1_Bot) -> some View {
+        let voices = list?.voices ?? []
+        return VStack(alignment: .leading, spacing: 6) {
+            if list == nil {
+                SkeletonRows(count: 1)
+            } else if voices.isEmpty {
+                SiloField(label: "Voice", prompt: "Provider's default", text: $typed, mono: true)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .disabled(busy)
+                    .task(id: typed) {
+                        // Saves a moment after the last key, as the web does on leaving the field.
+                        let voice = typed.trimmingCharacters(in: .whitespaces)
+                        guard voice != bot.voice else { return }
+                        try? await Task.sleep(for: .seconds(1))
+                        guard !Task.isCancelled else { return }
+                        await save(voice: voice)
+                    }
+                hint("This model does not list its voices: type one from its provider's documentation, or leave it empty.")
+            } else {
+                SiloPicker(label: "Voice", options: voiceOptions(bot), selection: Binding(get: { current(bot) }, set: { id in
+                    Task { await save(voice: id) }
+                }))
+                .disabled(busy)
+                hint("Automatic picks one for \(bot.name)'s language.")
+            }
+            HStack(spacing: 10) {
+                Button { hear(bot) } label: { hearLabel(bot) }
+                    .buttonStyle(.quiet)
+                    .controlSize(.small)
+                    .disabled(effectiveModel.isEmpty)
+                if heard, let failure = model.readAloud.error {
+                    Text(failure).font(.silo(12.5)).foregroundStyle(Theme.vermilion).lineLimit(2)
+                }
+            }
+            .padding(.top, 2)
+        }
+    }
+
+    private func speedRow(_ bot: Silo_V1_Bot) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Speed").font(.silo(12, .medium)).foregroundStyle(Theme.ink3)
+            ChipRadio(options: Self.speeds.map { (value: $0, label: $0 == 0 ? "Normal" : "\($0)×") },
+                      selection: Binding(get: { Self.speeds.contains(bot.speechSpeed) ? bot.speechSpeed : 0 }, set: { speed in
+                          Task { await save(speed: speed) }
+                      }))
+                .disabled(busy)
+        }
+    }
+
+    private func hint(_ text: String) -> some View {
+        Text(text).font(.silo(12.5)).foregroundStyle(Theme.ink3).fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func hearLabel(_ bot: Silo_V1_Bot) -> some View {
+        let reader = model.readAloud
+        let mine = reader.text == line(bot)
+        return HStack(spacing: 6) {
+            if mine && reader.state == .loading {
+                Spinner(size: 13)
+            } else if mine && reader.state == .playing {
+                Image(systemName: "stop.fill").font(.system(size: 10))
+            } else {
+                Image(systemName: "speaker.wave.2").font(.system(size: 13))
+            }
+            Text(mine && reader.state == .playing ? "Stop" : "Hear it")
+        }
+    }
+
+    private var effectiveModel: String { chosen.isEmpty ? (list?.defaultModel ?? "") : chosen }
+
+    private var modelOptions: [(value: String, label: String)] {
+        let fallback = (list?.defaultModel ?? "").split(separator: "/").dropFirst().joined(separator: "/")
+        let auto = fallback.isEmpty ? "Operator default" : "Operator default (\(fallback))"
+        return [(value: "", label: auto)] + (list?.models ?? []).map {
+            (value: $0.id, label: ($0.label.isEmpty ? $0.id : $0.label) + ($0.live ? " · live" : ""))
+        }
+    }
+
+    /// The Bot's own voice while this model has it, else Automatic.
+    private func current(_ bot: Silo_V1_Bot) -> String {
+        let voices = list?.voices ?? []
+        return voices.isEmpty || voices.contains { $0.id == bot.voice } ? bot.voice : ""
+    }
+
+    /// Automatic, then the Bot's own language first.
+    private func voiceOptions(_ bot: Silo_V1_Bot) -> [(value: String, label: String)] {
+        let voices = list?.voices ?? []
+        let fallback = list?.defaultVoice ?? ""
+        let name = voices.first { $0.id == fallback }?.label ?? fallback
+        let language = bot.language == "mixed" ? "" : bot.language
+        let sorted = voices.filter { $0.language == language } + voices.filter { $0.language != language }
+        return [(value: "", label: name.isEmpty ? "Automatic" : "Automatic (\(name))")] + sorted.map {
+            (value: $0.id, label: $0.language.isEmpty ? $0.label : "\($0.label) · \($0.language)")
+        }
+    }
+
+    private func line(_ bot: Silo_V1_Bot) -> String { "Hi, I'm \(bot.name). This is how I sound when I talk with you." }
+
+    private func hear(_ bot: Silo_V1_Bot) {
+        let reader = model.readAloud
+        if reader.state != .idle, reader.text == line(bot) {
+            reader.stop()
+            return
+        }
+        heard = true
+        let voice = current(bot).isEmpty ? (list?.defaultVoice ?? "") : current(bot)
+        reader.speak(line(bot), client: model.client, botID: bot.id, model: effectiveModel, voice: voice,
+                     speed: bot.speechSpeed == 0 ? 1 : bot.speechSpeed)
+    }
+
+    private func load(_ botID: String) async {
+        do {
+            list = try await model.client.listVoices(botID: botID, model: chosen)
+        } catch {
+            // The picker still works: a voice can be typed.
+            list = list ?? Silo_V1_ListVoicesResponse()
+            await model.report(error)
+        }
+    }
+
+    private func save(speechModel: String? = nil, voice: String? = nil, speed: Double? = nil) async {
+        guard let bot = model.selectedBot else { return }
+        busy = true
+        defer { busy = false }
+        do {
+            model.applyBot(try await model.client.setBotVoice(
+                botID: bot.id, speechModel: speechModel ?? bot.speechModel, voice: voice ?? bot.voice, speed: speed ?? bot.speechSpeed))
+        } catch { await model.report(error) }
     }
 }

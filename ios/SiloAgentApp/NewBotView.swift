@@ -30,37 +30,30 @@ struct NewBotView: View {
     private var me: String { model.user?.email ?? "" }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    HStack {
-                        Spacer()
-                        CrestView(index: crest, size: 84)
-                        Spacer()
-                    }
-                    .listRowBackground(Color.clear)
-                    CrestPicker(value: $crest)
+        VStack(spacing: 0) {
+            SheetHead(title: spaces.current.map { "New Bot in \($0.name)" } ?? "New Bot", onCancel: { dismiss() }) {
+                if busy {
+                    Spinner().frame(width: 40, height: 32)
+                } else {
+                    Button("Create") { create() }
+                        .buttonStyle(.ink)
+                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
-
-                Section("Name") {
-                    TextField("Scout", text: $name)
+            }
+            PageScroll(spacing: 18) {
+                CrestView(index: crest, size: 84).frame(maxWidth: .infinity)
+                CrestPicker(value: $crest)
+                SiloField(label: "Name", prompt: "Scout", text: $name)
+                VStack(alignment: .leading, spacing: 6) {
+                    SiloField(label: "Description", prompt: "What this machine is for", text: $description, axis: .vertical, lines: 2...5)
+                    hint("A Bot is its own machine. It does not share files with the others.")
                 }
-
-                Section {
-                    TextField("What this machine is for", text: $description, axis: .vertical)
-                        .lineLimit(2...5)
-                } header: { Text("Description") } footer: {
-                    Text("A Bot is its own machine. It does not share files with the others.")
-                }
-
-                Section {
+                VStack(alignment: .leading, spacing: 6) {
                     Toggle("Start with a short interview", isOn: $interview)
-                } footer: {
-                    Text("The Bot asks what you want help with, offers what to connect, and how proactive to be. You can skip any step, or run /onboard later.")
+                    hint("The Bot asks what you want help with, offers what to connect, and how proactive to be. You can skip any step, or run /\u{2060}onboard later.")
                 }
-
                 if connectors.count + drives.count + skills.count > 0 {
-                    Section {
+                    PanelSection(title: "What it can use", footer: "The workspace's connectors, drives and skills. Untick what this Bot should not have; you can change it later on the Workspace page.") {
                         ForEach(connectors) { c in
                             pick("c:\(c.id)", c.name, kind: "Connector", why: blocked(c.lentBy, c.shared))
                         }
@@ -70,51 +63,35 @@ struct NewBotView: View {
                         ForEach(skills) { k in
                             pick("s:\(k.name)", k.name, kind: "Skill", why: "")
                         }
-                    } header: { Text("What it can use") } footer: {
-                        Text("The workspace's connectors, drives and skills. Untick what this Bot should not have; you can change it later on the Workspace page.")
                     }
                 }
-
                 if !people.isEmpty {
-                    Section {
+                    PanelSection(title: "Who can use it", footer: "Just you, unless you pick people. Everyone on a Bot shares what it holds: its memory, files and connections.") {
                         ForEach(people, id: \.userID) { person in
                             Toggle(isOn: Binding(get: { users.contains(person.userID) }, set: { on in
                                 if on { users.insert(person.userID) } else { users.remove(person.userID) }
                             })) {
                                 HStack(spacing: 10) {
                                     Initials(email: person.email, size: 22)
-                                    Text(person.email).font(.silo(15)).lineLimit(1).truncationMode(.middle)
+                                    Text(person.email).font(.silo(15)).foregroundStyle(Theme.ink).lineLimit(1).truncationMode(.middle)
                                 }
                             }
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 48)
                         }
-                    } header: { Text("Who can use it") } footer: {
-                        Text("Just you, unless you pick people. Everyone on a Bot shares what it holds: its memory, files and connections.")
                     }
                 }
-
-                if let error {
-                    Section {
-                        Text(error).font(.silo(.footnote)).foregroundStyle(Theme.vermilion)
-                    }
-                }
+                if let error { ErrorLine(text: error) }
             }
-            .navigationTitle(spaces.current.map { "New Bot in \($0.name)" } ?? "New Bot")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    if busy {
-                        ProgressView()
-                    } else {
-                        Button("Create") { create() }
-                            .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
-                    }
-                }
-            }
-            .task { await load() }
         }
+        .task { await load() }
+    }
+
+    private func hint(_ text: String) -> some View {
+        Text(text)
+            .font(.silo(12.5))
+            .foregroundStyle(Theme.ink3)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     /// One thing the new Bot may get: on, off, or unavailable with why.
@@ -128,6 +105,9 @@ struct NewBotView: View {
             }
         }
         .disabled(!why.isEmpty)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
+        .frame(minHeight: 48)
     }
 
     private func blocked(_ lentBy: String, _ shared: Bool) -> String {

@@ -8,12 +8,14 @@ struct Initials: View {
 
     var body: some View {
         Text(personInitials(email))
-            .font(.silo(size >= 28 ? 11 : 9.5, .semibold))
+            .font(.silo(max(9.5, size * 0.39), .semibold))
             .tracking(0.2)
             .foregroundStyle(Theme.ink2)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
             .frame(width: size, height: size)
             .background(Theme.well, in: Circle())
-            .overlay(Circle().stroke(Theme.line))
+            .overlay(Circle().strokeBorder(Theme.line, lineWidth: 1))
             .accessibilityHidden(true)
     }
 }

@@ -71,8 +71,11 @@ public func toolAction(name: String, args raw: String) -> String {
     case "terminal":
         let command = firstLine(a["command"] ?? "")
         return command.isEmpty ? "" : "$ \(command)"
-    case "read", "write", "patch", "delete", "present": return path
-    case "grep": return a["pattern"] ?? ""
+    case "read", "write", "patch", "delete": return "\(name) \(path)".trimmingCharacters(in: .whitespaces)
+    case "present": return path
+    case "grep": return "grep \(a["pattern"] ?? "")".trimmingCharacters(in: .whitespaces)
+    case "scroll": return a["dy"].map { "scroll \($0)" } ?? "scroll"
+    case "type": return "type"
     case "web_search": return a["query"] ?? ""
     case "skill": return (a["name"]).flatMap { $0.isEmpty ? nil : $0 } ?? path
     case "channel": return (a["channel"]).flatMap { $0.isEmpty ? nil : $0 } ?? (a["to"] ?? "")
@@ -87,7 +90,10 @@ public func toolAction(name: String, args raw: String) -> String {
     case "task_reset": return "reset"
     case "click": return a["x"].map { "click \($0),\(a["y"] ?? "")" } ?? "click"
     case "key": return "key \(a["name"] ?? "")".trimmingCharacters(in: .whitespaces)
-    default: return ""
+    default:
+        // A connector tool the model called directly: `<slug>__<action>`.
+        guard let range = name.range(of: "__"), range.lowerBound != name.startIndex, range.upperBound != name.endIndex else { return "" }
+        return name[range.upperBound...].replacingOccurrences(of: "_", with: " ").trimmingCharacters(in: .whitespaces)
     }
 }
 
@@ -122,5 +128,28 @@ public func toolApp(_ name: String) -> String {
     default:
         if let range = name.range(of: "__") { return String(name[..<range.lowerBound]) }
         return name
+    }
+}
+
+/// The glyph of a tool row, by what the tool works on.
+public func toolSymbol(_ name: String) -> String {
+    switch name {
+    case "exec_python": return "chevron.left.forwardslash.chevron.right"
+    case "terminal": return "terminal"
+    case "read", "write", "patch", "delete", "grep", "present": return "doc.text"
+    case "look", "click", "type", "key", "scroll": return "display"
+    case "web_search": return "globe"
+    case "soul": return "heart.text.square"
+    case "skill": return "book.closed"
+    case "artifact": return "shippingbox"
+    case "channel": return "antenna.radiowaves.left.and.right"
+    case "chats": return "bubble.left.and.bubble.right"
+    case "feed": return "tray"
+    case "list_models", "switch_model": return "cpu"
+    case "decide": return "arrow.triangle.branch"
+    case "spawn_agent", "agent_status", "message_agent", "stop_agent": return "person.2"
+    case "sleep": return "moon"
+    case "task_add", "task_list", "task_done", "task_reset": return "checklist"
+    default: return "powerplug"
     }
 }

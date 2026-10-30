@@ -8,16 +8,81 @@
 
 /* Begin PBXBuildFile section */
 		000000000000000400000001 /* SiloClient in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000300000001 /* SiloClient */; };
+		000000000000000400000002 /* SiloCall in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000300000002 /* SiloCall */; };
+		000000000000000400000003 /* SiloClient in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000300000003 /* SiloClient */; };
+		000000000000000400000004 /* SiloClient in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000300000004 /* SiloClient */; };
+		000000000000000400000005 /* SiloWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 000000000000000000000121 /* SiloWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		000000000000000400000006 /* SiloShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 000000000000000000000122 /* SiloShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		000000000000000700000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 000000000000000500000000;
+			remoteInfo = SiloWidgets;
+		};
+		000000000000000700000002 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 000000000000000600000000;
+			remoteInfo = SiloShare;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		000000000000000150000000 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = PlugIns;
+			files = (
+				000000000000000400000005 /* SiloWidgets.appex in Embed Foundation Extensions */,
+				000000000000000400000006 /* SiloShare.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* MyApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000121 /* SiloWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SiloWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000122 /* SiloShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SiloShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		000000000000000900000001 /* Exceptions for "SiloWidgets" folder in "MyApp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				SiloWidgetBundle.swift,
+			);
+			target = 000000000000000100000000 /* MyApp */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		000000000000000000000010 /* SiloAgentApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = SiloAgentApp;
+			sourceTree = "<group>";
+		};
+		000000000000000000000011 /* SiloShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SiloShared;
+			sourceTree = "<group>";
+		};
+		000000000000000000000012 /* SiloWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				000000000000000900000001 /* Exceptions for "SiloWidgets" folder in "MyApp" target */,
+			);
+			path = SiloWidgets;
+			sourceTree = "<group>";
+		};
+		000000000000000000000013 /* SiloShare */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SiloShare;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -27,6 +92,19 @@
 			isa = PBXFrameworksBuildPhase;
 			files = (
 				000000000000000400000001 /* SiloClient in Frameworks */,
+				000000000000000400000002 /* SiloCall in Frameworks */,
+			);
+		};
+		000000000000000530000000 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+				000000000000000400000003 /* SiloClient in Frameworks */,
+			);
+		};
+		000000000000000630000000 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+				000000000000000400000004 /* SiloClient in Frameworks */,
 			);
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -36,6 +114,9 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000010 /* SiloAgentApp */,
+				000000000000000000000011 /* SiloShared */,
+				000000000000000000000012 /* SiloWidgets */,
+				000000000000000000000013 /* SiloShare */,
 				000000000000000000000020 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -44,6 +125,8 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000120 /* MyApp.app */,
+				000000000000000000000121 /* SiloWidgets.appex */,
+				000000000000000000000122 /* SiloShare.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -58,19 +141,71 @@
 				000000000000000120000000 /* Sources */,
 				000000000000000130000000 /* Frameworks */,
 				000000000000000140000000 /* Resources */,
+				000000000000000150000000 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
+			dependencies = (
+				000000000000000800000001 /* PBXTargetDependency */,
+				000000000000000800000002 /* PBXTargetDependency */,
+			);
 			fileSystemSynchronizedGroups = (
 				000000000000000000000010 /* SiloAgentApp */,
+				000000000000000000000011 /* SiloShared */,
+				000000000000000000000012 /* SiloWidgets */,
 			);
 			name = MyApp;
 			packageProductDependencies = (
 				000000000000000300000001 /* SiloClient */,
+				000000000000000300000002 /* SiloCall */,
 			);
 			productName = MyApp;
 			productReference = 000000000000000000000120 /* MyApp.app */;
 			productType = "com.apple.product-type.application";
+		};
+		000000000000000500000000 /* SiloWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000510000000 /* Build configuration list for PBXNativeTarget "SiloWidgets" */;
+			buildPhases = (
+				000000000000000520000000 /* Sources */,
+				000000000000000530000000 /* Frameworks */,
+				000000000000000540000000 /* Resources */,
+			);
+			buildRules = (
+			);
+			fileSystemSynchronizedGroups = (
+				000000000000000000000011 /* SiloShared */,
+				000000000000000000000012 /* SiloWidgets */,
+			);
+			name = SiloWidgets;
+			packageProductDependencies = (
+				000000000000000300000003 /* SiloClient */,
+			);
+			productName = SiloWidgets;
+			productReference = 000000000000000000000121 /* SiloWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		000000000000000600000000 /* SiloShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000610000000 /* Build configuration list for PBXNativeTarget "SiloShare" */;
+			buildPhases = (
+				000000000000000620000000 /* Sources */,
+				000000000000000630000000 /* Frameworks */,
+				000000000000000640000000 /* Resources */,
+			);
+			buildRules = (
+			);
+			fileSystemSynchronizedGroups = (
+				000000000000000000000011 /* SiloShared */,
+				000000000000000000000013 /* SiloShare */,
+			);
+			name = SiloShare;
+			packageProductDependencies = (
+				000000000000000300000004 /* SiloClient */,
+			);
+			productName = SiloShare;
+			productReference = 000000000000000000000122 /* SiloShare.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -105,12 +240,24 @@
 			projectRoot = "";
 			targets = (
 				000000000000000100000000 /* MyApp */,
+				000000000000000500000000 /* SiloWidgets */,
+				000000000000000600000000 /* SiloShare */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		000000000000000140000000 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		000000000000000540000000 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		000000000000000640000000 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
 			);
@@ -123,7 +270,30 @@
 			files = (
 			);
 		};
+		000000000000000520000000 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		000000000000000620000000 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		000000000000000800000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 000000000000000500000000 /* SiloWidgets */;
+			targetProxy = 000000000000000700000001 /* PBXContainerItemProxy */;
+		};
+		000000000000000800000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 000000000000000600000000 /* SiloShare */;
+			targetProxy = 000000000000000700000002 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		000000000000000011000000 /* Debug configuration for PBXProject "silo-agent" */ = {
@@ -187,6 +357,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PROJECT_UNIQUE_VALUE = U0584QGH;
+				SILO_APP_GROUP = "group.devplaceholder.$(PROJECT_UNIQUE_VALUE:identifier).silo";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -250,6 +421,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PROJECT_UNIQUE_VALUE = U0584QGH;
+				SILO_APP_GROUP = "group.devplaceholder.$(PROJECT_UNIQUE_VALUE:identifier).silo";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				TVOS_DEPLOYMENT_TARGET = 27.0;
@@ -261,6 +433,8 @@
 		000000000000000111000000 /* Debug configuration for PBXNativeTarget "MyApp" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SiloApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = YES;
@@ -269,7 +443,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SiloApp-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Silo;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Dictate messages to your Bot. Recordings are transcribed and never sent on their own.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Reach a Silo on your own network, and its voice on a call.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Talk to your Bots on a call, and dictate messages to them.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -301,6 +476,8 @@
 		000000000000000112000000 /* Release configuration for PBXNativeTarget "MyApp" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SiloApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_APP_SANDBOX = YES;
@@ -309,7 +486,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SiloApp-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Silo;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Dictate messages to your Bot. Recordings are transcribed and never sent on their own.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Reach a Silo on your own network, and its voice on a call.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Talk to your Bots on a call, and dictate messages to them.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -338,6 +516,126 @@
 			};
 			name = Release;
 		};
+		000000000000000511000000 /* Debug configuration for PBXNativeTarget "SiloWidgets" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = SiloApp.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SiloWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Silo;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "devplaceholder.$(PROJECT_UNIQUE_VALUE:identifier).MyApp.Widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited) SILO_EXTENSION";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		000000000000000512000000 /* Release configuration for PBXNativeTarget "SiloWidgets" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = SiloApp.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SiloWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Silo;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "devplaceholder.$(PROJECT_UNIQUE_VALUE:identifier).MyApp.Widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SILO_EXTENSION";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		000000000000000611000000 /* Debug configuration for PBXNativeTarget "SiloShare" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = SiloApp.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SiloShare-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Silo;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "devplaceholder.$(PROJECT_UNIQUE_VALUE:identifier).MyApp.Share";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited) SILO_EXTENSION";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		000000000000000612000000 /* Release configuration for PBXNativeTarget "SiloShare" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = SiloApp.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SiloShare-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Silo;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "devplaceholder.$(PROJECT_UNIQUE_VALUE:identifier).MyApp.Share";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SILO_EXTENSION";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -357,6 +655,22 @@
 			);
 			defaultConfigurationName = Release;
 		};
+		000000000000000510000000 /* Build configuration list for PBXNativeTarget "SiloWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000511000000 /* Debug configuration for PBXNativeTarget "SiloWidgets" */,
+				000000000000000512000000 /* Release configuration for PBXNativeTarget "SiloWidgets" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		000000000000000610000000 /* Build configuration list for PBXNativeTarget "SiloShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000611000000 /* Debug configuration for PBXNativeTarget "SiloShare" */,
+				000000000000000612000000 /* Release configuration for PBXNativeTarget "SiloShare" */,
+			);
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -368,6 +682,18 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		000000000000000300000001 /* SiloClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SiloClient;
+		};
+		000000000000000300000002 /* SiloCall */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SiloCall;
+		};
+		000000000000000300000003 /* SiloClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SiloClient;
+		};
+		000000000000000300000004 /* SiloClient */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SiloClient;
 		};

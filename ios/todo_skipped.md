@@ -10,7 +10,6 @@ The iOS client aims for parity with the web client. These pieces are deliberatel
 | **Connector OAuth, editing + custom MCP form** | The OAuth callback finishes only in the browser of the user who started it (`{public_url}/oauth/callback`), and the connector form is large. On the Workspace page iOS lists the Workspace's connections, adds library presets (name + which Bots), gives and takes them per Bot (Choose Bots), shares or un-shares a lent one, and deletes; a connection that needs sign-in says "Sign in on the web client", and editing one (or a built-in's settings) is on the web. |
 | **Workspace join links** (`/join/$token`) | Opening an invite link (and making an account through one) is a web page. iOS makes links (share sheet) and lists and deletes open ones, but does not handle `/join/` URLs. |
 | **Skill and drive extras** | Installing a skill into the admin Library and the drive template gallery's admin hints stay on the web; iOS installs Workspace skills by URL or zip and adds, edits, signs in and reconnects drives. |
-| **Workspace overview links** | On the web each line of a Bot card opens where it points (a chat, the Dashboard's questions, the Feed). On iOS the card opens the Bot and a live conversation opens that chat; the questions and Feed counts are words only. |
 | **Setup offers for channels and drives** | A Bot's offer to add a channel or a drive needs that form (sign-in, QR, target picker), so iOS opens the chat on the web client and has "I set it up". A library connector offer is added on iOS with its default settings (the Bot's prefilled name and rule are not applied). |
 | **Desktop pause** (`SetDesktopPaused`) | The pause switch sits in the Desktop pane, which is web-only. |
 | **Ctrl/⌘-click answers** | On the web a modified click answers a Dashboard question in a chat of its own; iOS answers in the main chat (the Feed has "Reply in a new chat"). |
@@ -23,3 +22,29 @@ The iOS client aims for parity with the web client. These pieces are deliberatel
 Everything else on a Bot is in scope and on iOS: the main chat, questions and setup offers in the thread, slash commands (the `/` menu, `/clear`, `/wipe` with its confirm), older pages of a long thread, shared Bots (the Team group, read-only chats, authors, once-only approvals), Proactivity, Dashboard (with ideas), Automations, Artifacts, Memories, Knowledge, Feed, Files, Changes (workspace diffs with restore, and the drive journal), Mail (inbox and the Settings panel), Channels, Settings (General with the time zone, People, Rules for Calls and Results with the Workspace's floors, Secrets, Tunnels, Containers, Audit, and Workspace for moving the Bot).
 
 Workspaces are on iOS too: the switcher on the sidebar's tile (and New workspace), the crests of the current Workspace only, New Bot in it (interview, what it can use, who can use it), and the Workspace page: the overview, Connectors, Skills, Drives, People (roles, invite links, remove and leave with the hand-off of Bots only they manage), Rules, Activity and Settings (name and letters, leave, transfer, Other Bots, delete).
+
+## Behind the web
+
+Not decisions, just not done yet:
+
+- Secrets: surrogate mode, hosts, rotate.
+- Rules: the Network card. Audit: the Traffic tab.
+- Channels: Setup and Log.
+- Settings: Language and the SOUL counter. Account: Language and Set password. Single sign-on.
+- Changes: chat links, and Undo on Now.
+- Dashboard: Look again, Arrange, the inline ask form.
+- Automations: Stop, Edit and live state in the log.
+- Subagents: the Taskboard page.
+- Artifacts: Share and Save skill.
+- Offer cards: the provider's mark.
+
+## Not yet run on a phone
+
+Everything here compiles and was checked as far as a simulator goes; none of it has met real hardware.
+
+- A call's microphone: voice processing, Silero on a real voice, barge-in over the speaker. Barge-in may land about 100 ms later than on the web: a tap delivers audio in bursts of that size. An `AVAudioSinkNode` would fix it, but it is realtime code that wants a phone to test on.
+- A real interruption. Recovery was tested on a simulator by stopping the engine and posting the notifications, not with a phone call or Siri.
+- CallKit, the earpiece at your ear, the route picker with AirPods and in a car.
+- The Dynamic Island's and Lock Screen's look (the views are in the debug gallery; the system accepts and renders the activity).
+- Widgets on the Home Screen, controls, the Action Button, quick actions, the share sheet, notifications with Allow and Deny, background refresh.
+- Signing: set a team, then check the App Group it derives.

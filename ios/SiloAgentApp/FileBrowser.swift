@@ -52,67 +52,55 @@ struct FileBrowser: View {
     @State private var newFolder = false
     @State private var folderName = ""
     @State private var importing = false
+    @State private var pickingPhotos = false
     @State private var photos: [PhotosPickerItem] = []
     @State private var deleting: Silo_V1_FileEntry?
+    @State private var confirmDelete = false
+    @State private var seen = FirstSeen()
+    /// Counts what changed here, for the haptic.
+    @State private var changed = 0
 
     private var editable: Bool { source.workspaceBotID != nil }
 
     var body: some View {
-        List {
-            if let failure { Text(failure).foregroundStyle(Theme.vermilion) }
-            ForEach(entries, id: \.path) { entry in
-                if entry.dir {
-                    NavigationLink {
-                        FileBrowser(source: source, path: entry.path)
-                    } label: {
-                        Label(entry.name, systemImage: "folder").foregroundStyle(.primary)
+        PageScroll(spacing: 12) {
+            if let failure { ErrorLine(text: failure) }
+            if !loaded {
+                SkeletonRows(count: 6)
+            } else if entries.isEmpty {
+                if failure == nil {
+                    EmptyWell(symbol: "folder", title: "Empty", message: editable ? "Upload a file or make a folder." : nil)
+                }
+            } else {
+                Panel {
+                    ForEach(entries, id: \.path) { entry in
+                        row(entry).rise(when: seen.isNew(entry.path))
                     }
-                    .swipeActions { deleteAction(entry) }
-                } else {
-                    NavigationLink {
-                        FilePreviewPage(source: source, path: entry.path, name: entry.name)
-                    } label: {
-                        HStack {
-                            Label(entry.name, systemImage: symbol(entry.name))
-                            Spacer()
-                            Text(formatBytes(entry.size)).font(.silo(.caption)).foregroundStyle(.secondary)
-                        }
-                    }
-                    .swipeActions { deleteAction(entry) }
                 }
             }
         }
-        .overlay {
-            if loaded && entries.isEmpty && failure == nil {
-                ContentUnavailableView("Empty", systemImage: "folder", description: Text(editable ? "Upload a file or make a folder." : ""))
-            }
-        }
-        .navigationTitle(path.isEmpty ? source.rootLabel : (path.split(separator: "/").last.map(String.init) ?? path))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
+        .pageActions {
             if editable {
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button { folderName = ""; newFolder = true } label: { Label("New Folder", systemImage: "folder.badge.plus") }
-                        Button { importing = true } label: { Label("Upload File", systemImage: "arrow.up.doc") }
-                        PhotosPicker(selection: $photos, maxSelectionCount: 5, matching: .images) {
-                            Label("Upload Photo", systemImage: "photo")
-                        }
-                    } label: { Label("Add", systemImage: "plus") }
+                SiloMenu {
+                    MenuRow(title: "New folder", symbol: "folder.badge.plus") { folderName = ""; newFolder = true }
+                    MenuRow(title: "Upload file", symbol: "arrow.up.doc") { importing = true }
+                    MenuRow(title: "Upload photo", symbol: "photo") { pickingPhotos = true }
+                } label: {
+                    Image(systemName: "plus").font(.system(size: 16)).foregroundStyle(Theme.ink2).frame(width: 40, height: 40)
                 }
+                .accessibilityLabel("Add")
             }
         }
         .refreshable { await load() }
         .task(id: path + (model.selectedBotID ?? "")) { await load() }
-        .alert("New folder", isPresented: $newFolder) {
-            TextField("Name", text: $folderName)
-            Button("Cancel", role: .cancel) {}
-            Button("Create") { Task { await makeFolder() } }
+        .promptSlip($newFolder, title: "New folder", prompt: "Name", action: "Create", text: $folderName) {
+            Task { await makeFolder() }
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             guard case .success(let urls) = result else { return }
             Task { for url in urls { await upload(url) } }
         }
+        .photosPicker(isPresented: $pickingPhotos, selection: $photos, maxSelectionCount: 5, matching: .images)
         .onChange(of: photos) { _, items in
             guard !items.isEmpty else { return }
             photos = []
@@ -124,18 +112,49 @@ struct FileBrowser: View {
                 }
             }
         }
-        .confirmationDialog("Delete this item?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible, presenting: deleting) { entry in
-            Button("Delete \(entry.name)", role: .destructive) { Task { await remove(entry) } }
-        } message: { entry in
-            Text(entry.dir ? "The folder and everything in it is removed." : "This cannot be undone.")
+        .confirmSlip($confirmDelete, title: "Delete \(deleting?.name ?? "this item")?",
+                     message: deleting?.dir == true ? "The folder and everything in it is removed." : "This cannot be undone.",
+                     action: "Delete") {
+            if let entry = deleting { Task { await remove(entry) } }
+        }
+        .sensoryFeedback(.success, trigger: changed)
+    }
+
+    /// The link stops short of the row's end: a menu inside a link would open the link.
+    private func row(_ entry: Silo_V1_FileEntry) -> some View {
+        HStack(spacing: 0) {
+            NavigationLink {
+                if entry.dir {
+                    SiloPage(title: entry.name, subtitle: trail(to: entry)) { FileBrowser(source: source, path: entry.path) }
+                } else {
+                    SiloPage(title: entry.name, subtitle: trail(to: entry)) { FilePreviewPage(source: source, path: entry.path, name: entry.name) }
+                }
+            } label: {
+                PanelRow(symbol: entry.dir ? "folder" : symbol(entry.name), title: entry.name, chevron: entry.dir, trailing: {
+                    if !entry.dir {
+                        Text(formatBytes(entry.size)).font(.siloMono(12)).foregroundStyle(Theme.ink3)
+                    }
+                })
+            }
+            .buttonStyle(RowPressStyle())
+            if editable {
+                SiloMenu {
+                    MenuRow(title: "Delete", symbol: "trash", destructive: true) {
+                        deleting = entry
+                        confirmDelete = true
+                    }
+                } label: {
+                    Image(systemName: "ellipsis").font(.system(size: 14)).foregroundStyle(Theme.ink3).frame(width: 40, height: 40)
+                }
+                .accessibilityLabel("Actions for \(entry.name)")
+                .padding(.trailing, 4)
+            }
         }
     }
 
-    @ViewBuilder
-    private func deleteAction(_ entry: Silo_V1_FileEntry) -> some View {
-        if editable {
-            Button(role: .destructive) { deleting = entry } label: { Label("Delete", systemImage: "trash") }
-        }
+    /// Where a pushed page is, for its head: "Workspace / reports".
+    private func trail(to entry: Silo_V1_FileEntry) -> String {
+        ([source.rootLabel] + entry.path.split(separator: "/").dropLast().map(String.init)).joined(separator: " / ")
     }
 
     private func symbol(_ name: String) -> String {
@@ -153,7 +172,9 @@ struct FileBrowser: View {
     private func load() async {
         do {
             let list = try await source.list(path)
-            entries = list.sorted { ($0.dir ? 0 : 1, $0.name.lowercased()) < ($1.dir ? 0 : 1, $1.name.lowercased()) }
+            let sorted = list.sorted { ($0.dir ? 0 : 1, $0.name.lowercased()) < ($1.dir ? 0 : 1, $1.name.lowercased()) }
+            seen.note(sorted.map(\.path))
+            withAnimation(loaded ? Motion.state : nil) { entries = sorted }
             failure = nil
         } catch {
             failure = (error as? SiloError)?.errorDescription ?? error.localizedDescription
@@ -167,7 +188,10 @@ struct FileBrowser: View {
     private func makeFolder() async {
         let name = folderName.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "/", with: "_")
         guard let botID = source.workspaceBotID, !name.isEmpty else { return }
-        do { try await model.client.mkdir(botID: botID, path: child(name)) } catch { await model.report(error) }
+        do {
+            try await model.client.mkdir(botID: botID, path: child(name))
+            changed += 1
+        } catch { await model.report(error) }
         await load()
     }
 
@@ -181,18 +205,25 @@ struct FileBrowser: View {
     private func put(name: String, data: Data) async {
         guard let botID = source.workspaceBotID else { return }
         guard data.count <= 50 << 20 else { model.errorMessage = "\(name) is larger than 50 MB"; return }
-        do { try await model.client.putFile(botID: botID, path: child(name.replacingOccurrences(of: "/", with: "_")), data: data) } catch { await model.report(error) }
+        do {
+            try await model.client.putFile(botID: botID, path: child(name.replacingOccurrences(of: "/", with: "_")), data: data)
+            changed += 1
+        } catch { await model.report(error) }
         await load()
     }
 
     private func remove(_ entry: Silo_V1_FileEntry) async {
         guard let botID = source.workspaceBotID else { return }
-        do { try await model.client.removeFile(botID: botID, path: entry.path) } catch { await model.report(error) }
+        do {
+            try await model.client.removeFile(botID: botID, path: entry.path)
+            changed += 1
+        } catch { await model.report(error) }
         await load()
     }
 }
 
-/// One file: image inline, text in a well, anything else through QuickLook.
+/// One file: image inline, text in a well, anything else through QuickLook. Wrapped in a `SiloPage`
+/// where it is pushed.
 struct FilePreviewPage: View {
     let source: FsSource
     let path: String
@@ -202,32 +233,32 @@ struct FilePreviewPage: View {
     @State private var preview: URL?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                if let failure {
-                    Text(failure).foregroundStyle(Theme.vermilion)
-                } else if let file {
-                    if file.truncated { Text("Showing the first 2 MB.").font(.silo(.footnote)).foregroundStyle(.secondary) }
-                    if !file.data.isEmpty, let image = UIImage(data: file.data) {
-                        Image(uiImage: image).resizable().scaledToFit().clipShape(RoundedRectangle(cornerRadius: 8))
-                    } else if !file.binary {
-                        if name.lowercased().hasSuffix(".md") { ProseView(text: file.content) } else { CodeWell(code: file.content, language: nil) }
-                    } else {
-                        ContentUnavailableView("No preview", systemImage: "doc", description: Text("Open the file to view it."))
-                    }
+        PageScroll(spacing: 12) {
+            if let failure {
+                ErrorLine(text: failure)
+            } else if let file {
+                if file.truncated { Text("Showing the first 2 MB.").font(.silo(12.5)).foregroundStyle(Theme.ink3) }
+                if !file.data.isEmpty, let image = UIImage(data: file.data) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
+                } else if !file.binary {
+                    if name.lowercased().hasSuffix(".md") { ProseView(text: file.content) } else { CodeWell(code: file.content, language: nil) }
                 } else {
-                    ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
+                    EmptyWell(symbol: "doc", title: "No preview", message: "Open the file to view it.") {
+                        Button("Open") { open() }.buttonStyle(.quiet).controlSize(.small)
+                    }
                 }
+            } else {
+                SkeletonRows(count: 5, height: 20)
             }
-            .padding()
         }
-        .navigationTitle(name)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
+        .pageActions {
             if file != nil {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { open() } label: { Label("Open", systemImage: "arrow.up.forward.square") }
-                }
+                Button { open() } label: { Image(systemName: "arrow.up.forward.square") }
+                    .buttonStyle(.glyph)
+                    .accessibilityLabel("Open")
             }
         }
         .quickLookPreview($preview)
@@ -253,7 +284,7 @@ struct FilesPage: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        if model.selectedBot?.workerConnected == true, let botID = model.selectedBotID {
+        if model.selectedBot?.machine == "online", let botID = model.selectedBotID {
             FileBrowser(source: .workspace(client: model.client, botID: botID))
                 .id(botID)
         } else {
@@ -266,15 +297,22 @@ struct FilesPage: View {
 struct NeedMachine: View {
     @Environment(AppModel.self) private var model
     let what: String
+    var copy = "Start the Bot to browse its workspace."
 
     var body: some View {
-        ContentUnavailableView {
-            Label("\(what) needs the machine", systemImage: "power")
-        } description: {
-            Text("Start the Bot to browse its workspace.")
-        } actions: {
-            Button("Start Bot") { Task { await model.startBot() } }
+        let machine = model.selectedBot?.machine ?? ""
+        PageScroll {
+            EmptyWell(symbol: "power", title: "\(what) needs the machine", message: copy) {
+                Button { Task { await model.startBot() } } label: {
+                    HStack(spacing: 8) {
+                        if machine == "starting" { Spinner(size: 14, color: Theme.ink3) }
+                        // This page only shows with the machine down, whatever the list last said.
+                        Text(powerWord(machine: machine == "online" ? "" : machine))
+                    }
+                }
                 .buttonStyle(.ink)
+                .disabled(machine == "starting")
+            }
         }
     }
 }

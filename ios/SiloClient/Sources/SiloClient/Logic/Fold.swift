@@ -7,6 +7,20 @@ public enum ToolOutcome: String, Equatable, Sendable {
     case stopped
 }
 
+/// What the owner's output rule did to a call's result.
+public struct Filtered: Equatable, Sendable {
+    public var verdict: String
+    public var mode: String
+    public var original: String
+
+    /// The one word a row carries about it.
+    public var word: String {
+        if verdict == "withheld" { return "Withheld" }
+        if verdict == "unchecked" { return "Unchecked" }
+        return mode == "flag" ? "Marked untrusted" : "Flagged"
+    }
+}
+
 /// A connector call made from Python inside an `exec_python` row.
 public struct NestedCall: Identifiable, Equatable, Sendable {
     public var id: String
@@ -16,6 +30,7 @@ public struct NestedCall: Identifiable, Equatable, Sendable {
     public var running = false
     public var waiting = false
     public var outcome: ToolOutcome?
+    public var filter: Filtered?
 }
 
 public struct ArtifactInfo: Equatable, Sendable {
@@ -51,6 +66,8 @@ public struct Block: Identifiable, Equatable, Sendable {
         /// A slash command's mark: the context started over (`cleared`) or `count` messages
         /// were deleted for good (`wiped`).
         case boundary
+        /// Where a voice call began (`source` = start) and ended (`source` = end, `count` seconds).
+        case call
     }
 
     public var id: String
@@ -70,11 +87,14 @@ public struct Block: Identifiable, Equatable, Sendable {
     public var from = ""
     /// Who wrote it, on a Bot several people use (email).
     public var author = ""
+    /// Said on a voice call: it is what was heard.
+    public var spoken = false
     // tool
     public var calls: [NestedCall] = []
     public var waiting = false
     public var approvalID = ""
     public var outcome: ToolOutcome?
+    public var filter: Filtered?
     // receipt: `decision` is allow_once / always / deny / stopped; `text` is the target
     public var decision = ""
     public var title = ""
@@ -171,6 +191,20 @@ public func foldEvents(_ events: [Silo_V1_RunEvent], first: Int = 0) -> [Block] 
             b.attachments = event.attachments
             b.from = event.tool
             b.author = event.author
+            b.spoken = event.hasSpoken
+            out.append(b)
+
+        case "call_start":
+            var b = block(.call)
+            b.source = "start"
+            out.append(b)
+
+        case "call_end":
+            // A call nobody said anything in is one line, not two.
+            if let last = out.last, last.kind == .call, last.source == "start" { out.removeLast() }
+            var b = block(.call)
+            b.source = "end"
+            b.count = Int(event.spoken.seconds)
             out.append(b)
 
         case "subagent_report":
@@ -345,6 +379,19 @@ public func foldEvents(_ events: [Silo_V1_RunEvent], first: Int = 0) -> [Block] 
             }) {
                 out[index].result = event.body
                 out[index].running = false
+            }
+
+        case "filtered":
+            // Comes while the call is still running, just before its result. `tool` is the rule's
+            // connector.action, how a call from Python is named; a chat tool has its own name.
+            let d = jsonObject(event.body)
+            guard let verdict = d["verdict"] as? String, ["flagged", "withheld", "unchecked"].contains(verdict),
+                  let index = lastRunning({ runOk($0, event.runID) }) else { continue }
+            let filter = Filtered(verdict: verdict, mode: (d["mode"] as? String) ?? "", original: (d["original"] as? String) ?? "")
+            if let call = out[index].calls.lastIndex(where: { $0.running && $0.name == event.tool }) {
+                out[index].calls[call].filter = filter
+            } else {
+                out[index].filter = filter
             }
 
         case "call":

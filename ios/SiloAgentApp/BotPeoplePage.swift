@@ -8,88 +8,100 @@ struct BotPeoplePage: View {
     @State private var people: [Silo_V1_BotPerson]?
     @State private var candidates: [Silo_V1_SpacePerson] = []
     @State private var adding = false
-    @State private var removing: Silo_V1_BotPerson?
+    @State private var seen = FirstSeen()
+    @State private var changed = 0
 
     private var bot: Silo_V1_Bot? { model.selectedBot }
     private var manage: Bool { bot?.role == "manage" }
     private var managers: Int { people?.filter { $0.role == "manage" }.count ?? 0 }
 
     var body: some View {
-        List {
-            Section {
-                ForEach(people ?? [], id: \.userID) { person in
-                    row(person)
-                }
-            } footer: {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Everyone on \(bot?.name ?? "this Bot") shares what it holds: its memory, files, machine and connections. Only its managers change what it may do.")
-                    if manage && managers <= 1 {
-                        Text("A Bot always has a manager. Make someone else a manager before you step down.")
+        PageScroll(spacing: 12) {
+            if let people {
+                PanelSection(footer: footnote) {
+                    ForEach(people, id: \.userID) { person in
+                        row(person).rise(when: seen.isNew(person.userID))
                     }
                 }
+            } else {
+                SkeletonRows(count: 2, height: 56)
             }
         }
-        .overlay { if people == nil { ProgressView() } }
-        .toolbar {
+        .pageActions {
             if manage {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { adding = true } label: { Label("Add people", systemImage: "person.badge.plus") }
-                }
+                Button { adding = true } label: { Image(systemName: "person.badge.plus") }
+                    .buttonStyle(.glyph)
+                    .accessibilityLabel("Add people")
             }
         }
         .refreshable { await load() }
         .task(id: model.selectedBotID) { await load() }
+        .sensoryFeedback(.success, trigger: changed)
         .sheet(isPresented: $adding, onDismiss: { Task { await load() } }) {
-            if let bot { AddBotPeopleSheet(botID: bot.id, candidates: candidates) }
+            if let bot {
+                AddBotPeopleSheet(botID: bot.id, candidates: candidates)
+                    .siloSheet()
+            }
         }
-        .confirmationDialog(removing?.you == true ? "Leave this Bot?" : "Remove \(removing?.email ?? "")?",
-                            isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
-                            titleVisibility: .visible, presenting: removing) { person in
-            Button(person.you ? "Leave this Bot" : "Remove", role: .destructive) { Task { await remove(person) } }
-        } message: { person in
-            Text(person.you ? "You lose access to it and its chats." : "They lose access to it. Their chats stay with the Bot.")
-        }
+    }
+
+    private var footnote: String {
+        let shared = "Everyone on \(bot?.name ?? "this Bot") shares what it holds: its memory, files, machine and connections. Only its managers change what it may do."
+        return manage && managers <= 1 ? "\(shared) A Bot always has a manager. Make someone else a manager before you step down." : shared
     }
 
     private func row(_ person: Silo_V1_BotPerson) -> some View {
         let last = person.role == "manage" && managers <= 1
-        return HStack(spacing: 12) {
+        return HStack(alignment: .top, spacing: 12) {
             Initials(email: person.email)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(person.email).font(.silo(15, .medium)).lineLimit(1).truncationMode(.middle)
-                    if person.you { Text("you").font(.silo(12)).foregroundStyle(Theme.ink3) }
-                }
-                if person.spaceRole == "guest" { Text("Guest").font(.silo(12)).foregroundStyle(Theme.ink3) }
-            }
-            Spacer(minLength: 6)
-            if manage && !last {
-                Menu {
-                    Picker("Role", selection: Binding(get: { person.role }, set: { role in Task { await setRole(person, role) } })) {
-                        Text("Can use").tag("use")
-                        Text("Can manage").tag("manage").selectionDisabled(person.spaceRole == "guest")
+            VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 6) {
+                        Text(person.email).font(.silo(13.5, .medium)).foregroundStyle(Theme.ink).lineLimit(1).truncationMode(.middle)
+                        if person.you { Text("you").font(.silo(12)).foregroundStyle(Theme.ink3).fixedSize() }
                     }
-                    if person.spaceRole == "guest" { Text("A guest can only use a Bot.") }
-                } label: {
-                    HStack(spacing: 3) {
-                        Text(roleWord(person.role))
-                        Image(systemName: "chevron.up.chevron.down").font(.system(size: 10))
+                    if person.spaceRole == "guest" { Text("Guest").font(.silo(12)).foregroundStyle(Theme.ink3) }
+                }
+                HStack(spacing: 4) {
+                    if manage && !last {
+                        roleMenu(person)
+                    } else {
+                        Chip(text: roleWord(person.role))
                     }
-                    .font(.silo(13, .medium))
-                    .foregroundStyle(Theme.ink2)
-                }
-            } else {
-                WellChip(text: roleWord(person.role))
-            }
-        }
-        .padding(.vertical, 2)
-        .swipeActions {
-            if (manage || person.you) && !last {
-                Button(role: .destructive) { removing = person } label: {
-                    Label(person.you ? "Leave" : "Remove", systemImage: "person.badge.minus")
+                    Spacer(minLength: 0)
+                    if (manage || person.you) && !last {
+                        ArmedButton(title: person.you ? "Leave this Bot" : "Remove",
+                                    armedTitle: person.you ? "Tap again to leave" : "Tap again to remove", small: true) {
+                            Task { await remove(person) }
+                        }
+                    }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
+    private func roleMenu(_ person: Silo_V1_BotPerson) -> some View {
+        SiloMenu {
+            MenuRow(title: "Can use", checked: person.role == "use") {
+                Task { await setRole(person, "use") }
+            }
+            MenuRow(title: "Can manage", detail: person.spaceRole == "guest" ? "A guest can only use a Bot." : nil,
+                    checked: person.role == "manage", enabled: person.spaceRole != "guest") {
+                Task { await setRole(person, "manage") }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(roleWord(person.role)).font(.silo(13, .medium)).foregroundStyle(Theme.ink2)
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(Theme.ink3)
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 32)
+            .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
+        }
+        .accessibilityLabel("Role of \(person.email): \(roleWord(person.role))")
     }
 
     private func roleWord(_ role: String) -> String { role == "manage" ? "Can manage" : "Can use" }
@@ -98,14 +110,18 @@ struct BotPeoplePage: View {
         guard let botID = model.selectedBotID else { return }
         do {
             let list = try await model.client.listBotPeople(botID: botID)
-            people = list.people
+            seen.note(list.people.map(\.userID))
+            withAnimation(people == nil ? nil : Motion.state) { people = list.people }
             candidates = list.candidates
         } catch { await model.report(error) }
     }
 
     private func setRole(_ person: Silo_V1_BotPerson, _ role: String) async {
         guard let botID = model.selectedBotID else { return }
-        do { try await model.client.setBotRole(botID: botID, userID: person.userID, role: role) } catch { await model.report(error) }
+        do {
+            try await model.client.setBotRole(botID: botID, userID: person.userID, role: role)
+            changed += 1
+        } catch { await model.report(error) }
         await load()
     }
 
@@ -117,6 +133,7 @@ struct BotPeoplePage: View {
                 await model.botDeleted(botID)
                 return
             }
+            changed += 1
         } catch { await model.report(error) }
         await load()
     }
@@ -136,56 +153,60 @@ private struct AddBotPeopleSheet: View {
     @State private var failure: String?
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    Picker("Role", selection: $role) {
-                        Text("Can use").tag("use")
-                        Text("Can manage").tag("manage")
-                    }
-                    .pickerStyle(.segmented)
-                } footer: {
-                    Text("A guest can only use a Bot.")
+        VStack(spacing: 0) {
+            SheetHead(title: "Add people", confirm: {
+                Button("Done") { dismiss() }.buttonStyle(.ink)
+            })
+            PageScroll(spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Segmented(options: [("use", "Can use"), ("manage", "Can manage")], selection: $role)
+                    Text("A guest can only use a Bot.").font(.silo(12.5)).foregroundStyle(Theme.ink3)
                 }
-                Section {
-                    if candidates.isEmpty {
-                        Text("Everyone in the workspace is on this Bot. Invite people from the workspace's People tab.")
-                            .font(.silo(14)).foregroundStyle(Theme.ink3)
+                if candidates.isEmpty {
+                    MachineNote(text: "Everyone in the workspace is on this Bot. Invite people from the workspace's People tab.")
+                } else {
+                    PanelSection(title: "People in the workspace") {
+                        ForEach(candidates, id: \.userID) { person in candidate(person) }
                     }
-                    ForEach(candidates, id: \.userID) { person in
-                        VStack(alignment: .leading, spacing: 6) {
-                            Button { Task { await add(person) } } label: {
-                                HStack(spacing: 10) {
-                                    Initials(email: person.email, size: 24)
-                                    Text(person.email).font(.silo(15)).foregroundStyle(Theme.ink).lineLimit(1)
-                                    if person.role == "guest" { Text("Guest").font(.silo(12)).foregroundStyle(Theme.ink3) }
-                                    Spacer()
-                                    if busy == person.userID {
-                                        ProgressView().controlSize(.small)
-                                    } else if added.contains(person.userID) {
-                                        Image(systemName: "checkmark").foregroundStyle(Theme.emerald)
-                                    } else {
-                                        Image(systemName: "plus.circle").foregroundStyle(Theme.ink3)
-                                    }
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(added.contains(person.userID) || busy != nil)
-                            if let confirm, confirm.userID == person.userID {
-                                Text("They will be able to have the Bot use secrets someone else set: \(confirm.secrets.joined(separator: ", ")). Tap again to add them.")
-                                    .font(.silo(13)).foregroundStyle(Theme.ink2)
-                                    .padding(10)
-                                    .background(Theme.well, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            }
+                }
+                if let failure { ErrorLine(text: failure) }
+            }
+        }
+        .sensoryFeedback(.success, trigger: added.count)
+    }
+
+    private func candidate(_ person: Silo_V1_SpacePerson) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button { Task { await add(person) } } label: {
+                HStack(spacing: 10) {
+                    Initials(email: person.email, size: 24)
+                    Text(person.email).font(.silo(13.5)).foregroundStyle(Theme.ink).lineLimit(1).truncationMode(.middle)
+                    if person.role == "guest" { Text("Guest").font(.silo(12)).foregroundStyle(Theme.ink3).fixedSize() }
+                    Spacer(minLength: 0)
+                    ZStack {
+                        if busy == person.userID {
+                            Spinner(size: 14)
+                        } else if added.contains(person.userID) {
+                            Image(systemName: "checkmark").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.emerald).transition(.scale(scale: 0.6).combined(with: .opacity))
+                        } else {
+                            Image(systemName: "plus").font(.system(size: 13)).foregroundStyle(Theme.ink3)
                         }
                     }
-                } header: { Text("People in the workspace") }
-                if let failure { Section { Text(failure).foregroundStyle(Theme.vermilion) } }
+                    .frame(width: 20)
+                    .animation(Motion.settle(0.28), value: added.contains(person.userID))
+                }
+                .padding(.horizontal, 14)
+                .frame(minHeight: 48)
+                .contentShape(Rectangle())
             }
-            .siloList()
-            .navigationTitle("Add people")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .buttonStyle(RowPressStyle())
+            .disabled(added.contains(person.userID) || busy != nil)
+            if let confirm, confirm.userID == person.userID {
+                MachineNote(text: "They will be able to have the Bot use secrets someone else set: \(confirm.secrets.joined(separator: ", ")). Tap again to add them.")
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 10)
+                    .transition(.rise)
+            }
         }
     }
 
@@ -198,10 +219,10 @@ private struct AddBotPeopleSheet: View {
                 botID: botID, userID: person.userID, role: person.role == "guest" ? "use" : role,
                 confirmed: confirm?.userID == person.userID)
             if !answer.confirmSecrets.isEmpty {
-                confirm = (person.userID, answer.confirmSecrets)
+                withAnimation(Motion.fold) { confirm = (person.userID, answer.confirmSecrets) }
                 return
             }
-            confirm = nil
+            withAnimation(Motion.fold) { confirm = nil }
             added.insert(person.userID)
             await model.refreshBots()
         } catch {
@@ -217,7 +238,6 @@ struct MoveBotPage: View {
     @Environment(SpaceModel.self) private var spaces
     @State private var target = ""
     @State private var plan: Silo_V1_MoveBotPlan?
-    @State private var confirming = false
     @State private var busy = false
     @State private var failure: String?
 
@@ -227,46 +247,42 @@ struct MoveBotPage: View {
     }
 
     var body: some View {
-        Form {
-            Section {
+        PageScroll(spacing: 16) {
+            PanelSection(title: "In") {
                 HStack(spacing: 12) {
                     let here = bot.flatMap { spaces.space($0.spaceID) }
                     SpaceMarkView(mark: here?.mark ?? "", size: 32)
-                    Text(here?.name ?? "Workspace").font(.silo(16, .medium))
+                    Text(here?.name ?? "Workspace").font(.silo(15, .medium)).foregroundStyle(Theme.ink)
                 }
-            } header: { Text("In") }
+                .padding(.horizontal, 14)
+                .frame(minHeight: 52)
+            }
             if bot?.role != "manage" {
-                Section { Text("Only a manager of this Bot can move it.").foregroundStyle(Theme.ink2) }
+                MachineNote(text: "Only a manager of this Bot can move it.")
             } else if targets.isEmpty {
-                Section {
-                    Text("There is no other workspace you can make Bots in.").foregroundStyle(Theme.ink2)
-                }
+                MachineNote(text: "There is no other workspace you can make Bots in.")
             } else {
-                Section {
-                    Picker("Move to", selection: $target) {
-                        Text("Choose a workspace").tag("")
-                        ForEach(targets) { Text($0.name).tag($0.id) }
-                    }
-                } header: { Text("Move to another workspace") } footer: {
-                    Text(plan.map { moveSummary(connectors: $0.connectors, drives: $0.drives, skills: $0.skills, people: $0.people) }
-                         ?? "Its machine, files, memories, chats, rules and secrets go with it.")
-                }
-                if !target.isEmpty {
-                    Section {
-                        Button(busy ? "Moving…" : "Move", role: .destructive) { confirming = true }
+                PanelSection(title: "Move to another workspace",
+                             footer: plan.map { moveSummary(connectors: $0.connectors, drives: $0.drives, skills: $0.skills, people: $0.people) }
+                                 ?? "Its machine, files, memories, chats, rules and secrets go with it.") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        SiloPicker(options: [(value: "", label: "Choose a workspace")] + targets.map { (value: $0.id, label: $0.name) }, selection: $target)
+                        if !target.isEmpty {
+                            ArmedButton(title: busy ? "Moving…" : "Move", armedTitle: "Tap again to move to \(spaces.space(target)?.name ?? "the workspace")", wide: true) {
+                                Task { await move() }
+                            }
                             .disabled(busy || plan == nil)
+                            .transition(.opacity)
+                        }
                     }
+                    .padding(14)
+                    .animation(Motion.fold, value: target.isEmpty)
                 }
             }
-            if let failure { Section { Text(failure).foregroundStyle(Theme.vermilion) } }
+            if let failure { ErrorLine(text: failure) }
         }
         .task { await spaces.load() }
         .task(id: target) { await loadPlan() }
-        .confirmationDialog("Move \(bot?.name ?? "this Bot")?", isPresented: $confirming, titleVisibility: .visible) {
-            Button("Move to \(spaces.space(target)?.name ?? "the workspace")", role: .destructive) { Task { await move() } }
-        } message: {
-            Text(plan.map { moveSummary(connectors: $0.connectors, drives: $0.drives, skills: $0.skills, people: $0.people) } ?? "")
-        }
     }
 
     private func loadPlan() async {

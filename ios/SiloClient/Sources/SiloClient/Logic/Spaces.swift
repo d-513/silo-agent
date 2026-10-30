@@ -115,20 +115,20 @@ public enum SpaceTab: String, CaseIterable, Sendable, Hashable, Identifiable {
 /// Where a Bot stands on the overview. A question waiting on the Dashboard is not Needs you:
 /// nothing is paused on it, so it sorts after the approvals.
 public enum BotMood: Int, Comparable, Sendable {
-    case needsYou, asks, working, online, stopped
+    case needsYou, asks, working, resting
 
     public static func < (a: BotMood, b: BotMood) -> Bool { a.rawValue < b.rawValue }
 
     /// Needs you, questions and at work are "Now"; the rest rest.
-    public var isNow: Bool { self < .online }
+    public var isNow: Bool { self < .resting }
 }
 
-public func botMood(status: String, asks: Int, live: Int) -> BotMood {
+/// A Bot's standing on the overview. A question on the Dashboard is not Needs you: nothing is
+/// paused on it, so it sorts after the approvals.
+public func botMood(status: String, asks: Int) -> BotMood {
     if status == "needs_you" { return .needsYou }
     if asks > 0 { return .asks }
-    if status == "working" || live > 0 { return .working }
-    if status == "stopped" || status.isEmpty || status == "error" { return .stopped }
-    return .online
+    return status == "online" || status == "stopped" || status.isEmpty ? .resting : .working
 }
 
 /// The overview's two groups, each in mood order and otherwise in the order given.
@@ -150,8 +150,7 @@ public func overviewPulse(moods: [BotMood], asks: Int) -> [(mood: BotMood, words
         (.needsYou, count(.needsYou), plural(count(.needsYou), "need you", "need you")),
         (.asks, asks, plural(asks, "question", "questions")),
         (.working, count(.working), "\(count(.working)) at work"),
-        (.online, count(.online), "\(count(.online)) resting"),
-        (.stopped, count(.stopped), "\(count(.stopped)) switched off"),
+        (.resting, count(.resting), "\(count(.resting)) resting"),
     ]
     return parts.filter { $0.1 > 0 }.map { ($0.0, $0.2) }
 }
@@ -165,6 +164,7 @@ public func activitySource(kind: String, title: String) -> String {
     case "automation": return "Automation “\(title)”"
     case "channel": return "Channel “\(title)”"
     case "subagent": return title.isEmpty ? "Subagent" : title
+    case "hidden": return "Someone else's chat"
     default: return title.isEmpty ? "New chat" : title
     }
 }

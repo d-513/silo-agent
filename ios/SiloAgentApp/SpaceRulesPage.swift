@@ -13,52 +13,44 @@ struct SpaceRulesPage: View {
     @State private var query = ""
     @State private var approval = ""
     @State private var output = ""
+    /// Which sections are open; the Bot's starts open, and a filter opens them all.
+    @State private var opened: [String: Bool] = ["bot": true]
 
     private static let callModes: [(String, String)] = [("allow", "Allow"), ("auto", "Auto"), ("ask", "Ask"), ("deny", "Deny")]
-    private static let outputModes: [(String, String)] = [("pass", "Pass"), ("flag", "Flag"), ("check", "Check"), ("withhold", "Withhold")]
+    private static let outputModes: [(String, String)] = [("pass", "Pass"), ("check", "Check"), ("flag", "Flag"), ("withhold", "Withhold")]
     private var modes: [(String, String)] { side == .output ? Self.outputModes : Self.callModes }
 
     var body: some View {
-        List {
-            Section {
-                Picker("Side", selection: $side) {
-                    Text("Calls").tag(RuleSide.decision)
-                    Text("Results").tag(RuleSide.output)
+        PageScroll(spacing: 14) {
+            Segmented(options: [(value: RuleSide.decision, label: "Calls"), (value: RuleSide.output, label: "Results")], selection: $side.animation(Motion.state))
+            Text(side == .output
+                 ? "The least each Bot in this workspace must do with a result before reading it. Pass leaves it to each Bot."
+                 : "The least strict each Bot in this workspace may be. Set Ask on an action and no Bot can Allow it; Allow leaves it to each Bot.")
+                .font(.silo(13.5))
+                .foregroundStyle(Theme.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 4)
+            if list == nil {
+                SkeletonRows(count: 5, height: 52)
+            } else {
+                policy
+                if total > 5 {
+                    SearchBox(prompt: "Filter actions", text: $query) {}
                 }
-                .pickerStyle(.segmented)
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-            } footer: {
-                Text(side == .output
-                     ? "The least each Bot in this workspace must do with a result before reading it. Pass leaves it to each Bot."
-                     : "The least strict each Bot in this workspace may be. Set Ask on an action and no Bot can Allow it; Allow leaves it to each Bot.")
-            }
-            if list != nil { policy }
-            ForEach(filtered, id: \.id) { section in
-                Section {
-                    ForEach(section.rules, id: \.key) { rule in
-                        RuleRow(rule: rule, side: side, modes: modes, workspace: false) { value in Task { await set([rule], value) } }
+                ForEach(filtered, id: \.id) { section in
+                    GuardrailCard(section: section, side: side, modes: modes, open: !query.isEmpty || opened[section.id] == true) {
+                        withAnimation(Motion.fold) { opened[section.id] = !(opened[section.id] ?? false) }
+                    } setAll: { value in
+                        Task { await set(section.rules, value) }
+                    } setRule: { rule, value in
+                        Task { await set([rule], value) }
                     }
-                } header: {
-                    HStack(spacing: 8) {
-                        RuleSectionMark(section: section)
-                        Text(section.title)
-                        Spacer()
-                        Menu("All") {
-                            ForEach(modes, id: \.0) { mode in
-                                Button(mode.1) { Task { await set(section.rules, mode.0) } }
-                                    .disabled(!section.rules.allSatisfy { ruleModeAllowed(mode.0, floor: ruleFloor($0, side: side, workspace: false), side: side) })
-                            }
-                        }
-                        .font(.silo(.footnote))
-                        .textCase(nil)
-                    }
+                }
+                if filtered.isEmpty, !query.isEmpty {
+                    EmptyWell(title: "Nothing matches “\(query)”.")
                 }
             }
         }
-        .siloList()
-        .searchable(text: $query, prompt: "Filter actions")
-        .overlay { if list == nil { ProgressView() } }
         .refreshable { await load() }
         .task(id: spaces.currentID) { await load() }
     }
@@ -67,35 +59,42 @@ struct SpaceRulesPage: View {
     private var policy: some View {
         let results = side == .output
         let saved = results ? (list?.outputPolicy ?? "") : (list?.approvalPolicy ?? "")
-        Section {
-            TextField(results ? "e.g. Withhold anything that asks the Bot to send company data elsewhere."
-                              : "e.g. Never auto-approve sending mail outside the company.",
-                      text: results ? $output : $approval, axis: .vertical)
-                .lineLimit(3...10)
-            if (results ? output : approval) != saved {
-                Button("Save Policy") { Task { await savePolicy() } }
+        let text = results ? $output : $approval
+        PanelSection(
+            title: results ? "Output policy for every Bot" : "Auto-approve policy for every Bot",
+            footer: results
+                ? "Read by the output filter for every Bot in this workspace, before the Bot's own policy. Say what no Bot here should be fed."
+                : "Read by auto-approval for every Bot in this workspace, before the Bot's own policy. Say what no Bot here may do without a person."
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                MachineEditor(
+                    prompt: results ? "e.g. Withhold anything that asks the Bot to send company data elsewhere."
+                                    : "e.g. Never auto-approve sending mail outside the company.",
+                    text: text, mono: true)
+                SaveButton(title: "Save policy", enabled: text.wrappedValue != saved) { await savePolicy() }
+                    .controlSize(.small)
             }
-        } header: {
-            Text(results ? "Output policy for every Bot" : "Auto-approve policy for every Bot")
-        } footer: {
-            Text(results
-                 ? "Read by the output filter for every Bot in this workspace, before the Bot's own policy. Say what no Bot here should be fed."
-                 : "Read by auto-approval for every Bot in this workspace, before the Bot's own policy. Say what no Bot here may do without a person.")
+            .padding(12)
         }
     }
 
-    private var filtered: [Silo_V1_RuleSection] {
-        var sections = list?.sections ?? []
-        if side == .output {
-            sections = sections.compactMap { s in
-                var copy = s
-                copy.rules = s.rules.filter { !$0.output.isEmpty }
-                return copy.rules.isEmpty ? nil : copy
-            }
+    /// The sections this side shows: only actions whose result the Bot reads have an output rule.
+    private var sided: [Silo_V1_RuleSection] {
+        let sections = list?.sections ?? []
+        guard side == .output else { return sections }
+        return sections.compactMap { s in
+            var copy = s
+            copy.rules = s.rules.filter { !$0.output.isEmpty }
+            return copy.rules.isEmpty ? nil : copy
         }
+    }
+
+    private var total: Int { sided.reduce(0) { $0 + $1.rules.count } }
+
+    private var filtered: [Silo_V1_RuleSection] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !q.isEmpty else { return sections }
-        return sections.compactMap { section in
+        guard !q.isEmpty else { return sided }
+        return sided.compactMap { section in
             var copy = section
             if section.title.lowercased().contains(q) { return copy }
             copy.rules = section.rules.filter { ($0.title + " " + $0.action + " " + $0.connector).lowercased().contains(q) }
@@ -142,8 +141,8 @@ struct SpaceRulesPage: View {
         list?.sections = sections
     }
 
-    private func savePolicy() async {
-        guard let spaceID = spaces.currentID else { return }
+    private func savePolicy() async -> Bool {
+        guard let spaceID = spaces.currentID else { return false }
         do {
             // Only the side shown is saved; the other keeps what is stored.
             let results = side == .output
@@ -153,6 +152,82 @@ struct SpaceRulesPage: View {
                 output: results ? output : (list?.outputPolicy ?? ""))
             list = fresh
             if results { output = fresh.outputPolicy } else { approval = fresh.approvalPolicy }
-        } catch { await model.report(error) }
+            return true
+        } catch {
+            await model.report(error)
+            return false
+        }
+    }
+}
+
+/// One section as the Bot's Rules page draws it, read as floors: the fold, the action count, All,
+/// then the rows. A Workspace's own floor is the value here, so only the operator's limits it.
+private struct GuardrailCard: View {
+    let section: Silo_V1_RuleSection
+    let side: RuleSide
+    let modes: [(String, String)]
+    let open: Bool
+    let toggle: () -> Void
+    let setAll: (String) -> Void
+    let setRule: (Silo_V1_Rule, String) -> Void
+
+    /// The section's one value, or nothing while its rules differ.
+    private var shared: String {
+        let values = section.rules.map { side == .output ? $0.output : $0.decision }
+        guard let first = values.first, values.allSatisfy({ $0 == first }) else { return "" }
+        return first
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button(action: toggle) {
+                HStack(alignment: .top, spacing: 10) {
+                    MachineChevron(open: open).padding(.top, 6)
+                    RuleSectionMark(section: section)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 8) {
+                            Text(section.title).font(.silo(15, .medium)).foregroundStyle(Theme.ink).lineLimit(1)
+                            Text(section.rules.count == 1 ? "1 action" : "\(section.rules.count) actions")
+                                .font(.siloMono(11))
+                                .foregroundStyle(Theme.ink3)
+                                .padding(.horizontal, 6)
+                                .frame(height: 20)
+                                .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous))
+                                .fixedSize()
+                        }
+                        let summary = side == .output ? section.outputSummary : section.summary
+                        if !summary.isEmpty {
+                            Text(summary).font(.silo(12.5)).foregroundStyle(Theme.ink2).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(RowPressStyle())
+            .accessibilityValue(open ? "Open" : "Closed")
+            if !section.rules.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    SectionLabel(text: shared.isEmpty ? "All · mixed" : "All")
+                    RuleSegment(modes: modes, value: shared, side: side, small: true,
+                                allowed: { mode in section.rules.allSatisfy { ruleModeAllowed(mode, floor: ruleFloor($0, side: side, workspace: false), side: side) } },
+                                set: setAll)
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 12)
+            }
+            if open {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(section.rules, id: \.key) { rule in
+                        Theme.line.frame(height: 1)
+                        RuleRow(rule: rule, side: side, modes: modes, workspace: false) { setRule(rule, $0) }
+                    }
+                }
+                .transition(.opacity)
+            }
+        }
+        .machineFolio()
     }
 }

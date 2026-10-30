@@ -2,32 +2,56 @@ import SiloClient
 import SwiftUI
 import UIKit
 
-/// A connector's own mark (`/connectors/<id>/image`, cookie auth), or the plug when it has none.
+/// A connector's own mark (`/connectors/<id>/image`, cookie auth), or the plug when it has none. A
+/// logo is drawn for a light page, so in the dark it keeps a paper tile: a 2pt halo, so nothing moves.
 struct ConnectorMark: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorScheme) private var scheme
     let id: String
     let hasImage: Bool
     var size: CGFloat = 28
     @State private var image: UIImage?
+    @State private var missing = false
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: size >= 28 ? Theme.Radius.sm : Theme.Radius.xs, style: .continuous)
+    }
 
     var body: some View {
-        Group {
+        ZStack {
             if let image {
-                Image(uiImage: image).resizable().scaledToFill()
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .background(scheme == .dark ? Theme.onHatch : .clear)
+                    .clipShape(shape)
+                    .background { if scheme == .dark { shape.inset(by: -2).fill(Theme.onHatch) } }
+                    .transition(.opacity)
             } else {
-                Image(systemName: "powerplug")
-                    .font(.system(size: size * 0.5))
-                    .foregroundStyle(Theme.ink2)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Theme.well)
+                // A mark on its way reserves the tile; the plug is only for a connector with none.
+                shape.fill(Theme.well)
+                if !hasImage || missing {
+                    Image(systemName: "powerplug")
+                        .font(.system(size: size * 0.45))
+                        .foregroundStyle(Theme.ink3)
+                        .transition(.opacity)
+                }
             }
         }
         .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         .accessibilityHidden(true)
         .task(id: id) {
             guard hasImage, !id.isEmpty else { return }
-            image = await MarkCache.shared.image(id: id, client: model.client)
+            if let held = MarkCache.shared.held(id) {
+                image = held
+                return
+            }
+            let fetched = await MarkCache.shared.image(id: id, client: model.client)
+            withAnimation(Motion.quiet(0.2)) {
+                image = fetched
+                missing = fetched == nil
+            }
         }
     }
 }
@@ -37,6 +61,8 @@ struct ConnectorMark: View {
 private final class MarkCache {
     static let shared = MarkCache()
     private var images: [String: UIImage] = [:]
+
+    func held(_ id: String) -> UIImage? { images[id] }
 
     func image(id: String, client: SiloClient) async -> UIImage? {
         if let hit = images[id] { return hit }
@@ -59,7 +85,7 @@ struct RuleSectionMark: View {
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Theme.ink2)
                 .frame(width: 22, height: 22)
-                .background(Theme.well, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous))
                 .accessibilityHidden(true)
         }
     }

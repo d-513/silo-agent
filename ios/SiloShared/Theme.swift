@@ -1,3 +1,4 @@
+import SiloClient
 import SwiftUI
 import UIKit
 
@@ -25,6 +26,12 @@ enum Theme {
     static let ink3 = adaptive(light: 0x6B6862, dark: 0x9B9891)
     /// A label on an ink fill.
     static let onInk = adaptive(light: 0xFFFFFF, dark: 0x171615)
+    /// A label on a cobalt, emerald or vermilion fill.
+    static let onAccent = adaptive(light: 0xFFFFFF, dark: 0x171615)
+    /// Text on the hatch, which is dark in both themes.
+    static let onHatch = Color(uiColor: UIColor(hex: 0xFAF9F7))
+    /// Hover and press of an ink fill.
+    static let inkDeep = adaptive(light: 0x000000, dark: 0xFFFFFF)
 
     /// The page.
     static let canvas = adaptive(light: 0xFAF9F7, dark: 0x171615)
@@ -38,13 +45,30 @@ enum Theme {
     static let line = adaptive(light: 0x1A1917, dark: 0xEDEBE6, alpha: (0.09, 0.10))
     static let lineStrong = adaptive(light: 0x1A1917, dark: 0xEDEBE6, alpha: (0.16, 0.18))
     /// Dark inset for code, terminal, and preview wells (the "hatch").
-    static let hatch = Color(uiColor: UIColor(hex: 0x141413))
+    static let hatch = adaptive(light: 0x141413, dark: 0x0E0E0D)
+    static let matte = adaptive(light: 0x0E0E0D, dark: 0x080808)
+    /// Shadows: heavier in the dark, where the ring does the seating.
+    static let shade = adaptive(light: 0x14120E, dark: 0x000000)
 
-    /// Corner radii from `DESIGN.md` (`control`, `card`, `bubble`).
+    /// Corner radii from `DESIGN.md`.
     enum Radius {
-        static let control: CGFloat = 12
-        static let card: CGFloat = 18
-        static let bubble: CGFloat = 20
+        static let xs: CGFloat = 6
+        static let sm: CGFloat = 8
+        static let control: CGFloat = 10
+        static let card: CGFloat = 14
+        static let panel: CGFloat = 16
+        static let composer: CGFloat = 18
+        static let bubble: CGFloat = 18
+    }
+
+    /// A status word's color.
+    static func color(_ tone: WordTone) -> Color {
+        switch tone {
+        case .emerald: return emerald
+        case .vermilion: return vermilion
+        case .ink2: return ink2
+        case .ink3: return ink3
+        }
     }
 }
 
@@ -113,59 +137,4 @@ extension View {
         self.padding(padding)
             .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
     }
-
-    /// A grouped list on paper: canvas behind, surface rows, Geist type.
-    func siloList() -> some View {
-        self.listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
-            .background(Theme.canvas.ignoresSafeArea())
-            .font(.silo(16))
-    }
-}
-
-// MARK: - Buttons
-
-/// The primary action: an ink fill (never a blue one).
-struct InkButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var enabled
-    @Environment(\.controlSize) private var size
-
-    func makeBody(configuration: Configuration) -> some View {
-        let small = size == .small || size == .mini
-        configuration.label
-            .font(.silo(small ? 13 : 15, .medium))
-            .foregroundStyle(Theme.onInk)
-            .padding(.horizontal, small ? 12 : 16)
-            .frame(minHeight: small ? 32 : 44)
-            .background(Theme.ink.opacity(enabled ? 1 : 0.35), in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .opacity(configuration.isPressed ? 0.85 : 1)
-    }
-}
-
-/// A secondary action: a well fill with ink (or a tint such as vermilion for Deny) type.
-struct QuietButtonStyle: ButtonStyle {
-    var tint: Color = Theme.ink
-    @Environment(\.isEnabled) private var enabled
-    @Environment(\.controlSize) private var size
-
-    func makeBody(configuration: Configuration) -> some View {
-        let small = size == .small || size == .mini
-        configuration.label
-            .font(.silo(small ? 13 : 15, .medium))
-            .foregroundStyle(tint.opacity(enabled ? 1 : 0.4))
-            .padding(.horizontal, small ? 12 : 16)
-            .frame(minHeight: small ? 32 : 44)
-            .background(configuration.isPressed ? Theme.pressed : Theme.well,
-                        in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
-    }
-}
-
-extension ButtonStyle where Self == InkButtonStyle {
-    static var ink: InkButtonStyle { InkButtonStyle() }
-}
-
-extension ButtonStyle where Self == QuietButtonStyle {
-    static var quiet: QuietButtonStyle { QuietButtonStyle() }
-    static func quiet(tint: Color) -> QuietButtonStyle { QuietButtonStyle(tint: tint) }
 }

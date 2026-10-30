@@ -287,6 +287,24 @@ extension SiloClient {
         }, headers: [:]))
     }
 
+    // MARK: - Bot voice
+
+    /// The allowed speech models and the voices of `model`; empty `model` is the Bot's own.
+    public func listVoices(botID: String, model: String = "") async throws -> Silo_V1_ListVoicesResponse {
+        try unwrap(await ui.listVoices(request: .with { $0.botID = botID; $0.model = model }, headers: [:]))
+    }
+
+    /// How the Bot sounds: an empty `speechModel` follows the operator's default, an empty `voice`
+    /// picks one for the Bot's language, and a `speed` of 0 is the model's own.
+    public func setBotVoice(botID: String, speechModel: String, voice: String, speed: Double) async throws -> Silo_V1_Bot {
+        try unwrap(await ui.setBotVoice(request: .with {
+            $0.botID = botID
+            $0.speechModel = speechModel
+            $0.voice = voice
+            $0.speed = speed
+        }, headers: [:]))
+    }
+
     // MARK: - Account
 
     public func changePassword(current: String, password: String) async throws -> Silo_V1_User {

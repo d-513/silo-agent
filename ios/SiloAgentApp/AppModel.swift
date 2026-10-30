@@ -6,6 +6,12 @@ import SiloClient
 @MainActor
 @Observable
 final class AppModel {
+    /// The app's one model, for what starts outside a view: an App Intent, a quick action, a call.
+    static let shared = AppModel()
+
+    /// Reads replies aloud, one at a time.
+    let readAloud = ReadAloud()
+
     // Session
     private(set) var user: Silo_V1_User?
     private(set) var restoring = true
@@ -17,6 +23,9 @@ final class AppModel {
         didSet {
             UserDefaults.standard.set(serverURL, forKey: "serverURL")
             client = SiloClient(host: serverURL)
+            var state = SiloStore.load()
+            state.server = serverURL
+            SiloStore.save(state)
         }
     }
     /// What the person types on the welcome step, before it is checked.
@@ -48,6 +57,10 @@ final class AppModel {
     private(set) var models: [Silo_V1_ModelOption] = []
     private(set) var defaultModel = ""
     private(set) var voiceEnabled = false
+    /// Read aloud is on: voice is on and there is a speech model.
+    private(set) var speechEnabled = false
+    /// Talk is on: a speech model and speech-to-text.
+    private(set) var callEnabled = false
     private(set) var usage: Usage?
     /// Skill artifacts saved this session (the stored event still says pending).
     private(set) var savedSkillPaths = Set<String>()
@@ -87,6 +100,9 @@ final class AppModel {
     var path: [BotRoute] = []
 
     // Shell
+    #if DEBUG
+    var showGallery = false
+    #endif
     var sidebarOpen = false
     var machineOpen = false
 
@@ -105,6 +121,14 @@ final class AppModel {
     var selectedBot: Silo_V1_Bot? {
         guard let selectedBotID else { return nil }
         return bots.first { $0.id == selectedBotID }
+    }
+
+    func bot(_ id: String) -> Silo_V1_Bot? { bots.first { $0.id == id } }
+
+    /// Rings the open Bot: in the main chat from the sidebar, in this chat from the composer.
+    func call(chat: String = "", screen: Bool = true) {
+        guard let bot = selectedBot else { return }
+        Task { await CallModel.shared.start(.init(id: bot.id, name: bot.name, crest: bot.crest), chat: chat, screen: screen, host: serverURL) }
     }
 
     var isRunning: Bool { sending || chatBusy(events) }
@@ -162,6 +186,7 @@ final class AppModel {
                 await refreshBots()
                 pickBot()
                 startPolling()
+                openPending()
                 return
             } catch {
                 // Only a real "not signed in" shows the sign-in page; an unreachable Control Plane
@@ -212,6 +237,7 @@ final class AppModel {
             await refreshBots()
             pickBot()
             startPolling()
+            openPending()
         } catch {
             signInError = describe(error)
         }
@@ -230,6 +256,8 @@ final class AppModel {
 
     func signOut() async {
         try? await client.signOut()
+        SiloStore.save(SharedState())
+        CallModel.shared.hangUp()
         stopStream()
         stopPolling()
         user = nil
@@ -268,6 +296,8 @@ final class AppModel {
         selectedBotID = mine.first { $0.id == last }?.id ?? mine.first?.id
     }
 
+    private var loading: Task<Void, Never>?
+
     /// Loads a Bot's chats and opens the last chat used with it, else a new one.
     func chooseBot(_ id: String?) async {
         guard let id else {
@@ -284,7 +314,11 @@ final class AppModel {
             }
             return
         }
-        guard id != loadedBotID else { return }
+        // Whoever is loading it is not done: a link lands only once they are.
+        guard id != loadedBotID else {
+            await loading?.value
+            return
+        }
         path = []
         approvals = []
         usage = nil
@@ -299,6 +333,12 @@ final class AppModel {
         selectedChatID = nil
         chats = []
         events = []
+        let load = Task { await loadBot(id) }
+        loading = load
+        await load.value
+    }
+
+    private func loadBot(_ id: String) async {
         do {
             chats = try await client.listChats(botID: id)
         } catch {
@@ -487,6 +527,8 @@ final class AppModel {
         models = list.models
         defaultModel = list.defaultModel
         voiceEnabled = list.voiceEnabled
+        speechEnabled = list.speechEnabled
+        callEnabled = list.callEnabled
     }
 
     /// Transcribes one dictation take; nil on failure (the message is in `errorMessage`).
@@ -599,7 +641,7 @@ final class AppModel {
     func attach(name: String, data: Data) async {
         guard let botID = selectedBotID else { return }
         attachError = nil
-        guard selectedBot?.workerConnected == true else {
+        guard selectedBot?.machine == "online" else {
             attachError = "Start the Bot to attach files."
             return
         }

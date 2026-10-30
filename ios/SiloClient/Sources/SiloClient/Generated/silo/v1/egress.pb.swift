@@ -90,6 +90,11 @@ public nonisolated struct Silo_V1_EgressApply: Sendable {
 
   public var feeds: [Silo_V1_EgressFeed] = []
 
+  /// The resolvers the gateway looks outside names up with, as ip:port, in
+  /// order of preference: the operator's egress.dns, else the control plane's
+  /// own system resolvers. Empty, the gateway falls back to its resolv.conf.
+  public var dnsServers: [String] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -489,7 +494,7 @@ nonisolated extension Silo_V1_EgressDown: SwiftProtobuf.Message, SwiftProtobuf._
 
 nonisolated extension Silo_V1_EgressApply: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EgressApply"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}clients\0\u{1}bots\0\u{1}operator\0\u{3}ca_cert\0\u{3}ca_key\0\u{3}cp_addr\0\u{1}limits\0\u{1}feeds\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}clients\0\u{1}bots\0\u{1}operator\0\u{3}ca_cert\0\u{3}ca_key\0\u{3}cp_addr\0\u{1}limits\0\u{1}feeds\0\u{3}dns_servers\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -505,6 +510,7 @@ nonisolated extension Silo_V1_EgressApply: SwiftProtobuf.Message, SwiftProtobuf.
       case 6: try { try decoder.decodeSingularStringField(value: &self.cpAddr) }()
       case 7: try { try decoder.decodeSingularMessageField(value: &self._limits) }()
       case 8: try { try decoder.decodeRepeatedMessageField(value: &self.feeds) }()
+      case 9: try { try decoder.decodeRepeatedStringField(value: &self.dnsServers) }()
       default: break
       }
     }
@@ -539,6 +545,9 @@ nonisolated extension Silo_V1_EgressApply: SwiftProtobuf.Message, SwiftProtobuf.
     if !self.feeds.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.feeds, fieldNumber: 8)
     }
+    if !self.dnsServers.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.dnsServers, fieldNumber: 9)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -551,6 +560,7 @@ nonisolated extension Silo_V1_EgressApply: SwiftProtobuf.Message, SwiftProtobuf.
     if lhs.cpAddr != rhs.cpAddr {return false}
     if lhs._limits != rhs._limits {return false}
     if lhs.feeds != rhs.feeds {return false}
+    if lhs.dnsServers != rhs.dnsServers {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

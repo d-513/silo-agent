@@ -7,41 +7,67 @@ struct SecretsPage: View {
     @State private var secrets: [Silo_V1_SecretMeta] = []
     @State private var loaded = false
     @State private var adding = false
-    @State private var deleting: Silo_V1_SecretMeta?
+    @State private var seen = FirstSeen()
+    @State private var changed = 0
 
     var body: some View {
-        List {
-            ForEach(secrets, id: \.id) { secret in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(secret.name).font(.siloMono(.body))
-                    Text(secret.lastUsedAt.isEmpty ? "Never used" : "Used \(relativeTime(secret.lastUsedAt))")
-                        .font(.silo(.caption))
-                        .foregroundStyle(.secondary)
+        PageScroll(spacing: 12) {
+            if !loaded {
+                SkeletonRows(count: 3, height: 52)
+            } else if secrets.isEmpty {
+                EmptyWell(symbol: "key", title: "No secrets", message: "Add API keys the Bot can use without ever seeing them in chat.") {
+                    Button("Add secret") { adding = true }.buttonStyle(.quiet).controlSize(.small)
                 }
-                .swipeActions { Button(role: .destructive) { deleting = secret } label: { Label("Delete", systemImage: "trash") } }
+            } else {
+                PanelSection(footer: "Handed to the Bot only after you allow it. Deleting a secret removes its rules too.") {
+                    ForEach(secrets, id: \.id) { secret in
+                        row(secret).rise(when: seen.isNew(secret.id))
+                    }
+                }
             }
         }
-        .overlay {
-            if loaded && secrets.isEmpty {
-                ContentUnavailableView("No secrets", systemImage: "key", description: Text("Add API keys the Bot can use without ever seeing them in chat."))
-            }
-        }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { adding = true } label: { Label("Add Secret", systemImage: "plus") }
-            }
+        .pageActions {
+            Button { adding = true } label: { Image(systemName: "plus") }
+                .buttonStyle(.glyph)
+                .accessibilityLabel("Add secret")
         }
         .refreshable { await load() }
         .task(id: model.selectedBotID) { await load() }
-        .sheet(isPresented: $adding) { AddSecretSheet { await load() } }
-        .confirmationDialog("Delete this secret?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible, presenting: deleting) { secret in
-            Button("Delete \(secret.name)", role: .destructive) { Task { await delete(secret) } }
-        } message: { _ in Text("Rules for this secret are removed too.") }
+        .sheet(isPresented: $adding) {
+            AddSecretSheet { await load() }
+                .siloSheet(detents: [.medium])
+        }
+        .sensoryFeedback(.success, trigger: changed)
+    }
+
+    private func row(_ secret: Silo_V1_SecretMeta) -> some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(secret.name).font(.siloMono(13.5, .medium)).foregroundStyle(Theme.ink).lineLimit(1)
+                HStack(spacing: 8) {
+                    Text("••••••••").font(.siloMono(12.5)).foregroundStyle(Theme.ink3).accessibilityHidden(true)
+                    Text(secret.lastUsedAt.isEmpty ? "Never used" : "Used \(relativeTime(secret.lastUsedAt))")
+                        .font(.silo(12.5))
+                        .foregroundStyle(Theme.ink3)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            ArmedButton(title: "Delete", small: true) { Task { await delete(secret) } }
+        }
+        .padding(.leading, 14)
+        .padding(.trailing, 8)
+        .padding(.vertical, 8)
+        .frame(minHeight: 52)
     }
 
     private func load() async {
         guard let botID = model.selectedBotID else { return }
-        do { secrets = try await model.client.listSecrets(botID: botID) } catch { await model.report(error) }
+        do {
+            let list = try await model.client.listSecrets(botID: botID)
+            seen.note(list.map(\.id))
+            withAnimation(loaded ? Motion.state : nil) { secrets = list }
+        } catch { await model.report(error) }
         loaded = true
     }
 
@@ -49,7 +75,8 @@ struct SecretsPage: View {
         guard let botID = model.selectedBotID else { return }
         do {
             try await model.client.deleteSecret(botID: botID, id: secret.id)
-            secrets.removeAll { $0.id == secret.id }
+            withAnimation(Motion.fold) { secrets.removeAll { $0.id == secret.id } }
+            changed += 1
         } catch { await model.report(error) }
     }
 }
@@ -63,32 +90,26 @@ private struct AddSecretSheet: View {
     @State private var failure: String?
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Name") {
-                    TextField("GITHUB_TOKEN", text: $name)
+        VStack(spacing: 0) {
+            SheetHead(title: "Add secret", onCancel: { dismiss() }) {
+                Button("Add") { Task { await add() } }
+                    .buttonStyle(.ink)
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || value.isEmpty)
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    SiloField(label: "Name", prompt: "GITHUB_TOKEN", text: $name, mono: true)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                        .font(.siloMono(.body))
+                    VStack(alignment: .leading, spacing: 6) {
+                        SiloField(label: "Value", prompt: "••••••••", text: $value, mono: true, secure: true)
+                        Text("Stored on the Control Plane and never shown again.").font(.silo(12.5)).foregroundStyle(Theme.ink3)
+                    }
+                    if let failure { ErrorLine(text: failure) }
                 }
-                Section {
-                    SecureField("Value", text: $value)
-                } footer: {
-                    Text("Stored on the Control Plane and never shown again.")
-                }
-                if let failure { Section { Text(failure).foregroundStyle(Theme.vermilion) } }
-            }
-            .navigationTitle("Add secret")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") { Task { await add() } }
-                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || value.isEmpty)
-                }
+                .padding(16)
             }
         }
-        .presentationDetents([.medium])
     }
 
     private func add() async {

@@ -10,8 +10,8 @@ final class ToolSummaryTests: XCTestCase {
 
     func testActions() {
         XCTAssertEqual(toolAction(name: "terminal", args: #"{"command":"ls\npwd"}"#), "$ ls")
-        XCTAssertEqual(toolAction(name: "read", args: #"{"path":"a/b.txt","offset":3}"#), "a/b.txt")
-        XCTAssertEqual(toolAction(name: "grep", args: #"{"pattern":"TODO"}"#), "TODO")
+        XCTAssertEqual(toolAction(name: "read", args: #"{"path":"a/b.txt","offset":3}"#), "read a/b.txt")
+        XCTAssertEqual(toolAction(name: "grep", args: #"{"pattern":"TODO"}"#), "grep TODO")
         XCTAssertEqual(toolAction(name: "spawn_agent", args: #"{"name":"scout"}"#), "start scout")
         XCTAssertEqual(toolAction(name: "agent_status", args: "{}"), "check all")
         XCTAssertEqual(toolAction(name: "exec_python", args: #"{"code":"\nimport os\nprint(1)"#), "import os")

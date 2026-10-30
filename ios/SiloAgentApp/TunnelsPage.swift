@@ -10,74 +10,67 @@ struct TunnelsPage: View {
     @State private var list: Silo_V1_ListTunnelsResponse?
     @State private var shares: [Silo_V1_ArtifactShare] = []
     @State private var adding = false
-    @State private var deleting: Silo_V1_Tunnel?
-    @State private var going: Silo_V1_Tunnel?
     @State private var opened: IdentifiedURL?
+    @State private var seen = FirstSeen()
+    @State private var changed = 0
+
+    private var full: Bool {
+        guard let list else { return false }
+        return list.max > 0 && list.tunnels.count >= Int(list.max)
+    }
 
     var body: some View {
-        List {
+        PageScroll(spacing: 16) {
             if let list {
                 if let notice = tunnelNotice(list.state) {
-                    Section { Text(notice).foregroundStyle(.secondary) }
+                    MachineNote(text: notice)
+                } else if list.tunnels.isEmpty {
+                    EmptyWell(symbol: "globe", title: "No tunnels yet", message: "Start a service on the Bot's machine, then add its port here, or ask the Bot to open one.") {
+                        Button("Open tunnel") { adding = true }.buttonStyle(.quiet).controlSize(.small)
+                    }
                 } else {
-                    Section {
+                    PanelSection(title: "Tunnels", footer: footnote(list)) {
                         ForEach(list.tunnels) { tunnel in
-                            TunnelRow(tunnel: tunnel, open: { if let url = URL(string: tunnel.url) { opened = IdentifiedURL(url: url) } },
-                                      flip: { flip(tunnel) })
-                                .swipeActions {
-                                    Button(role: .destructive) { deleting = tunnel } label: { Label("Delete", systemImage: "trash") }
-                                }
+                            TunnelRow(tunnel: tunnel) {
+                                if let url = URL(string: tunnel.url) { opened = IdentifiedURL(url: url) }
+                            } flip: { value in
+                                Task { await setPublic(tunnel, value) }
+                            } delete: {
+                                Task { await delete(tunnel) }
+                            }
+                            .rise(when: seen.isNew(tunnel.id))
                         }
-                    } header: {
-                        Text("Tunnels")
-                    } footer: {
-                        Text(list.tunnels.isEmpty
-                            ? "Start a service on the Bot's machine, then add its port here, or ask the Bot to open one."
-                            : "A private tunnel asks you to sign in to Silo once in the browser that opens it.")
                     }
                 }
                 if !shares.isEmpty {
-                    Section {
+                    PanelSection(title: "Shared links", footer: "Each link stays pinned to the version you shared and works while the Bot is stopped.") {
                         ForEach(shares, id: \.id) { share in
-                            ShareRow(share: share) { if let url = URL(string: share.url) { opened = IdentifiedURL(url: url) } }
-                                .swipeActions {
-                                    Button(role: .destructive) { Task { await removeShare(share) } } label: { Label("Remove", systemImage: "link.badge.minus") }
-                                }
+                            ShareRow(share: share) {
+                                if let url = URL(string: share.url) { opened = IdentifiedURL(url: url) }
+                            } remove: {
+                                Task { await removeShare(share) }
+                            }
                         }
-                    } header: {
-                        Text("Shared links")
-                    } footer: {
-                        Text("Each link stays pinned to the version you shared and works while the Bot is stopped.")
                     }
                 }
+            } else {
+                SkeletonRows(count: 2, height: 84)
             }
         }
-        .overlay { if list == nil { ProgressView() } }
-        .toolbar {
+        .pageActions {
             if let list, tunnelNotice(list.state) == nil {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { adding = true } label: { Label("Open Tunnel", systemImage: "plus") }
-                        .disabled(list.max > 0 && list.tunnels.count >= Int(list.max))
-                }
+                Button { adding = true } label: { Image(systemName: "plus") }
+                    .buttonStyle(.glyph)
+                    .disabled(full)
+                    .accessibilityLabel("Open tunnel")
             }
         }
         .sheet(isPresented: $adding) {
             NewTunnelSheet { port, isPublic in await create(port, isPublic) }
-                .presentationDetents([.medium])
+                .siloSheet(detents: [.medium])
         }
         .sheet(item: $opened) { SafariView(url: $0.url).ignoresSafeArea() }
-        .confirmationDialog("Delete this tunnel?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
-                            titleVisibility: .visible, presenting: deleting) { tunnel in
-            Button("Delete \(tunnel.name)", role: .destructive) { Task { await delete(tunnel) } }
-        } message: { _ in
-            Text("The address stops working. The service keeps running.")
-        }
-        .confirmationDialog("Make this tunnel public?", isPresented: Binding(get: { going != nil }, set: { if !$0 { going = nil } }),
-                            titleVisibility: .visible, presenting: going) { tunnel in
-            Button("Make Public") { Task { await setPublic(tunnel, true) } }
-        } message: { _ in
-            Text("Anyone with the link can open it, without signing in.")
-        }
+        .sensoryFeedback(.success, trigger: changed)
         .refreshable { await load() }
         .task(id: model.selectedBotID) {
             // The Bot can open tunnels too, so look again while the page is shown.
@@ -88,14 +81,17 @@ struct TunnelsPage: View {
         }
     }
 
-    private func flip(_ tunnel: Silo_V1_Tunnel) {
-        if tunnel.public { Task { await setPublic(tunnel, false) } } else { going = tunnel }
+    private func footnote(_ list: Silo_V1_ListTunnelsResponse) -> String {
+        full ? "This Bot has \(list.max) tunnels, the most it can have. Delete one to add another."
+            : "A private tunnel asks you to sign in to Silo once in the browser that opens it."
     }
 
     private func load() async {
         guard let botID = model.selectedBotID else { return }
         do {
-            list = try await model.client.listTunnels(botID: botID)
+            let fresh = try await model.client.listTunnels(botID: botID)
+            seen.note(fresh.tunnels.map(\.id))
+            withAnimation(list == nil ? nil : Motion.state) { list = fresh }
             shares = (try? await model.client.listArtifactShares(botID: botID)) ?? shares
         } catch { await model.report(error) }
     }
@@ -105,6 +101,7 @@ struct TunnelsPage: View {
         do {
             _ = try await model.client.createTunnel(botID: botID, port: port, isPublic: isPublic)
             await load()
+            changed += 1
             return true
         } catch {
             await model.report(error)
@@ -124,7 +121,8 @@ struct TunnelsPage: View {
         guard let botID = model.selectedBotID else { return }
         do {
             try await model.client.deleteTunnel(botID: botID, id: tunnel.id)
-            list?.tunnels.removeAll { $0.id == tunnel.id }
+            _ = withAnimation(Motion.fold) { list?.tunnels.removeAll { $0.id == tunnel.id } }
+            changed += 1
         } catch { await model.report(error) }
     }
 
@@ -132,77 +130,140 @@ struct TunnelsPage: View {
         guard let botID = model.selectedBotID else { return }
         do {
             try await model.client.deleteArtifactShare(botID: botID, id: share.id)
-            shares.removeAll { $0.id == share.id }
+            withAnimation(Motion.fold) { shares.removeAll { $0.id == share.id } }
+            changed += 1
         } catch { await model.report(error) }
     }
+}
+
+private func accessCaption(_ isPublic: Bool) -> String {
+    isPublic ? "Anyone with the link can open it, no sign-in." : "Only you, signed in to Silo, can open it."
+}
+
+/// The address without its scheme: what a person reads.
+private func bareAddress(_ url: String) -> String {
+    url.replacingOccurrences(of: #"^https?://"#, with: "", options: .regularExpression)
 }
 
 private struct TunnelRow: View {
     let tunnel: Silo_V1_Tunnel
     let open: () -> Void
-    let flip: () -> Void
+    let flip: (Bool) -> Void
+    let delete: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(tunnel.name).font(.silo(.headline)).lineLimit(1)
-                Spacer(minLength: 6)
-                Menu {
-                    Button { if tunnel.public { flip() } } label: {
-                        Label("Private", systemImage: tunnel.public ? "lock" : "checkmark")
-                    }
-                    Button { if !tunnel.public { flip() } } label: {
-                        Label("Public", systemImage: tunnel.public ? "checkmark" : "globe")
-                    }
-                } label: {
-                    Label(tunnel.public ? "Public" : "Private", systemImage: tunnel.public ? "globe" : "lock.fill")
-                        .font(.silo(.caption, .medium))
-                        .foregroundStyle(tunnel.public ? Theme.vermilion : .secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                MachineTile(symbol: tunnel.public ? "globe" : "lock")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(tunnel.url.isEmpty ? tunnel.name : bareAddress(tunnel.url))
+                        .font(.siloMono(13.5, .medium))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Text(accessCaption(tunnel.public))
+                        .font(.silo(12.5))
+                        .foregroundStyle(tunnel.public ? Theme.vermilion : Theme.ink2)
+                    Text([
+                        "Port \(tunnel.port)",
+                        tunnel.createdBy == "bot" ? "Opened by the Bot" : "Opened by you",
+                        tunnel.lastUsedAt.isEmpty ? "Not used yet" : "Used \(relativeTime(tunnel.lastUsedAt))",
+                    ].joined(separator: " · "))
+                        .font(.silo(12.5))
+                        .foregroundStyle(Theme.ink3)
+                        .lineLimit(2)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            Text([
-                "Port \(tunnel.port)",
-                tunnel.createdBy == "bot" ? "Opened by the Bot" : "Opened by you",
-                tunnel.lastUsedAt.isEmpty ? "Not used yet" : "Used \(relativeTime(tunnel.lastUsedAt))",
-            ].joined(separator: " · "))
-                .font(.silo(.caption))
-                .foregroundStyle(.secondary)
-            if !tunnel.url.isEmpty {
-                HStack(spacing: 14) {
-                    Text(tunnel.url).font(.siloMono(.caption)).foregroundStyle(Theme.cobalt).lineLimit(1).truncationMode(.middle)
-                    Spacer(minLength: 0)
-                    Button { UIPasteboard.general.string = tunnel.url } label: { Image(systemName: "doc.on.doc") }
+            TunnelAccess(isPublic: tunnel.public, flip: flip)
+            HStack(spacing: 0) {
+                if !tunnel.url.isEmpty {
+                    CopyButton(text: tunnel.url)
                         .accessibilityLabel("Copy address")
                     Button(action: open) { Image(systemName: "safari") }
+                        .buttonStyle(.glyph)
                         .accessibilityLabel("Open")
                 }
-                .buttonStyle(.borderless)
+                Spacer(minLength: 0)
+                ArmedButton(title: "Delete", armedTitle: "Tap again: the address stops working", symbol: "trash", small: true, action: delete)
             }
+            .padding(.leading, -8)
         }
-        .padding(.vertical, 2)
+        .padding(14)
+    }
+}
+
+/// Private | Public for one tunnel. Going Public takes a second press, because that opens the
+/// service to anyone with the link; going Private never does.
+private struct TunnelAccess: View {
+    let isPublic: Bool
+    let flip: (Bool) -> Void
+    @State private var armed = false
+    @State private var timer: Task<Void, Never>?
+
+    var body: some View {
+        Segmented(options: [(false, "Private"), (true, armed ? "Tap again" : "Public")],
+                  selection: Binding(get: { isPublic }, set: choose))
+            .sensoryFeedback(.warning, trigger: armed) { _, on in on }
+    }
+
+    private func choose(_ value: Bool) {
+        guard value != isPublic else { return }
+        timer?.cancel()
+        if value, !armed {
+            withAnimation(Motion.state) { armed = true }
+            timer = Task {
+                try? await Task.sleep(for: .seconds(3))
+                guard !Task.isCancelled else { return }
+                withAnimation(Motion.state) { armed = false }
+            }
+            return
+        }
+        armed = false
+        flip(value)
     }
 }
 
 private struct ShareRow: View {
     let share: Silo_V1_ArtifactShare
     let open: () -> Void
+    let remove: () -> Void
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(share.title.isEmpty ? "Shared \(share.type)" : share.title).lineLimit(1)
-                Text([share.type == "app" ? "App" : "File", "v\(share.version)",
-                      share.lastUsedAt.isEmpty ? "Not used yet" : "Used \(relativeTime(share.lastUsedAt))"].joined(separator: " · "))
-                    .font(.silo(.caption))
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                MachineTile(symbol: "link")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(share.title.isEmpty ? "Shared \(share.type)" : share.title)
+                        .font(.silo(13.5, .medium))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(1)
+                    Text([share.type == "app" ? "App" : "File", "v\(share.version)",
+                          share.lastUsedAt.isEmpty ? "Not used yet" : "Used \(relativeTime(share.lastUsedAt))"].joined(separator: " · "))
+                        .font(.silo(12.5))
+                        .foregroundStyle(Theme.ink3)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            Spacer(minLength: 6)
-            if !share.url.isEmpty {
-                ShareLink(item: share.url) { Image(systemName: "square.and.arrow.up") }
-                Button(action: open) { Image(systemName: "safari") }.accessibilityLabel("Open")
+            HStack(spacing: 0) {
+                if !share.url.isEmpty {
+                    ShareLink(item: share.url) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Theme.ink2)
+                            .frame(width: 40, height: 40)
+                    }
+                    .buttonStyle(.press)
+                    Button(action: open) { Image(systemName: "safari") }
+                        .buttonStyle(.glyph)
+                        .accessibilityLabel("Open")
+                }
+                Spacer(minLength: 0)
+                ArmedButton(title: "Remove", symbol: "link.badge.minus", small: true, action: remove)
             }
+            .padding(.leading, -8)
         }
-        .buttonStyle(.borderless)
+        .padding(14)
     }
 }
 
@@ -214,46 +275,43 @@ private struct NewTunnelSheet: View {
     @State private var busy = false
     @State private var touched = false
 
+    private var portError: String? {
+        guard touched, case .error(let message) = parseTunnelPort(port) else { return nil }
+        return message
+    }
+
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("Port, e.g. 8000", text: $port)
-                        .keyboardType(.numberPad)
-                        .onChange(of: port) { touched = true }
-                } footer: {
-                    if touched, case .error(let message) = parseTunnelPort(port) {
-                        Text(message).foregroundStyle(Theme.vermilion)
-                    } else {
-                        Text("The port a service on the Bot's machine listens on.")
-                    }
-                }
-                Section {
-                    Picker("Who can open it", selection: $isPublic) {
-                        Text("Private").tag(false)
-                        Text("Public").tag(true)
-                    }
-                    .pickerStyle(.segmented)
-                } footer: {
-                    Text(isPublic ? "Anyone with the link can open it, no sign-in." : "Only you, signed in to Silo, can open it.")
-                }
+        VStack(spacing: 0) {
+            SheetHead(title: "Open tunnel", onCancel: { dismiss() }) {
+                Button("Open") { open() }.buttonStyle(.ink).disabled(busy)
             }
-            .navigationTitle("Open Tunnel")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Open") {
-                        guard case .port(let value) = parseTunnelPort(port) else { touched = true; return }
-                        busy = true
-                        Task {
-                            if await create(value, isPublic) { dismiss() }
-                            busy = false
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        SiloField(label: "Port", prompt: "8000", text: $port, error: portError)
+                            .keyboardType(.numberPad)
+                            .onChange(of: port) { touched = true }
+                        if portError == nil {
+                            Text("The port a service on the Bot's machine listens on.").font(.silo(12.5)).foregroundStyle(Theme.ink3)
                         }
                     }
-                    .disabled(busy)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Who can open it").font(.silo(12, .medium)).foregroundStyle(Theme.ink3)
+                        Segmented(options: [(false, "Private"), (true, "Public")], selection: $isPublic)
+                        Text(accessCaption(isPublic)).font(.silo(12.5)).foregroundStyle(isPublic ? Theme.vermilion : Theme.ink3)
+                    }
                 }
+                .padding(16)
             }
+        }
+    }
+
+    private func open() {
+        guard case .port(let value) = parseTunnelPort(port) else { touched = true; return }
+        busy = true
+        Task {
+            if await create(value, isPublic) { dismiss() }
+            busy = false
         }
     }
 }
