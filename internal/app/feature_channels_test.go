@@ -2,6 +2,8 @@ package app_test
 
 import (
 	"context"
+	"errors"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -192,6 +194,118 @@ func TestChatsToolReadsChannelHistoryFromAdapterThenLocalLog(t *testing.T) {
 	h.WaitRun(runID)
 	if got := toolResults(h, runID)["chats"]; !strings.Contains(got, conv.ID) || !strings.Contains(got, "(channel)") {
 		t.Fatalf("chat list: %q", got)
+	}
+}
+
+func TestChatsToolReadsAChannelNobodyHasWrittenFrom(t *testing.T) {
+	slug := apptest.UniqueSlug("readchan")
+	adapter := apptest.NewFakeAdapter(slug)
+	channels.Register(adapter)
+	h := apptest.New(t, apptest.WithChatTools())
+	bot := h.CreateBot("Reader")
+	created, err := h.Client.CreateChannel(h.Ctx(), connect.NewRequest(&v1.CreateChannelRequest{
+		BotId: bot.GetId(), Adapter: slug, Name: "Alerts", Enabled: true, Inbound: false,
+		ExternalId: "room-1", TargetTitle: "Room", Secrets: map[string]string{"token": "s3cret"},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Client.CreateChannel(h.Ctx(), connect.NewRequest(&v1.CreateChannelRequest{
+		BotId: bot.GetId(), Adapter: slug, Name: "Unbound", Enabled: true,
+		Secrets: map[string]string{"token": "s3cret"},
+	})); err != nil {
+		t.Fatal(err)
+	}
+	other := h.CreateBot("Stranger")
+	if _, err := h.Client.CreateChannel(h.Ctx(), connect.NewRequest(&v1.CreateChannelRequest{
+		BotId: other.GetId(), Adapter: slug, Name: "Elsewhere", Enabled: true, ExternalId: "room-2",
+		Secrets: map[string]string{"token": "s3cret"},
+	})); err != nil {
+		t.Fatal(err)
+	}
+
+	dummy.Reset()
+	turn := 50
+	read := func(args string) string {
+		t.Helper()
+		turn++
+		marker := "Test_" + strconv.Itoa(turn)
+		dummy.Script(marker,
+			dummy.Turn{ToolCalls: []llm.ToolCall{{Name: "chats", Arguments: args}}},
+			dummy.Turn{Text: "done"},
+		)
+		runID, _ := h.Send(bot.GetId(), freshChat(t, h, bot.GetId()), marker+"_Input")
+		h.WaitRun(runID)
+		return toolResults(h, runID)["chats"]
+	}
+
+	// A channel that has only ever sent is read by its name or id, the way
+	// send_channel names it, and reading leaves no conversation behind.
+	adapter.HistoryMsgs = []channels.Message{{Author: "Alice", Text: "any news?"}, {Out: true, Text: "deploy finished"}}
+	for _, name := range []string{"Alerts", created.Msg.GetId()} {
+		got := read(`{"chat":"` + name + `"}`)
+		if !strings.Contains(got, "Alice: any news?") || !strings.Contains(got, "Bot: deploy finished") {
+			t.Fatalf("read by %q: %q", name, got)
+		}
+	}
+	if n := len(channelChats(h, created.Msg.GetId())); n != 0 {
+		t.Fatalf("reading made %d conversations", n)
+	}
+
+	// It is listed, so the Bot can find it; one with no target has nothing to read.
+	if got := read(`{}`); !strings.Contains(got, "Alerts") || strings.Contains(got, "Unbound") {
+		t.Fatalf("list: %q", got)
+	}
+	if got := read(`{"chat":"Unbound"}`); !strings.Contains(got, "no chat selected") {
+		t.Fatalf("unbound: %q", got)
+	}
+
+	// A channel's name is unique on its Bot and a chat's title is not.
+	titled := freshChat(t, h, bot.GetId())
+	h.DB.Model(&db.Chat{}).Where("id = ?", titled).Update("title", "Alerts")
+	if got := read(`{"chat":"Alerts"}`); !strings.Contains(got, "Alice: any news?") {
+		t.Fatalf("a chat's title hid the channel: %q", got)
+	}
+
+	// A platform with no history says so: empty would read as a quiet channel.
+	adapter.HistoryErr = errors.New("history is not available over WhatsApp")
+	got := read(`{"chat":"Alerts"}`)
+	if !strings.Contains(got, "history is not available over WhatsApp") || strings.Contains(got, "no messages") {
+		t.Fatalf("no history: %q", got)
+	}
+
+	// Another Bot's channel stays out of reach.
+	if got := read(`{"chat":"Elsewhere"}`); !strings.Contains(got, "unknown chat") {
+		t.Fatalf("another Bot's channel: %q", got)
+	}
+}
+
+func TestChatsToolSaysWhenItFellBackToTheLocalLog(t *testing.T) {
+	slug := apptest.UniqueSlug("logchan")
+	adapter := apptest.NewFakeAdapter(slug)
+	channels.Register(adapter)
+	h := apptest.New(t, apptest.WithChatTools())
+	bot := h.CreateBot("Log")
+	ch := newInboundChannel(t, h, bot.GetId(), adapter, slug, "chat-3")
+	host := adapter.WaitHost(t)
+
+	dummy.Reset()
+	dummy.Script("Test_71", dummy.Turn{Text: "noted<section_send />"})
+	if err := host.DeliverInbound(context.Background(), &ch, channels.Inbound{ExternalID: "chat-3", Title: "Three", Text: "Test_71_Input"}); err != nil {
+		t.Fatal(err)
+	}
+	waitSent(t, adapter, "noted")
+
+	adapter.HistoryErr = errors.New("history is not available for bot accounts")
+	dummy.Script("Test_72",
+		dummy.Turn{ToolCalls: []llm.ToolCall{{Name: "chats", Arguments: `{"chat":"Inbox"}`}}},
+		dummy.Turn{Text: "read it"},
+	)
+	runID, _ := h.Send(bot.GetId(), freshChat(t, h, bot.GetId()), "Test_72_Input")
+	h.WaitRun(runID)
+	got := toolResults(h, runID)["chats"]
+	if !strings.Contains(got, "User: Test_71_Input") || !strings.Contains(got, "not available for bot accounts") {
+		t.Fatalf("local log by channel name: %q", got)
 	}
 }
 

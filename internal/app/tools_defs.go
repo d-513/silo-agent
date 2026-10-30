@@ -789,9 +789,9 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "chats",
-			Description: "Read this Bot's chats and channel conversations. With no chat, lists them. With chat (id or title), returns recent messages. Stays inside this Bot.",
+			Description: "Read this Bot's chats and channel conversations. With no chat, lists them. With chat (id, title or a channel's name), returns recent messages. A channel that has only ever sent can be read too; where the platform gives no history, the result says so. Stays inside this Bot.",
 			Params: tool.Object(map[string]any{
-				"chat":  map[string]any{"type": "string", "description": "chat id or title; omit to list chats"},
+				"chat":  map[string]any{"type": "string", "description": "chat id, chat title or channel name; omit to list chats"},
 				"limit": map[string]any{"type": "integer", "description": "max messages (default 20, max 50)"},
 			}),
 			Connector: security.Chats, Action: "read",

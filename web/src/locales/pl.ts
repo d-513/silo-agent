@@ -900,7 +900,7 @@ const pl: Record<string, string> = {
   "Enabled": "Włączony",
   "Connect this channel when saved.": "Połącz ten kanał po zapisaniu.",
   "Deliver messages to the Bot": "Dostarczaj wiadomości do Bota",
-  "Off makes it send-only, used by tools.": "Po wyłączeniu kanał służy tylko do wysyłania, przez narzędzia.",
+  "Off, messages there do not start the Bot; tools can still send and read.": "Po wyłączeniu wiadomości z kanału nie uruchamiają Bota; narzędzia nadal mogą w nim pisać i czytać.",
   "Extra instructions for runs on this channel, e.g. “This is WhatsApp; keep replies short.”": "Dodatkowe instrukcje dla przebiegów na tym kanale, np. „To WhatsApp; odpowiadaj krótko.”",
   "Keep answers concise...": "Odpowiadaj zwięźle...",
   "{{name}} Log": "{{name}} — dziennik",

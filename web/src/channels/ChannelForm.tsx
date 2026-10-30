@@ -147,7 +147,7 @@ export function ChannelForm({
               <ToggleRow
                 className="rounded-control bg-well px-3.5 py-3"
                 label={t("Deliver messages to the Bot")}
-                hint={t("Off makes it send-only, used by tools.")}
+                hint={t("Off, messages there do not start the Bot; tools can still send and read.")}
                 on={inbound}
                 onChange={setInbound}
               />

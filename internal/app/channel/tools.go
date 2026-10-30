@@ -70,7 +70,8 @@ func (s *Service) ChatsTool(ctx context.Context, botID, runID string, args map[s
 	if _, err := s.host.AuthorizeAction(ctx, &bot, runID, security.Chats, "read", "", ""); err != nil {
 		return "", err
 	}
-	chatQuery, _ := args["chat"].(string)
+	query, _ := args["chat"].(string)
+	query = strings.TrimSpace(query)
 	limit := toolarg.Int(args, "limit")
 	if limit <= 0 {
 		limit = 20
@@ -79,45 +80,98 @@ func (s *Service) ChatsTool(ctx context.Context, botID, runID string, args map[s
 		limit = 50
 	}
 
-	if strings.TrimSpace(chatQuery) == "" {
-		var convs []db.Chat
-		s.db.Where("bot_id = ?", botID).Order("updated_at desc").Limit(50).Find(&convs)
-		if len(convs) == 0 {
-			return "no chats", nil
-		}
-		var b strings.Builder
-		b.WriteString("Chats:\n")
-		for _, c := range convs {
-			kind := "web"
-			if c.ChannelID != "" {
-				kind = "channel"
-			}
-			if c.AutomationID != "" {
-				kind = "automation log"
-			}
-			if c.SubagentID != "" {
-				kind = "subagent log"
-			}
-			fmt.Fprintf(&b, "- %s  %s (%s)\n", c.ID, c.Title, kind)
-		}
-		return b.String(), nil
+	if query == "" {
+		return s.listChats(botID), nil
 	}
-
-	var c db.Chat
-	if s.db.First(&c, "bot_id = ? AND id = ?", botID, strings.TrimSpace(chatQuery)).Error != nil {
-		if err := s.db.Where("bot_id = ? AND title = ?", botID, strings.TrimSpace(chatQuery)).Limit(1).Find(&c).Error; err != nil || c.ID == "" {
-			return "", fmt.Errorf("unknown chat %q", chatQuery)
-		}
+	c, ch, err := s.findConversation(botID, query)
+	if err != nil {
+		return "", err
+	}
+	if ch.ID == "" {
+		return s.localHistoryTool(c, limit), nil
 	}
 	// A channel conversation belongs to the platform, so try the adapter's own
-	// history first. Bot accounts cannot read it (BOT_METHOD_INVALID), in which
-	// case fall back to what this Bot has received.
-	if c.ChannelID != "" {
-		if out, err := s.channelHistoryTool(ctx, c, limit); err == nil {
-			return out, nil
-		}
+	// history first. Not every platform can give it (BOT_METHOD_INVALID on a
+	// Telegram bot account, always on WhatsApp): fall back to what this Bot has
+	// received, and say so, or a partial log reads as the whole conversation.
+	out, err := s.channelHistoryTool(ctx, &ch, c, limit)
+	if err == nil {
+		return out, nil
 	}
-	return s.localHistoryTool(c, limit), nil
+	if c.ID == "" {
+		return fmt.Sprintf("Channel %q: its history cannot be read (%v) and this Bot has received nothing from it, so what was said there is unknown, not empty.\n", ch.Name, err), nil
+	}
+	return fmt.Sprintf("Only what this Bot received is below: the platform's history cannot be read (%v).\n", err) + s.localHistoryTool(c, limit), nil
+}
+
+// listChats names this Bot's chats, then its channels: a channel that has only
+// ever sent has no chat row, and is read by its name.
+func (s *Service) listChats(botID string) string {
+	var convs []db.Chat
+	s.db.Where("bot_id = ?", botID).Order("updated_at desc").Limit(50).Find(&convs)
+	var b strings.Builder
+	if len(convs) > 0 {
+		b.WriteString("Chats:\n")
+	}
+	for _, c := range convs {
+		kind := "web"
+		if c.ChannelID != "" {
+			kind = "channel"
+		}
+		if c.AutomationID != "" {
+			kind = "automation log"
+		}
+		if c.SubagentID != "" {
+			kind = "subagent log"
+		}
+		fmt.Fprintf(&b, "- %s  %s (%s)\n", c.ID, c.Title, kind)
+	}
+	named := false
+	for _, ch := range s.Enabled(botID) {
+		if strings.TrimSpace(ch.ExternalID) == "" {
+			continue
+		}
+		if !named {
+			b.WriteString("Channels, read by name:\n")
+			named = true
+		}
+		fmt.Fprintf(&b, "- %s (adapter: %s)\n", ch.Name, ch.Adapter)
+	}
+	if b.Len() == 0 {
+		return "no chats"
+	}
+	return b.String()
+}
+
+// findConversation resolves what read_chats was asked for: a chat by id, a
+// channel by name or id, then a chat by title. A channel's name is unique on
+// its Bot and a chat's title is not, so the name goes first. The chat is empty
+// for a channel nothing has been received from; the channel is empty for a chat
+// that is not a channel's.
+func (s *Service) findConversation(botID, query string) (db.Chat, db.Channel, error) {
+	var c db.Chat
+	var ch db.Channel
+	s.db.Where("bot_id = ? AND id = ?", botID, query).Limit(1).Find(&c)
+	if c.ID == "" {
+		s.db.Where("bot_id = ? AND (name = ? OR id = ?)", botID, query, query).Limit(1).Find(&ch)
+	}
+	if ch.ID != "" {
+		if strings.TrimSpace(ch.ExternalID) == "" {
+			return c, ch, fmt.Errorf("channel %q has no chat selected yet", ch.Name)
+		}
+		s.db.Where("bot_id = ? AND channel_id = ? AND external_id = ?", botID, ch.ID, ch.ExternalID).Limit(1).Find(&c)
+		return c, ch, nil
+	}
+	if c.ID == "" {
+		s.db.Where("bot_id = ? AND title = ?", botID, query).Limit(1).Find(&c)
+	}
+	if c.ID == "" {
+		return c, ch, fmt.Errorf("unknown chat %q", query)
+	}
+	if c.ChannelID != "" {
+		s.db.Where("id = ?", c.ChannelID).Limit(1).Find(&ch)
+	}
+	return c, ch, nil
 }
 
 // localHistoryTool reads the messages this Bot has recorded for a chat.
@@ -148,22 +202,23 @@ func (s *Service) localHistoryTool(c db.Chat, limit int) string {
 }
 
 // channelHistoryTool reads a channel conversation's messages from the adapter
-// (the platform), not the local run log.
-func (s *Service) channelHistoryTool(ctx context.Context, c db.Chat, limit int) (string, error) {
-	var ch db.Channel
-	if s.db.First(&ch, "id = ?", c.ChannelID).Error != nil {
-		return "", fmt.Errorf("channel for this chat no longer exists")
-	}
+// (the platform), not the local run log. c is empty for a channel with no chat
+// row yet, and the channel's own target is the conversation.
+func (s *Service) channelHistoryTool(ctx context.Context, ch *db.Channel, c db.Chat, limit int) (string, error) {
 	ad, ok := channels.Lookup(ch.Adapter)
 	if !ok {
 		return "", fmt.Errorf("adapter %q is not available", ch.Adapter)
 	}
-	msgs, err := ad.History(ctx, &ch, s.channelConfig(&ch), c.ExternalID, limit)
+	title, external := c.Title, c.ExternalID
+	if c.ID == "" {
+		title, external = ch.Name, ch.ExternalID
+	}
+	msgs, err := ad.History(ctx, ch, s.channelConfig(ch), external, limit)
 	if err != nil {
 		return "", err
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "Chat %q via %s, newest last:\n", c.Title, ad.Descriptor().Name)
+	fmt.Fprintf(&b, "Chat %q via %s, newest last:\n", title, ad.Descriptor().Name)
 	if len(msgs) == 0 {
 		b.WriteString("(no messages)\n")
 	}

@@ -861,7 +861,7 @@ const de: Record<string, string> = {
   "Enabled": "Aktiviert",
   "Connect this channel when saved.": "Diesen Kanal nach dem Speichern verbinden.",
   "Deliver messages to the Bot": "Nachrichten an den Bot zustellen",
-  "Off makes it send-only, used by tools.": "Aus macht ihn zum reinen Sendekanal, den Tools nutzen.",
+  "Off, messages there do not start the Bot; tools can still send and read.": "Aus lösen Nachrichten dort beim Bot nichts aus; Tools können weiterhin senden und lesen.",
   "Extra instructions for runs on this channel, e.g. “This is WhatsApp; keep replies short.”": "Zusätzliche Anweisungen für Läufe auf diesem Kanal, z. B. „Das ist WhatsApp; halte Antworten kurz.“",
   "Keep answers concise...": "Antworten knapp halten...",
   "{{name}} Log": "Protokoll von {{name}}",

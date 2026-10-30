@@ -227,8 +227,8 @@ def send_channel(channel: str, text: str, to: str | None = None) -> dict:
 def read_chats(chat: str | None = None, limit: int | None = None) -> dict:
     """Read this Bot's chats and channel conversations.
 
-    Without `chat` it lists them; with a chat id or title it returns the most
-    recent messages. Stays inside this Bot.
+    Without `chat` it lists them; with a chat id, chat title or channel name it
+    returns the most recent messages. Stays inside this Bot.
     """
     args: dict = {}
     if chat is not None:
