@@ -74,17 +74,9 @@ func (a *App) ListChats(ctx context.Context, req *connect.Request[v1.ListChatsRe
 	q.Order("updated_at desc").Find(&rows)
 	out := &v1.ListChatsResponse{}
 	for i := range rows {
-		out.Chats = append(out.Chats, a.chatProto(&rows[i], u.ID))
+		out.Chats = append(out.Chats, chats.Proto(ctx, a.DB, &rows[i]))
 	}
 	return connect.NewResponse(out), nil
-}
-
-// chatProto is a chat as one person sees it: whose it is.
-func (a *App) chatProto(c *db.Chat, userID string) *v1.Chat {
-	p := chats.Proto(c)
-	p.Mine = c.UserID == userID
-	p.Author = access.Email(a.DB, c.UserID)
-	return p
 }
 
 func (a *App) CreateChat(ctx context.Context, req *connect.Request[v1.CreateChatRequest]) (*connect.Response[v1.Chat], error) {
@@ -96,7 +88,7 @@ func (a *App) CreateChat(ctx context.Context, req *connect.Request[v1.CreateChat
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(a.chatProto(c, u.ID)), nil
+	return connect.NewResponse(chats.Proto(ctx, a.DB, c)), nil
 }
 
 func (a *App) RenameChat(ctx context.Context, req *connect.Request[v1.RenameChatRequest]) (*connect.Response[v1.Chat], error) {
@@ -116,7 +108,7 @@ func (a *App) RenameChat(ctx context.Context, req *connect.Request[v1.RenameChat
 	}
 	c.Title, c.UpdatedAt = title, time.Now()
 	a.DB.Model(&db.Chat{}).Where("id = ?", c.ID).Updates(map[string]any{"title": c.Title, "updated_at": c.UpdatedAt})
-	return connect.NewResponse(a.chatProto(c, access.User(ctx).ID)), nil
+	return connect.NewResponse(chats.Proto(ctx, a.DB, c)), nil
 }
 
 func (a *App) DeleteChat(ctx context.Context, req *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error) {
@@ -175,7 +167,7 @@ func (a *App) SetChatModel(ctx context.Context, req *connect.Request[v1.SetChatM
 	}
 	c.Model = model
 	a.DB.Save(c)
-	return connect.NewResponse(chats.Proto(c)), nil
+	return connect.NewResponse(chats.Proto(ctx, a.DB, c)), nil
 }
 
 // chatModel is a chat's model override as a client names it: "" (the Bot's

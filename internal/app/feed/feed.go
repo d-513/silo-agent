@@ -210,5 +210,5 @@ func (s *Service) QuoteFeedPost(ctx context.Context, req *connect.Request[v1.Quo
 	// Quoting is reading: the presser's watermark moves up to the post.
 	s.db.Model(&db.BotAccess{}).Where("bot_id = ? AND user_id = ? AND (feed_read_at IS NULL OR feed_read_at < ?)", p.BotID, access.User(ctx).ID, p.CreatedAt).
 		Update("feed_read_at", p.CreatedAt)
-	return connect.NewResponse(&v1.QuoteFeedPostResponse{Chat: chats.Proto(placed.Chat)}), nil
+	return connect.NewResponse(&v1.QuoteFeedPostResponse{Chat: chats.Proto(ctx, s.db, placed.Chat)}), nil
 }

@@ -127,7 +127,7 @@ func (s *Service) RunWidgetAction(ctx context.Context, req *connect.Request[v1.R
 		if err != nil {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 		}
-		out.Chat, out.RunId = chats.Proto(placed.Chat), placed.RunID
+		out.Chat, out.RunId = chats.Proto(ctx, s.db, placed.Chat), placed.RunID
 	} else if err := pressed(s.runAction(ctx, w, *a, args), "start the Bot to run this"); err != nil {
 		// A failure the code met is the receipt on the widget.
 		return nil, err

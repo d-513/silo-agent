@@ -278,3 +278,36 @@ func containsAll(s string, parts ...string) bool {
 	}
 	return true
 }
+
+// A chat an RPC hands back reads as ListChats reads it for the same person:
+// the web puts the answer straight in the list, and a chat that is not theirs
+// there leaves the sidebar's main row for the Team and refuses their messages.
+func TestAChatAnswerSaysWhoseItIs(t *testing.T) {
+	h := apptest.New(t, apptest.WithYAML(thinkingYAML(t.TempDir())))
+	bot := h.CreateBot("Scout")
+	var main *v1.Chat
+	for _, c := range chatsOf(t, h.Client, bot.Id) {
+		if c.GetMain() {
+			main = c
+		}
+	}
+	send(t, h, h.Client, bot.Id, main.GetId(), "Test_95_Input")
+
+	mod, err := h.Client.SetChatModel(h.Ctx(), connect.NewRequest(&v1.SetChatModelRequest{BotId: bot.Id, ChatId: main.GetId(), Model: "dummy/plain"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	think, err := h.Client.SetChatThinking(h.Ctx(), connect.NewRequest(&v1.SetChatThinkingRequest{BotId: bot.Id, ChatId: main.GetId(), Thinking: "high"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, c := range map[string]*v1.Chat{
+		"SetChatModel":    mod.Msg,
+		"SetChatThinking": think.Msg,
+		"DivergeChat":     h.DivergeChat(bot.Id, main.GetId(), h.LastUserEvent(main.GetId()).ID),
+	} {
+		if !c.GetMine() || c.GetAuthor() != main.GetAuthor() {
+			t.Errorf("%s answered mine=%v author=%q, the list says mine=true author=%q", name, c.GetMine(), c.GetAuthor(), main.GetAuthor())
+		}
+	}
+}

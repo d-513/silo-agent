@@ -374,5 +374,5 @@ func (s *Service) SubmitDashboardCard(ctx context.Context, req *connect.Request[
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	s.cardChanged(c)
-	return connect.NewResponse(&v1.SubmitDashboardCardResponse{Chat: chats.Proto(ch), RunId: runID}), nil
+	return connect.NewResponse(&v1.SubmitDashboardCardResponse{Chat: chats.Proto(ctx, s.db, ch), RunId: runID}), nil
 }

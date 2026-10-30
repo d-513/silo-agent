@@ -4,6 +4,7 @@
 package chats
 
 import (
+	"context"
 	"slices"
 	"strings"
 	"time"
@@ -11,17 +12,21 @@ import (
 	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 	"silo.agent/internal/textx"
 	"silo.agent/internal/zone"
 )
 
-// Proto is the wire form of a chat.
-func Proto(c *db.Chat) *v1.Chat {
+// Proto is a chat as the person asking sees it, whose it is included: the web
+// puts every answer straight in its chat list, so the same chat must read the
+// same from every RPC.
+func Proto(ctx context.Context, gdb *gorm.DB, c *db.Chat) *v1.Chat {
 	return &v1.Chat{
 		Id: c.ID, BotId: c.BotID, Title: c.Title, Model: c.Model, Thinking: c.Thinking,
 		UpdatedAt: c.UpdatedAt.Format(time.RFC3339), Main: c.Main,
+		Mine: c.UserID == access.User(ctx).ID, Author: access.Email(gdb, c.UserID),
 	}
 }
 

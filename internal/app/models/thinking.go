@@ -88,5 +88,5 @@ func (s *Service) SetChatThinking(ctx context.Context, req *connect.Request[v1.S
 	if err := s.db.Model(&db.Chat{}).Where("id = ?", c.ID).Update("thinking", level).Error; err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(chats.Proto(c)), nil
+	return connect.NewResponse(chats.Proto(ctx, s.db, c)), nil
 }

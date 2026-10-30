@@ -277,7 +277,7 @@ func (a *App) DivergeChat(ctx context.Context, req *connect.Request[v1.DivergeCh
 	if nc == nil {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("message not found"))
 	}
-	return connect.NewResponse(&v1.DivergeChatResponse{Chat: chats.Proto(nc)}), nil
+	return connect.NewResponse(&v1.DivergeChatResponse{Chat: chats.Proto(ctx, a.DB, nc)}), nil
 }
 
 // CompactChat starts a manual compaction run for a web chat. A message sent
