@@ -126,6 +126,13 @@ func (s *Service) transcribeWith(ctx context.Context, botID, label, modelID stri
 	return out, nil
 }
 
+// Hear turns a recording a person left into words, for a surface that has no
+// worker to go through (a voice memo on a channel). "" means no speech was found.
+func (s *Service) Hear(ctx context.Context, botID string, audio llm.Audio) (string, error) {
+	out, err := s.transcribe(ctx, botID, "channel", audio)
+	return out.Text, err
+}
+
 // CanTranscribe reports whether modelID names a provider that implements
 // llm.Transcriber, without needing its API key.
 func (s *Service) CanTranscribe(modelID string) error {

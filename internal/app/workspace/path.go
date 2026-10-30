@@ -28,3 +28,10 @@ func IsScratch(p string) bool {
 	p = Rel(p)
 	return p == "bot" || strings.HasPrefix(p, "bot/")
 }
+
+// IsUpload is /workspace/tmp: what people sent in, wiped on every start. The
+// Bot looks at these; they are not something it made for anyone.
+func IsUpload(p string) bool {
+	p = Rel(p)
+	return p == "tmp" || strings.HasPrefix(p, "tmp/")
+}

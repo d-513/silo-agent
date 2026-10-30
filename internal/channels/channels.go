@@ -132,12 +132,26 @@ type Attachment struct {
 	Data []byte
 }
 
-// Inbound is one message received from the outside.
+// Media is a file that came with an inbound message. An adapter says what it is
+// and how to get it; the host decides whether to, reads a voice memo as words
+// and saves the rest for the Bot. Fetch can be slow, and is called off the
+// adapter's event loop.
+type Media struct {
+	Name  string
+	Mime  string
+	Size  int64 // 0 when the platform does not say
+	Voice bool  // a voice memo, as opposed to an audio file someone shared
+	Fetch func(ctx context.Context) ([]byte, error)
+}
+
+// Inbound is one message received from the outside. Text is what its sender
+// wrote, a caption when it carries Files.
 type Inbound struct {
 	ExternalID string
 	Title      string
 	Author     string
 	Text       string
+	Files      []Media
 	Raw        map[string]any
 }
 
@@ -201,6 +215,13 @@ type Adapter interface {
 // A failure is logged, never blocks the delete.
 type Remover interface {
 	Remove(ctx context.Context, ch *db.Channel, host Host) error
+}
+
+// Typer is an optional Adapter hook for a platform that can show the Bot typing.
+// on is one signal, not a state: the host repeats it while the Bot works, and
+// sends off when it stops. Best effort: a failure costs the indicator, nothing else.
+type Typer interface {
+	Typing(ctx context.Context, ch *db.Channel, externalID string, on bool) error
 }
 
 var (

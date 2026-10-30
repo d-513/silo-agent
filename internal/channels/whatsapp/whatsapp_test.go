@@ -113,6 +113,10 @@ func (f *fakeAPI) Upload(_ context.Context, data []byte, kind whatsmeow.MediaTyp
 	return whatsmeow.UploadResponse{URL: "https://mmg.example/x", DirectPath: "/x", MediaKey: []byte("k"), FileLength: uint64(len(data))}, nil
 }
 
+func (f *fakeAPI) Download(_ context.Context, msg whatsmeow.DownloadableMessage) ([]byte, error) {
+	return []byte("bytes of " + msg.GetDirectPath()), nil
+}
+
 func (f *fakeAPI) SendChatPresence(_ context.Context, _ types.JID, state types.ChatPresence, _ types.ChatPresenceMedia) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -306,8 +310,73 @@ func TestDirectChatIsAnsweredAndAcknowledged(t *testing.T) {
 	if got[0].ExternalID != alice.String() || got[0].Text != "hello bot" || got[0].Author != "Alice A" || got[0].Title != "Alice A" {
 		t.Fatalf("inbound = %+v", got[0])
 	}
-	if !slices.Equal(api.reads, []types.MessageID{e.Info.ID}) || !slices.Equal(api.presence, []types.ChatPresence{types.ChatPresenceComposing}) {
-		t.Fatalf("expected a read receipt and typing, got reads=%v presence=%v", api.reads, api.presence)
+	if !slices.Equal(api.reads, []types.MessageID{e.Info.ID}) || len(api.presence) != 0 {
+		t.Fatalf("expected a read receipt and no typing of its own, got reads=%v presence=%v", api.reads, api.presence)
+	}
+}
+
+func TestInboundMediaIsHandedOverUnfetched(t *testing.T) {
+	path := proto.String("/mms/x")
+	cases := map[string]struct {
+		msg     *waE2E.Message
+		name    string
+		voice   bool
+		caption string
+	}{
+		"photo":      {&waE2E.Message{ImageMessage: &waE2E.ImageMessage{DirectPath: path, Mimetype: proto.String("image/jpeg"), FileLength: proto.Uint64(9), Caption: proto.String("look")}}, "image.jpg", false, "look"},
+		"voice note": {&waE2E.Message{AudioMessage: &waE2E.AudioMessage{DirectPath: path, Mimetype: proto.String("audio/ogg; codecs=opus"), PTT: proto.Bool(true)}}, "audio.ogg", true, ""},
+		"audio file": {&waE2E.Message{AudioMessage: &waE2E.AudioMessage{DirectPath: path, Mimetype: proto.String("audio/mpeg")}}, "audio.mp3", false, ""},
+		"document":   {&waE2E.Message{DocumentMessage: &waE2E.DocumentMessage{DirectPath: path, FileName: proto.String("plan.pdf"), Caption: proto.String("the plan")}}, "plan.pdf", false, "the plan"},
+		"video":      {&waE2E.Message{VideoMessage: &waE2E.VideoMessage{DirectPath: path, Mimetype: proto.String("video/mp4")}}, "video.mp4", false, ""},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			a, h, api := New(), &fakeHost{}, &fakeAPI{}
+			c := newClient(api, fakeDir{})
+			e := textFrom(alice, alice, "")
+			e.Message = tc.msg
+			deliver(t, a, c, h, alice.String(), "", e)
+
+			got := h.inbound()
+			if len(got) != 1 || len(got[0].Files) != 1 {
+				t.Fatalf("inbound = %+v", got)
+			}
+			f := got[0].Files[0]
+			if f.Name != tc.name || f.Voice != tc.voice || got[0].Text != tc.caption {
+				t.Fatalf("file = %+v, text %q", f, got[0].Text)
+			}
+			data, err := f.Fetch(context.Background())
+			if err != nil || string(data) != "bytes of /mms/x" {
+				t.Fatalf("fetch = %q, %v", data, err)
+			}
+		})
+	}
+}
+
+func TestStickerStaysAPlaceholder(t *testing.T) {
+	a, h, api := New(), &fakeHost{}, &fakeAPI{}
+	c := newClient(api, fakeDir{})
+	e := textFrom(alice, alice, "")
+	e.Message = &waE2E.Message{StickerMessage: &waE2E.StickerMessage{DirectPath: proto.String("/mms/s")}}
+	deliver(t, a, c, h, alice.String(), "", e)
+	if got := h.inbound(); len(got) != 1 || got[0].Text != "[sticker]" || len(got[0].Files) != 0 {
+		t.Fatalf("inbound = %+v", got)
+	}
+}
+
+func TestTypingComposesAndStops(t *testing.T) {
+	a, api := New(), &fakeAPI{}
+	c := newClient(api, fakeDir{})
+	a.runs["ch1"] = &run{}
+	a.runs["ch1"].setClient(c)
+	ch := newChannel(alice.String())
+	for _, on := range []bool{true, false} {
+		if err := a.Typing(context.Background(), ch, alice.String(), on); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !slices.Equal(api.presence, []types.ChatPresence{types.ChatPresenceComposing, types.ChatPresencePaused}) {
+		t.Fatalf("presence = %v", api.presence)
 	}
 }
 
@@ -560,9 +629,6 @@ func TestSendConvertsMarkdownAndSplitsLongText(t *testing.T) {
 	}
 	if !strings.HasPrefix(api.sent[0].Msg.GetConversation(), "*Plan*") {
 		t.Fatalf("heading = %.40q", api.sent[0].Msg.GetConversation())
-	}
-	if !slices.Equal(api.presence, []types.ChatPresence{types.ChatPresencePaused}) {
-		t.Fatalf("presence = %v", api.presence)
 	}
 }
 

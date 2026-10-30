@@ -18,6 +18,10 @@ type Origin struct {
 	Channel  *db.Channel
 	External string
 	Deliver  func(channels.Outbound) error
+	// Working tells the other side the Bot is at it, for as long as the run
+	// lasts: it is called when the run starts and what it returns when it ends.
+	// nil where there is nobody to tell.
+	Working func() (done func())
 	// Automation is set when a scheduled automation started the run. Its runs
 	// start from a fresh context and are not delivered anywhere.
 	Automation *db.Automation

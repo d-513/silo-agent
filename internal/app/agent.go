@@ -86,7 +86,7 @@ func (a *App) StartRun(req run.Request) (string, error) {
 	// Tracked before the goroutine starts, so a caller that releases the
 	// conversation lock right after this already sees the run as live.
 	ctx, cancel := runContext(a.cfg().Runs.Timeout())
-	lr := &liveRun{cancel: cancel, botID: req.BotID, chatID: req.ChatID, inbox: make(chan inboxMsg, 32), done: make(chan struct{}), wake: make(chan string, 8), pySession: a.pySessionFor(req.ChatID)}
+	lr := &liveRun{cancel: cancel, botID: req.BotID, chatID: req.ChatID, origin: req.Origin, inbox: make(chan inboxMsg, 32), done: make(chan struct{}), wake: make(chan string, 8), pySession: a.pySessionFor(req.ChatID)}
 	if req.Origin != nil && req.Origin.Automation != nil {
 		lr.pySession = runID
 	}
@@ -179,6 +179,20 @@ func (a *App) drainInbox(lr *liveRun, msgs []llm.Message, fold bool) []llm.Messa
 		fold = false
 	}
 	return msgs
+}
+
+// settleInbox takes what was injected before the run wrote its opening: those
+// events move behind it, and the context read next holds them, so the inbox
+// must not hand them over again. The caller holds lr.injecting.
+func (a *App) settleInbox(lr *liveRun) {
+	for {
+		select {
+		case m := <-lr.inbox:
+			a.DB.Exec("UPDATE run_events SET seq = nextval(pg_get_serial_sequence('run_events', 'seq')) WHERE id = ?", m.id)
+		default:
+			return
+		}
+	}
 }
 
 // closeInbox ends the run's inbox when it is empty, and reports whether it did.
@@ -393,6 +407,9 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 	defer lr.cancel()
 	defer close(lr.done)
 	defer a.runExited(runID)
+	if origin != nil && origin.Working != nil {
+		defer origin.Working()()
+	}
 
 	modelID := a.Models.Resolve(botID, chatID)
 	client, provider, model, err := a.Models.Observed(modelID, botID, "chat")
@@ -406,6 +423,10 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 	tools := rt.list
 	window := a.contextWindow(ctx, modelID)
 
+	// A message can be injected from the moment the run is live, which is
+	// before its opening is written here. Held across the opening and the read
+	// of the context, so each message is read once and in the order it came.
+	lr.injecting.Lock()
 	switch {
 	case req.Report != nil:
 		a.emitReport(botID, chatID, runID, req.Report)
@@ -422,6 +443,9 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 		}
 	}
 
+	if !req.Compact {
+		a.settleInbox(lr)
+	}
 	var past replayed
 	if origin != nil && origin.Automation != nil {
 		// Each firing is independent: only this run is the model's history.
@@ -429,6 +453,7 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 	} else {
 		past = a.contextFromDB(chatID)
 	}
+	lr.injecting.Unlock()
 	// From here the history only grows: what a turn adds is recorded so that
 	// replaying the log gives these same messages (replayEvents), and nothing
 	// already sent is edited. A provider's prompt cache holds for exactly as

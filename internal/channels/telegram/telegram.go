@@ -7,6 +7,7 @@
 package telegram
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"encoding/base64"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/gotd/td/session"
 	"github.com/gotd/td/telegram"
+	"github.com/gotd/td/telegram/downloader"
 	"github.com/gotd/td/telegram/message"
 	"github.com/gotd/td/telegram/message/peer"
 	"github.com/gotd/td/telegram/uploader"
@@ -31,7 +33,10 @@ import (
 	"silo.agent/internal/db"
 )
 
-const maxMessageLen = 4000
+const (
+	maxMessageLen = 4000
+	maxPhotoBytes = 10 << 20
+)
 
 //go:embed telegram.svg
 var telegramLogo []byte
@@ -198,6 +203,13 @@ func (a *Adapter) Send(ctx context.Context, ch *db.Channel, cfg channels.Config,
 		if err != nil {
 			return err
 		}
+		// Telegram refuses some images as photos (too long, too wide). Those
+		// still go, as files.
+		if asPhoto(f) {
+			if _, err := req.Media(ctx, message.UploadedPhoto(file)); err == nil {
+				continue
+			}
+		}
 		// ForceFile + an explicit filename, or Telegram shows a generated
 		// "file<random>.undefined" name.
 		doc := message.UploadedDocument(file).Filename(name).ForceFile(true)
@@ -209,6 +221,37 @@ func (a *Adapter) Send(ctx context.Context, ch *db.Channel, cfg channels.Config,
 		}
 	}
 	return nil
+}
+
+// asPhoto is whether a file shows best as a photo rather than a download:
+// the types Telegram draws inline, within its cap for one.
+func asPhoto(f channels.Attachment) bool {
+	if len(f.Data) > maxPhotoBytes {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(f.Mime)) {
+	case "image/png", "image/jpeg", "image/webp":
+		return true
+	}
+	return false
+}
+
+// Typing shows the bot typing. A signal lasts about 5 s; off cancels the rest.
+func (a *Adapter) Typing(ctx context.Context, ch *db.Channel, externalID string, on bool) error {
+	client := a.client(ch.ID)
+	if client == nil {
+		return fmt.Errorf("telegram channel is not connected")
+	}
+	peer := a.inputPeerFor(ch.ID, strings.TrimSpace(externalID))
+	if peer == nil {
+		return fmt.Errorf("chat %q is not known yet", externalID)
+	}
+	var action tg.SendMessageActionClass = &tg.SendMessageTypingAction{}
+	if !on {
+		action = &tg.SendMessageCancelAction{}
+	}
+	_, err := client.API().MessagesSetTyping(ctx, &tg.MessagesSetTypingRequest{Peer: peer, Action: action})
+	return err
 }
 
 // History reads the platform's recent messages for the bound chat, so the Bot
@@ -602,7 +645,8 @@ func (a *Adapter) onMessage(ch *db.Channel, cfg channels.Config, liveSince int64
 			return nil
 		}
 		text := strings.TrimSpace(m.Message)
-		if text == "" {
+		files := a.mediaOf(ch.ID, m.Media)
+		if text == "" && len(files) == 0 {
 			text = "[media]"
 		}
 		title := ref.Title
@@ -614,8 +658,91 @@ func (a *Adapter) onMessage(ch *db.Channel, cfg channels.Config, liveSince int64
 			Title:      title,
 			Author:     authorName(uctx, m),
 			Text:       text,
+			Files:      files,
 		})
 	}
+}
+
+// mediaOf is what a message carries that the Bot can have: a photo, or a
+// document, which is how Telegram sends every other file, voice memos included.
+// A sticker stays out: it is a reaction, not a file.
+func (a *Adapter) mediaOf(channelID string, media tg.MessageMediaClass) []channels.Media {
+	fetch := func(loc tg.InputFileLocationClass) func(context.Context) ([]byte, error) {
+		return func(ctx context.Context) ([]byte, error) {
+			client := a.client(channelID)
+			if client == nil {
+				return nil, fmt.Errorf("telegram channel is not connected")
+			}
+			var buf bytes.Buffer
+			if _, err := downloader.NewDownloader().Download(client.API(), loc).Stream(ctx, &buf); err != nil {
+				return nil, err
+			}
+			return buf.Bytes(), nil
+		}
+	}
+	switch v := media.(type) {
+	case *tg.MessageMediaPhoto:
+		photo, ok := v.Photo.(*tg.Photo)
+		if !ok {
+			return nil
+		}
+		thumb, size := largestPhoto(photo.Sizes)
+		if thumb == "" {
+			return nil
+		}
+		return []channels.Media{{
+			Name: "photo.jpg", Mime: "image/jpeg", Size: int64(size),
+			Fetch: fetch(&tg.InputPhotoFileLocation{ID: photo.ID, AccessHash: photo.AccessHash, FileReference: photo.FileReference, ThumbSize: thumb}),
+		}}
+	case *tg.MessageMediaDocument:
+		doc, ok := v.Document.(*tg.Document)
+		if !ok {
+			return nil
+		}
+		m := channels.Media{Name: "file", Mime: doc.MimeType, Size: doc.Size, Voice: v.Voice,
+			Fetch: fetch(&tg.InputDocumentFileLocation{ID: doc.ID, AccessHash: doc.AccessHash, FileReference: doc.FileReference})}
+		for _, attr := range doc.Attributes {
+			switch at := attr.(type) {
+			case *tg.DocumentAttributeSticker:
+				return nil
+			case *tg.DocumentAttributeFilename:
+				m.Name = at.FileName
+			case *tg.DocumentAttributeAudio:
+				m.Voice = m.Voice || at.Voice
+			}
+		}
+		if m.Voice {
+			m.Name = "voice.ogg"
+		}
+		return []channels.Media{m}
+	}
+	return nil
+}
+
+// largestPhoto picks the biggest size Telegram keeps of a photo: its type, the
+// name a download asks for, and its bytes. Inline previews (stripped, cached)
+// carry no file to download.
+func largestPhoto(sizes []tg.PhotoSizeClass) (string, int) {
+	best, bestArea, weight := "", 0, 0
+	for _, s := range sizes {
+		var kind string
+		var w, h, n int
+		switch v := s.(type) {
+		case *tg.PhotoSize:
+			kind, w, h, n = v.Type, v.W, v.H, v.Size
+		case *tg.PhotoSizeProgressive:
+			kind, w, h = v.Type, v.W, v.H
+			if len(v.Sizes) > 0 {
+				n = v.Sizes[len(v.Sizes)-1]
+			}
+		default:
+			continue
+		}
+		if w*h > bestArea {
+			best, bestArea, weight = kind, w*h, n
+		}
+	}
+	return best, weight
 }
 
 func (a *Adapter) mentionsBot(channelID string, m *tg.Message) bool {

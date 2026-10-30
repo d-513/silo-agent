@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"path"
 
 	v1 "silo.agent/gen/silo/v1"
@@ -77,6 +78,9 @@ func (s *Service) Attachment(ctx context.Context, botID, rel string) (channels.A
 	}
 	if len(f.Data) == 0 {
 		return channels.Attachment{}, errors.New("file is empty")
+	}
+	if f.Truncated { // half a file would arrive looking like the whole one
+		return channels.Attachment{}, fmt.Errorf("%s is over the %d MB an attachment can be", f.Name, PresentLimit>>20)
 	}
 	return channels.Attachment{Name: f.Name, Mime: f.Mime(), Data: f.Data}, nil
 }

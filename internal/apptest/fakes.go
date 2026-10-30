@@ -23,9 +23,12 @@ type FakeAdapter struct {
 	// HistoryMsgs and HistoryErr are what History answers with.
 	HistoryMsgs []channels.Message
 	HistoryErr  error
+	// SendFileErr fails a Send that carries files, as a platform's size cap does.
+	SendFileErr error
 
 	mu           sync.Mutex
 	Sent         []channels.Outbound
+	typed        []bool
 	host         channels.Host
 	ValidateFunc func(ctx context.Context, ch *db.Channel, cfg channels.Config) (channels.State, error)
 }
@@ -78,8 +81,25 @@ func (f *FakeAdapter) WaitHost(t testing.TB) channels.Host {
 func (f *FakeAdapter) Send(_ context.Context, _ *db.Channel, _ channels.Config, msg channels.Outbound) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.SendFileErr != nil && len(msg.Files) > 0 {
+		return f.SendFileErr
+	}
 	f.Sent = append(f.Sent, msg)
 	return nil
+}
+
+func (f *FakeAdapter) Typing(_ context.Context, _ *db.Channel, _ string, on bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.typed = append(f.typed, on)
+	return nil
+}
+
+// Typed returns every typing signal the adapter was sent, in order.
+func (f *FakeAdapter) Typed() []bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]bool(nil), f.typed...)
 }
 
 func (f *FakeAdapter) History(_ context.Context, _ *db.Channel, _ channels.Config, _ string, _ int) ([]channels.Message, error) {

@@ -40,6 +40,7 @@ import (
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/pause"
 	"silo.agent/internal/app/proactivity"
+	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/setup"
 	"silo.agent/internal/app/skill"
 	"silo.agent/internal/app/space"
@@ -125,6 +126,9 @@ type liveRun struct {
 	cancel context.CancelFunc
 	botID  string
 	chatID string
+	// origin is where the run came from, for a tool called from Python that
+	// delivers something back there.
+	origin *run.Origin
 	// inbox carries user messages injected while the run is live. injecting
 	// is held while one is queued and recorded, and while the run takes them,
 	// so the run never reads a message whose event is not written yet.
@@ -267,7 +271,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Proactivity = proactivity.New(a.DB, a.Automations)
 	a.Skills = skill.New(a.DB, a.Hub, a.cfg, a.Workspace)
 	a.Artifacts = artifact.New(a.DB, a.cfg, a.Workspace, a.Skills, a)
-	a.Channels = channel.New(a.DB, a.cfg, a, a, a.Mask)
+	a.Channels = channel.New(a.DB, a.cfg, a, a, a.Mask, a.Workspace, a.Voice)
 	a.Connectors = connector.New(a.DB, a.Docker, a.Hub, a.Store, a.cfg, a.Workspace, a.Mask, a)
 	a.Drives = drive.New(a.DB, a.Docker, a.Store, a.cfg, a.Connectors, func() *http.Client { return a.DriveHTTP })
 	a.Drives.OnChange = a.Changes.RecordDrive

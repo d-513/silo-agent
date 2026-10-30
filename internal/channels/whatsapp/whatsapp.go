@@ -62,6 +62,7 @@ var errLoggedOut = errors.New("WhatsApp unlinked this device")
 type waAPI interface {
 	SendMessage(ctx context.Context, to types.JID, message *waE2E.Message, extra ...whatsmeow.SendRequestExtra) (whatsmeow.SendResponse, error)
 	Upload(ctx context.Context, plaintext []byte, appInfo whatsmeow.MediaType) (whatsmeow.UploadResponse, error)
+	Download(ctx context.Context, msg whatsmeow.DownloadableMessage) ([]byte, error)
 	SendChatPresence(ctx context.Context, jid types.JID, state types.ChatPresence, media types.ChatPresenceMedia) error
 	MarkRead(ctx context.Context, ids []types.MessageID, timestamp time.Time, chat, sender types.JID, receiptTypeExtra ...types.ReceiptType) error
 	GetJoinedGroups(ctx context.Context) ([]*types.GroupInfo, error)
@@ -491,6 +492,23 @@ func (a *Adapter) Send(ctx context.Context, ch *db.Channel, _ channels.Config, m
 	return c.send(ctx, to, msg)
 }
 
+// Typing shows the account composing a message in a chat, or stops it.
+func (a *Adapter) Typing(ctx context.Context, ch *db.Channel, externalID string, on bool) error {
+	c := a.liveClient(ch.ID)
+	if c == nil {
+		return errors.New("whatsapp channel is not connected")
+	}
+	to, ok := normalizeTarget(externalID)
+	if !ok {
+		return fmt.Errorf("%q is not a WhatsApp chat", strings.TrimSpace(externalID))
+	}
+	state := types.ChatPresencePaused
+	if on {
+		state = types.ChatPresenceComposing
+	}
+	return c.api.SendChatPresence(ctx, to, state, types.ChatPresenceMediaText)
+}
+
 func (a *Adapter) liveClient(channelID string) *client {
 	a.mu.Lock()
 	r := a.runs[channelID]
@@ -702,21 +720,25 @@ func (a *Adapter) onMessage(ctx context.Context, ch *db.Channel, cfg channels.Co
 	if !info.IsFromMe {
 		c.spawn(func() { c.ack(info) })
 	}
+	files := c.mediaOf(e.Message)
+	if len(files) > 0 {
+		text = caption(e.Message)
+	}
 	return host.DeliverInbound(ctx, live, channels.Inbound{
 		ExternalID: target.String(),
 		Title:      c.title(ctx, target, info),
 		Author:     c.author(info),
 		Text:       text,
+		Files:      files,
 	})
 }
 
-// ack tells the sender the message was seen: a read receipt, then "typing…".
-// Best effort and off the event loop, which must not wait on the network.
+// ack tells the sender the message was seen. Best effort and off the event
+// loop, which must not wait on the network.
 func (c *client) ack(info types.MessageInfo) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = c.api.MarkRead(ctx, []types.MessageID{info.ID}, info.Timestamp, info.Chat, info.Sender)
-	_ = c.api.SendChatPresence(ctx, info.Chat, types.ChatPresenceComposing, types.ChatPresenceMediaText)
 }
 
 func (c *client) author(info types.MessageInfo) string {
@@ -790,8 +812,72 @@ func bestName(ci types.ContactInfo) string {
 	return ""
 }
 
-// messageText is what the Bot reads. Media is not downloaded: it arrives as a
-// labelled placeholder (plus its caption), as it does over Telegram.
+// mediaOf is the file a message carries, downloaded only when the host asks.
+// A sticker stays a placeholder: it is a reaction, not a file.
+func (c *client) mediaOf(m *waE2E.Message) []channels.Media {
+	file := func(d whatsmeow.DownloadableMessage, name, mime string, size uint64, voice bool) []channels.Media {
+		return []channels.Media{{Name: name, Mime: mime, Size: int64(size), Voice: voice,
+			Fetch: func(ctx context.Context) ([]byte, error) { return c.api.Download(ctx, d) }}}
+	}
+	switch {
+	case m.GetImageMessage() != nil:
+		v := m.GetImageMessage()
+		return file(v, "image"+extOf(v.GetMimetype(), ".jpg"), v.GetMimetype(), v.GetFileLength(), false)
+	case m.GetVideoMessage() != nil:
+		v := m.GetVideoMessage()
+		return file(v, "video"+extOf(v.GetMimetype(), ".mp4"), v.GetMimetype(), v.GetFileLength(), false)
+	case m.GetDocumentMessage() != nil:
+		v := m.GetDocumentMessage()
+		name := strings.TrimSpace(v.GetFileName())
+		if name == "" {
+			name = "document"
+		}
+		return file(v, name, v.GetMimetype(), v.GetFileLength(), false)
+	case m.GetAudioMessage() != nil:
+		v := m.GetAudioMessage()
+		return file(v, "audio"+extOf(v.GetMimetype(), ".ogg"), v.GetMimetype(), v.GetFileLength(), v.GetPTT())
+	}
+	return nil
+}
+
+// extOf is the extension a file of this type goes by; the type may carry
+// parameters ("audio/ogg; codecs=opus"). fallback when it names nothing known.
+func extOf(mimeType, fallback string) string {
+	kind, _, _ := strings.Cut(mimeType, ";")
+	switch strings.ToLower(strings.TrimSpace(kind)) {
+	case "image/jpeg":
+		return ".jpg"
+	case "image/png":
+		return ".png"
+	case "image/webp":
+		return ".webp"
+	case "video/mp4":
+		return ".mp4"
+	case "audio/ogg":
+		return ".ogg"
+	case "audio/mpeg":
+		return ".mp3"
+	case "audio/mp4":
+		return ".m4a"
+	}
+	return fallback
+}
+
+// caption is what the sender wrote on a file.
+func caption(m *waE2E.Message) string {
+	switch {
+	case m.GetImageMessage() != nil:
+		return strings.TrimSpace(m.GetImageMessage().GetCaption())
+	case m.GetVideoMessage() != nil:
+		return strings.TrimSpace(m.GetVideoMessage().GetCaption())
+	case m.GetDocumentMessage() != nil:
+		return strings.TrimSpace(m.GetDocumentMessage().GetCaption())
+	}
+	return ""
+}
+
+// messageText is what the Bot reads of a message: its text, or a labelled
+// placeholder (plus any caption) for what has no text of its own.
 func messageText(m *waE2E.Message) string {
 	if m == nil {
 		return ""
@@ -949,12 +1035,10 @@ func (c *client) send(ctx context.Context, to types.JID, msg channels.Outbound) 
 		_, err := c.api.SendMessage(ctx, to, m, whatsmeow.SendRequestExtra{ID: id})
 		return err
 	}
-	sentAny := false
 	for _, part := range channels.Chunk(toWhatsApp(msg.Text), maxMessageRunes) {
 		if err := post(&waE2E.Message{Conversation: proto.String(part)}); err != nil {
 			return err
 		}
-		sentAny = true
 	}
 	for _, f := range msg.Files {
 		if len(f.Data) == 0 {
@@ -967,10 +1051,6 @@ func (c *client) send(ctx context.Context, to types.JID, msg channels.Outbound) 
 		if err := post(m); err != nil {
 			return err
 		}
-		sentAny = true
-	}
-	if sentAny { // stop the "typing…" the inbound ack started
-		_ = c.api.SendChatPresence(ctx, to, types.ChatPresencePaused, types.ChatPresenceMediaText)
 	}
 	return nil
 }

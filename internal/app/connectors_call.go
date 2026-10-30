@@ -11,6 +11,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/connector"
+	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/tool"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
@@ -54,10 +55,23 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 	}
 	out := a.Mask(bot.ID).Apply(res.Text)
 	a.emitCallDone(bot.ID, runID, key, textx.Cap(out, callResultMax))
+	if def.Name == "artifact" {
+		a.deliverTool(ctx, bot.ID, call.ChatID, runID, a.originOf(runID), def.Name, argsJSON, "")
+	}
 	if res.Data != "" {
 		return connect.NewResponse(&v1.ToolRes{ResultJson: res.Data}), nil
 	}
 	return connect.NewResponse(&v1.ToolRes{ResultJson: pythonResult(out)}), nil
+}
+
+// originOf is where a live run came from; nil for a run that is not live.
+func (a *App) originOf(runID string) *run.Origin {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if lr := a.runs[runID]; lr != nil {
+		return lr.origin
+	}
+	return nil
 }
 
 func callTitle(name, action string) string { return connector.CallTitle(name, action) }

@@ -21,6 +21,8 @@ import (
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/host"
 	"silo.agent/internal/app/run"
+	"silo.agent/internal/app/voice"
+	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/channels"
 	"silo.agent/internal/config"
 	"silo.agent/internal/masker"
@@ -37,6 +39,9 @@ import (
 // Host is what the channels need from the App around them.
 type Host interface {
 	host.Authorizer
+	// Wake starts the Bot's machine if it is down and waits for its worker;
+	// false when it did not come up in time.
+	Wake(ctx context.Context, botID string) bool
 }
 
 // Service owns the channel rows, their adapter workers and conversations.
@@ -46,6 +51,8 @@ type Service struct {
 	engine run.Engine
 	host   Host
 	mask   func(botID string) *masker.Masker
+	ws     *workspace.Service
+	voice  *voice.Service
 
 	// mu guards cancel (the running adapter workers) and states (their
 	// dynamic state). chatMu serializes find-or-create of a channel
@@ -54,11 +61,15 @@ type Service struct {
 	cancel map[string]context.CancelFunc
 	states map[string]channels.State
 	chatMu sync.Mutex
+
+	lanes  lanes
+	typing typists
 }
 
-func New(gdb *gorm.DB, cfg func() config.Config, e run.Engine, h Host, mask func(botID string) *masker.Masker) *Service {
-	return &Service{db: gdb, cfg: cfg, engine: e, host: h, mask: mask,
-		cancel: map[string]context.CancelFunc{}, states: map[string]channels.State{}}
+func New(gdb *gorm.DB, cfg func() config.Config, e run.Engine, h Host, mask func(botID string) *masker.Masker, ws *workspace.Service, v *voice.Service) *Service {
+	return &Service{db: gdb, cfg: cfg, engine: e, host: h, mask: mask, ws: ws, voice: v,
+		cancel: map[string]context.CancelFunc{}, states: map[string]channels.State{},
+		lanes: lanes{busy: map[string][]func(){}}, typing: typists{every: typingEvery, max: typingMax, live: map[string]*typist{}}}
 }
 
 // adapterHost is what an adapter sees: channels.Host, backed by the Service.
@@ -384,6 +395,7 @@ func (s *Service) Origin(ch *db.Channel, external string) *run.Origin {
 			}
 			return ad.Send(context.Background(), ch, s.channelConfig(ch), msg)
 		},
+		Working: func() func() { return s.showTyping(ch, external) },
 	}
 }
 
@@ -404,6 +416,25 @@ func (s *Service) deliverInbound(ctx context.Context, ch *db.Channel, in channel
 	if err != nil {
 		return err
 	}
+	// Files take their time and the adapter's event loop must not wait for
+	// them; whatever arrives behind one waits its turn, so a message typed
+	// after a voice memo is not read before it.
+	if len(in.Files) == 0 && !s.lanes.occupied(c.ID) {
+		return s.hand(ch, c, external, in)
+	}
+	done := s.showTyping(ch, external)
+	s.lanes.run(c.ID, func() {
+		defer done()
+		if err := s.hand(ch, c, external, in); err != nil {
+			log.Printf("channel %s: inbound: %v", ch.ID, err)
+		}
+	})
+	return nil
+}
+
+// hand gives one message to the conversation: a command runs, anything else
+// joins the live run or starts one.
+func (s *Service) hand(ch *db.Channel, c *db.Chat, external string, in channels.Inbound) error {
 	origin := s.Origin(ch, external)
 	if reply, ok := s.engine.Command(ch.BotID, c.ID, in.Text); ok {
 		if strings.TrimSpace(reply) != "" {
@@ -411,11 +442,14 @@ func (s *Service) deliverInbound(ctx context.Context, ch *db.Channel, in channel
 		}
 		return nil
 	}
-	_, err = s.engine.StartOrInject(ch.BotID, c.ID, in.Text, run.Extra{}, origin)
-	if err != nil {
+	text, ex := in.Text, run.Extra{}
+	if len(in.Files) > 0 {
+		text, ex.Files = s.readFiles(ch.BotID, in)
+	}
+	if _, err := s.engine.StartOrInject(ch.BotID, c.ID, text, ex, origin); err != nil {
 		return err
 	}
-	s.db.Model(&c).Update("updated_at", time.Now())
+	s.db.Model(c).Update("updated_at", time.Now())
 	return nil
 }
 

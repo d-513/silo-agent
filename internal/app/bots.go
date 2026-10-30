@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"sync"
+	"time"
 
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
@@ -226,6 +227,17 @@ func (a *App) ensureRunningBg(b *db.Bot) {
 			log.Printf("ensure bot=%s: %v", b.ID, err)
 		}
 	}()
+}
+
+// Wake brings a Bot's machine up, if it may run, and waits for its worker: for
+// work that must reach the box before a run starts.
+func (a *App) Wake(ctx context.Context, botID string) bool {
+	var b db.Bot
+	if a.DB.Where("id = ?", botID).Limit(1).Find(&b); b.ID == "" || a.ownerDisabled(&b) {
+		return false
+	}
+	a.ensureRunningBg(&b)
+	return a.Hub.WaitConnected(ctx, botID, 90*time.Second)
 }
 
 func (a *App) haltBot(ctx context.Context, b *db.Bot) {

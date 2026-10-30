@@ -162,9 +162,17 @@ func (s *Service) PutFile(ctx context.Context, req *connect.Request[v1.PutFileRe
 	if len(data) > PutMax {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("file too large (max 50 MB)"))
 	}
-	if _, err := s.Call(ctx, b.ID, &v1.Cmd{Body: &v1.Cmd_PutFile{PutFile: &v1.PutFileCmd{Path: path, Data: data}}}); err != nil {
+	if err := s.Put(ctx, b.ID, path, data); err != nil {
 		return nil, err
 	}
-	s.Changed(b.ID, path)
 	return connect.NewResponse(&v1.FileOpResponse{}), nil
+}
+
+// Put writes one workspace file through the worker.
+func (s *Service) Put(ctx context.Context, botID, path string, data []byte) error {
+	if _, err := s.Call(ctx, botID, &v1.Cmd{Body: &v1.Cmd_PutFile{PutFile: &v1.PutFileCmd{Path: path, Data: data}}}); err != nil {
+		return err
+	}
+	s.Changed(botID, path)
+	return nil
 }

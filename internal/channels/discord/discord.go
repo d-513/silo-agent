@@ -15,7 +15,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
 	"regexp"
 	"slices"
@@ -236,8 +238,8 @@ func (a *Adapter) onMessage(ctx context.Context, ch *db.Channel, cfg channels.Co
 	if !dm && cfg.Get("reply_mode") != "always" && !mentionsBot(m, self) {
 		return nil
 	}
-	text := messageText(m)
-	if text == "" {
+	text, files := writtenText(m), mediaOf(s, m)
+	if text == "" && len(files) == 0 {
 		return nil
 	}
 	return host.DeliverInbound(ctx, live, channels.Inbound{
@@ -245,7 +247,45 @@ func (a *Adapter) onMessage(ctx context.Context, ch *db.Channel, cfg channels.Co
 		Title:      a.title(s, m),
 		Author:     authorName(m),
 		Text:       text,
+		Files:      files,
 	})
+}
+
+// mediaOf is what a message has attached. A voice message is one attachment on
+// a message flagged as one.
+func mediaOf(s *discordgo.Session, m *discordgo.Message) []channels.Media {
+	var out []channels.Media
+	for _, at := range m.Attachments {
+		if at == nil {
+			continue
+		}
+		out = append(out, channels.Media{
+			Name: at.Filename, Mime: at.ContentType, Size: int64(at.Size),
+			Voice: m.Flags&discordgo.MessageFlagsIsVoiceMessage != 0,
+			Fetch: func(ctx context.Context) ([]byte, error) { return download(ctx, s, at.URL) },
+		})
+	}
+	return out
+}
+
+// download fetches an attachment from Discord's CDN. The session's client has a
+// short timeout for REST calls; the caller's context bounds this instead.
+func download(ctx context.Context, s *discordgo.Session, url string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	client := *s.Client
+	client.Timeout = 0
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("discord cdn: %s", res.Status)
+	}
+	return io.ReadAll(res.Body)
 }
 
 func mentionsBot(m *discordgo.Message, self *discordgo.User) bool {
@@ -257,11 +297,16 @@ func mentionsBot(m *discordgo.Message, self *discordgo.User) bool {
 	return ref != nil && ref.Author != nil && ref.Author.ID == self.ID
 }
 
-// messageText is what the Bot reads: the text with mentions turned into names,
-// then one line per attachment so it can fetch the file.
+// writtenText is what the sender wrote, with mentions turned into names.
+func writtenText(m *discordgo.Message) string {
+	return strings.TrimSpace(m.ContentWithMentionsReplaced())
+}
+
+// messageText is a message read back from history: what was written, then one
+// line per attachment.
 func messageText(m *discordgo.Message) string {
 	lines := []string{}
-	if t := strings.TrimSpace(m.ContentWithMentionsReplaced()); t != "" {
+	if t := writtenText(m); t != "" {
 		lines = append(lines, t)
 	}
 	for _, at := range m.Attachments {
@@ -333,6 +378,23 @@ func (a *Adapter) Send(ctx context.Context, ch *db.Channel, _ channels.Config, m
 		return fmt.Errorf("discord channel %q is not a channel id — pick it again in Set up", strings.TrimSpace(external))
 	}
 	return send(ctx, c.sess, target, msg)
+}
+
+// Typing shows the bot typing. A signal lasts about 10 s and has no off: the
+// indicator ends with the bot's next message, or on its own.
+func (a *Adapter) Typing(ctx context.Context, ch *db.Channel, externalID string, on bool) error {
+	if !on {
+		return nil
+	}
+	c := a.conn(ch.ID)
+	if c == nil {
+		return fmt.Errorf("discord channel is not connected")
+	}
+	target := targetID(externalID)
+	if target == "" {
+		return fmt.Errorf("%q is not a Discord channel id", externalID)
+	}
+	return c.sess.ChannelTyping(target, discordgo.WithContext(ctx))
 }
 
 // noPings lets the bot @mention people but never @everyone, @here or a role: the

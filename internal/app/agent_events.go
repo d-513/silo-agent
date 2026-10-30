@@ -12,6 +12,7 @@ import (
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/artifact"
 	"silo.agent/internal/app/run"
+	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
@@ -123,8 +124,18 @@ func (a *App) deliverTool(ctx context.Context, botID, chatID, runID string, orig
 		if att != nil {
 			msg.Files = []channels.Attachment{*att}
 		}
-		if err := origin.Deliver(msg); err != nil {
-			a.Emit(botID, chatID, runID, "error", "channel attach failed: "+err.Error(), "")
+		err := origin.Deliver(msg)
+		if err == nil {
+			return
+		}
+		a.Emit(botID, chatID, runID, "error", "channel attach failed: "+err.Error(), "")
+		// Most often the platform's size cap, on the file alone: the human
+		// should still hear that there was one.
+		if att != nil {
+			msg.Text, msg.Files = text+" (could not be attached here)", nil
+			if err := origin.Deliver(msg); err != nil {
+				a.Emit(botID, chatID, runID, "error", "channel send failed: "+err.Error(), "")
+			}
 		}
 	}
 	var args struct {
@@ -135,6 +146,11 @@ func (a *App) deliverTool(ctx context.Context, botID, chatID, runID string, orig
 	_ = json.Unmarshal([]byte(argsJSON), &args)
 	switch name {
 	case "present":
+		// The Bot looking at its scratch, or at what the human sent, is not
+		// the Bot showing them something.
+		if workspace.IsScratch(args.Path) || workspace.IsUpload(args.Path) {
+			return
+		}
 		if img != "" {
 			if att, ok := dataURLAttachment(args.Path, img); ok {
 				send("File: "+filepath.Base(args.Path), &att)

@@ -272,8 +272,56 @@ func TestInboundReadsTheMessage(t *testing.T) {
 	if in.ExternalID != "100100100100" || in.Author != "Ali" || in.Title != "#general · My Server" {
 		t.Fatalf("inbound = %+v", in)
 	}
-	if in.Text != "look @silo at this\n[attachment: plan.pdf (application/pdf) https://cdn.example/plan.pdf]" {
+	if in.Text != "look @silo at this" {
 		t.Fatalf("text = %q", in.Text)
+	}
+	if len(in.Files) != 1 || in.Files[0].Name != "plan.pdf" || in.Files[0].Mime != "application/pdf" || in.Files[0].Voice {
+		t.Fatalf("files = %+v", in.Files)
+	}
+}
+
+func TestInboundVoiceMessageIsFetchedFromTheCDN(t *testing.T) {
+	a, h := New(), &fakeHost{}
+	tr := &transport{handle: func(r request) (int, string) { return 200, "OggS..." }}
+	s := session(t, tr)
+	m := &discordgo.Message{ID: "v1", ChannelID: "100100100100", Author: user("U1", "alice"), Flags: discordgo.MessageFlagsIsVoiceMessage,
+		Attachments: []*discordgo.MessageAttachment{{Filename: "voice-message.ogg", ContentType: "audio/ogg", Size: 7, URL: "https://cdn.example/voice-message.ogg"}}}
+	if err := a.onMessage(context.Background(), newChannel("100100100100"), channels.Config{}, h, s, m); err != nil {
+		t.Fatal(err)
+	}
+	got := h.inbound()
+	if len(got) != 1 || len(got[0].Files) != 1 || !got[0].Files[0].Voice {
+		t.Fatalf("inbound = %+v", got)
+	}
+	data, err := got[0].Files[0].Fetch(context.Background())
+	if err != nil || string(data) != "OggS..." {
+		t.Fatalf("fetch = %q, %v", data, err)
+	}
+	if calls := tr.calls(); len(calls) != 1 || calls[0].Path != "/voice-message.ogg" {
+		t.Fatalf("calls = %+v", calls)
+	}
+}
+
+func TestDownloadFailureIsAnError(t *testing.T) {
+	s := session(t, &transport{handle: func(request) (int, string) { return 403, "expired" }})
+	if _, err := download(context.Background(), s, "https://cdn.example/x"); err == nil {
+		t.Fatal("a refused download passed as bytes")
+	}
+}
+
+func TestTypingSignalsOnlyTurningOn(t *testing.T) {
+	a := New()
+	tr := &transport{handle: func(request) (int, string) { return 204, "" }}
+	a.conns["ch1"] = &conn{sess: session(t, tr)}
+	ch := newChannel("100100100100")
+	if err := a.Typing(context.Background(), ch, "100100100100", true); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Typing(context.Background(), ch, "100100100100", false); err != nil {
+		t.Fatal(err)
+	}
+	if calls := tr.calls(); len(calls) != 1 || calls[0].Path != "/channels/100100100100/typing" {
+		t.Fatalf("calls = %+v", calls)
 	}
 }
 
