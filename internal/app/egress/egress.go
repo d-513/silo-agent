@@ -795,29 +795,7 @@ func (s *Service) Session(ctx context.Context, stream *connect.BidiStream[v1.Egr
 	sess.poke()
 	s.setProblem(nil)
 
-	errc := make(chan error, 2)
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				errc <- ctx.Err()
-				return
-			case <-sess.done:
-				errc <- nil
-				return
-			case <-sess.dirty:
-				apply, err := s.renderApply()
-				if err != nil {
-					s.setProblem(err)
-					continue
-				}
-				if err := stream.Send(&v1.EgressDown{Body: &v1.EgressDown_Apply{Apply: apply}}); err != nil {
-					errc <- err
-					return
-				}
-			}
-		}
-	}()
+	errc := make(chan error, 1)
 	go func() {
 		for {
 			up, err := stream.Receive()
@@ -828,7 +806,27 @@ func (s *Service) Session(ctx context.Context, stream *connect.BidiStream[v1.Egr
 			s.egressUp(up)
 		}
 	}()
-	return <-errc
+	// Sends stay on this goroutine: one still sending after the handler
+	// returned would panic the whole control plane.
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-sess.done:
+			return nil
+		case err := <-errc:
+			return err
+		case <-sess.dirty:
+			apply, err := s.renderApply()
+			if err != nil {
+				s.setProblem(err)
+				continue
+			}
+			if err := stream.Send(&v1.EgressDown{Body: &v1.EgressDown_Apply{Apply: apply}}); err != nil {
+				return err
+			}
+		}
+	}
 }
 
 // egressUp handles one frame from the gateway.

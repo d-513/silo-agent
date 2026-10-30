@@ -92,6 +92,8 @@ Two hops matter:
 1. **CP ↔ Worker:** ConnectRPC, Worker-initiated, bot token, concurrent RPCs. ConnectRPC bidi sends no headers until the first `Send`, so `Commands` heartbeats immediately or the CP treats the worker as offline until the 10 s ticker.
 2. **Python ↔ Worker:** HTTP/JSON on `unix:///var/run/silo/worker.sock` (`get_secret`, `call`, desktop).
 
+A bidi handler does its `stream.Send`s on its own goroutine, with `Receive` in the background (`Commands`, `drive.Session`, `egress.Session`): a `Send` still running after the handler returned panics the whole CP, and any client hanging up can cause it (`TestDriveSessionSurvivesASidecarHangingUp`). `App.Tunnel` sends from a conn goroutine it does not own, so it has a guard instead.
+
 ## Package layout
 
 - `internal/app` is the runtime: the agent loop and run engine, Bot lifecycle, worker RPCs, the tool gateway with its rules and approvals, subagents. It wires the domains in `app.New`.

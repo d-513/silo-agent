@@ -353,24 +353,7 @@ func (s *Service) Session(ctx context.Context, stream *connect.BidiStream[v1.Dri
 	// Every session starts from the full desired set.
 	sess.send <- &v1.DriveDown{Body: &v1.DriveDown_Apply{Apply: s.renderApply(host.BotID)}}
 
-	errc := make(chan error, 2)
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				errc <- ctx.Err()
-				return
-			case <-sess.done:
-				errc <- nil
-				return
-			case m := <-sess.send:
-				if err := stream.Send(m); err != nil {
-					errc <- err
-					return
-				}
-			}
-		}
-	}()
+	errc := make(chan error, 1)
 	go func() {
 		for {
 			up, err := stream.Receive()
@@ -381,8 +364,22 @@ func (s *Service) Session(ctx context.Context, stream *connect.BidiStream[v1.Dri
 			s.driveUp(sess, up)
 		}
 	}()
-	err := <-errc
-	return err
+	// Sends stay on this goroutine: one still sending after the handler
+	// returned would panic the whole control plane.
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-sess.done:
+			return nil
+		case err := <-errc:
+			return err
+		case m := <-sess.send:
+			if err := stream.Send(m); err != nil {
+				return err
+			}
+		}
+	}
 }
 
 // granted loads a drive granted to the Bot, or nil.
