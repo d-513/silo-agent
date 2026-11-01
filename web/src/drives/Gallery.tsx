@@ -30,7 +30,7 @@ export function Gallery({ templates, admin, onPick, onBack }: { templates: Drive
       <div className="space-y-6">
         {groups.map(({ c, items }) => (
           <section key={c}>
-            <h3 className="mb-2.5 text-label-caps uppercase text-ink-3">{t(CATEGORY_LABEL[c])}</h3>
+            <h3 className="mb-2.5 text-section text-ink-3">{t(CATEGORY_LABEL[c])}</h3>
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               {items.map((tpl) => {
                 const tile = (

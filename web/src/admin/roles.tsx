@@ -130,7 +130,7 @@ export function ModelsHead({ icon: Icon, title, note, kinds = [], children }: { 
       {children ??
         (kinds.length ? (
           <div className="flex shrink-0 flex-col items-end gap-1.5 pt-1 max-sm:hidden">
-            <span className="text-label-caps text-ink-3 uppercase">{t("Allowed", { context: "count" })}</span>
+            <span className="text-section text-ink-3">{t("Allowed", { context: "count" })}</span>
             <span className="flex items-center gap-2">
               <span className="font-mono text-heading leading-6 text-ink tabular-nums">{ids.length}</span>
               {from.length ? (

@@ -66,7 +66,7 @@ export function DriveForm({
 
       {!editing && tpl.guide ? (
         <div className="mb-5 rounded-card border-l-4 border-cobalt bg-well px-4 py-3">
-          <p className="mb-1.5 text-label-caps uppercase text-ink-3">{t("Before you add")}</p>
+          <p className="mb-1.5 text-section text-ink-3">{t("Before you add")}</p>
           <div className="silo-md text-body leading-[22px] text-ink">
             <Markdown remarkPlugins={[remarkGfm]}>{tpl.guide}</Markdown>
           </div>
@@ -175,7 +175,7 @@ export function DriveForm({
           />
           {advancedVars.length > 0 ? (
             <details className="group">
-              <summary className="flex cursor-pointer items-center gap-2 rounded-sm bg-well px-3 py-2 text-label font-medium tracking-wide text-ink-3">
+              <summary className="flex cursor-pointer items-center gap-2 rounded-sm bg-well px-3 py-2 text-section text-ink-3">
                 <ChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />{t("Advanced settings")}
               </summary>
               <div className="mt-4 space-y-4">

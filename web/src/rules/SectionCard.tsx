@@ -78,7 +78,7 @@ export function SectionCard({
               e.stopPropagation();
             }}
           >
-            <span className="text-micro font-medium uppercase tracking-wider text-ink-3 wide:hidden">{t("All")}</span>
+            <span className="text-section text-ink-3 wide:hidden">{t("All")}</span>
             {shared === "" && <span className="hidden text-micro font-medium text-ink-3 wide:inline">{t("Mixed")}</span>}
             <div
               className="w-full wide:w-[260px] wide:shrink-0"

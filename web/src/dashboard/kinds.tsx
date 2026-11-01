@@ -243,7 +243,7 @@ function Table({ data, acts, handlers }: { data: Record<string, unknown>; acts: 
               {columns.map((c, i) => (
                 <th
                   key={i}
-                  className={`sticky top-0 bg-surface px-1 pb-1.5 text-label-caps leading-4 font-medium text-ink-3 uppercase ${numeric(rows[0]?.[i]) ? "text-right" : "text-left"}`}
+                  className={`sticky top-0 bg-surface px-1 pb-1.5 text-section leading-4 font-medium text-ink-3 ${numeric(rows[0]?.[i]) ? "text-right" : "text-left"}`}
                 >
                   {c}
                 </th>

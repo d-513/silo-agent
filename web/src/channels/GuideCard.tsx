@@ -38,7 +38,7 @@ export function GuideCard({ guide, title = t("Setup guide") }: { guide: string; 
   }
   return (
     <aside className="sticky top-6 flex max-h-[calc(100dvh-9rem)] flex-col overflow-hidden rounded-card bg-well">
-      <header className="flex shrink-0 items-center gap-2 px-5 pb-3 pt-4 text-label-caps uppercase text-ink-3">
+      <header className="flex shrink-0 items-center gap-2 px-5 pb-3 pt-4 text-section text-ink-3">
         <BookOpen size={14} />
         {title}
       </header>

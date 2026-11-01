@@ -74,7 +74,7 @@ export function OfferCard({ botId, offer }: { botId: string; offer: SetupOffer }
       <div className="flex items-start gap-3 p-3.5">
         <span className="shrink-0">{target.mark}</span>
         <div className="min-w-0 flex-1">
-          <p className="text-label leading-4 font-medium text-ink-3 uppercase">{t(kindWord[offer.kind] ?? kindWord.connector)}</p>
+          <p className="text-section leading-4 text-ink-3">{t(kindWord[offer.kind] ?? kindWord.connector)}</p>
           <h3 className="truncate text-body-lg leading-5 font-medium text-ink">{offer.label}</h3>
           {target.blurb ? <p className="mt-0.5 line-clamp-2 text-meta leading-[18px] text-ink-3">{target.blurb}</p> : null}
         </div>

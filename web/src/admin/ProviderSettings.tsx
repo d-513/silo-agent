@@ -44,7 +44,7 @@ export function ProviderSettings() {
     <>
       <ModelsHead icon={Plug} title={t("Providers")} note={t("Who serves your models. Each row says what a provider can do and how many of its models you allow; open one for its key and its own list of models.")}>
         <div className="flex shrink-0 flex-col items-end gap-1.5 pt-1 max-sm:hidden">
-          <span className="text-label-caps text-ink-3 uppercase">{t("Set up")}</span>
+          <span className="text-section text-ink-3">{t("Set up")}</span>
           <span className="font-mono text-heading leading-6 text-ink tabular-nums">
             {setUp}
             <span className="text-ink-3">/{providers.length}</span>
@@ -53,7 +53,7 @@ export function ProviderSettings() {
       </ModelsHead>
       <Panel padded={false}>
         <div className="@container">
-          <div className="hidden h-9 items-center gap-2 pr-4 pl-5 text-label font-medium tracking-[0.02em] text-ink-3 uppercase @min-[640px]:grid @min-[640px]:grid-cols-[minmax(0,1fr)_repeat(5,3.25rem)_6.5rem]">
+          <div className="hidden h-9 items-center gap-2 pr-4 pl-5 text-section text-ink-3 @min-[640px]:grid @min-[640px]:grid-cols-[minmax(0,1fr)_repeat(5,3.25rem)_6.5rem]">
             <span>{t("Provider")}</span>
             {CAP_KINDS.map((k) => (
               <Tip key={k.kind} content={t(k.label)}>

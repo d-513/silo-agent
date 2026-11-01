@@ -42,13 +42,13 @@ function LogRow({ log }: { log: LLMLog }) {
       <div className="space-y-3 border-t border-line-strong bg-well p-3">
         {log.error ? <p className="break-words font-mono text-label text-vermilion">{log.error}</p> : null}
         <div>
-          <div className="mb-1 text-micro font-medium tracking-wide text-ink-3 uppercase">{t("Request")}</div>
+          <div className="mb-1 text-section text-ink-3">{t("Request")}</div>
           <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface p-3 font-mono text-label leading-5 text-ink">
             {log.request || t("(empty)")}
           </pre>
         </div>
         <div>
-          <div className="mb-1 text-micro font-medium tracking-wide text-ink-3 uppercase">{t("Response")}</div>
+          <div className="mb-1 text-section text-ink-3">{t("Response")}</div>
           <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface p-3 font-mono text-label leading-5 text-ink">
             {log.response || t("(empty)")}
           </pre>

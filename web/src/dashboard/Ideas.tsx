@@ -73,7 +73,7 @@ export function StarterIdeas({ botId, name }: { botId: string; name: string }) {
   for (const g of general) say(t(g));
   return (
     <section className="rounded-card bg-surface px-3 py-3 shadow-card">
-      <h3 className="mb-1 px-2.5 text-label-caps leading-4 text-ink-3 uppercase">{t("Things to ask {{name}}", { name })}</h3>
+      <h3 className="mb-1 px-2.5 text-section leading-4 text-ink-3">{t("Things to ask {{name}}", { name })}</h3>
       <IdeaList ideas={ideas.slice(0, 5)} />
     </section>
   );

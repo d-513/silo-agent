@@ -82,15 +82,14 @@
   --text-title--line-height: calc(var(--spacing) * 7);
   --text-title--font-weight: 500;
   --text-title--letter-spacing: -0.015em;
-  /* card-title and label-caps leave the line height to the place they sit: the
+  /* card-title and section leave the line height to the place they sit: the
      sites that set one keep their own leading-* class, the rest inherit. */
 
   --text-card-title: 15px;
   --text-card-title--font-weight: 600;
   --text-card-title--letter-spacing: -0.01em;
-  --text-label-caps: 11px;
-  --text-label-caps--font-weight: 500;
-  --text-label-caps--letter-spacing: 0.08em;
+  --text-section: 12px;
+  --text-section--font-weight: 500;
 
   /* The rest of the scale is size only: the line height, weight and tracking
      stay with the place, so a utility here never moves anything but the size.

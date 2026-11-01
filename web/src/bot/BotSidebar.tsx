@@ -413,11 +413,11 @@ function ChatGroupSection({ group, open, children }: { group: ChatGroup<Chat>; o
         type="button"
         aria-expanded={open}
         onClick={() => setGroupOpen(group.key, !open)}
-        className="group/head sticky top-0 z-10 flex h-7 in-data-drawer:h-9 w-full items-center gap-1.5 rounded-sm bg-well px-3 text-left text-label-caps leading-4 text-ink-3 uppercase transition-colors duration-[160ms] ease-quiet outline-offset-[-2px] hover:text-ink"
+        className="group/head sticky top-0 z-10 flex h-7 in-data-drawer:h-9 w-full items-center gap-1.5 rounded-sm bg-well px-3 text-left text-section leading-4 text-ink-3 transition-colors duration-[160ms] ease-quiet outline-offset-[-2px] hover:text-ink"
       >
         <span className="min-w-0 flex-1 truncate">{group.label}</span>
         <span
-          className={`tracking-normal tabular-nums transition-opacity duration-[160ms] ease-quiet ${open ? "opacity-0 group-hover/head:opacity-100" : "opacity-100"}`}
+          className={`tabular-nums transition-opacity duration-[160ms] ease-quiet ${open ? "opacity-0 group-hover/head:opacity-100" : "opacity-100"}`}
         >
           {group.chats.length}
         </span>

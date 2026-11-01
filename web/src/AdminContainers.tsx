@@ -46,7 +46,7 @@ function Meter({ value, max }: { value: number; max: number }) {
 function Stat({ label, value, meter }: { label: string; value: string; meter?: ReactNode }) {
   return (
     <div className="min-w-0">
-      <div className="text-label-caps uppercase leading-4 text-ink-3">{label}</div>
+      <div className="text-section leading-4 text-ink-3">{label}</div>
       <div className="mt-0.5 truncate font-mono text-body-lg font-medium tabular-nums tracking-tight text-ink">{value}</div>
       {meter ? <div className="mt-1.5">{meter}</div> : null}
     </div>

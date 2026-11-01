@@ -63,7 +63,7 @@ export function ModelMapPage() {
 function Fact({ label, value, warn }: { label: string; value: number; warn?: boolean }) {
   return (
     <div className="flex flex-col items-end gap-1.5">
-      <dt className="text-label-caps text-ink-3 uppercase">{label}</dt>
+      <dt className="text-section text-ink-3">{label}</dt>
       <dd className={`font-mono text-heading leading-6 tabular-nums ${warn ? "text-vermilion" : "text-ink"}`}>{value}</dd>
     </div>
   );

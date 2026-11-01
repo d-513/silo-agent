@@ -92,13 +92,13 @@ export function SubagentPage({
         </div>
         {brief ? (
           <div className="rise mt-2 mb-1 max-h-[40vh] overflow-auto rounded-card bg-well px-4 py-3 text-small leading-[20px]">
-            <p className="mb-1 text-label-caps text-ink-3 uppercase">{t("Goal")}</p>
+            <p className="mb-1 text-section text-ink-3">{t("Goal")}</p>
             <div className="silo-reply">
               <Md text={sa.goal} />
             </div>
             {sa.context.trim() ? (
               <>
-                <p className="mt-3 mb-1 text-label-caps text-ink-3 uppercase">{t("Context")}</p>
+                <p className="mt-3 mb-1 text-section text-ink-3">{t("Context")}</p>
                 <div className="silo-reply">
                   <Md text={sa.context} />
                 </div>

@@ -109,7 +109,7 @@ export function SpaceTile({ space, spaces }: { space: Space | undefined; spaces:
               style={box}
             >
               <div className="rise">
-                <div className="px-2 pt-1.5 pb-1 text-label-caps text-ink-3 uppercase">{t("Workspaces")}</div>
+                <div className="px-2 pt-1.5 pb-1 text-section text-ink-3">{t("Workspaces")}</div>
                 {list.map((s, i) => {
                   const current = s.id === space?.id;
                   return (

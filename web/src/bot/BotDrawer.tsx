@@ -152,7 +152,7 @@ export function MachineTiles({ bot, tab, onStart, onStop }: { bot: Bot; tab: Tab
   const kinds = paneKinds.filter((k) => k !== "mail" || bot.mailAddress || tab === "mail");
   return (
     <section aria-label={t("Machine")} className="mt-4 px-2">
-      <h2 className="flex h-9 items-center px-3 text-label-caps leading-4 text-ink-3 uppercase">{t("Machine")}</h2>
+      <h2 className="flex h-9 items-center px-3 text-section leading-4 text-ink-3">{t("Machine")}</h2>
       <div className="grid grid-cols-3 gap-1">
         {kinds.map((k: PaneKind) => {
           const { icon: Icon } = paneMeta[k];

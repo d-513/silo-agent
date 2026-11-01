@@ -172,7 +172,7 @@ export function MemoriesPane({ bot, onError }: { bot: Bot; onError: (s: string) 
           {groups.map((g) => (
             <section key={g.key}>
               <div className="mb-2 flex items-center justify-between px-1">
-                <h3 className="text-label-caps uppercase text-ink-3">{g.label}</h3>
+                <h3 className="text-section text-ink-3">{g.label}</h3>
                 <span className="font-mono text-micro tabular-nums text-ink-3">{g.chats.length}</span>
               </div>
               <ul className="overflow-hidden rounded-card bg-surface shadow-card">

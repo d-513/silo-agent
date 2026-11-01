@@ -128,7 +128,7 @@ function Pulse({ needs, asks, working, resting }: { needs: number; asks: number;
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-9">
-      <h2 className="mb-3 text-label-caps uppercase text-ink-3">{title}</h2>
+      <h2 className="mb-3 text-section text-ink-3">{title}</h2>
       <Grid>{children}</Grid>
     </section>
   );

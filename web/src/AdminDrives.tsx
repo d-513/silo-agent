@@ -168,7 +168,7 @@ export function AdminDrives() {
               if (items.length === 0) return null;
               return (
                 <section key={c}>
-                  <h3 className="mb-2.5 text-label-caps uppercase text-ink-3">{t(CATEGORY_LABEL[c])}</h3>
+                  <h3 className="mb-2.5 text-section text-ink-3">{t(CATEGORY_LABEL[c])}</h3>
                   <div className="space-y-2">
                     {items.map((tpl) => (
                       <ProviderFolio key={tpl.key} t={tpl} p={byKey.get(tpl.key)!} redirect={settings.redirectUrl} onSaved={(x) => put(UI.method.getDriveSettings, {}, x)} />

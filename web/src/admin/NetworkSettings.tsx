@@ -125,7 +125,7 @@ function EgressHealth() {
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="text-label tracking-wide text-ink-3 uppercase">{label}</dt>
+      <dt className="text-section text-ink-3">{label}</dt>
       <dd className="mt-0.5 text-ink">{children}</dd>
     </div>
   );

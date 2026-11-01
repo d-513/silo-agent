@@ -13,7 +13,7 @@ import { GuideCard } from "./GuideCard";
 import { t } from "../i18n.ts";
 import { Trans } from "../Trans.tsx";
 
-const caps = "text-label-caps uppercase text-ink-3";
+const heading = "text-section text-ink-3";
 
 export function ChannelSetup({
   botId,
@@ -131,7 +131,7 @@ export function ChannelSetup({
 
                 {buttons ? (
                   <div className="space-y-2">
-                    <div className={caps}>{t("Actions")}</div>
+                    <div className={heading}>{t("Actions")}</div>
                     {buttons}
                   </div>
                 ) : null}
@@ -139,7 +139,7 @@ export function ChannelSetup({
 
                 {state?.kind === "select" && state.options.length > 0 ? (
                   <div className="space-y-2">
-                    <div className={caps}>{t("Available chats")}</div>
+                    <div className={heading}>{t("Available chats")}</div>
                     <div className="grid max-h-[320px] gap-2 overflow-auto sm:grid-cols-2">
                       {state.options.map((o) => {
                         const on = o.value === target.id;
@@ -164,7 +164,7 @@ export function ChannelSetup({
                 ) : null}
 
                 <div className="space-y-2 border-t border-line pt-5">
-                  <div className={caps}>{t("Set chat directly")}</div>
+                  <div className={heading}>{t("Set chat directly")}</div>
                   <div className="flex items-center gap-2">
                     <input
                       className={`${inputClass} min-w-0 flex-1`}

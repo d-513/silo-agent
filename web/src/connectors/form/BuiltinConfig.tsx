@@ -22,7 +22,7 @@ export function BuiltinConfig({ value, onChange }: { value: ConnectorDraft; onCh
       {value.fields.filter((f) => !f.advanced).map(input)}
       {more.length > 0 && (
         <details className="group">
-          <summary className="flex cursor-pointer items-center gap-2 rounded-sm bg-well px-3 py-2 text-label font-medium tracking-wide text-ink-3">
+          <summary className="flex cursor-pointer items-center gap-2 rounded-sm bg-well px-3 py-2 text-section text-ink-3">
             <ChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />{t("More settings")}
           </summary>
           <div className="mt-3 space-y-3">{more.map(input)}</div>
