@@ -17,7 +17,7 @@ function CodeBlock({ code, lang }: { code: string; lang?: string }) {
         <span className="text-label-caps leading-4 text-ink-3 uppercase">{displayLang || "code"}</span>
         <CopyButton text={code} title={t("Copy code")} label size={12} />
       </div>
-      <Highlighted code={code} lang={lang} preClass="whitespace-pre-wrap break-words p-3 font-mono text-[12.5px] leading-5" codeClass="hljs whitespace-pre-wrap break-words" />
+      <Highlighted code={code} lang={lang} preClass="whitespace-pre-wrap break-words p-3 font-mono text-meta leading-5" codeClass="hljs whitespace-pre-wrap break-words" />
     </div>
   );
 }
@@ -71,19 +71,19 @@ export function ToolRow({
       tail={
         <>
           {state === "waiting" ? (
-            <span className="flex shrink-0 items-center gap-1.5 text-[12.5px] text-vermilion">
+            <span className="flex shrink-0 items-center gap-1.5 text-meta text-vermilion">
               <span className="breathe h-[7px] w-[7px] rounded-full bg-vermilion" aria-hidden />{t("Waiting for you")}
             </span>
           ) : null}
-          {filter ? <span className={`shrink-0 text-[12.5px] ${filter.verdict === "withheld" ? "text-vermilion" : "text-ink-3"}`}>{filterWord(filter)}</span> : null}
-          {action ? <span className="min-w-0 truncate font-mono text-[12.5px] text-ink-3">{action}</span> : null}
+          {filter ? <span className={`shrink-0 text-meta ${filter.verdict === "withheld" ? "text-vermilion" : "text-ink-3"}`}>{filterWord(filter)}</span> : null}
+          {action ? <span className="min-w-0 truncate font-mono text-meta text-ink-3">{action}</span> : null}
         </>
       }
     >
       {filter?.verdict === "withheld" && filter.original ? (
         <details className="mb-2">
-          <summary className="cursor-pointer text-[12px] font-medium text-ink-3 hover:text-ink">{t("Withheld from the Bot")}</summary>
-          <pre className="mt-2 whitespace-pre-wrap break-words rounded-sm bg-well p-3 font-mono text-[12.5px] leading-5 text-ink-2">{filter.original}</pre>
+          <summary className="cursor-pointer text-label font-medium text-ink-3 hover:text-ink">{t("Withheld from the Bot")}</summary>
+          <pre className="mt-2 whitespace-pre-wrap break-words rounded-sm bg-well p-3 font-mono text-meta leading-5 text-ink-2">{filter.original}</pre>
         </details>
       ) : null}
       {children}
@@ -123,20 +123,20 @@ export function ToolInput({ name, args, running }: { name: string; args: string;
     ].join("\n");
     body = (
       <div className="space-y-2">
-        {path ? <div className="font-mono text-[12.5px]">{path}</div> : null}
+        {path ? <div className="font-mono text-meta">{path}</div> : null}
         {oldText || newText ? <CodeBlock code={lines} lang="diff" /> : null}
       </div>
     );
   } else if (name === "write" && (path || content)) {
     body = (
       <div className="space-y-2">
-        {path ? <div className="font-mono text-[12.5px]">{path}</div> : null}
+        {path ? <div className="font-mono text-meta">{path}</div> : null}
         {content ? <CodeBlock code={content} lang={codeLang(path)} /> : null}
       </div>
     );
   } else if (name === "read" && (path || offset != null || limit != null)) {
     body = (
-      <div className="space-y-1 rounded-sm bg-well p-3 font-mono text-[12.5px] leading-5">
+      <div className="space-y-1 rounded-sm bg-well p-3 font-mono text-meta leading-5">
         {path ? <div>{path}</div> : null}
         {offset != null ? <div className="text-ink-3">offset {asStr(offset)}</div> : null}
         {limit != null ? <div className="text-ink-3">limit {asStr(limit)}</div> : null}
@@ -150,50 +150,50 @@ export function ToolInput({ name, args, running }: { name: string; args: string;
       ].join("\n");
       body = <CodeBlock code={lines} lang="diff" />;
     } else {
-      body = <div className="whitespace-pre-wrap rounded-sm bg-well p-3 font-mono text-[12.5px] leading-5">{content}</div>;
+      body = <div className="whitespace-pre-wrap rounded-sm bg-well p-3 font-mono text-meta leading-5">{content}</div>;
     }
   } else if (name === "skill") {
     const skillName = asStr(a.name);
     body = (
-      <div className="font-mono text-[12.5px]">
+      <div className="font-mono text-meta">
         {skillName || path}
       </div>
     );
   } else if (name === "artifact" && path) {
-    body = <div className="font-mono text-[12.5px]">{path}</div>;
+    body = <div className="font-mono text-meta">{path}</div>;
   } else if (name === "present" && path) {
-    body = <div className="font-mono text-[12.5px]">{path}</div>;
+    body = <div className="font-mono text-meta">{path}</div>;
   } else if (name === "click" && (x != null || y != null)) {
     body = (
-      <div className="font-mono text-[12.5px]">
+      <div className="font-mono text-meta">
         {asStr(x)},{asStr(y)}
         {button && button !== "left" ? ` ${button}` : ""}
       </div>
     );
   } else if (name === "scroll" && (x != null || y != null || dy != null)) {
     body = (
-      <div className="font-mono text-[12.5px]">
+      <div className="font-mono text-meta">
         {asStr(x)},{asStr(y)} dy {asStr(dy)}
       </div>
     );
   } else if (name === "type" && typeText) {
-    body = <div className="whitespace-pre-wrap rounded-sm bg-well p-3 font-mono text-[12.5px] leading-5">{typeText}</div>;
+    body = <div className="whitespace-pre-wrap rounded-sm bg-well p-3 font-mono text-meta leading-5">{typeText}</div>;
   } else if (name === "key" && keyName) {
-    body = <div className="font-mono text-[12.5px]">{keyName}</div>;
+    body = <div className="font-mono text-meta">{keyName}</div>;
   } else if (name === "grep" && (pattern || path || include)) {
     body = (
-      <div className="space-y-1 rounded-sm bg-well p-3 font-mono text-[12.5px] leading-5">
+      <div className="space-y-1 rounded-sm bg-well p-3 font-mono text-meta leading-5">
         {pattern ? <div>{pattern}</div> : null}
         {path ? <div className="text-ink-3">{path}</div> : null}
         {include ? <div className="text-ink-3">{include}</div> : null}
       </div>
     );
   } else if (name === "web_search" && asStr(a.query)) {
-    body = <div className="font-mono text-[12.5px]">{asStr(a.query)}</div>;
+    body = <div className="font-mono text-meta">{asStr(a.query)}</div>;
   } else if (path || command) {
     body = (
       <div className="space-y-2">
-        {path ? <div className="font-mono text-[12.5px]">{path}</div> : null}
+        {path ? <div className="font-mono text-meta">{path}</div> : null}
         {command ? <CodeBlock code={command} lang="bash" /> : null}
       </div>
     );
@@ -203,7 +203,7 @@ export function ToolInput({ name, args, running }: { name: string; args: string;
   if (running && !Object.keys(a).length) return null;
   const dump = Object.keys(a).length ? JSON.stringify(a, null, 2) : prettyJson(args);
   if (!dump) return null;
-  return <pre className="overflow-x-auto whitespace-pre-wrap rounded-sm bg-well p-3 font-mono text-[12.5px] leading-5">{dump}</pre>;
+  return <pre className="overflow-x-auto whitespace-pre-wrap rounded-sm bg-well p-3 font-mono text-meta leading-5">{dump}</pre>;
 }
 
 // Live output shows its tail (that is what is changing); finished output its head.
@@ -211,15 +211,15 @@ export function ToolResult({ text, live }: { text: string; live?: boolean }) {
   const sliced = text.length > 4000 ? (live ? `…${text.slice(-4000)}` : `${text.slice(0, 4000)}…`) : text;
   const lang = resultLang(sliced);
   const inner = lang ? (
-    <Highlighted code={sliced} lang={lang} preClass="whitespace-pre-wrap break-words font-mono text-[12.5px] leading-5 text-ink-2" />
+    <Highlighted code={sliced} lang={lang} preClass="whitespace-pre-wrap break-words font-mono text-meta leading-5 text-ink-2" />
   ) : (
-    <pre className="whitespace-pre-wrap font-mono text-[12.5px] leading-5 text-ink-2">{sliced}</pre>
+    <pre className="whitespace-pre-wrap font-mono text-meta leading-5 text-ink-2">{sliced}</pre>
   );
   const long = sliced.length > 800 || sliced.split("\n").length > 16;
   if (!long || live) return inner;
   return (
     <details>
-      <summary className="cursor-pointer text-[12px] font-medium text-ink-3 hover:text-ink">{t("Result")}</summary>
+      <summary className="cursor-pointer text-label font-medium text-ink-3 hover:text-ink">{t("Result")}</summary>
       <div className="mt-2">{inner}</div>
     </details>
   );

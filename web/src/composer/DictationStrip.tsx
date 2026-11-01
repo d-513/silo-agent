@@ -9,13 +9,13 @@ import { t } from "../i18n.ts";
 export function DictationStrip({ dictation }: { dictation: Dictation }) {
   if (dictation.state === "transcribing") {
     return (
-      <div className="flex h-8 items-center px-4 pt-2 text-[12px]" aria-live="polite">
+      <div className="flex h-8 items-center px-4 pt-2 text-label" aria-live="polite">
         <span className="shimmer-text font-medium">{t("Transcribing…")}</span>
       </div>
     );
   }
   return (
-    <div className="rise flex h-8 items-center gap-2 px-4 pt-2 text-[12px] text-ink-2" aria-live="polite">
+    <div className="rise flex h-8 items-center gap-2 px-4 pt-2 text-label text-ink-2" aria-live="polite">
       <span className="breathe h-1.5 w-1.5 shrink-0 rounded-full bg-vermilion" />
       <span className="font-medium text-ink">{t("Listening")}</span>
       <span className="font-mono text-ink-3 tabular-nums">{fmtClock(dictation.elapsed)}</span>

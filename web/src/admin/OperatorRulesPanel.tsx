@@ -63,9 +63,9 @@ export function OperatorRulesPanel() {
         )
       }
     >
-      {err ? <p className="mb-3 text-[13px] text-vermilion">{err}</p> : null}
+      {err ? <p className="mb-3 text-small text-vermilion">{err}</p> : null}
 
-      {rules.length === 0 && !adding ? <p className="mb-3 text-[13px] text-ink-2">{t("No operator rules yet.")}</p> : null}
+      {rules.length === 0 && !adding ? <p className="mb-3 text-small text-ink-2">{t("No operator rules yet.")}</p> : null}
 
       {rules.length > 0 ? (
         <ul className="mb-3 grid gap-2">
@@ -100,7 +100,7 @@ export function OperatorRulesPanel() {
             />
             <Select className="max-w-[170px]" value={draft.decision} onChange={(v) => setDraft({ ...draft, decision: v })} options={callOptions} ariaLabel={t("Call rule")} />
             <Select className="max-w-[170px]" value={draft.output} onChange={(v) => setDraft({ ...draft, output: v })} options={outputOptions} ariaLabel={t("Output rule")} />
-            <label className="flex items-center gap-2 text-[13px] text-ink-2">
+            <label className="flex items-center gap-2 text-small text-ink-2">
               <Switch on={draft.locked} onChange={(v) => setDraft({ ...draft, locked: v })} />
               {t("Locked")}
             </label>
@@ -120,7 +120,7 @@ export function OperatorRulesPanel() {
             >
               {t("Add rule")}
             </SaveButton>
-            <button type="button" className="text-[13px] text-ink-3 hover:text-ink" onClick={() => setAdding(false)}>
+            <button type="button" className="text-small text-ink-3 hover:text-ink" onClick={() => setAdding(false)}>
               {t("Cancel")}
             </button>
           </div>
@@ -134,12 +134,12 @@ export function OperatorRulesPanel() {
 function RuleLine({ rule, onWrite, onDelete }: { rule: OperatorRule; onWrite: (next: OperatorRule) => void; onDelete: () => void }) {
   return (
     <li className="flex flex-wrap items-center gap-2 border-t border-line pt-2 first:border-0 first:pt-0">
-      <span className="min-w-[160px] flex-1 truncate font-mono text-[13px] text-ink">
+      <span className="min-w-[160px] flex-1 truncate font-mono text-small text-ink">
         {rule.connector}.{rule.action}
       </span>
       <Select className="w-[170px]" value={rule.decision} onChange={(v) => onWrite({ ...rule, decision: v })} options={callOptions} ariaLabel={t("Call rule")} />
       <Select className="w-[170px]" value={rule.output} onChange={(v) => onWrite({ ...rule, output: v })} options={outputOptions} ariaLabel={t("Output rule")} />
-      <label className="flex items-center gap-2 text-[13px] text-ink-2">
+      <label className="flex items-center gap-2 text-small text-ink-2">
         <Switch on={rule.locked} onChange={(v) => onWrite({ ...rule, locked: v })} />
         {t("Locked")}
       </label>

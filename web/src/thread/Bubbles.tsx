@@ -81,7 +81,7 @@ export function UserBubble({
               if (e.key === "Escape") setEditing(false);
             }}
             rows={Math.min(12, Math.max(2, draft.split("\n").length))}
-            className="w-full resize-none rounded-bubble rounded-br-[6px] bg-surface px-4 py-2.5 text-[15px] leading-6 text-ink shadow-[inset_0_0_0_1px_var(--color-cobalt)] outline-none"
+            className="w-full resize-none rounded-bubble rounded-br-[6px] bg-surface px-4 py-2.5 text-body-lg leading-6 text-ink shadow-[inset_0_0_0_1px_var(--color-cobalt)] outline-none"
           />
           <div className="mt-1.5 flex items-center justify-end gap-1.5">
             <Btn kind="secondary" size="sm" onClick={() => setEditing(false)}>
@@ -107,7 +107,7 @@ export function UserBubble({
       <div className="min-w-0 max-w-[88%] rounded-bubble rounded-br-[6px] bg-well px-4 py-2.5 text-ink sm:max-w-[80%]">
         {quotes?.length ? <QuoteList quotes={quotes} /> : null}
         <Quotable target={{ source: "message", ref: "own", label: "" }}>
-          <div className="whitespace-pre-wrap break-words text-[15px] leading-6 select-text">
+          <div className="whitespace-pre-wrap break-words text-body-lg leading-6 select-text">
             {spoken ? (
               <Tip content={t("Said on a call. This is what was heard.")}>
                 <AudioLines size={13} aria-label={t("Said on a call")} className="mr-1.5 inline-block -translate-y-px text-ink-3" />
@@ -122,11 +122,11 @@ export function UserBubble({
               <span
                 key={a.path}
                 title={a.path}
-                className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-surface px-2.5 py-1 text-[12px] text-ink shadow-card"
+                className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-surface px-2.5 py-1 text-label text-ink shadow-card"
               >
                 <Paperclip size={12} className="shrink-0 text-ink-2" />
                 <span className="max-w-[180px] truncate font-medium">{a.name}</span>
-                <span className="shrink-0 font-mono text-[11px] text-ink-3">{fmtBytes(a.size)}</span>
+                <span className="shrink-0 font-mono text-micro text-ink-3">{fmtBytes(a.size)}</span>
               </span>
             ))}
           </div>
@@ -179,7 +179,7 @@ export function Opened({ text, source, quoted, createdAt }: { text: string; sour
   const Icon = board ? LayoutGrid : Inbox;
   return (
     <figure className="min-w-0 rounded-card bg-well px-4 py-3 shadow-[inset_3px_0_0_var(--color-cobalt)]">
-      <figcaption className="mb-2 flex items-center gap-1.5 text-[12px] leading-4 text-ink-3">
+      <figcaption className="mb-2 flex items-center gap-1.5 text-label leading-4 text-ink-3">
         <Icon size={12} className="shrink-0" />
         <span className="truncate">{[label, from === "dashboard" ? "" : source, when].filter(Boolean).join(" · ")}</span>
       </figcaption>
@@ -187,7 +187,7 @@ export function Opened({ text, source, quoted, createdAt }: { text: string; sour
         <WidgetSnapshot w={quoted.widget} />
       ) : (
         <>
-          {from === "ask" && quoted?.title ? <p className="mb-1 text-[15px] leading-[22px] font-medium text-ink">{quoted.title}</p> : null}
+          {from === "ask" && quoted?.title ? <p className="mb-1 text-body-lg leading-[22px] font-medium text-ink">{quoted.title}</p> : null}
           <div className="silo-reply">
             <Md text={text} />
           </div>
@@ -203,7 +203,7 @@ export function LeadNote({ text, createdAt }: { text: string; createdAt?: string
   const when = runWhen(createdAt);
   return (
     <figure className="min-w-0 rounded-card bg-well px-4 py-3 shadow-[inset_3px_0_0_var(--color-ink-3)]">
-      <figcaption className="mb-1.5 flex items-center gap-1.5 text-[12px] leading-4 text-ink-3">
+      <figcaption className="mb-1.5 flex items-center gap-1.5 text-label leading-4 text-ink-3">
         <Bot size={12} className="shrink-0" />
         <span className="truncate">{[t("From the lead"), when].filter(Boolean).join(" · ")}</span>
       </figcaption>
@@ -238,8 +238,8 @@ export function SubagentReport({ text, agents, href }: { text: string; agents: {
             const to = href?.(ag.name);
             const label = (
               <>
-                <span className="font-mono text-[12.5px] text-ink">{ag.name}</span>
-                <span className={`text-[12px] ${reportTone[ag.status] ?? "text-ink-3"}`}>{ag.status === "done" ? "✓" : ag.status}</span>
+                <span className="font-mono text-meta text-ink">{ag.name}</span>
+                <span className={`text-label ${reportTone[ag.status] ?? "text-ink-3"}`}>{ag.status === "done" ? "✓" : ag.status}</span>
               </>
             );
             return (
@@ -258,7 +258,7 @@ export function SubagentReport({ text, agents, href }: { text: string; agents: {
         </span>
       }
     >
-      <div className="silo-reply text-[13px] leading-[21px] text-ink-2">
+      <div className="silo-reply text-small leading-[21px] text-ink-2">
         <Md text={text} />
       </div>
     </FoldRow>
@@ -294,7 +294,7 @@ export function RunMark({ prompt, createdAt }: { prompt: string; createdAt?: str
   return (
     <div className="flex items-center gap-3 pt-4 pb-1" title={prompt}>
       <span aria-hidden className="h-px flex-1 bg-line" />
-      <span className="flex items-center gap-1.5 text-[12px] leading-4 font-medium text-ink-3">
+      <span className="flex items-center gap-1.5 text-label leading-4 font-medium text-ink-3">
         <Timer size={12} />
         {when ? t("Ran {{when}}", { when }) : t("Ran")}
       </span>

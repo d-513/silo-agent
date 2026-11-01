@@ -19,7 +19,7 @@ export function AuthCard({ title, children }: { title: string; children: ReactNo
       <div className="rise w-full max-w-[400px] rounded-card bg-surface p-8 shadow-card">
         <div className="mb-7 flex items-center gap-3">
           <SiloMark className="h-11 w-11" />
-          <span className="text-[14px] font-medium">{"Silo Agent"}</span>
+          <span className="text-body font-medium">{"Silo Agent"}</span>
         </div>
         <h1 className="mb-6 text-title">{title}</h1>
         {children}
@@ -30,14 +30,14 @@ export function AuthCard({ title, children }: { title: string; children: ReactNo
 
 export function AuthError({ children }: { children: ReactNode }) {
   return (
-    <p role="alert" className="mb-3 flex items-start gap-2 text-[13px] text-vermilion">
+    <p role="alert" className="mb-3 flex items-start gap-2 text-small text-vermilion">
       <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-vermilion" />
       <span>{children}</span>
     </p>
   );
 }
 
-export const authLabel = "mb-1.5 block text-[12px] font-medium text-ink-3";
+export const authLabel = "mb-1.5 block text-label font-medium text-ink-3";
 
 export function SignIn() {
   const { setSession } = useAuth();
@@ -85,7 +85,7 @@ export function SignIn() {
     <AuthCard title={needsCode ? t("Two-factor code") : t("Sign in")}>
       {needsCode ? (
         <form onSubmit={onSubmit}>
-          <p className="mb-4 text-[13.5px] leading-[21px] text-ink-2">{t("Enter the 6-digit code from your authenticator app, or one of your recovery codes.")}</p>
+          <p className="mb-4 text-row leading-[21px] text-ink-2">{t("Enter the 6-digit code from your authenticator app, or one of your recovery codes.")}</p>
           <label htmlFor="silo-code" className={authLabel}>
             {t("Code")}
           </label>
@@ -149,7 +149,7 @@ export function SignIn() {
           {options?.oidc ? (
             <>
               {withPassword ? (
-                <div className="my-5 flex items-center gap-3 text-[12px] text-ink-3" aria-hidden>
+                <div className="my-5 flex items-center gap-3 text-label text-ink-3" aria-hidden>
                   <span className="h-px flex-1 bg-line-strong" />
                   {t("or")}
                   <span className="h-px flex-1 bg-line-strong" />

@@ -31,7 +31,7 @@ type Props = { botId: string; offer: SetupOffer; onClose: () => void; onDone: ()
 function Missing({ onClose, what }: { onClose: () => void; what: string }) {
   return (
     <Modal onClose={onClose}>
-      <p className="text-[13.5px] text-ink-2">{t("{{what}} is not available on this server any more.", { what })}</p>
+      <p className="text-row text-ink-2">{t("{{what}} is not available on this server any more.", { what })}</p>
     </Modal>
   );
 }
@@ -92,7 +92,7 @@ function ConnectorSetupForm({ botId, offer, onClose, onDone, preset, taken }: Pr
     return (
       <Modal rise onClose={onDone}>
         <h3 className="mb-1 text-base font-semibold text-ink">{t("Sign in to {{name}}", { name: signIn.connector?.name ?? "" })}</h3>
-        <p className="mb-5 text-[13px] text-ink-2">{t("This connector uses OAuth. A browser window will ask you to allow Silo to call it.")}</p>
+        <p className="mb-5 text-small text-ink-2">{t("This connector uses OAuth. A browser window will ask you to allow Silo to call it.")}</p>
         {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
         <div className="flex items-center gap-2">
           <Btn

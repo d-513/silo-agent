@@ -30,7 +30,7 @@ export function ChannelLog({ botId, channel, onClose }: { botId: string; channel
             </div>
             <div>
               <span className="font-semibold text-sm text-ink">{t("{{name}} Log", { name: channel.name })}</span>
-              <span className="ml-2 text-[12.5px] text-ink-3">
+              <span className="ml-2 text-meta text-ink-3">
                 {t("{{count}} conversations", { count: chats.length })}
               </span>
             </div>
@@ -65,7 +65,7 @@ export function ChannelLog({ botId, channel, onClose }: { botId: string; channel
           {chatId ? (
             <Thread botId={botId} chatId={chatId} events={stream.events} sending={false} paging={stream} />
           ) : (
-            <div className="flex h-full items-center justify-center text-ink-3 text-[13px]">
+            <div className="flex h-full items-center justify-center text-ink-3 text-small">
               {t("No conversations recorded yet.")}
             </div>
           )}

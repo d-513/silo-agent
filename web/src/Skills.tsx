@@ -45,7 +45,7 @@ function EmptyState({ title, children, actions }: { title: string; children: Rea
         <BookOpen size={28} />
       </div>
       <h3 className="text-base font-semibold text-ink">{title}</h3>
-      <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-2">{children}</p>
+      <p className="mx-auto mt-1 max-w-md text-small text-ink-2">{children}</p>
       {actions ? <div className="mt-6 flex flex-wrap items-center justify-center gap-3">{actions}</div> : null}
     </div>
   );
@@ -54,8 +54,8 @@ function EmptyState({ title, children, actions }: { title: string; children: Rea
 function NoMatch({ search, onClear }: { search: string; onClear: () => void }) {
   return (
     <div className="rounded-card bg-surface p-8 text-center text-ink-3 shadow-card">
-      <p className="text-[13px]">{t("No skills match “{{search}}”.", { search })}</p>
-      <button type="button" className="mt-2 text-[12px] font-medium text-cobalt hover:underline" onClick={onClear}>
+      <p className="text-small">{t("No skills match “{{search}}”.", { search })}</p>
+      <button type="button" className="mt-2 text-label font-medium text-cobalt hover:underline" onClick={onClear}>
         {t("Clear search")}
       </button>
     </div>
@@ -79,7 +79,7 @@ function Header({ title, count, children }: { title: string; count?: number; chi
         <h1 className="text-title text-ink">{title}</h1>
         {count !== undefined ? <Count n={count} /> : null}
       </div>
-      <p className="max-w-3xl text-[13px] leading-relaxed text-ink-2">{children}</p>
+      <p className="max-w-3xl text-small leading-relaxed text-ink-2">{children}</p>
     </div>
   );
 }
@@ -176,7 +176,7 @@ export function AdminSkills() {
           {t("Re-add defaults")}
         </Btn>
       </div>
-      <p className="mb-6 text-[13px] leading-relaxed text-ink-2">{t("Site skills every Bot can enable. Install from a GitHub URL, owner/repo, or a skill zip.")}</p>
+      <p className="mb-6 text-small leading-relaxed text-ink-2">{t("Site skills every Bot can enable. Install from a GitHub URL, owner/repo, or a skill zip.")}</p>
       {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
       <InstallPanel scope="library" onDone={() => void load()} />
       {rows === null ? (

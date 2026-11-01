@@ -45,8 +45,8 @@ export function SkillCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="break-all text-[15px] font-semibold tracking-tight text-ink">{name}</span>
-            {catalog ? <span className="rounded-sm bg-well px-2 py-0.5 text-[11px] font-medium text-ink-3">{t("Catalog")}</span> : null}
+            <span className="break-all text-body-lg font-semibold tracking-tight text-ink">{name}</span>
+            {catalog ? <span className="rounded-sm bg-well px-2 py-0.5 text-micro font-medium text-ink-3">{t("Catalog")}</span> : null}
           </div>
           {description ? (
             <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-ink-2">{description}</p>
@@ -58,11 +58,11 @@ export function SkillCard({
       </div>
 
       <div className="mt-4 flex items-center justify-between gap-3 border-t border-line/80 pt-3.5">
-        <span className="min-w-0 truncate font-mono text-[11px] text-ink-3" title={source || undefined}>
+        <span className="min-w-0 truncate font-mono text-micro text-ink-3" title={source || undefined}>
           {from || t("Local")}
         </span>
         <div className="flex shrink-0 items-center gap-1.5">
-          <span className="inline-flex items-center gap-1.5 px-1 text-[12.5px] font-medium text-ink-3 transition-colors duration-[160ms] ease-quiet group-hover:text-ink">
+          <span className="inline-flex items-center gap-1.5 px-1 text-meta font-medium text-ink-3 transition-colors duration-[160ms] ease-quiet group-hover:text-ink">
             <Eye size={14} />{t("Inspect")}
           </span>
           {actions}

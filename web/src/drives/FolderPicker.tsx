@@ -53,9 +53,9 @@ export function FolderPicker({
   return (
     <Field label={v.label} hint={v.help}>
       <div className="flex items-center gap-2">
-        <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-control bg-well px-3 text-[13px]">
+        <div className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-control bg-well px-3 text-small">
           <FolderOpen size={15} className="shrink-0 text-ink-3" />
-          <span className={`truncate font-mono text-[12.5px] ${value ? "text-ink" : "text-ink-3"}`}>{value ? `/${value}` : rootLabel}</span>
+          <span className={`truncate font-mono text-meta ${value ? "text-ink" : "text-ink-3"}`}>{value ? `/${value}` : rootLabel}</span>
         </div>
         {value ? (
           <Btn kind="ghost" type="button" onClick={() => onChange("")}>
@@ -80,7 +80,7 @@ export function FolderPicker({
         <div className="mt-2 overflow-hidden rounded-control bg-surface shadow-[inset_0_0_0_1px_var(--color-line-strong)]">
           <FolderNav rootLabel={rootLabel} at={at} dirs={dirs} err={err} onGo={(p) => void go(p)} />
           <div className="flex items-center justify-between gap-2 px-3 py-2 shadow-[inset_0_1px_0_var(--color-line)]">
-            <span className="min-w-0 truncate font-mono text-[12px] text-ink-3">{at ? `/${at}` : rootLabel}</span>
+            <span className="min-w-0 truncate font-mono text-label text-ink-3">{at ? `/${at}` : rootLabel}</span>
             <Btn
               kind="primary"
               size="sm"

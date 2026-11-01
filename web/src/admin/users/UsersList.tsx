@@ -30,7 +30,7 @@ export function UsersList() {
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-xl text-[13.5px] leading-[21px] text-ink-2">{t("People get an account from an invite link, which they open to choose their own password.")}</p>
+        <p className="max-w-xl text-row leading-[21px] text-ink-2">{t("People get an account from an invite link, which they open to choose their own password.")}</p>
         <Link to="/admin/users/invite" className={btnClass("primary", "pr-[7px]")}>
           {t("Invite someone")}
           <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-xs bg-on-ink/20 text-on-ink">
@@ -55,13 +55,13 @@ export function UsersList() {
                     className="flex items-center gap-4 px-5 py-3.5 transition-colors duration-[160ms] ease-quiet hover:bg-well"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className={`truncate text-[14px] font-medium ${u.disabled ? "text-ink-3" : "text-ink"}`}>
+                      <div className={`truncate text-body font-medium ${u.disabled ? "text-ink-3" : "text-ink"}`}>
                         {u.email}
                         {u.email === email ? <span className="ml-2 font-normal text-ink-3">{t("you")}</span> : null}
                       </div>
-                      <p className="mt-0.5 truncate text-[12.5px] text-ink-3">{summary(u)}</p>
+                      <p className="mt-0.5 truncate text-meta text-ink-3">{summary(u)}</p>
                     </div>
-                    {u.disabled ? <span className="shrink-0 text-[12.5px] text-ink-2">{t("Disabled")}</span> : null}
+                    {u.disabled ? <span className="shrink-0 text-meta text-ink-2">{t("Disabled")}</span> : null}
                     <ChevronRight size={16} className="shrink-0 text-ink-3" />
                   </Link>
                 </li>
@@ -74,8 +74,8 @@ export function UsersList() {
                 {invites.map((i) => (
                   <li key={i.id} className="flex items-center gap-4 px-5 py-3.5">
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-[14px] font-medium text-ink">{i.email}</div>
-                      <p className="mt-0.5 text-[12.5px] text-ink-3">
+                      <div className="truncate text-body font-medium text-ink">{i.email}</div>
+                      <p className="mt-0.5 text-meta text-ink-3">
                         {i.userId ? t("Password reset") : i.admin ? t("Invite as admin") : t("Invite")} · {t("expires {{date}}", { date: day(i.expiresAt) })}
                       </p>
                     </div>

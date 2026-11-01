@@ -149,18 +149,18 @@ function BackIn({ user, onPassword, onError }: { user: User; onPassword: (passwo
     <Panel title={t("Password")} note={t("{{user}}. A new password signs them out everywhere.", { user: signInWays(user) })}>
       <div className="grid gap-5">
         <div>
-          <div className="mb-1.5 text-[12px] font-medium text-ink-3">{t("Reset link")}</div>
+          <div className="mb-1.5 text-label font-medium text-ink-3">{t("Reset link")}</div>
           {link ? (
             <>
               <LinkWell url={link.url} />
-              <p className="mt-1.5 text-[12.5px] leading-[18px] text-ink-3">{t("Send it to them. It works once, until {{date}}, and is not shown again.", { date: day(link.expiresAt) })}</p>
+              <p className="mt-1.5 text-meta leading-[18px] text-ink-3">{t("Send it to them. It works once, until {{date}}, and is not shown again.", { date: day(link.expiresAt) })}</p>
             </>
           ) : (
             <>
               <Btn type="button" disabled={busy} onClick={() => void makeLink()}>
                 {busy ? t("Making the link…") : t("Make reset link")}
               </Btn>
-              <p className="mt-1.5 text-[12.5px] leading-[18px] text-ink-3">{t("They open it and choose a new password themselves.")}</p>
+              <p className="mt-1.5 text-meta leading-[18px] text-ink-3">{t("They open it and choose a new password themselves.")}</p>
             </>
           )}
         </div>

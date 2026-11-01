@@ -20,14 +20,14 @@ const useWide = () => useSyncExternalStore(subscribe, () => window.matchMedia(lg
 export function GuideCard({ guide, title = t("Setup guide") }: { guide: string; title?: string }) {
   const wide = useWide();
   const body = (
-    <div className="silo-md text-[13px] leading-relaxed text-ink">
+    <div className="silo-md text-small leading-relaxed text-ink">
       <Markdown remarkPlugins={[remarkGfm]}>{guide}</Markdown>
     </div>
   );
   if (!wide) {
     return (
       <details className="group rounded-card bg-well">
-        <summary className="flex cursor-pointer select-none items-center gap-2 px-4 py-3 text-[13px] font-medium text-ink">
+        <summary className="flex cursor-pointer select-none items-center gap-2 px-4 py-3 text-small font-medium text-ink">
           <BookOpen size={15} className="text-ink-2" />
           {title}
           <ChevronDown size={15} className="ml-auto text-ink-3 transition-transform duration-[200ms] ease-quiet group-open:rotate-180" />

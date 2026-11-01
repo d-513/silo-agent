@@ -36,11 +36,11 @@ function PresetCard({ c, onRemove }: { c: Connector; onRemove: () => void }) {
             <McpChip transport={c.transport} />
             {c.category && <CategoryChip label={c.category} />}
             {(c.autoAttach || c.autoenabled) && (
-              <span className="rounded-sm bg-cobalt-pale px-1.5 py-0.5 text-[11px] font-medium text-cobalt">{t("Default")}</span>
+              <span className="rounded-sm bg-cobalt-pale px-1.5 py-0.5 text-micro font-medium text-cobalt">{t("Default")}</span>
             )}
           </div>
-          <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-ink-3">{c.description || c.httpUrl || c.stdioCommand}</p>
-          <div className="mt-2 flex items-center gap-2 font-mono text-[11px] text-ink-3">
+          <p className="mt-1 line-clamp-2 text-label leading-relaxed text-ink-3">{c.description || c.httpUrl || c.stdioCommand}</p>
+          <div className="mt-2 flex items-center gap-2 font-mono text-micro text-ink-3">
             <span className="uppercase">{c.transport}</span>
             <span>·</span>
             <span>{c.auth}</span>

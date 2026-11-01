@@ -25,7 +25,7 @@ export function VarInput({
         <Select value={value || v.defaultValue} onChange={onChange} options={v.options.map((o) => ({ value: o.value, label: o.label, hint: o.detail }))} />
       ) : v.type === "textarea" ? (
         <textarea
-          className={`${textareaClass} min-h-[96px] font-mono text-[12.5px] leading-5`}
+          className={`${textareaClass} min-h-[96px] font-mono text-meta leading-5`}
           value={value}
           spellCheck={false}
           placeholder={v.secret && isSet ? t("•••••••• saved — paste to replace") : v.placeholder}

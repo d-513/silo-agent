@@ -163,7 +163,7 @@ export function Composer({
           onDrop={input.onDrop}
         >
           {input.isDragging && (
-            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-2 rounded-[18px] bg-surface text-[13px] font-medium text-emerald">
+            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-2 rounded-[18px] bg-surface text-small font-medium text-emerald">
               <Upload size={18} />
               <span>{t("Drop files to attach to /workspace/tmp")}</span>
             </div>
@@ -195,7 +195,7 @@ export function Composer({
             onPaste={input.onPaste}
             placeholder={placeholderFor(ready, botName)}
             disabled={!ready}
-            className="silo-grow block w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-[15px] leading-6 text-ink outline-none placeholder:text-ink-3 focus-visible:outline-none disabled:cursor-not-allowed"
+            className="silo-grow block w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-body-lg leading-6 text-ink outline-none placeholder:text-ink-3 focus-visible:outline-none disabled:cursor-not-allowed"
           />
 
           <input

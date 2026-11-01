@@ -104,7 +104,7 @@ export function BotVoice({ bot, onError }: { bot: Bot; onError: (s: string) => v
               />
             ) : (
               <input
-                className={`${inputClass} font-mono text-[13px]`}
+                className={`${inputClass} font-mono text-small`}
                 value={typed}
                 placeholder={t("Provider's default")}
                 spellCheck={false}
@@ -120,7 +120,7 @@ export function BotVoice({ bot, onError }: { bot: Bot; onError: (s: string) => v
             {preview === "playing" ? t("Stop") : t("Hear it")}
           </Btn>
         </div>
-        {previewErr ? <p className="mt-1.5 text-[12.5px] text-vermilion">{previewErr}</p> : null}
+        {previewErr ? <p className="mt-1.5 text-meta text-vermilion">{previewErr}</p> : null}
       </SettingRow>
       <SettingRow label={t("Speed")}>
         <ChipRadio

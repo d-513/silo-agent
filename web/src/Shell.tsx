@@ -68,7 +68,7 @@ async function signOut(setSession: (s: null) => void) {
 }
 
 const menuRow =
-  "flex h-11 w-full items-center gap-3 rounded-sm px-2.5 text-left text-[14px] text-ink transition-colors duration-[160ms] hover:bg-well";
+  "flex h-11 w-full items-center gap-3 rounded-sm px-2.5 text-left text-body text-ink transition-colors duration-[160ms] hover:bg-well";
 
 // AccountMenu is the narrow rail's one button for what the wide rail lists at
 // its foot (Admin, the theme, Account, Sign out): four icons there would leave
@@ -103,7 +103,7 @@ function AccountMenu({ page }: { page: Page }) {
         className={railHit(page === "account" || page === "admin")}
       >
         {railBar(page === "account" || page === "admin")}
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[12px] font-semibold text-on-ink">{initial}</span>
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-label font-semibold text-on-ink">{initial}</span>
       </button>
       {open
         ? createPortal(
@@ -122,7 +122,7 @@ function AccountMenu({ page }: { page: Page }) {
               style={box}
             >
               <div className="rise">
-                {email ? <div className="truncate px-2.5 pt-2 pb-1.5 text-[12.5px] text-ink-3">{email}</div> : null}
+                {email ? <div className="truncate px-2.5 pt-2 pb-1.5 text-meta text-ink-3">{email}</div> : null}
                 <Link to="/account" role="menuitem" onClick={() => setOpen(false)} className={menuRow}>
                   <UserRound size={17} className="text-ink-2" />
                   {t("Account")}
@@ -221,7 +221,7 @@ export function Rail({ page, activeBotId, className = "" }: { page: Page; active
           <ThemeToggle />
           <Link to="/account" title={email ? `${t("Account")} · ${email}` : t("Account")} className={railHit(page === "account")}>
             {railBar(page === "account")}
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[12px] font-semibold text-on-ink">{initial}</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-label font-semibold text-on-ink">{initial}</span>
           </Link>
           <button type="button" title={t("Sign out")} className={railHit(false)} onClick={() => void signOut(setSession)}>
             <LogOut size={18} />

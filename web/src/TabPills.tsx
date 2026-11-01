@@ -4,7 +4,7 @@ import { Count } from "./Count";
 // The segmented pill tabs of a list page (Connectors, Skills): a `well` tray
 // with the open tab lifted onto `surface`, each with an optional count.
 export function TabPills({ children }: { children: ReactNode }) {
-  return <div className="flex items-center rounded-sm bg-well p-1 text-[13px] font-medium text-ink-3">{children}</div>;
+  return <div className="flex items-center rounded-sm bg-well p-1 text-small font-medium text-ink-3">{children}</div>;
 }
 
 export function TabPill({ on, onClick, count, children }: { on: boolean; onClick: () => void; count?: number; children: ReactNode }) {

@@ -63,7 +63,7 @@ function Bar({ s, call, botName, doing, onExpand }: { s: CallSnapshot; call: Cal
         <Orb s={s} onInterrupt={() => session?.interrupt()} botName={botName} />
         <div className="min-w-0 flex-1" aria-live="polite">
           <div className="flex items-baseline gap-2">
-            <span className={`truncate text-[13.5px] leading-5 font-medium ${(s.error && ended) || s.state === "needs_you" ? "text-vermilion" : "text-ink"}`}>{stateWords(s, botName, doing)}</span>
+            <span className={`truncate text-row leading-5 font-medium ${(s.error && ended) || s.state === "needs_you" ? "text-vermilion" : "text-ink"}`}>{stateWords(s, botName, doing)}</span>
             {!ended ? <Clock since={s.startedAt} /> : null}
           </div>
           <Caption s={s} botName={botName} />
@@ -79,7 +79,7 @@ function Bar({ s, call, botName, doing, onExpand }: { s: CallSnapshot; call: Cal
               content={
                 <>
                   <TipTitle>{s.ptt ? t("Hands-free") : t("Hold to talk")}</TipTitle>
-                  <p className="mt-1 text-[12px] leading-[17px] text-ink-2">{s.ptt ? t("Talk any time; a pause ends your turn.") : t("Only what you say while holding the button (or Space) is heard. For a noisy room, or speakers the Bot hears itself through.")}</p>
+                  <p className="mt-1 text-label leading-[17px] text-ink-2">{s.ptt ? t("Talk any time; a pause ends your turn.") : t("Only what you say while holding the button (or Space) is heard. For a noisy room, or speakers the Bot hears itself through.")}</p>
                 </>
               }
             >
@@ -102,7 +102,7 @@ function Bar({ s, call, botName, doing, onExpand }: { s: CallSnapshot; call: Cal
             <Tip content={t("End call")}>
               <button
                 type="button"
-                className="ml-1 flex h-9 shrink-0 items-center gap-1.5 rounded-control bg-vermilion px-3 text-[13px] font-medium text-on-accent transition-[filter,transform] duration-[160ms] ease-quiet hover:brightness-95 active:scale-[.96] active:duration-[70ms]"
+                className="ml-1 flex h-9 shrink-0 items-center gap-1.5 rounded-control bg-vermilion px-3 text-small font-medium text-on-accent transition-[filter,transform] duration-[160ms] ease-quiet hover:brightness-95 active:scale-[.96] active:duration-[70ms]"
                 aria-label={t("End call")}
                 onClick={call.end}
               >
@@ -157,12 +157,12 @@ function Caption({ s, botName }: { s: CallSnapshot; botName: string }) {
   // While a turn streams live, your words show as they are heard.
   const line = s.state === "speaking" ? s.saying : s.hearing ? `“${s.hearing}…”` : s.heard ? `“${s.heard}”` : "";
   useEffect(() => setShown(line), [line]);
-  if (s.error && s.state !== "ended") return <p className="truncate text-[12.5px] leading-[18px] text-vermilion">{s.error}</p>;
+  if (s.error && s.state !== "ended") return <p className="truncate text-meta leading-[18px] text-vermilion">{s.error}</p>;
   if (s.state === "listening" && !s.heard) {
-    return <p className="truncate text-[12.5px] leading-[18px] text-ink-3">{s.ptt ? t("Hold the button or Space while you talk.") : t("Talk to {{name}}. Speak over it any time to cut in.", { name: botName })}</p>;
+    return <p className="truncate text-meta leading-[18px] text-ink-3">{s.ptt ? t("Hold the button or Space while you talk.") : t("Talk to {{name}}. Speak over it any time to cut in.", { name: botName })}</p>;
   }
-  if (s.state === "thinking" && s.heard === "" && !shown) return <p className="truncate text-[12.5px] leading-[18px] text-ink-3">{t("Listening back…")}</p>;
-  return <p className={`truncate text-[12.5px] leading-[18px] ${s.state === "speaking" ? "text-ink-2" : "text-ink-3"}`}>{shown}</p>;
+  if (s.state === "thinking" && s.heard === "" && !shown) return <p className="truncate text-meta leading-[18px] text-ink-3">{t("Listening back…")}</p>;
+  return <p className={`truncate text-meta leading-[18px] ${s.state === "speaking" ? "text-ink-2" : "text-ink-3"}`}>{shown}</p>;
 }
 
 function HoldToTalk({ s, onHold }: { s: CallSnapshot; onHold: (down: boolean) => void }) {
@@ -170,7 +170,7 @@ function HoldToTalk({ s, onHold }: { s: CallSnapshot; onHold: (down: boolean) =>
     <button
       type="button"
       aria-pressed={s.holding}
-      className={`mr-1 flex h-9 shrink-0 touch-none items-center gap-1.5 rounded-control px-3 text-[13px] font-medium transition-[background-color,color,transform] duration-[120ms] ease-quiet select-none ${s.holding ? "scale-[.97] bg-cobalt text-on-accent" : "bg-well text-ink hover:bg-line"}`}
+      className={`mr-1 flex h-9 shrink-0 touch-none items-center gap-1.5 rounded-control px-3 text-small font-medium transition-[background-color,color,transform] duration-[120ms] ease-quiet select-none ${s.holding ? "scale-[.97] bg-cobalt text-on-accent" : "bg-well text-ink hover:bg-line"}`}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);
         onHold(true);
@@ -190,5 +190,5 @@ export function Clock({ since }: { since: number }) {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
-  return <span className="shrink-0 font-mono text-[12px] text-ink-3 tabular-nums">{callClock(now - since)}</span>;
+  return <span className="shrink-0 font-mono text-label text-ink-3 tabular-nums">{callClock(now - since)}</span>;
 }

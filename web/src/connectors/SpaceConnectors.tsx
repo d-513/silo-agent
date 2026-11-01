@@ -100,13 +100,13 @@ export function SpaceConnectors() {
     <div className={widePage}>
       <div className="mb-6 space-y-1.5">
         <h1 className="text-title text-ink">{t("Connectors")}</h1>
-        <p className="max-w-3xl text-[13px] leading-relaxed text-ink-2">
+        <p className="max-w-3xl text-small leading-relaxed text-ink-2">
           {t("Connect a service once for the whole workspace, then choose which Bots can use it. Each Bot keeps its own session and its own rules for it.")}
         </p>
       </div>
 
       {err ? (
-        <div className="mb-4 flex items-center justify-between rounded-sm bg-vermilion-pale px-3.5 py-2.5 text-[13px] text-vermilion">
+        <div className="mb-4 flex items-center justify-between rounded-sm bg-vermilion-pale px-3.5 py-2.5 text-small text-vermilion">
           <span>{err}</span>
           <button type="button" onClick={() => setErr("")} className="text-vermilion hover:opacity-80" aria-label={t("Close")}>
             <X size={14} />
@@ -134,7 +134,7 @@ export function SpaceConnectors() {
               <Plug size={28} />
             </div>
             <h3 className="text-base font-semibold text-ink">{t("No connectors in this workspace yet")}</h3>
-            <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-2">{t("Add one from the library or connect your own MCP server, then choose which Bots can use it.")}</p>
+            <p className="mx-auto mt-1 max-w-md text-small text-ink-2">{t("Add one from the library or connect your own MCP server, then choose which Bots can use it.")}</p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <button type="button" className={btnClass("primary")} onClick={() => setTab("library")}>
                 {t("Browse Library")}
@@ -245,7 +245,7 @@ export function SpaceConnectors() {
       {edit ? (
         <Modal onClose={() => setEdit(null)}>
           <h3 className="mb-1 text-base font-semibold text-ink">{t("Edit connector")}</h3>
-          {used(edit).length ? <p className="mb-4 text-[12.5px] text-ink-2">{t("Changes apply to every Bot that uses it: {{bots}}.", { bots: used(edit).join(", ") })}</p> : <div className="mb-4" />}
+          {used(edit).length ? <p className="mb-4 text-meta text-ink-2">{t("Changes apply to every Bot that uses it: {{bots}}.", { bots: used(edit).join(", ") })}</p> : <div className="mb-4" />}
           <form onSubmit={(e) => void saveEdit(e)}>
             <ConnectorFields value={editDraft} onChange={setEditDraft} existing />
             <div className="mt-6 flex items-center gap-2">

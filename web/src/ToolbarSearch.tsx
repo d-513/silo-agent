@@ -25,7 +25,7 @@ export function ToolbarSearch({ value, onChange, placeholder, className = "sm:w-
         ref={ref}
         type="text"
         aria-label={placeholder}
-        className="h-9 w-full rounded-sm bg-surface pl-9 pr-14 text-[13px] text-ink shadow-card transition-colors placeholder:text-ink-3 focus:outline-none focus:ring-1 focus:ring-cobalt"
+        className="h-9 w-full rounded-sm bg-surface pl-9 pr-14 text-small text-ink shadow-card transition-colors placeholder:text-ink-3 focus:outline-none focus:ring-1 focus:ring-cobalt"
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}

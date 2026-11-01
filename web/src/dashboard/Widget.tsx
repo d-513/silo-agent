@@ -76,7 +76,7 @@ export function Widget({
     >
       <header className="mb-2 flex h-6 min-w-0 items-center gap-2">
         {fresh ? <span aria-label={t("Changed")} className="h-1.5 w-1.5 shrink-0 rounded-full bg-cobalt" /> : null}
-        <h3 className="min-w-0 flex-1 truncate text-[13px] leading-[18px] font-medium text-ink">{w.title}</h3>
+        <h3 className="min-w-0 flex-1 truncate text-small leading-[18px] font-medium text-ink">{w.title}</h3>
         {arranging ? (
           arrange
         ) : (
@@ -183,11 +183,11 @@ export function WidgetSnapshot({ w }: { w: DashboardWidget }) {
   return (
     <div className="@container min-w-0 rounded-card bg-surface px-3.5 pt-2.5 pb-3 shadow-card">
       <header className="mb-2 flex h-6 min-w-0 items-center gap-2">
-        <h3 className="min-w-0 flex-1 truncate text-[13px] leading-[18px] font-medium text-ink">{w.title}</h3>
+        <h3 className="min-w-0 flex-1 truncate text-small leading-[18px] font-medium text-ink">{w.title}</h3>
         {w.source ? <span className="shrink-0 truncate font-mono text-[11.5px] text-ink-3">{w.source}</span> : null}
       </header>
       {w.kind === "app" ? (
-        <p className="text-[12.5px] text-ink-3">{t("A live app on the Dashboard.")}</p>
+        <p className="text-meta text-ink-3">{t("A live app on the Dashboard.")}</p>
       ) : (
         <Body w={w} data={obj(w.dataJson)} acts={[]} />
       )}
@@ -228,14 +228,14 @@ function Foot({ w, acts, handlers }: { w: DashboardWidget; acts: Action[]; handl
       ) : null}
       {w.error ? (
         <Tip content={<span className="block max-w-[360px] font-mono text-[11.5px] leading-[17px] whitespace-pre-wrap">{w.error}</span>}>
-          <p className="flex items-center gap-1.5 text-[12px] text-ink-3">
+          <p className="flex items-center gap-1.5 text-label text-ink-3">
             <AlertCircle size={12.5} className="shrink-0" />
             <span className="truncate">{t("Couldn't refresh")}</span>
           </p>
         </Tip>
       ) : null}
       {rc ? (
-        <p className="flex min-w-0 items-center gap-2 text-[12px] text-ink-3">
+        <p className="flex min-w-0 items-center gap-2 text-label text-ink-3">
           {rc.ok ? <Check size={13} strokeWidth={2.4} className="shrink-0 text-emerald" /> : <X size={13} strokeWidth={2.4} className="shrink-0" />}
           <span className={`min-w-0 truncate ${rc.ok ? "font-medium text-ink" : ""}`}>{rc.text}</span>
           <span aria-hidden className="h-px min-w-4 flex-1 bg-line" />

@@ -61,14 +61,14 @@ export function SectionCard({
         <SectionMark s={s} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-[16px] font-medium text-ink">{s.title}</h3>
+            <h3 className="text-lead font-medium text-ink">{s.title}</h3>
             {s.rules.length > 0 && (
-              <span className="rounded-sm bg-well px-1.5 py-0.5 font-mono text-[11px] text-ink-3">
+              <span className="rounded-sm bg-well px-1.5 py-0.5 font-mono text-micro text-ink-3">
                 {t("{{count}} actions", { count: s.rules.length })}
               </span>
             )}
           </div>
-          <p className="mt-1 text-[13px] text-ink-2">{side === "output" ? s.outputSummary : s.summary}</p>
+          <p className="mt-1 text-small text-ink-2">{side === "output" ? s.outputSummary : s.summary}</p>
         </div>
         {s.rules.length > 0 && (
           <div
@@ -78,8 +78,8 @@ export function SectionCard({
               e.stopPropagation();
             }}
           >
-            <span className="text-[11px] font-medium uppercase tracking-wider text-ink-3 wide:hidden">{t("All")}</span>
-            {shared === "" && <span className="hidden text-[11px] font-medium text-ink-3 wide:inline">{t("Mixed")}</span>}
+            <span className="text-micro font-medium uppercase tracking-wider text-ink-3 wide:hidden">{t("All")}</span>
+            {shared === "" && <span className="hidden text-micro font-medium text-ink-3 wide:inline">{t("Mixed")}</span>}
             <div
               className="w-full wide:w-[260px] wide:shrink-0"
               title={shared === "" ? t("Mixed. Pick one to apply to every action below.") : t("Apply to every action below.")}

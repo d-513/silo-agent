@@ -70,7 +70,7 @@ export function AuditPane({ botId, embedded = false }: { botId: string; embedded
         </TabPills>
         <div className="flex items-center gap-2">
           {botId ? (
-            <Link to="/bots/$botId/rules" params={{ botId }} className={inputClass + " flex h-8 items-center px-3 text-[13px] text-ink-2 hover:text-ink"}>
+            <Link to="/bots/$botId/rules" params={{ botId }} className={inputClass + " flex h-8 items-center px-3 text-small text-ink-2 hover:text-ink"}>
               {t("Network lists")}
             </Link>
           ) : null}
@@ -78,7 +78,7 @@ export function AuditPane({ botId, embedded = false }: { botId: string; embedded
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={t("Search the timeline")}
-            className={`${inputClass} h-8 w-[14rem] px-3 text-[13px]`}
+            className={`${inputClass} h-8 w-[14rem] px-3 text-small`}
           />
         </div>
       </div>
@@ -93,7 +93,7 @@ export function AuditPane({ botId, embedded = false }: { botId: string; embedded
 function Summary({ summary }: { summary: { total: number; attention: number; requests: number; blocked: number; flagged: number; detailDays: number; trafficDays: number } }) {
   const clicks = [{ label: t("Requests"), value: summary.requests }, { label: t("Blocked"), value: summary.blocked }, { label: t("Flagged"), value: summary.flagged }];
   return (
-    <p className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-ink-3">
+    <p className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-ink-3">
       <span>{t("{{n}} lines kept for {{days}} days", { n: summary.total, days: summary.detailDays })}</span>
       {clicks.map((c) => (
         <span key={c.label} className="tabular-nums">
@@ -128,7 +128,7 @@ function Events({ botId, view, query }: { botId: string; view: "attention" | "al
   if (q.isPending) return <SkeletonRows rows={5} height={56} />;
   return (
     <>
-      {err ? <p className="mb-3 text-[13px] text-vermilion">{err}</p> : null}
+      {err ? <p className="mb-3 text-small text-vermilion">{err}</p> : null}
       {events.length === 0 && !err ? (
         <div className="rounded-card border border-dashed border-line bg-surface p-8 text-center text-ink-3">
           {view === "attention" ? t("Nothing needs your attention.") : t("Nothing on the timeline yet.")}
@@ -176,23 +176,23 @@ function EventRow({ e, showBot, editable, patterns }: { e: AuditEvent; showBot: 
     <li className="group flex flex-wrap items-baseline gap-x-2.5 gap-y-1 border-b border-line px-3 py-2.5 last:border-b-0">
       <Verdict decision={e.decision} />
       {showBot ? (
-        <Link to="/bots/$botId/run" params={{ botId: e.botId }} className="flex items-center gap-1.5 text-[13px] text-ink-2 hover:text-ink">
+        <Link to="/bots/$botId/run" params={{ botId: e.botId }} className="flex items-center gap-1.5 text-small text-ink-2 hover:text-ink">
           <Crest index={e.crest} size={16} />
           {e.botName}
         </Link>
       ) : null}
-      <span className="font-mono text-[12.5px] text-ink">{e.action}</span>
-      <span className="text-[12.5px] text-ink-2">{who(e.actor)}</span>
-      {host ? <span className="font-mono text-[12.5px] text-ink-2">{host}</span> : null}
+      <span className="font-mono text-meta text-ink">{e.action}</span>
+      <span className="text-meta text-ink-2">{who(e.actor)}</span>
+      {host ? <span className="font-mono text-meta text-ink-2">{host}</span> : null}
       {e.chatId ? (
-        <Link to="/bots/$botId/run/$chatId" params={{ botId: e.botId, chatId: e.chatId }} className="max-w-[16rem] truncate text-[12.5px] text-cobalt hover:underline">
+        <Link to="/bots/$botId/run/$chatId" params={{ botId: e.botId, chatId: e.chatId }} className="max-w-[16rem] truncate text-meta text-cobalt hover:underline">
           {e.chatTitle || t("the conversation")}
         </Link>
       ) : null}
-      <span className="ml-auto shrink-0 text-[12px] text-ink-3" title={e.at}>
+      <span className="ml-auto shrink-0 text-label text-ink-3" title={e.at}>
         {runWhen(e.at)}
       </span>
-      <span className="w-full text-[12.5px] leading-[18px] text-ink-2">
+      <span className="w-full text-meta leading-[18px] text-ink-2">
         {why(e.reason)}
         {e.detail ? <span className="text-ink-3"> · {e.detail}</span> : null}
         {e.bytesUp || e.bytesDown ? (
@@ -244,7 +244,7 @@ function HostState({
           {t("Trust this host")}
         </Btn>
       ) : null}
-      {err ? <span className="text-[12.5px] text-vermilion">{err}</span> : null}
+      {err ? <span className="text-meta text-vermilion">{err}</span> : null}
     </span>
   );
 }
@@ -337,7 +337,7 @@ function Traffic({ botId, query }: { botId: string; query: string }) {
   const rows = q.data?.rows ?? noTraffic;
   const err = q.error ? fail(q.error) : "";
   if (q.isPending) return <SkeletonRows rows={5} height={40} />;
-  if (err) return <p className="text-[13px] text-vermilion">{err}</p>;
+  if (err) return <p className="text-small text-vermilion">{err}</p>;
   if (rows.length === 0)
     return (
       <div className="rounded-card border border-dashed border-line bg-surface p-8 text-center text-ink-3">
@@ -346,7 +346,7 @@ function Traffic({ botId, query }: { botId: string; query: string }) {
     );
   return (
     <div className="silo-scroll-x overflow-hidden rounded-card bg-surface shadow-card">
-      <table className="w-full min-w-[36rem] text-left text-[13px]">
+      <table className="w-full min-w-[36rem] text-left text-small">
         <thead className="bg-well text-ink-3">
           <tr>
             {!botId ? <th className="p-2 font-medium">{t("Bot")}</th> : null}

@@ -59,10 +59,10 @@ export function ToggleRow({
     <div className={`flex items-center justify-between gap-4 ${className}`}>
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[14px] font-medium text-ink">{label}</span>
+          <span className="text-body font-medium text-ink">{label}</span>
           {meta}
         </div>
-        {hint ? <p className="mt-0.5 text-[12.5px] leading-[18px] text-ink-2">{hint}</p> : null}
+        {hint ? <p className="mt-0.5 text-meta leading-[18px] text-ink-2">{hint}</p> : null}
       </div>
       <Switch on={on} onChange={onChange} disabled={disabled} />
     </div>

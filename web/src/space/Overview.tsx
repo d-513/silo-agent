@@ -38,8 +38,8 @@ export function SpaceOverview() {
         <div className="flex min-w-0 items-center gap-4">
           <SpaceMark space={space} size={52} />
           <div className="min-w-0">
-            <h1 className="truncate text-[28px] font-semibold leading-9 tracking-[-0.02em] text-ink">{space?.name ?? t("Workspace")}</h1>
-            <p className="mt-0.5 truncate text-[13px] text-ink-3">
+            <h1 className="truncate text-headline font-semibold leading-9 tracking-[-0.02em] text-ink">{space?.name ?? t("Workspace")}</h1>
+            <p className="mt-0.5 truncate text-small text-ink-3">
               {space
                 ? [t("{{count}} Bots", { count: space.bots }), t("{{count}} people", { count: space.people }), roleWord(role)].filter(Boolean).join(" · ")
                 : " "}
@@ -63,7 +63,7 @@ export function SpaceOverview() {
       </header>
 
       {err ? (
-        <p role="alert" className="mb-4 text-[13px] text-vermilion">
+        <p role="alert" className="mb-4 text-small text-vermilion">
           {err}
         </p>
       ) : null}
@@ -115,7 +115,7 @@ function Pulse({ needs, asks, working, resting }: { needs: number; asks: number;
         .map((p) => (
           <span
             key={p.status}
-            className={`flex items-center gap-2 text-[13px] font-medium ${p.status === "needs_you" ? "text-vermilion" : p.status === "asks" ? "text-cobalt" : "text-ink-2"}`}
+            className={`flex items-center gap-2 text-small font-medium ${p.status === "needs_you" ? "text-vermilion" : p.status === "asks" ? "text-cobalt" : "text-ink-2"}`}
           >
             {p.status === "asks" ? <MessageCircleQuestionMark size={14} /> : <Lamp status={p.status} />}
             {p.word}
@@ -167,12 +167,12 @@ function BotCard({ bot: b, i }: { bot: Bot; i: number }) {
                 <Initials email={p.email} size={22} />
               </span>
             ))}
-            {b.people.length > 3 ? <span className="pl-2.5 text-[11px] leading-[22px] text-ink-3">{`+${b.people.length - 3}`}</span> : null}
+            {b.people.length > 3 ? <span className="pl-2.5 text-micro leading-[22px] text-ink-3">{`+${b.people.length - 3}`}</span> : null}
           </div>
         ) : null}
       </div>
 
-      {b.description ? <p className="pointer-events-none mt-3 line-clamp-2 text-[13px] leading-[19px] text-ink-2">{b.description}</p> : null}
+      {b.description ? <p className="pointer-events-none mt-3 line-clamp-2 text-small leading-[19px] text-ink-2">{b.description}</p> : null}
 
       <div className="mt-auto pt-4">
         <Doing bot={b} />
@@ -182,7 +182,7 @@ function BotCard({ bot: b, i }: { bot: Bot; i: number }) {
   );
 }
 
-const row = "relative z-10 h-8 px-2 text-[12.5px] text-ink-2";
+const row = "relative z-10 h-8 px-2 text-meta text-ink-2";
 
 // Doing is what it is up to: each live conversation and what it is on, else
 // what it will do next on its own (the line above says when it last worked).
@@ -197,14 +197,14 @@ function Doing({ bot: b }: { bot: Bot }) {
             <DoingRow bot={b} row={a} className={row} />
           </li>
         ))}
-        {runs.length > 2 ? <li className="px-2 text-[12px] text-ink-3">{t("…and {{count}} more", { count: runs.length - 2 })}</li> : null}
-        {agents ? <li className="flex h-7 items-center gap-2 px-2 text-[12px] text-ink-3">{t("{{count}} subagents at work", { count: agents })}</li> : null}
+        {runs.length > 2 ? <li className="px-2 text-label text-ink-3">{t("…and {{count}} more", { count: runs.length - 2 })}</li> : null}
+        {agents ? <li className="flex h-7 items-center gap-2 px-2 text-label text-ink-3">{t("{{count}} subagents at work", { count: agents })}</li> : null}
       </ul>
     );
   }
   if (!b.nextRunAt) return null;
   return (
-    <p className="pointer-events-none flex min-w-0 items-center gap-1.5 text-[12.5px] leading-[18px] text-ink-3">
+    <p className="pointer-events-none flex min-w-0 items-center gap-1.5 text-meta leading-[18px] text-ink-3">
       <Timer size={13} className="shrink-0" />
       <span className="min-w-0 truncate">{`${b.nextRunName} · ${nextWhen(b.nextRunAt)}`}</span>
     </p>
@@ -250,8 +250,8 @@ function CardSkeleton() {
 function Empty({ spaceId, build }: { spaceId: string; build: boolean }) {
   return (
     <div className="rise pt-[8vh]">
-      <p className="mb-2 text-[30px] font-medium leading-[38px] tracking-[-0.02em] wide:text-[40px] wide:leading-[48px]">{t("No Bots yet")}</p>
-      <p className="mb-7 max-w-[460px] text-[14px] text-ink-2">{t("A Bot is its own machine. It does not share files with the others.")}</p>
+      <p className="mb-2 text-display-sm font-medium leading-[38px] tracking-[-0.02em] wide:text-display wide:leading-[48px]">{t("No Bots yet")}</p>
+      <p className="mb-7 max-w-[460px] text-body text-ink-2">{t("A Bot is its own machine. It does not share files with the others.")}</p>
       {build ? (
         <Link to="/w/$spaceId/new" params={{ spaceId }} className={btnClass("primary")}>
           <Plus size={16} />

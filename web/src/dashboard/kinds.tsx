@@ -30,7 +30,7 @@ const inert: WidgetHandlers = { onSelect: () => {}, onRefresh: async () => {}, o
 // Body draws a widget's kind. With no handlers it is read-only.
 export function Body({ w, data, acts, handlers }: { w: DashboardWidget; data: Record<string, unknown>; acts: Action[]; handlers?: WidgetHandlers }) {
   if (!w.dataAt && Object.keys(data).length === 0) {
-    return <p className="text-[12.5px] text-ink-3">{w.hasProbe ? t("Waiting for the first refresh.") : t("Nothing here yet.")}</p>;
+    return <p className="text-meta text-ink-3">{w.hasProbe ? t("Waiting for the first refresh.") : t("Nothing here yet.")}</p>;
   }
   switch (w.kind) {
     case "note":
@@ -75,9 +75,9 @@ function Stat({ data }: { data: Record<string, unknown> }) {
         <span className="min-w-0 text-[clamp(18px,14cqi,34px)] leading-[1.12] font-medium tracking-[-0.025em] [overflow-wrap:anywhere] text-ink tabular-nums">
           {fmtNum(data.value)}
         </span>
-        {say(data.unit) ? <span className="font-mono text-[13px] text-ink-3">{say(data.unit)}</span> : null}
+        {say(data.unit) ? <span className="font-mono text-small text-ink-3">{say(data.unit)}</span> : null}
       </div>
-      {say(data.caption) ? <p className="mt-1 text-[12.5px] leading-[18px] text-ink-2">{say(data.caption)}</p> : null}
+      {say(data.caption) ? <p className="mt-1 text-meta leading-[18px] text-ink-2">{say(data.caption)}</p> : null}
       {series.length > 1 ? <Line series={series} height={36} className="mt-auto pt-3" /> : null}
     </div>
   );
@@ -124,11 +124,11 @@ function Chart({ data, type }: { data: Record<string, unknown>; type: "line" | "
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-baseline gap-1.5">
-        <span className="text-[20px] leading-6 font-medium tracking-[-0.015em] tabular-nums">{fmtNum(last.value)}</span>
-        {unit ? <span className="font-mono text-[12px] text-ink-3">{unit}</span> : null}
+        <span className="text-heading leading-6 font-medium tracking-[-0.015em] tabular-nums">{fmtNum(last.value)}</span>
+        {unit ? <span className="font-mono text-label text-ink-3">{unit}</span> : null}
         {last.label ? <span className="ml-auto font-mono text-[11.5px] text-ink-3">{last.label}</span> : null}
       </div>
-      {say(data.caption) ? <p className="mt-0.5 text-[12.5px] leading-[18px] text-ink-2">{say(data.caption)}</p> : null}
+      {say(data.caption) ? <p className="mt-0.5 text-meta leading-[18px] text-ink-2">{say(data.caption)}</p> : null}
       {type === "line" ? (
         <Line series={pts.map((p) => p.value)} height={88} className="mt-auto pt-3" />
       ) : (
@@ -145,7 +145,7 @@ function Chart({ data, type }: { data: Record<string, unknown>; type: "line" | "
         </div>
       )}
       {pts.length > 1 ? (
-        <div className="mt-1.5 flex justify-between font-mono text-[11px] text-ink-3">
+        <div className="mt-1.5 flex justify-between font-mono text-micro text-ink-3">
           <span>{pts[0].label}</span>
           <span>{last.label}</span>
         </div>
@@ -167,13 +167,13 @@ function RowActions({ acts, row, handlers }: { acts: Action[]; row: Record<strin
           void handlers.onAction(a, row, apart).finally(() => setBusy(""));
         };
         const cls =
-          "h-6 rounded-sm px-1.5 text-[12px] font-medium text-ink-2 transition-colors duration-[160ms] hover:bg-pressed hover:text-ink disabled:opacity-50";
+          "h-6 rounded-sm px-1.5 text-label font-medium text-ink-2 transition-colors duration-[160ms] hover:bg-pressed hover:text-ink disabled:opacity-50";
         return a.confirm ? (
           <ArmedButton
             key={a.id}
             kind="ghost"
             size="sm"
-            className="!h-6 !px-1.5 !text-[12px]"
+            className="!h-6 !px-1.5 !text-label"
             armedLabel={t("Click again")}
             onConfirm={() => run()}
             disabled={busy !== ""}
@@ -194,7 +194,7 @@ function RowActions({ acts, row, handlers }: { acts: Action[]; row: Record<strin
 
 function List({ data, acts, handlers }: { data: Record<string, unknown>; acts: Action[]; handlers: WidgetHandlers }) {
   const rows = items(data.items);
-  if (!rows.length) return <p className="text-[12.5px] text-ink-3">{t("Nothing here.")}</p>;
+  if (!rows.length) return <p className="text-meta text-ink-3">{t("Nothing here.")}</p>;
   return (
     <ul className="-mx-2">
       {rows.map((r, i) => {
@@ -211,14 +211,14 @@ function List({ data, acts, handlers }: { data: Record<string, unknown>; acts: A
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block truncate text-[13px] leading-[18px] text-ink hover:text-cobalt hover:underline"
+                  className="block truncate text-small leading-[18px] text-ink hover:text-cobalt hover:underline"
                 >
                   {title}
                 </a>
               ) : (
-                <div className="truncate text-[13px] leading-[18px] text-ink">{title}</div>
+                <div className="truncate text-small leading-[18px] text-ink">{title}</div>
               )}
-              {say(r.detail) ? <div className="truncate text-[12px] leading-4 text-ink-3">{say(r.detail)}</div> : null}
+              {say(r.detail) ? <div className="truncate text-label leading-4 text-ink-3">{say(r.detail)}</div> : null}
             </div>
             <RowActions acts={acts} row={r} handlers={handlers} />
             {say(r.meta) ? <span className="shrink-0 font-mono text-[11.5px] text-ink-3">{say(r.meta)}</span> : null}
@@ -232,11 +232,11 @@ function List({ data, acts, handlers }: { data: Record<string, unknown>; acts: A
 function Table({ data, acts, handlers }: { data: Record<string, unknown>; acts: Action[]; handlers: WidgetHandlers }) {
   const columns = Array.isArray(data.columns) ? data.columns.map(text) : [];
   const rows = Array.isArray(data.rows) ? data.rows.filter(Array.isArray) : [];
-  if (!rows.length) return <p className="text-[12.5px] text-ink-3">{t("Nothing here.")}</p>;
+  if (!rows.length) return <p className="text-meta text-ink-3">{t("Nothing here.")}</p>;
   const asObject = (r: unknown[]) => Object.fromEntries(r.map((v, i) => [columns[i] || String(i), v]));
   return (
     <div className="-mx-1 max-h-[420px] overflow-auto">
-      <table className="w-full border-collapse text-[12.5px]">
+      <table className="w-full border-collapse text-meta">
         {columns.length ? (
           <thead>
             <tr>
@@ -258,7 +258,7 @@ function Table({ data, acts, handlers }: { data: Record<string, unknown>; acts: 
               {r.map((v, j) => (
                 <td
                   key={j}
-                  className={`h-8 max-w-[240px] truncate px-1 ${numeric(v) ? "text-right font-mono text-[12px] text-ink-2 tabular-nums" : "text-ink"}`}
+                  className={`h-8 max-w-[240px] truncate px-1 ${numeric(v) ? "text-right font-mono text-label text-ink-2 tabular-nums" : "text-ink"}`}
                 >
                   {say(v)}
                 </td>
@@ -285,12 +285,12 @@ function when(s: string): string {
 // it is the one place on the board that says "you are here".
 function Timeline({ data }: { data: Record<string, unknown> }) {
   const rows = items(data.items);
-  if (!rows.length) return <p className="text-[12.5px] text-ink-3">{t("Nothing here.")}</p>;
+  if (!rows.length) return <p className="text-meta text-ink-3">{t("Nothing here.")}</p>;
   const split = nowSplit(rows.map((r) => say(r.time)));
   const now = (
     <li key="now" aria-label={t("Now")} className="relative my-1 h-0 border-t border-cobalt">
       <span className="absolute top-[-4px] left-[-4px] h-[7px] w-[7px] rounded-full bg-cobalt" />
-      <span className="absolute top-[-9px] left-[-68px] w-16 font-mono text-[12px] font-medium whitespace-nowrap text-cobalt">{clockTime(new Date())}</span>
+      <span className="absolute top-[-9px] left-[-68px] w-16 font-mono text-label font-medium whitespace-nowrap text-cobalt">{clockTime(new Date())}</span>
     </li>
   );
   const out: ReactNode[] = [];
@@ -299,9 +299,9 @@ function Timeline({ data }: { data: Record<string, unknown> }) {
     const past = split >= 0 && i < split;
     out.push(
       <li key={i} className="relative py-1.5">
-        <span className="absolute top-1.5 left-[-68px] w-16 font-mono text-[12px] whitespace-nowrap text-ink-3">{when(say(r.time))}</span>
-        <div className={`text-[13px] leading-[18px] font-medium ${past ? "text-ink-3" : "text-ink"}`}>{say(r.title)}</div>
-        {say(r.detail) ? <div className="text-[12px] leading-4 text-ink-3">{say(r.detail)}</div> : null}
+        <span className="absolute top-1.5 left-[-68px] w-16 font-mono text-label whitespace-nowrap text-ink-3">{when(say(r.time))}</span>
+        <div className={`text-small leading-[18px] font-medium ${past ? "text-ink-3" : "text-ink"}`}>{say(r.title)}</div>
+        {say(r.detail) ? <div className="text-label leading-4 text-ink-3">{say(r.detail)}</div> : null}
       </li>,
     );
   });
@@ -320,7 +320,7 @@ const statusWords = {
 // nothing else gets a colour.
 function StatusList({ data }: { data: Record<string, unknown> }) {
   const rows = items(data.items);
-  if (!rows.length) return <p className="text-[12.5px] text-ink-3">{t("Nothing here.")}</p>;
+  if (!rows.length) return <p className="text-meta text-ink-3">{t("Nothing here.")}</p>;
   return (
     <ul>
       {rows.map((r, i) => {
@@ -330,8 +330,8 @@ function StatusList({ data }: { data: Record<string, unknown> }) {
         return (
           <li key={i} className="flex h-[30px] min-w-0 items-center gap-2.5 shadow-[inset_0_-1px_0_var(--color-line)] last:shadow-none">
             <span className={`h-[7px] w-[7px] shrink-0 rounded-full ${dot}`} />
-            <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-ink">{say(r.label)}</span>
-            <span className={`shrink-0 text-[12px] font-medium ${word}`}>{say(r.word) || statusWords[tn]()}</span>
+            <span className="min-w-0 flex-1 truncate font-mono text-meta text-ink">{say(r.label)}</span>
+            <span className={`shrink-0 text-label font-medium ${word}`}>{say(r.word) || statusWords[tn]()}</span>
             {say(r.meta) ? <span className="min-w-14 shrink-0 text-right font-mono text-[11.5px] whitespace-nowrap text-ink-3">{say(r.meta)}</span> : null}
           </li>
         );
@@ -343,7 +343,7 @@ function StatusList({ data }: { data: Record<string, unknown> }) {
 function Checklist({ w, data, onState }: { w: DashboardWidget; data: Record<string, unknown>; onState?: (s: string) => void }) {
   const rows = items(data.items);
   const on = new Set(checked(w.stateJson));
-  if (!rows.length) return <p className="text-[12.5px] text-ink-3">{t("Nothing here.")}</p>;
+  if (!rows.length) return <p className="text-meta text-ink-3">{t("Nothing here.")}</p>;
   return (
     <ul>
       {rows.map((r, i) => {
@@ -366,7 +366,7 @@ function Checklist({ w, data, onState }: { w: DashboardWidget; data: Record<stri
               >
                 {done ? <Check size={11} strokeWidth={3} /> : null}
               </span>
-              <span className={`min-w-0 flex-1 text-[13px] leading-[18px] transition-colors duration-[200ms] ${done ? "text-ink-3 line-through" : "text-ink"}`}>
+              <span className={`min-w-0 flex-1 text-small leading-[18px] transition-colors duration-[200ms] ${done ? "text-ink-3 line-through" : "text-ink"}`}>
                 {say(r.text)}
               </span>
             </button>
@@ -384,10 +384,10 @@ function Progress({ data }: { data: Record<string, unknown> }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-baseline gap-1.5">
-        <span className="text-[34px] leading-[38px] font-medium tracking-[-0.025em] tabular-nums">{Math.round(pct * 100)}</span>
-        <span className="font-mono text-[13px] text-ink-3">%</span>
+        <span className="text-figure leading-[38px] font-medium tracking-[-0.025em] tabular-nums">{Math.round(pct * 100)}</span>
+        <span className="font-mono text-small text-ink-3">%</span>
       </div>
-      <p className="mt-1 text-[12.5px] leading-[18px] text-ink-2">{say(data.caption) || `${fmtNum(v)} / ${fmtNum(max)}`}</p>
+      <p className="mt-1 text-meta leading-[18px] text-ink-2">{say(data.caption) || `${fmtNum(v)} / ${fmtNum(max)}`}</p>
       <div className="mt-auto pt-3">
         <div className="h-[3px] overflow-hidden rounded-full bg-pressed">
           <div className="h-full rounded-full bg-ink transition-[width] duration-[420ms] ease-settle" style={{ width: `${pct * 100}%` }} />

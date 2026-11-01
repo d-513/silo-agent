@@ -76,7 +76,7 @@ function ScheduleField({ value, onChange, zone }: { value: string; onChange: (cr
         {s.mode === "hours" && (
           <>
             <Select className="w-40" value={String(s.every)} options={HOUR_STEPS.map((n) => ({ value: String(n), label: t("every {{count}} hours", { count: n }) }))} onChange={(v) => set({ every: Number(v) })} />
-            <span className="text-[13px] text-ink-2">{t("at minute")}</span>
+            <span className="text-small text-ink-2">{t("at minute")}</span>
             <input type="number" min={0} max={59} className={`${inputClass} w-20`} value={s.minute} onChange={(e) => set({ minute: Math.max(0, Math.min(59, Number(e.target.value) || 0)) })} />
           </>
         )}
@@ -84,11 +84,11 @@ function ScheduleField({ value, onChange, zone }: { value: string; onChange: (cr
           <>
             {s.mode === "monthly" && (
               <>
-                <span className="text-[13px] text-ink-2">{t("on day")}</span>
+                <span className="text-small text-ink-2">{t("on day")}</span>
                 <input type="number" min={1} max={31} className={`${inputClass} w-20`} value={s.dom} onChange={(e) => set({ dom: Math.max(1, Math.min(31, Number(e.target.value) || 1)) })} />
               </>
             )}
-            <span className="text-[13px] text-ink-2">{t("at")}</span>
+            <span className="text-small text-ink-2">{t("at")}</span>
             {time}
           </>
         )}
@@ -106,7 +106,7 @@ function ScheduleField({ value, onChange, zone }: { value: string; onChange: (cr
                 type="button"
                 aria-pressed={on}
                 onClick={() => set({ days: on ? s.days.filter((x) => x !== d) : [...s.days, d] })}
-                className={`h-8 w-11 rounded-sm text-[12.5px] font-medium transition-colors duration-[160ms] ${
+                className={`h-8 w-11 rounded-sm text-meta font-medium transition-colors duration-[160ms] ${
                   on ? "bg-cobalt-pale text-ink shadow-[inset_0_0_0_1px_var(--color-cobalt)]" : "text-ink-2 hover:bg-well"
                 }`}
               >
@@ -150,7 +150,7 @@ function Editor({ bot, auto, onSaved, onDeleted, onError }: { bot: Bot; auto?: A
       <PromptWell label={t("Prompt")} hint={t("Sent as the message of every run. Each run starts fresh, so say what to do and where to keep state.")} value={prompt} onChange={setPrompt} />
       <div className="flex items-center gap-3">
         <Switch on={enabled} onChange={setEnabled} title={t("Active")} />
-        <span className="text-[13px] text-ink-2">{enabled ? t("Active — runs on its schedule") : t("Paused — keeps its schedule, does not run")}</span>
+        <span className="text-small text-ink-2">{enabled ? t("Active — runs on its schedule") : t("Paused — keeps its schedule, does not run")}</span>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <SaveButton type="submit" state={saver.state} disabled={!name.trim() || !prompt.trim()}>
@@ -189,11 +189,11 @@ function Row({ bot, a, onToggle }: { bot: Bot; a: Automation; onToggle: (on: boo
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
-            <span className="truncate text-[13.5px] font-medium text-ink">{a.name}</span>
+            <span className="truncate text-row font-medium text-ink">{a.name}</span>
             {a.running ? <Lamp status={runLook(chatDoing(bot, a.chatId) ?? started).lamp} /> : null}
-            {a.lastStatus === "error" ? <span className="text-[12px] text-vermilion">{t("Last run failed")}</span> : null}
+            {a.lastStatus === "error" ? <span className="text-label text-vermilion">{t("Last run failed")}</span> : null}
           </span>
-          <span className="block truncate text-[12.5px] text-ink-3">
+          <span className="block truncate text-meta text-ink-3">
             {describe(a.schedule)} · {nextLine(a, bot)}
           </span>
         </span>
@@ -222,7 +222,7 @@ export function AutomationNew({ bot, onError }: { bot: Bot; onError: (s: string)
   return (
     <div className="min-h-0 flex-1 overflow-auto">
       <div className="silo-page">
-        <Link to="/bots/$botId/automations" params={{ botId: bot.id }} className="mb-3 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink">
+        <Link to="/bots/$botId/automations" params={{ botId: bot.id }} className="mb-3 inline-flex items-center gap-1 text-small text-ink-2 hover:text-ink">
           <ChevronLeft size={14} /> {t("Automations")}
         </Link>
         <h2 className="mb-6 text-title">{t("New automation")}</h2>
@@ -270,7 +270,7 @@ export function AutomationLog({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="shrink-0 px-4 pt-4 wide:px-7">
-        <Link to="/bots/$botId/automations" params={{ botId: bot.id }} className="mb-2 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink">
+        <Link to="/bots/$botId/automations" params={{ botId: bot.id }} className="mb-2 inline-flex items-center gap-1 text-small text-ink-2 hover:text-ink">
           <ChevronLeft size={14} /> {t("Automations")}
         </Link>
         <div className="flex flex-wrap items-center gap-3">
@@ -278,10 +278,10 @@ export function AutomationLog({
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-surface text-ink-2 shadow-card">
               <AutomationMark a={sel} />
             </span>
-            <h2 className="text-[20px] leading-7 font-medium tracking-[-0.015em]">{sel.name}</h2>
+            <h2 className="text-heading leading-7 font-medium tracking-[-0.015em]">{sel.name}</h2>
           </span>
           {busy ? <Lamp status={runLook(chatDoing(bot, sel.chatId) ?? started).lamp} /> : null}
-          <span className="text-[12.5px] text-ink-3">
+          <span className="text-meta text-ink-3">
             {describe(sel.schedule)} · {nextLine(sel, bot)}
           </span>
           <span className="flex-1" />
@@ -338,7 +338,7 @@ export function AutomationLog({
         paging={stream}
         onInspectArtifact={onInspectArtifact}
         onSaveSkill={onSaveSkill}
-        emptyState={<p className="my-auto py-14 text-center text-[13px] text-ink-3">{t("No runs yet. Run it now, or wait for its schedule.")}</p>}
+        emptyState={<p className="my-auto py-14 text-center text-small text-ink-3">{t("No runs yet. Run it now, or wait for its schedule.")}</p>}
       />
     </div>
   );
@@ -379,11 +379,11 @@ export function AutomationsList({ bot, onError }: { bot: Bot; onError: (s: strin
               {pinned.map((a) => (
                 <Row key={a.id} bot={bot} a={a} onToggle={(on) => void toggle(a, on)} />
               ))}
-              <p className="px-5 py-3 text-[12.5px] leading-[18px] text-ink-3">{t("Every Bot has one, and it cannot be deleted. It does not run until you give it a schedule.")}</p>
+              <p className="px-5 py-3 text-meta leading-[18px] text-ink-3">{t("Every Bot has one, and it cannot be deleted. It does not run until you give it a schedule.")}</p>
             </Panel>
             <Panel padded={false} title={t("Scheduled")} className="mt-4">
               {custom.length === 0 ? (
-                <p className="px-5 py-4 text-[13px] text-ink-3">{t("None yet. Ask {{name}} in a chat — “every weekday at 9, summarize my inbox” — or add one here.", { name: bot.name })}</p>
+                <p className="px-5 py-4 text-small text-ink-3">{t("None yet. Ask {{name}} in a chat — “every weekday at 9, summarize my inbox” — or add one here.", { name: bot.name })}</p>
               ) : (
                 custom.map((a) => <Row key={a.id} bot={bot} a={a} onToggle={(on) => void toggle(a, on)} />)
               )}

@@ -75,7 +75,7 @@ export function AllowedModels({ kind }: { kind: ModelKind }) {
   return (
     <Panel title={t(copy.title)} note={t(copy.note)} padded={false}>
       {models.length === 0 ? (
-        <p className="px-5 py-4 text-[13px] text-ink-2">{t(copy.none)}</p>
+        <p className="px-5 py-4 text-small text-ink-2">{t(copy.none)}</p>
       ) : (
         <ul className="divide-y divide-line">
           {models.map((m) => {
@@ -83,11 +83,11 @@ export function AllowedModels({ kind }: { kind: ModelKind }) {
             const jobs = Object.keys(ROLE_NAMES).filter((k) => (form.values[k] ?? "").trim() === m.id);
             const name = form.providers.find((p) => p.id === providerOf(m.id))?.name ?? providerOf(m.id);
             return (
-              <li key={m.id} className="flex min-h-12 items-center gap-3 py-1.5 pr-3 pl-4 text-[13px]">
+              <li key={m.id} className="flex min-h-12 items-center gap-3 py-1.5 pr-3 pl-4 text-small">
                 <ProviderMark id={providerOf(m.id)} name={name} small />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-mono text-ink">{m.id}</span>
-                  {jobs.length ? <span className="block truncate text-[12px] leading-4 text-ink-3">{jobs.map((k) => t(ROLE_NAMES[k])).join(" · ")}</span> : null}
+                  {jobs.length ? <span className="block truncate text-label leading-4 text-ink-3">{jobs.map((k) => t(ROLE_NAMES[k])).join(" · ")}</span> : null}
                 </span>
                 <LiveChip kind={kind} live={m.live} words={m.words} endOfTurn={m.endOfTurn} />
                 {busyModels.has(m.id) ? (
@@ -95,7 +95,7 @@ export function AllowedModels({ kind }: { kind: ModelKind }) {
                     <Spinner size={13} />
                   </span>
                 ) : kind !== "text" && kind !== "decision" && !listed.includes(m.id) ? (
-                  <span className="pr-2 text-[12px] text-ink-3">{t("In use", { context: "model" })}</span>
+                  <span className="pr-2 text-label text-ink-3">{t("In use", { context: "model" })}</span>
                 ) : (
                   <Btn kind="ghost" size="sm" iconOnly title={t("Remove {{id}}", { id: m.id })} aria-label={t("Remove {{id}}", { id: m.id })} className="hover:text-vermilion" onClick={() => void setModel(m.id, false, kind)}>
                     <Trash2 size={14} />
@@ -107,7 +107,7 @@ export function AllowedModels({ kind }: { kind: ModelKind }) {
         </ul>
       )}
       <div className="bg-well px-5 py-4 shadow-[inset_0_1px_0_var(--color-line)]">
-        <p className="mb-3 text-[12.5px] leading-[18px] text-ink-2">
+        <p className="mb-3 text-meta leading-[18px] text-ink-2">
           <Trans i18nKey="Pick from a provider's own list under <link>Providers</link>, or add a model by id." components={{ link: <Link to="/admin/settings/models/$page" params={{ page: "providers" }} className="text-cobalt hover:text-cobalt-deep" /> }} />
         </p>
         <div className="flex flex-wrap items-center gap-2">
@@ -116,7 +116,7 @@ export function AllowedModels({ kind }: { kind: ModelKind }) {
           </div>
           <span className="text-ink-3">/</span>
           <input
-            className={`${inputClass} min-w-[180px] flex-1 font-mono text-[13px]`}
+            className={`${inputClass} min-w-[180px] flex-1 font-mono text-small`}
             placeholder={t(copy.example)}
             aria-label={t("Model name")}
             autoComplete="off"

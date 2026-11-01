@@ -7,7 +7,7 @@ export function QuoteChips({ quotes, onRemove }: { quotes: DraftQuote[]; onRemov
   return (
     <div className="flex flex-col gap-1.5 px-3 pt-3">
       {quotes.map((q) => (
-        <div key={q.id} className="rise flex min-w-0 items-center gap-2 rounded-sm bg-well py-1.5 pr-1 pl-2.5 text-[12.5px] text-ink">
+        <div key={q.id} className="rise flex min-w-0 items-center gap-2 rounded-sm bg-well py-1.5 pr-1 pl-2.5 text-meta text-ink">
           {q.thumb ? (
             <img src={q.thumb} alt="" className="h-8 w-8 shrink-0 rounded-xs object-cover shadow-card" />
           ) : (

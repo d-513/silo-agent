@@ -27,7 +27,7 @@ export function SecretsPane({ botId, state, onError }: { botId: string; state: S
         {secrets === null ? (
           <SkeletonRows rows={2} height={52} className="p-3" />
         ) : secrets.length === 0 ? (
-          <p className="px-5 py-4 text-[13px] text-ink-3">{t("No secrets on this Bot yet.")}</p>
+          <p className="px-5 py-4 text-small text-ink-3">{t("No secrets on this Bot yet.")}</p>
         ) : (
           secrets.map((s) => (
             <div key={s.id} className="px-5 py-3 shadow-[inset_0_-1px_0_var(--color-line)] last:shadow-none">
@@ -94,7 +94,7 @@ export function SecretsPane({ botId, state, onError }: { botId: string; state: S
                     >
                       {t("Save")}
                     </SaveButton>
-                    <button type="button" className="text-[13px] text-ink-3 hover:text-ink" onClick={stopEdit}>
+                    <button type="button" className="text-small text-ink-3 hover:text-ink" onClick={stopEdit}>
                       {t("Cancel")}
                     </button>
                   </div>
@@ -102,8 +102,8 @@ export function SecretsPane({ botId, state, onError }: { botId: string; state: S
               ) : (
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="truncate font-mono text-[13px] font-medium">{s.name}</div>
-                    <div className="truncate text-[12px] text-ink-3">
+                    <div className="truncate font-mono text-small font-medium">{s.name}</div>
+                    <div className="truncate text-label text-ink-3">
                       {s.mode === "surrogate" ? (
                         <span title={t("A stand-in the Bot holds; the network filter swaps in the real value for these hosts.")}>
                           {t("Surrogate")}
@@ -119,7 +119,7 @@ export function SecretsPane({ botId, state, onError }: { botId: string; state: S
                   <div className="flex shrink-0 items-center gap-1">
                     <button
                       type="button"
-                      className="rounded-md px-2.5 py-1 text-[12.5px] font-medium text-ink-3 hover:bg-pressed hover:text-ink"
+                      className="rounded-md px-2.5 py-1 text-meta font-medium text-ink-3 hover:bg-pressed hover:text-ink"
                       onClick={() => startEdit({ id: s.id, name: s.name, mode: s.mode || "plain", hosts: s.hosts, swapBody: s.swapBody })}
                     >
                       {t("Edit")}
@@ -184,14 +184,14 @@ export function SecretsPane({ botId, state, onError }: { botId: string; state: S
                 />
               </Field>
             ) : (
-              <p className="flex-1 pb-2 text-[12.5px] text-ink-3">
+              <p className="flex-1 pb-2 text-meta text-ink-3">
                 {t("The Bot holds the real value. For keys and passwords nothing can stand in for it.")}
               </p>
             )}
           </div>
           {mode === "surrogate" ? <BodySwap on={swapBody} onChange={setSwapBody} /> : null}
           <div className="flex items-end justify-between gap-3">
-            <p className="text-[12.5px] text-ink-3">
+            <p className="text-meta text-ink-3">
               {mode === "surrogate"
                 ? t("A stand-in the Bot holds; the network filter swaps in the real value for these hosts.")
                 : ""}

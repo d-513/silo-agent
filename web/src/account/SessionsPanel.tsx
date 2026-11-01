@@ -51,11 +51,11 @@ export function SessionsPanel() {
           {rows.map((s) => (
             <li key={s.id} className="flex items-center gap-4 px-5 py-3.5">
               <div className="min-w-0 flex-1">
-                <div className="text-[14px] font-medium text-ink">{deviceName(s.userAgent)}</div>
-                <p className="mt-0.5 flex flex-wrap gap-x-1.5 text-[12.5px] text-ink-3">{details(s)}</p>
+                <div className="text-body font-medium text-ink">{deviceName(s.userAgent)}</div>
+                <p className="mt-0.5 flex flex-wrap gap-x-1.5 text-meta text-ink-3">{details(s)}</p>
               </div>
               {s.current ? (
-                <span className="shrink-0 text-[12.5px] text-ink-2">{t("This device")}</span>
+                <span className="shrink-0 text-meta text-ink-2">{t("This device")}</span>
               ) : (
                 <ArmedButton kind="ghost" size="sm" armedLabel={t("Click again to sign out")} onConfirm={() => void act(() => ui.revokeSession({ id: s.id }))}>
                   {t("Sign out")}

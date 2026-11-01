@@ -50,7 +50,7 @@ export function CallStage({
   return (
     <section className="flex min-h-0 flex-1 flex-col" aria-label={t("Call with {{name}}", { name: botName })}>
       <header className="flex h-12 shrink-0 items-center gap-2 px-4">
-        <span className="flex min-w-0 items-center gap-2 text-[12.5px] text-ink-3">
+        <span className="flex min-w-0 items-center gap-2 text-meta text-ink-3">
           {ended ? null : <Lamp status="online" />}
           <span className="truncate">{ended ? t("Call ended") : t("On a call · {{where}}", { where })}</span>
           {ended ? null : <Clock since={s.startedAt} />}
@@ -59,7 +59,7 @@ export function CallStage({
         <button
           type="button"
           onClick={onMinimize}
-          className="flex h-8 shrink-0 items-center gap-1.5 rounded-control px-2.5 text-[13px] font-medium text-ink-2 shadow-[inset_0_0_0_1px_var(--color-line-strong)] transition-[background-color,color] duration-[160ms] ease-quiet hover:bg-well hover:text-ink"
+          className="flex h-8 shrink-0 items-center gap-1.5 rounded-control px-2.5 text-small font-medium text-ink-2 shadow-[inset_0_0_0_1px_var(--color-line-strong)] transition-[background-color,color] duration-[160ms] ease-quiet hover:bg-well hover:text-ink"
         >
           <MessageSquareText size={15} />
           {t("Show chat")}
@@ -69,14 +69,14 @@ export function CallStage({
         <div className="rise flex flex-col items-center">
           <Face s={s} crest={crest} botName={botName} onInterrupt={() => session?.interrupt()} />
           <h2 className="mt-1 text-title text-ink">{botName}</h2>
-          <p className={`mt-1 flex min-h-5 items-center gap-2 text-[13px] leading-5 ${s.error && ended ? "text-vermilion" : "text-ink-3"}`} aria-live="polite">
+          <p className={`mt-1 flex min-h-5 items-center gap-2 text-small leading-5 ${s.error && ended ? "text-vermilion" : "text-ink-3"}`} aria-live="polite">
             {s.state === "working" || s.state === "needs_you" ? null : stateWords(s, botName)}
           </p>
         </div>
         <Captions s={s} botName={botName} narrow={narrow} />
         <div className="mt-4 flex min-h-8 flex-wrap items-center justify-center gap-2">
           {s.state === "needs_you" ? (
-            <span className="flex h-8 items-center gap-2 rounded-sm px-3 text-[12.5px] font-medium text-vermilion shadow-[inset_0_0_0_1px_var(--color-vermilion)]">
+            <span className="flex h-8 items-center gap-2 rounded-sm px-3 text-meta font-medium text-vermilion shadow-[inset_0_0_0_1px_var(--color-vermilion)]">
               <Lamp status="needs_you" />
               {stateWords(s, botName)}
             </span>
@@ -85,7 +85,7 @@ export function CallStage({
             <button
               type="button"
               onClick={onMinimize}
-              className="flex h-8 max-w-full items-center gap-2 rounded-sm bg-well py-0 pr-1 pl-3 text-[12.5px] text-ink-2 transition-colors duration-[160ms] ease-quiet hover:text-ink"
+              className="flex h-8 max-w-full items-center gap-2 rounded-sm bg-well py-0 pr-1 pl-3 text-meta text-ink-2 transition-colors duration-[160ms] ease-quiet hover:text-ink"
             >
               <Lamp status="working" />
               <span className="min-w-0 truncate">{callWork(s, doing)}</span>
@@ -179,17 +179,17 @@ function Captions({ s, botName, narrow }: { s: CallSnapshot; botName: string; na
     <div className="mt-6 flex w-full max-w-[600px] flex-col items-center">
       <div className="flex min-h-[124px] flex-col justify-end">
         {s.error && s.state !== "ended" ? (
-          <p className="text-[14px] leading-6 text-vermilion">{s.error}</p>
+          <p className="text-body leading-6 text-vermilion">{s.error}</p>
         ) : hint ? (
-          <p className="text-[14px] leading-6 text-ink-3">{hint}</p>
+          <p className="text-body leading-6 text-ink-3">{hint}</p>
         ) : (
           <>
-            {lines.prev ? <p className="font-serif text-[18px] leading-[26px] text-ink-3">{lines.prev}</p> : null}
-            {lines.cur ? <p className={`font-serif tracking-[-0.005em] text-ink ${narrow ? "text-[19px] leading-[27px]" : "text-[24px] leading-[34px] max-sm:text-[21px] max-sm:leading-[30px]"}`}>{lines.cur}</p> : null}
+            {lines.prev ? <p className="font-serif text-spoken leading-[26px] text-ink-3">{lines.prev}</p> : null}
+            {lines.cur ? <p className={`font-serif tracking-[-0.005em] text-ink ${narrow ? "text-[19px] leading-[27px]" : "text-spoken-lg leading-[34px] max-sm:text-[21px] max-sm:leading-[30px]"}`}>{lines.cur}</p> : null}
           </>
         )}
       </div>
-      <p className="mt-3 min-h-[22px] text-[14px] leading-[22px] text-ink-3">{s.hearing ? `“${s.hearing}…”` : s.heard ? `“${s.heard}”` : ""}</p>
+      <p className="mt-3 min-h-[22px] text-body leading-[22px] text-ink-3">{s.hearing ? `“${s.hearing}…”` : s.heard ? `“${s.heard}”` : ""}</p>
     </div>
   );
 }
@@ -202,7 +202,7 @@ function Dock({ s, call, typing, onType }: { s: CallSnapshot; call: Call; typing
         <button
           type="button"
           onClick={call.dismiss}
-          className="flex h-10 items-center gap-2 rounded-control px-4 text-[13.5px] font-medium text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] transition-colors duration-[160ms] ease-quiet hover:bg-well"
+          className="flex h-10 items-center gap-2 rounded-control px-4 text-row font-medium text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] transition-colors duration-[160ms] ease-quiet hover:bg-well"
         >
           <MessageSquareText size={15} />
           {t("Back to the chat")}
@@ -216,7 +216,7 @@ function Dock({ s, call, typing, onType }: { s: CallSnapshot; call: Call; typing
         <button
           type="button"
           aria-pressed={s.holding}
-          className={`flex h-11 touch-none items-center gap-2 rounded-card px-5 text-[13.5px] font-medium transition-[background-color,color,transform] duration-[120ms] ease-quiet select-none ${s.holding ? "scale-[.97] bg-cobalt text-on-accent" : "bg-surface text-ink shadow-card hover:bg-well"}`}
+          className={`flex h-11 touch-none items-center gap-2 rounded-card px-5 text-row font-medium transition-[background-color,color,transform] duration-[120ms] ease-quiet select-none ${s.holding ? "scale-[.97] bg-cobalt text-on-accent" : "bg-surface text-ink shadow-card hover:bg-well"}`}
           onPointerDown={(e) => {
             e.currentTarget.setPointerCapture(e.pointerId);
             session?.hold(true);
@@ -225,7 +225,7 @@ function Dock({ s, call, typing, onType }: { s: CallSnapshot; call: Call; typing
           onPointerCancel={() => session?.hold(false)}
         >
           {s.holding ? t("Talking…") : t("Hold to talk")}
-          <kbd className={`rounded-xs px-1.5 font-mono text-[11px] ${s.holding ? "text-on-accent" : "bg-well text-ink-3"}`}>{t("Space")}</kbd>
+          <kbd className={`rounded-xs px-1.5 font-mono text-micro ${s.holding ? "text-on-accent" : "bg-well text-ink-3"}`}>{t("Space")}</kbd>
         </button>
       ) : null}
       <div className="flex items-center gap-2.5">
@@ -233,7 +233,7 @@ function Dock({ s, call, typing, onType }: { s: CallSnapshot; call: Call; typing
           content={
             <>
               <TipTitle>{s.ptt ? t("Hands-free") : t("Hold to talk")}</TipTitle>
-              <p className="mt-1 text-[12px] leading-[17px] text-ink-2">{s.ptt ? t("Talk any time; a pause ends your turn.") : t("Only what you say while holding the button (or Space) is heard. For a noisy room, or speakers the Bot hears itself through.")}</p>
+              <p className="mt-1 text-label leading-[17px] text-ink-2">{s.ptt ? t("Talk any time; a pause ends your turn.") : t("Only what you say while holding the button (or Space) is heard. For a noisy room, or speakers the Bot hears itself through.")}</p>
             </>
           }
         >
@@ -262,7 +262,7 @@ function Dock({ s, call, typing, onType }: { s: CallSnapshot; call: Call; typing
         <button
           type="button"
           onClick={call.end}
-          className="ml-1 flex h-12 shrink-0 items-center gap-2 rounded-card bg-vermilion px-5 text-[14px] font-medium text-on-accent transition-[filter,transform] duration-[160ms] ease-quiet hover:brightness-95 active:scale-[.96] active:duration-[70ms] motion-reduce:active:scale-100"
+          className="ml-1 flex h-12 shrink-0 items-center gap-2 rounded-card bg-vermilion px-5 text-body font-medium text-on-accent transition-[filter,transform] duration-[160ms] ease-quiet hover:brightness-95 active:scale-[.96] active:duration-[70ms] motion-reduce:active:scale-100"
         >
           <PhoneOff size={17} />
           {t("End", { context: "call" })}

@@ -45,7 +45,7 @@ export function ProviderSettings() {
       <ModelsHead icon={Plug} title={t("Providers")} note={t("Who serves your models. Each row says what a provider can do and how many of its models you allow; open one for its key and its own list of models.")}>
         <div className="flex shrink-0 flex-col items-end gap-1.5 pt-1 max-sm:hidden">
           <span className="text-label-caps text-ink-3 uppercase">{t("Set up")}</span>
-          <span className="font-mono text-[20px] leading-6 text-ink tabular-nums">
+          <span className="font-mono text-heading leading-6 text-ink tabular-nums">
             {setUp}
             <span className="text-ink-3">/{providers.length}</span>
           </span>
@@ -102,11 +102,11 @@ function ProviderRow({ provider, open, ready, inUse, allowed, onToggle }: { prov
           <ChevronRight size={14} className={`shrink-0 text-ink-3 transition-transform duration-[200ms] ease-quiet ${open ? "rotate-90" : ""}`} />
           <ProviderMark id={provider.id} name={provider.name} />
           <span className="min-w-0">
-            <span className="flex items-center gap-2 text-[13.5px] leading-[18px] font-medium text-ink">
+            <span className="flex items-center gap-2 text-row leading-[18px] font-medium text-ink">
               {provider.name}
               {inUse ? <span className="text-[11.5px] font-normal text-ink-3">{t("in use", { context: "provider" })}</span> : null}
             </span>
-            <span className="block truncate text-[12px] leading-[17px] text-ink-3">{provider.description}</span>
+            <span className="block truncate text-label leading-[17px] text-ink-3">{provider.description}</span>
           </span>
         </span>
         {/* Wide: one column per kind. Narrow: the same cells in a strip. */}
@@ -163,7 +163,7 @@ function CapCell({ provider, kind, cap }: { provider: string; kind: (typeof CAP_
 // Legend is the grid's key, on the well band under it.
 function Legend() {
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 bg-well px-5 py-3 text-[12px] text-ink-3 shadow-[inset_0_1px_0_var(--color-line)]">
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 bg-well px-5 py-3 text-label text-ink-3 shadow-[inset_0_1px_0_var(--color-line)]">
       <span className="flex items-center gap-1.5">
         <span aria-hidden className="h-[7px] w-[7px] rounded-[2px] bg-ink" />
         {t("Allowed, with how many")}
@@ -214,7 +214,7 @@ function ProviderDetail({ provider }: { provider: Provider }) {
   return (
     <div className="bg-surface shadow-[inset_0_1px_0_var(--color-line)]">
       <div className="flex items-start gap-3 px-5 pt-4 pb-1">
-        <p className="min-w-0 flex-1 text-[13px] leading-5 text-ink-2">{provider.description}</p>
+        <p className="min-w-0 flex-1 text-small leading-5 text-ink-2">{provider.description}</p>
         {unsaved && !open ? <Tip content={t("Save your changes first. The list is asked with {{name}}'s saved settings.", { name: provider.name })}>{button}</Tip> : button}
       </div>
       <div className="divide-y divide-line-strong">
@@ -257,12 +257,12 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
   const isAllowed = (id: string) => allowed.some((m) => m.id === id);
 
   if (models.length === 0) {
-    return <p className="text-[13px] text-ink-2">{t("{{name}} lists no models for this key. Add one by id on its kind's page under Models.", { name: provider.name })}</p>;
+    return <p className="text-small text-ink-2">{t("{{name}} lists no models for this key. Add one by id on its kind's page under Models.", { name: provider.name })}</p>;
   }
   return (
     <>
       {kinds.length > 1 ? (
-        <div className="mb-3 max-w-full overflow-x-auto text-[13px]">
+        <div className="mb-3 max-w-full overflow-x-auto text-small">
           <Segmented value={kind} onChange={(v) => setKind(v as ModelKind)} options={kinds.map((k) => ({ id: k, label: kindWord(k) }))} />
         </div>
       ) : null}
@@ -275,7 +275,7 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
         </Btn>
       </div>
       {shown.length === 0 ? (
-        <p className="py-2 text-[13px] text-ink-2">{t("No model matches “{{search}}”.", { search: query.trim() })}</p>
+        <p className="py-2 text-small text-ink-2">{t("No model matches “{{search}}”.", { search: query.trim() })}</p>
       ) : (
         <ul className="max-h-[396px] divide-y divide-line overflow-y-auto overscroll-contain rounded-control bg-surface shadow-card">
           {shown.map((m) => {
@@ -284,12 +284,12 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
             // A speech model says how many voices it has; the rest their context.
             const context = kind === "speech" ? (m.voices.length ? t("{{count}} voices", { count: m.voices.length }) : "") : fmtContext(m.contextWindow);
             return (
-              <li key={m.id} className="flex h-11 items-center gap-3 pr-1.5 pl-3 text-[13px]">
+              <li key={m.id} className="flex h-11 items-center gap-3 pr-1.5 pl-3 text-small">
                 <span className="max-w-full shrink-0 truncate font-mono text-ink max-sm:min-w-0 max-sm:flex-1 max-sm:shrink">{bareModel(m.id)}</span>
                 <LiveChip kind={kind} live={m.live} words={m.words} endOfTurn={m.endOfTurn} />
                 <span className="min-w-0 flex-1 truncate text-ink-3 max-sm:hidden">{m.name}</span>
                 {context ? (
-                  <span className="shrink-0 font-mono text-[12px] text-ink-3 tabular-nums" title={kind === "speech" ? undefined : t("{{tokens}} tokens of context", { tokens: m.contextWindow.toLocaleString(locale()) })}>
+                  <span className="shrink-0 font-mono text-label text-ink-3 tabular-nums" title={kind === "speech" ? undefined : t("{{tokens}} tokens of context", { tokens: m.contextWindow.toLocaleString(locale()) })}>
                     {context}
                   </span>
                 ) : null}
@@ -301,7 +301,7 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
                     </span>
                   ) : on ? (
                     <>
-                      <span className="flex items-center gap-1 text-[12.5px] font-medium text-emerald">
+                      <span className="flex items-center gap-1 text-meta font-medium text-emerald">
                         <Check size={14} />{t("Allowed")}
                       </span>
                       <Btn kind="ghost" size="sm" iconOnly title={removeTitle(kind)} aria-label={t("Remove {{id}}", { id: m.id })} onClick={() => void setModel(m.id, false, kind)}>

@@ -224,7 +224,7 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
   if (empty && !working) {
     return (
       <div ref={ref} className="silo-page flex min-h-full max-w-[680px] flex-col justify-center pb-24">
-        <h2 className="text-center text-[30px] leading-[38px] font-medium tracking-[-0.02em] text-ink wide:text-[40px] wide:leading-[48px]">{t("Nothing on the board yet")}</h2>
+        <h2 className="text-center text-display-sm leading-[38px] font-medium tracking-[-0.02em] text-ink wide:text-display wide:leading-[48px]">{t("Nothing on the board yet")}</h2>
         <p className="mt-2 mb-7 text-center text-ink-2">
           {t("Say what you want to keep an eye on. {{name}} builds it once and keeps it current.", { name: bot.name })}
         </p>
@@ -235,7 +235,7 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
               key={s.label}
               type="button"
               onClick={() => setDraft(s.label)}
-              className="inline-flex h-[34px] items-center gap-2 rounded-control bg-surface px-3 text-[13px] font-medium text-ink-2 shadow-card transition-[color,box-shadow] duration-[160ms] hover:text-ink hover:shadow-float"
+              className="inline-flex h-[34px] items-center gap-2 rounded-control bg-surface px-3 text-small font-medium text-ink-2 shadow-card transition-[color,box-shadow] duration-[160ms] hover:text-ink hover:shadow-float"
             >
               <span className="grid h-[18px] w-[18px] place-items-center rounded-[5px] bg-well">
                 <s.icon size={12} />
@@ -253,7 +253,7 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
 
   return (
     <div ref={ref} className={`relative flex min-h-full flex-col ${board}`}>
-      <div className="mb-2 flex h-8 min-w-0 items-center gap-2.5 text-[12.5px] text-ink-3">
+      <div className="mb-2 flex h-8 min-w-0 items-center gap-2.5 text-meta text-ink-3">
         {working ? (
           <span className="flex min-w-0 items-center gap-2">
             <Lamp status="working" />

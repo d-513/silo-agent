@@ -10,10 +10,10 @@ import { t } from "../i18n.ts";
 export function SourceChips({ field }: { field: ConfigField }) {
   return (
     <>
-      <span className="font-mono text-[11px] text-ink-3">{sourceWord(field.source)}</span>
-      {field.restartRequired ? <span className="text-[11px] text-ink-3">{t("restart")}</span> : null}
+      <span className="font-mono text-micro text-ink-3">{sourceWord(field.source)}</span>
+      {field.restartRequired ? <span className="text-micro text-ink-3">{t("restart")}</span> : null}
       {field.source === ConfigSource.ENV ? (
-        <span className="inline-flex items-center gap-1 text-[11px] text-vermilion" title={field.envName}>
+        <span className="inline-flex items-center gap-1 text-micro text-vermilion" title={field.envName}>
           <TriangleAlert size={14} />
           {field.envName}
         </span>

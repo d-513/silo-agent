@@ -73,7 +73,7 @@ export function Croppable({ src, alt, target, className }: { src: string; alt: s
     }
   }
 
-  const tool = "flex h-7 items-center gap-1.5 rounded-control bg-surface px-2.5 text-[12px] font-medium text-ink shadow-float transition-[background-color,transform] duration-[160ms] ease-quiet hover:bg-well active:scale-[.97] active:duration-[70ms]";
+  const tool = "flex h-7 items-center gap-1.5 rounded-control bg-surface px-2.5 text-label font-medium text-ink shadow-float transition-[background-color,transform] duration-[160ms] ease-quiet hover:bg-well active:scale-[.97] active:duration-[70ms]";
   return (
     <div className="group/crop relative inline-block max-w-full">
       <img ref={img} src={src} alt={alt} className={className} draggable={false} />
@@ -102,7 +102,7 @@ export function Croppable({ src, alt, target, className }: { src: string; alt: s
               {t("Quote region")}
             </button>
           </div>
-          {err ? <p className="absolute bottom-2 left-2 rounded-sm bg-surface px-2 py-1 text-[12px] text-vermilion shadow-card">{err}</p> : null}
+          {err ? <p className="absolute bottom-2 left-2 rounded-sm bg-surface px-2 py-1 text-label text-vermilion shadow-card">{err}</p> : null}
         </div>
       )}
     </div>

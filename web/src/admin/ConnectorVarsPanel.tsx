@@ -39,14 +39,14 @@ export function ConnectorVarsPanel({
       title={t("Connector variables")}
       note={t("Use these in a connector URL, headers, OAuth fields, command, arguments, or env values as ${NAME}.")}
     >
-      <p className="mb-4 flex items-start gap-2 rounded-sm border-l-4 border-vermilion bg-well px-3 py-2 text-[13px] text-ink">
+      <p className="mb-4 flex items-start gap-2 rounded-sm border-l-4 border-vermilion bg-well px-3 py-2 text-small text-ink">
         <TriangleAlert className="mt-0.5 shrink-0 text-vermilion" size={16} />
         <span>
           <Trans i18nKey="These are variables, not secrets. Values are stored in plain text in <mono>silo.yaml</mono> and are not protected — anyone who can read the config can see them. Use a Bot Secret for credentials." components={{ mono: <span className="font-mono" /> }} />
         </span>
       </p>
       {draft.length === 0 ? (
-        <p className="mb-3 text-[13px] text-ink-2">{t("No variables yet.")}</p>
+        <p className="mb-3 text-small text-ink-2">{t("No variables yet.")}</p>
       ) : (
         <div className="mb-3 grid gap-2">
           {draft.map((r, i) => {
@@ -54,7 +54,7 @@ export function ConnectorVarsPanel({
             return (
               <div key={i} className="flex flex-wrap items-center gap-2">
                 <input
-                  className={`${inputClass} w-48 font-mono text-[13px]`}
+                  className={`${inputClass} w-48 font-mono text-small`}
                   placeholder={"NAME"}
                   value={r.name}
                   disabled={locked}
@@ -62,14 +62,14 @@ export function ConnectorVarsPanel({
                 />
                 <span className="text-ink-3">=</span>
                 <input
-                  className={`${inputClass} min-w-[160px] flex-1 font-mono text-[13px]`}
+                  className={`${inputClass} min-w-[160px] flex-1 font-mono text-small`}
                   placeholder={t("value")}
                   value={r.value}
                   disabled={locked}
                   onChange={(e) => update(i, { value: e.target.value })}
                 />
                 {locked ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-vermilion" title={r.envName}>
+                  <span className="inline-flex items-center gap-1 text-micro text-vermilion" title={r.envName}>
                     <TriangleAlert size={14} />
                     {r.envName}
                   </span>

@@ -10,7 +10,7 @@ import type { Cols } from "./widgets";
 export function ArrangeTools({ w, cols, onSize, onRemove }: { w: DashboardWidget; cols: Cols; onSize: (size: string, rows: number) => void; onRemove: () => void }) {
   const { armed, fire } = useArmed();
   const onHatch = w.kind === "app";
-  const chip = `h-6 rounded-[6px] px-1.5 font-mono text-[11px] font-medium transition-colors duration-[160ms] ${
+  const chip = `h-6 rounded-[6px] px-1.5 font-mono text-micro font-medium transition-colors duration-[160ms] ${
     onHatch ? "bg-on-hatch/10 text-on-hatch/80 hover:bg-on-hatch/20 hover:text-on-hatch" : "bg-well text-ink-2 hover:bg-pressed hover:text-ink"
   }`;
   const next = w.size === "s" ? "m" : w.size === "m" ? "l" : "s";
@@ -30,7 +30,7 @@ export function ArrangeTools({ w, cols, onSize, onRemove }: { w: DashboardWidget
         title={armed ? t("Click again") : t("Remove")}
         aria-label={armed ? t("Click again") : t("Remove")}
         onClick={() => fire(onRemove)}
-        className={`grid h-6 min-w-6 place-items-center rounded-[6px] px-1 text-[11px] font-medium transition-colors duration-[160ms] ${
+        className={`grid h-6 min-w-6 place-items-center rounded-[6px] px-1 text-micro font-medium transition-colors duration-[160ms] ${
           armed ? "bg-vermilion text-on-accent" : onHatch ? "text-on-hatch/80 hover:bg-on-hatch/10" : "text-ink-3 hover:bg-vermilion-pale hover:text-vermilion"
         }`}
       >

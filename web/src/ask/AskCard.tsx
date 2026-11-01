@@ -39,7 +39,7 @@ export function BlockRenderer({
     case "markdown":
       if (!block.text) return null;
       return (
-        <div className="silo-reply text-[13.5px]">
+        <div className="silo-reply text-row">
           <Md text={block.text} />
         </div>
       );
@@ -54,8 +54,8 @@ export function BlockRenderer({
               key={`${item.label}-${idx}`}
               className="flex items-baseline justify-between gap-4 px-3 py-2 shadow-[inset_0_-1px_0_var(--color-line-strong)] last:shadow-none"
             >
-              <dt className="shrink-0 text-[12px] font-medium text-ink-3">{item.label}</dt>
-              <dd className="min-w-0 truncate font-mono text-[12.5px] text-ink">{item.value}</dd>
+              <dt className="shrink-0 text-label font-medium text-ink-3">{item.label}</dt>
+              <dd className="min-w-0 truncate font-mono text-meta text-ink">{item.value}</dd>
             </div>
           ))}
         </dl>
@@ -73,8 +73,8 @@ export function BlockRenderer({
               <div key={`${m.label}-${idx}`} className="rounded-control bg-well px-3 py-2.5">
                 <div className="truncate text-[11.5px] font-medium text-ink-3">{m.label}</div>
                 <div className="mt-0.5 flex items-baseline gap-1.5">
-                  <span className="font-mono text-[16px] font-semibold tracking-tight text-ink">{m.value}</span>
-                  {m.delta ? <span className={`font-mono text-[11px] font-medium ${toneCls}`}>{m.delta}</span> : null}
+                  <span className="font-mono text-lead font-semibold tracking-tight text-ink">{m.value}</span>
+                  {m.delta ? <span className={`font-mono text-micro font-medium ${toneCls}`}>{m.delta}</span> : null}
                 </div>
               </div>
             );
@@ -88,7 +88,7 @@ export function BlockRenderer({
       return (
         <div className="overflow-hidden rounded-control bg-well">
           {block.path ? <div className="border-b border-line px-3 py-1.5 font-mono text-[11.5px] font-medium text-ink-2">{block.path}</div> : null}
-          <pre className="max-h-56 overflow-auto p-3 font-mono text-[12px] leading-5 text-ink">{content}</pre>
+          <pre className="max-h-56 overflow-auto p-3 font-mono text-label leading-5 text-ink">{content}</pre>
         </div>
       );
     }
@@ -98,8 +98,8 @@ export function BlockRenderer({
       return (
         <div className="flex items-center justify-between gap-3 rounded-control bg-surface px-3 py-2.5 shadow-card">
           <div className="min-w-0">
-            <div className="text-[13px] font-medium text-ink">{block.label}</div>
-            {block.hint ? <div className="text-[12px] leading-4 text-ink-3">{block.hint}</div> : null}
+            <div className="text-small font-medium text-ink">{block.label}</div>
+            {block.hint ? <div className="text-label leading-4 text-ink-3">{block.hint}</div> : null}
           </div>
           <Switch on={checked} disabled={disabled} onChange={(v) => onChange(block.name, v)} />
         </div>
@@ -221,8 +221,8 @@ function Choices({
             onClick={() => onPick(o.value)}
             className={`${pressClass} font-medium disabled:cursor-not-allowed disabled:opacity-60 ${
               chips
-                ? "inline-flex h-8 items-center gap-2 rounded-sm pr-3 pl-2.5 text-[13px]"
-                : "flex w-full items-start gap-2.5 rounded-control px-3 py-2.5 text-left text-[13px]"
+                ? "inline-flex h-8 items-center gap-2 rounded-sm pr-3 pl-2.5 text-small"
+                : "flex w-full items-start gap-2.5 rounded-control px-3 py-2.5 text-left text-small"
             } ${
               on
                 ? "bg-cobalt-pale text-ink shadow-[inset_0_0_0_1px_var(--color-cobalt)]"
@@ -235,7 +235,7 @@ function Choices({
             ) : (
               <span className="min-w-0 flex-1">
                 <span className="block leading-4">{o.label}</span>
-                {o.hint ? <span className="mt-1 block text-[12px] leading-4 font-normal text-ink-3">{o.hint}</span> : null}
+                {o.hint ? <span className="mt-1 block text-label leading-4 font-normal text-ink-3">{o.hint}</span> : null}
               </span>
             )}
           </button>
@@ -266,7 +266,7 @@ function submitWord(label: string) {
 }
 
 // A quiet button that still answers a hover on the well of the reply tray.
-const quietBtn = `${pressClass} inline-flex h-8 items-center rounded-control px-2.5 text-[12.5px] font-medium text-ink-2 hover:bg-pressed hover:text-ink disabled:cursor-not-allowed disabled:opacity-50`;
+const quietBtn = `${pressClass} inline-flex h-8 items-center rounded-control px-2.5 text-meta font-medium text-ink-2 hover:bg-pressed hover:text-ink disabled:cursor-not-allowed disabled:opacity-50`;
 
 export function AskSlip({
   botId,
@@ -341,7 +341,7 @@ export function AskSlip({
   return (
     <article className="rise flex flex-col overflow-hidden rounded-card bg-surface shadow-card">
       <div className="px-5 pt-4 pb-4">
-        <div className="flex min-w-0 items-center gap-2 text-[12px] leading-4">
+        <div className="flex min-w-0 items-center gap-2 text-label leading-4">
           {closed ? (
             <span className="flex shrink-0 items-center gap-1.5 font-medium text-ink-3">
               {card.status === "submitted" ? <Check size={13} className="text-emerald" /> : null}
@@ -368,7 +368,7 @@ export function AskSlip({
           ) : null}
           <span className="ml-auto shrink-0 font-mono text-[11.5px] text-ink-3">{feedStamp(card.updatedAt || card.createdAt)}</span>
         </div>
-        {titled ? <h3 className="mt-3 text-[15px] leading-5 font-semibold tracking-[-0.01em] text-ink">{card.title}</h3> : null}
+        {titled ? <h3 className="mt-3 text-body-lg leading-5 font-semibold tracking-[-0.01em] text-ink">{card.title}</h3> : null}
         {question ? (
           <div className={`silo-reply ask-question ${titled ? "mt-1" : "mt-3"} ${closed ? "is-closed" : ""}`}>
             <Md text={question} />
@@ -400,7 +400,7 @@ export function AskSlip({
                 type="button"
                 disabled={busy !== ""}
                 onClick={() => void act("dismiss", () => onDismiss(card, true))}
-                className="ml-auto text-[12px] text-ink-3 transition-colors duration-[160ms] hover:text-ink disabled:opacity-50"
+                className="ml-auto text-label text-ink-3 transition-colors duration-[160ms] hover:text-ink disabled:opacity-50"
               >
                 {t("Don't suggest this again")}
               </button>

@@ -6,14 +6,14 @@ import { t } from "../i18n.ts";
 export function Notice({ text, onDismiss }: { text: string; onDismiss?: () => void }) {
   if (!onDismiss) {
     return (
-      <div role="alert" className="flex items-center gap-1.5 px-4 pt-2.5 text-[12px] text-vermilion">
+      <div role="alert" className="flex items-center gap-1.5 px-4 pt-2.5 text-label text-vermilion">
         <span className="h-1.5 w-1.5 rounded-full bg-vermilion" />
         <span>{text}</span>
       </div>
     );
   }
   return (
-    <div role="alert" className="flex items-center gap-1.5 px-4 pt-2.5 text-[12px] text-vermilion">
+    <div role="alert" className="flex items-center gap-1.5 px-4 pt-2.5 text-label text-vermilion">
       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-vermilion" />
       <span className="min-w-0 truncate">{text}</span>
       <button
@@ -36,13 +36,13 @@ export type Said = { text: string; confirm?: { label: string; run: () => void } 
 // CommandNotice is that line over the textarea, in ink rather than red.
 export function CommandNotice({ said, onDismiss }: { said: Said; onDismiss: () => void }) {
   return (
-    <div role="status" className="flex items-start gap-2 px-4 pt-2.5 text-[12.5px] leading-[18px] text-ink-2">
+    <div role="status" className="flex items-start gap-2 px-4 pt-2.5 text-meta leading-[18px] text-ink-2">
       <span className="min-w-0 flex-1 whitespace-pre-line">{said.text}</span>
       {said.confirm ? (
         <button
           type="button"
           onClick={said.confirm.run}
-          className="shrink-0 rounded-control bg-vermilion px-2.5 py-0.5 text-[12px] font-medium text-on-accent transition-opacity duration-[160ms] hover:opacity-90"
+          className="shrink-0 rounded-control bg-vermilion px-2.5 py-0.5 text-label font-medium text-on-accent transition-opacity duration-[160ms] hover:opacity-90"
         >
           {said.confirm.label}
         </button>

@@ -16,10 +16,10 @@ export interface SelectOption {
 type Variant = "field" | "ghost";
 
 const fieldTrigger =
-  "flex h-9 w-full items-center justify-between gap-2 rounded-control bg-surface px-3 text-left text-[14px] text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] outline-none transition-[box-shadow,background-color] duration-[160ms] ease-quiet hover:bg-well aria-expanded:shadow-[inset_0_0_0_1px_var(--color-cobalt)] disabled:cursor-not-allowed disabled:bg-well disabled:text-ink-3";
+  "flex h-9 w-full items-center justify-between gap-2 rounded-control bg-surface px-3 text-left text-body text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] outline-none transition-[box-shadow,background-color] duration-[160ms] ease-quiet hover:bg-well aria-expanded:shadow-[inset_0_0_0_1px_var(--color-cobalt)] disabled:cursor-not-allowed disabled:bg-well disabled:text-ink-3";
 
 const ghostTrigger =
-  "inline-flex h-[34px] max-w-full items-center gap-1.5 rounded-control bg-transparent pl-2.5 pr-2 text-[12.5px] font-medium text-ink-2 outline-none transition-colors duration-[160ms] ease-quiet hover:bg-well hover:text-ink disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex h-[34px] max-w-full items-center gap-1.5 rounded-control bg-transparent pl-2.5 pr-2 text-meta font-medium text-ink-2 outline-none transition-colors duration-[160ms] ease-quiet hover:bg-well hover:text-ink disabled:cursor-not-allowed disabled:opacity-40";
 
 export function Select({
   value,
@@ -147,9 +147,9 @@ export function Select({
               {/* The entrance animation lives on the inner box: an animated
                   transform on the positioned element would override the
                   translateY(-100%) that flips an upward menu into place. */}
-              <div className={`rise max-h-[280px] overflow-y-auto overscroll-contain ${variant === "ghost" ? "text-[12px]" : ""}`}>
+              <div className={`rise max-h-[280px] overflow-y-auto overscroll-contain ${variant === "ghost" ? "text-label" : ""}`}>
                 {options.length === 0 ? (
-                  <div className="px-2.5 py-2 text-[13px] text-ink-3">{emptyLabel}</div>
+                  <div className="px-2.5 py-2 text-small text-ink-3">{emptyLabel}</div>
                 ) : (
                   options.map((o, i) => {
                     const selected = o.value === value;
@@ -176,8 +176,8 @@ export function Select({
                         }`}
                       >
                         <span className="min-w-0 flex-1">
-                          <span className={`block truncate ${compact ? "text-[12px]" : "text-[13px]"}`}>{o.label}</span>
-                          {o.hint ? <span className={`block truncate text-ink-3 ${compact ? "text-[10px]" : "text-[11px]"}`}>{o.hint}</span> : null}
+                          <span className={`block truncate ${compact ? "text-label" : "text-small"}`}>{o.label}</span>
+                          {o.hint ? <span className={`block truncate text-ink-3 ${compact ? "text-[10px]" : "text-micro"}`}>{o.hint}</span> : null}
                         </span>
                         {selected ? <Check size={compact ? 12 : 14} className="shrink-0 text-ink" /> : null}
                       </button>

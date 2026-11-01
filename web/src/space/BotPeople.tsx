@@ -47,7 +47,7 @@ export function BotPeople({ bot }: { bot: Bot }) {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-title text-ink">{t("People")}</h2>
-          <p className="mt-1 max-w-[560px] text-[13.5px] leading-[21px] text-ink-2">
+          <p className="mt-1 max-w-[560px] text-row leading-[21px] text-ink-2">
             {t("Everyone on {{name}} shares what it holds: its memory, files, machine and connections. Only its managers change what it may do.", { name: bot.name })}
           </p>
         </div>
@@ -65,8 +65,8 @@ export function BotPeople({ bot }: { bot: Bot }) {
               <li key={p.userId} className="flex flex-wrap items-center gap-3 px-4 py-3">
                 <Initials email={p.email} />
                 <div className="min-w-0 flex-1">
-                  <span className="truncate text-[13.5px] font-medium text-ink">{p.email}</span>
-                  {p.you ? <span className="ml-2 text-[12px] text-ink-3">{t("you")}</span> : null}
+                  <span className="truncate text-row font-medium text-ink">{p.email}</span>
+                  {p.you ? <span className="ml-2 text-label text-ink-3">{t("you")}</span> : null}
                 </div>
                 {manage && !last ? (
                   <ChipRadio
@@ -77,7 +77,7 @@ export function BotPeople({ bot }: { bot: Bot }) {
                     options={roleOptions(p.spaceRole === "guest")}
                   />
                 ) : (
-                  <span className="rounded-sm bg-well px-2 py-1 text-[12px] font-medium text-ink-2">{p.role === "manage" ? t("Can manage") : t("Can use")}</span>
+                  <span className="rounded-sm bg-well px-2 py-1 text-label font-medium text-ink-2">{p.role === "manage" ? t("Can manage") : t("Can use")}</span>
                 )}
                 {(manage || p.you) && !last ? (
                   <ArmedButton
@@ -102,7 +102,7 @@ export function BotPeople({ bot }: { bot: Bot }) {
           })}
         </ul>
       )}
-      {manage && managers <= 1 ? <p className="mt-3 text-[12.5px] text-ink-3">{t("A Bot always has a manager. Make someone else a manager before you step down.")}</p> : null}
+      {manage && managers <= 1 ? <p className="mt-3 text-meta text-ink-3">{t("A Bot always has a manager. Make someone else a manager before you step down.")}</p> : null}
     </div>
   );
 }
@@ -151,7 +151,7 @@ function AddPeople({ botId, candidates, onAdded }: { botId: string; candidates: 
               </button>
             </div>
             {candidates.length === 0 ? (
-              <p className="px-1 py-2 text-[12.5px] text-ink-3">{t("Everyone in the workspace is on this Bot. Invite people from the workspace's People tab.")}</p>
+              <p className="px-1 py-2 text-meta text-ink-3">{t("Everyone in the workspace is on this Bot. Invite people from the workspace's People tab.")}</p>
             ) : (
               <ul className="max-h-[260px] overflow-auto">
                 {candidates.map((p) => (
@@ -159,14 +159,14 @@ function AddPeople({ botId, candidates, onAdded }: { botId: string; candidates: 
                     <button
                       type="button"
                       onClick={() => void add(p, confirm?.userId === p.userId)}
-                      className="flex h-10 w-full items-center gap-2.5 rounded-sm px-2 text-left text-[13px] text-ink hover:bg-well"
+                      className="flex h-10 w-full items-center gap-2.5 rounded-sm px-2 text-left text-small text-ink hover:bg-well"
                     >
                       <Initials email={p.email} size={22} />
                       <span className="min-w-0 flex-1 truncate">{p.email}</span>
-                      {p.role === "guest" ? <span className="text-[11px] text-ink-3">{t("Guest", { context: "role" })}</span> : null}
+                      {p.role === "guest" ? <span className="text-micro text-ink-3">{t("Guest", { context: "role" })}</span> : null}
                     </button>
                     {confirm?.userId === p.userId ? (
-                      <p className="mx-2 mb-2 rounded-sm bg-well px-2.5 py-2 text-[12px] leading-[18px] text-ink-2">
+                      <p className="mx-2 mb-2 rounded-sm bg-well px-2.5 py-2 text-label leading-[18px] text-ink-2">
                         {t("They will be able to have the Bot use secrets someone else set: {{names}}. Click again to add them.", { names: confirm.secrets.join(", ") })}
                       </p>
                     ) : null}
@@ -174,7 +174,7 @@ function AddPeople({ botId, candidates, onAdded }: { botId: string; candidates: 
                 ))}
               </ul>
             )}
-            {err ? <p className="mt-2 px-1 text-[12.5px] leading-[18px] text-vermilion">{err}</p> : null}
+            {err ? <p className="mt-2 px-1 text-meta leading-[18px] text-vermilion">{err}</p> : null}
           </div>
         </div>
       ) : null}

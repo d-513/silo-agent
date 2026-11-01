@@ -8,7 +8,7 @@ export function FilterChip({ on, onClick, children }: { on: boolean; onClick: ()
       type="button"
       aria-pressed={on}
       onClick={onClick}
-      className={`h-6 rounded-full px-3 text-[11px] font-medium transition-colors duration-[160ms] ease-quiet ${
+      className={`h-6 rounded-full px-3 text-micro font-medium transition-colors duration-[160ms] ease-quiet ${
         on ? "bg-ink text-on-ink" : "bg-well text-ink-2 hover:bg-pressed hover:text-ink"
       }`}
     >

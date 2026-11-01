@@ -25,8 +25,8 @@ export function DecisionLegend({ side = "decision" }: { side?: Side }) {
           <div key={e.title} className="flex items-start gap-2.5">
             <span className={`mt-1 flex h-2 w-2 shrink-0 rounded-full ${e.dot}`} />
             <div>
-              <div className="text-[13px] font-medium text-ink">{t(e.title)}</div>
-              <div className="text-[12px] leading-snug text-ink-3">{t(e.text)}</div>
+              <div className="text-small font-medium text-ink">{t(e.title)}</div>
+              <div className="text-label leading-snug text-ink-3">{t(e.text)}</div>
             </div>
           </div>
         ))}

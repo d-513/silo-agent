@@ -5,7 +5,7 @@ import { Lamp } from "../Lamp";
 import { chatLink } from "../links";
 import { t } from "../i18n.ts";
 
-const row = "h-7 px-2 text-[12.5px] text-ink-2";
+const row = "h-7 px-2 text-meta text-ink-2";
 
 // Work with no row of its own in the sidebar: the main chat and the side chats
 // say what they are doing themselves.

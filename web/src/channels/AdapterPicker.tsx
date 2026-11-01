@@ -28,7 +28,7 @@ function AdapterCard({ a, count, onAdd }: { a: ChannelAdapter; count: number; on
             <AdapterLogo adapter={a} size={56} />
           </div>
           {count > 0 ? (
-            <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-emerald">
+            <span className="mt-1 inline-flex items-center gap-1 text-micro font-medium text-emerald">
               <Check size={11} />
               {count === 1 ? t("In use") : t("{{count}} in use", { count })}
             </span>
@@ -39,16 +39,16 @@ function AdapterCard({ a, count, onAdd }: { a: ChannelAdapter; count: number; on
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-[19px] font-semibold tracking-tight text-ink">{a.name}</h3>
             {traits.map((t) => (
-              <span key={t} className="rounded-sm bg-well px-2 py-0.5 text-[11px] font-medium text-ink-3">
+              <span key={t} className="rounded-sm bg-well px-2 py-0.5 text-micro font-medium text-ink-3">
                 {t}
               </span>
             ))}
           </div>
-          {a.description ? <p className="mt-1.5 text-[13px] leading-relaxed text-ink-2">{a.description}</p> : null}
+          {a.description ? <p className="mt-1.5 text-small leading-relaxed text-ink-2">{a.description}</p> : null}
         </div>
 
         {points.length > 0 ? (
-          <ul className="space-y-1.5 text-[12.5px] text-ink-2">
+          <ul className="space-y-1.5 text-meta text-ink-2">
             {points.map((p) => (
               <li key={p} className="flex items-start gap-1.5">
                 <Check size={13} className="mt-[3px] shrink-0 text-emerald" />
@@ -108,8 +108,8 @@ export function AdapterPicker({
         <div className="rounded-card border border-dashed border-line bg-surface px-5 py-8 text-center wide:p-12 text-ink-3">{t("No channel adapters available on this system.")}</div>
       ) : shown.length === 0 ? (
         <div className="rounded-card bg-surface p-8 text-center text-ink-3 shadow-card">
-          <p className="text-[13px]">{t("No channels match “{{search}}”.", { search })}</p>
-          <button type="button" className="mt-2 text-[12px] font-medium text-cobalt hover:underline" onClick={() => setSearch("")}>
+          <p className="text-small">{t("No channels match “{{search}}”.", { search })}</p>
+          <button type="button" className="mt-2 text-label font-medium text-cobalt hover:underline" onClick={() => setSearch("")}>
             {t("Clear search")}
           </button>
         </div>

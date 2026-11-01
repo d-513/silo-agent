@@ -67,7 +67,7 @@ export function DriveForm({
       {!editing && tpl.guide ? (
         <div className="mb-5 rounded-card border-l-4 border-cobalt bg-well px-4 py-3">
           <p className="mb-1.5 text-label-caps uppercase text-ink-3">{t("Before you add")}</p>
-          <div className="silo-md text-[14px] leading-[22px] text-ink">
+          <div className="silo-md text-body leading-[22px] text-ink">
             <Markdown remarkPlugins={[remarkGfm]}>{tpl.guide}</Markdown>
           </div>
         </div>
@@ -88,7 +88,7 @@ export function DriveForm({
             draft?.connected ? (
               <div className="flex flex-wrap items-center gap-3 rounded-control bg-well px-3.5 py-3">
                 <CircleCheck size={17} className="shrink-0 text-emerald" />
-                <div className="min-w-0 flex-1 text-[13.5px] text-ink">
+                <div className="min-w-0 flex-1 text-row text-ink">
                   {draft.account ? <Trans i18nKey="Connected as <b>{{account}}</b>" values={{ account: draft.account }} components={{ b: <span className="font-medium" /> }} /> : t("Connected")}
                 </div>
                 <Btn kind="ghost" size="sm" type="button" onClick={() => void signIn()} disabled={authBusy}>
@@ -102,7 +102,7 @@ export function DriveForm({
                   {authBusy ? <Spinner size={13} tone="on-ink" /> : null}
                   {authBusy ? t("Waiting for sign-in…") : t("Sign in with {{provider}}", { provider: tpl.authLabel || tpl.title })}
                 </Btn>
-                {authBusy ? <span className="text-[12.5px] text-ink-3">{t("Finish in the window that opened.")}</span> : null}
+                {authBusy ? <span className="text-meta text-ink-3">{t("Finish in the window that opened.")}</span> : null}
               </div>
             )
           ) : editing ? null : (
@@ -112,11 +112,11 @@ export function DriveForm({
                 {test.state === "busy" ? t("Testing…") : t("Test connection")}
               </Btn>
               {test.state === "ok" ? (
-                <span className="flex items-center gap-1.5 text-[13px] text-emerald">
+                <span className="flex items-center gap-1.5 text-small text-emerald">
                   <CircleCheck size={15} /> {test.msg}
                 </span>
               ) : requiredMissing.length > 0 ? (
-                <span className="text-[12.5px] text-ink-3">{t("Fill in {{fields}} first.", { fields: requiredMissing.map((v) => v.label).join(", ") })}</span>
+                <span className="text-meta text-ink-3">{t("Fill in {{fields}} first.", { fields: requiredMissing.map((v) => v.label).join(", ") })}</span>
               ) : null}
             </div>
           )}
@@ -162,9 +162,9 @@ export function DriveForm({
               onChange={(e) => setName(e.target.value.toLowerCase())}
             />
           </Field>
-          <div className="-mt-2 flex items-center gap-2 text-[12.5px] text-ink-3">
+          <div className="-mt-2 flex items-center gap-2 text-meta text-ink-3">
             <span>{t("The Bot sees it at")}</span>
-            <code className="rounded-xs bg-well px-1.5 py-0.5 font-mono text-[12px] text-ink">{pathPreview}</code>
+            <code className="rounded-xs bg-well px-1.5 py-0.5 font-mono text-label text-ink">{pathPreview}</code>
           </div>
           <ToggleRow
             className="rounded-control bg-well px-3.5 py-3"
@@ -175,7 +175,7 @@ export function DriveForm({
           />
           {advancedVars.length > 0 ? (
             <details className="group">
-              <summary className="flex cursor-pointer items-center gap-2 rounded-sm bg-well px-3 py-2 text-[12px] font-medium tracking-wide text-ink-3">
+              <summary className="flex cursor-pointer items-center gap-2 rounded-sm bg-well px-3 py-2 text-label font-medium tracking-wide text-ink-3">
                 <ChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />{t("Advanced settings")}
               </summary>
               <div className="mt-4 space-y-4">
@@ -197,7 +197,7 @@ export function DriveForm({
             {t("Cancel")}
           </Btn>
           {!connected && !editing ? (
-            <span className="text-[12.5px] text-ink-3">{oauth ? t("Sign in first.") : t("Test the connection first.")}</span>
+            <span className="text-meta text-ink-3">{oauth ? t("Sign in first.") : t("Test the connection first.")}</span>
           ) : null}
           {editing ? (
             <ArmedButton

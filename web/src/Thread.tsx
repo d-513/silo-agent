@@ -167,7 +167,7 @@ export function Thread({
               type="button"
               onClick={showEarlier}
               disabled={paging.loadingEarlier}
-              className="flex h-8 items-center gap-1.5 rounded-control px-3 text-[12.5px] font-medium text-ink-2 transition-colors duration-[160ms] ease-quiet hover:bg-well hover:text-ink disabled:opacity-60"
+              className="flex h-8 items-center gap-1.5 rounded-control px-3 text-meta font-medium text-ink-2 transition-colors duration-[160ms] ease-quiet hover:bg-well hover:text-ink disabled:opacity-60"
             >
               <ArrowUp size={13} />
               <span>{paging.loadingEarlier ? t("Loading…") : t("Show earlier messages")}</span>
@@ -178,7 +178,7 @@ export function Thread({
         {blocks.length === 0 && !sending && !emptyState && <EmptyThread botName={botName} botCrest={botCrest} onSelectPrompt={onSelectPrompt} />}
         {rows}
         {working ? (
-          <div className={`rise flex h-8 items-center text-[13px] font-medium ${gapAfter(prevRow, true)}`}>
+          <div className={`rise flex h-8 items-center text-small font-medium ${gapAfter(prevRow, true)}`}>
             <span className="shimmer-text">{t("Working…")}</span>
           </div>
         ) : null}
@@ -189,7 +189,7 @@ export function Thread({
           <button
             type="button"
             onClick={() => scroll.scrollToBottom(true)}
-            className="rise pointer-events-auto flex h-8 items-center gap-1.5 rounded-control bg-surface px-3 text-[12.5px] font-medium text-ink shadow-float transition-[background-color,transform] duration-[160ms] ease-quiet hover:bg-well active:scale-[.97] active:duration-[70ms]"
+            className="rise pointer-events-auto flex h-8 items-center gap-1.5 rounded-control bg-surface px-3 text-meta font-medium text-ink shadow-float transition-[background-color,transform] duration-[160ms] ease-quiet hover:bg-well active:scale-[.97] active:duration-[70ms]"
           >
             <ArrowDown size={13} />
             <span>{t("Latest")}</span>

@@ -67,7 +67,7 @@ export function ProviderMap({ jobs, providers, ready, onJob, onPick }: { jobs: J
         {jobs.map((j) => {
           const p = byID.get(providerOf(j.model));
           return (
-            <div key={j.key} className="flex items-center gap-3 py-2.5 text-[13px]">
+            <div key={j.key} className="flex items-center gap-3 py-2.5 text-small">
               <button type="button" className="w-28 shrink-0 text-left font-medium text-ink hover:text-cobalt" onClick={() => onJob(j)}>
                 {t(j.label)}
               </button>
@@ -123,7 +123,7 @@ export function ProviderMap({ jobs, providers, ready, onJob, onPick }: { jobs: J
               onClick={() => onJob(j)}
               className={`relative flex h-11 min-w-0 flex-col justify-center rounded-control px-3 text-left transition-colors duration-[160ms] ease-quiet ${hover.job === j.key ? "bg-well" : ""}`}
             >
-              <span className="flex items-center gap-1.5 text-[13px] leading-[18px] font-medium text-ink">
+              <span className="flex items-center gap-1.5 text-small leading-[18px] font-medium text-ink">
                 {t(j.label)}
                 {missing ? <span className="text-[11.5px] font-normal text-vermilion">{t("needs a key")}</span> : null}
               </span>
@@ -159,7 +159,7 @@ export function ProviderMap({ jobs, providers, ready, onJob, onPick }: { jobs: J
               <span aria-hidden className="absolute top-1/2 -left-[3px] h-[6px] w-[6px] -translate-y-1/2 rounded-full bg-ink-3" />
               <ProviderMark id={id} name={p.name} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13.5px] leading-[18px] font-medium text-ink">{p.name}</span>
+                <span className="block truncate text-row leading-[18px] font-medium text-ink">{p.name}</span>
                 <span className="block truncate text-[11.5px] leading-4 text-ink-3">{t("{{count}} jobs", { count })}</span>
               </span>
               <Status ok={ok} />
@@ -180,7 +180,7 @@ export function ProviderMark({ id, name, small }: { id: string; name: string; sm
   return (
     <span
       title={small ? name : undefined}
-      className={`flex shrink-0 items-center justify-center rounded-sm bg-well font-mono font-semibold tracking-wide text-ink-2 ${small ? "h-6 w-6 text-[9.5px]" : "h-8 w-8 text-[11px]"}`}
+      className={`flex shrink-0 items-center justify-center rounded-sm bg-well font-mono font-semibold tracking-wide text-ink-2 ${small ? "h-6 w-6 text-[9.5px]" : "h-8 w-8 text-micro"}`}
     >
       {icon ? (
         <svg aria-hidden viewBox="0 0 24 24" width={size} height={size} fill="currentColor" fillRule={icon.evenOdd ? "evenodd" : undefined}>
@@ -200,7 +200,7 @@ export function ProviderMark({ id, name, small }: { id: string; name: string; sm
 // Status is a provider's lamp and word: ready to be asked, or waiting for a key.
 export function Status({ ok, compact }: { ok: boolean; compact?: boolean }) {
   return (
-    <span className="flex shrink-0 items-center gap-1.5 text-[12px]">
+    <span className="flex shrink-0 items-center gap-1.5 text-label">
       <span aria-hidden className={`h-[7px] w-[7px] rounded-full ${ok ? "bg-lamp" : "bg-canvas shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]"}`} />
       {compact ? null : <span className={ok ? "text-emerald" : "text-ink-3"}>{ok ? t("Ready") : t("Not set up")}</span>}
     </span>

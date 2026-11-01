@@ -37,10 +37,10 @@ export function PromptWell({
       label={label}
       hint={hint}
       className="min-w-0"
-      headerRight={<span className={`font-mono text-[11px] ${over ? "text-vermilion" : "text-ink-3"}`}>{value.length}/8000</span>}
+      headerRight={<span className={`font-mono text-micro ${over ? "text-vermilion" : "text-ink-3"}`}>{value.length}/8000</span>}
     >
       <textarea
-        className={`${textareaClass} h-[220px] font-mono text-[13px] leading-5`}
+        className={`${textareaClass} h-[220px] font-mono text-small leading-5`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -216,10 +216,10 @@ export function SettingsPane({
           <SettingRow
             stack
             label={t("Identity, tone, hard rules.")}
-            meta={<span className={`font-mono text-[11px] ${over ? "text-vermilion" : "text-ink-3"}`}>{form.soul.length}/8000</span>}
+            meta={<span className={`font-mono text-micro ${over ? "text-vermilion" : "text-ink-3"}`}>{form.soul.length}/8000</span>}
           >
             <textarea
-              className={`${textareaClass} h-[360px] font-mono text-[13px] leading-5`}
+              className={`${textareaClass} h-[360px] font-mono text-small leading-5`}
               aria-label={t("SOUL")}
               value={form.soul}
               onChange={(e) => edit("soul")(e.target.value)}

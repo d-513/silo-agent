@@ -75,7 +75,7 @@ export function ThinkingPicker({
           disabled={disabled}
           onClick={() => setOpen((v) => !v)}
           onKeyDown={onKeyDown}
-          className={`flex h-[34px] min-w-[34px] shrink-0 items-center justify-center gap-1 rounded-control px-2 text-[12px] font-medium transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms] disabled:cursor-not-allowed disabled:opacity-40 aria-expanded:bg-well ${
+          className={`flex h-[34px] min-w-[34px] shrink-0 items-center justify-center gap-1 rounded-control px-2 text-label font-medium transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms] disabled:cursor-not-allowed disabled:opacity-40 aria-expanded:bg-well ${
             lit ? "text-ink" : "text-ink-3"
           }`}
         >
@@ -97,7 +97,7 @@ export function ThinkingPicker({
                       aria-selected={selected}
                       onMouseEnter={() => setActive(i)}
                       onClick={() => pick(l)}
-                      className={`flex h-7 w-full items-center gap-2 rounded-sm px-2 text-left text-[12.5px] transition-colors duration-[160ms] ${
+                      className={`flex h-7 w-full items-center gap-2 rounded-sm px-2 text-left text-meta transition-colors duration-[160ms] ${
                         selected ? "bg-cobalt-pale text-ink" : i === active ? "bg-well text-ink" : "text-ink hover:bg-well"
                       } ${l === "" ? "text-ink-2" : ""}`}
                     >

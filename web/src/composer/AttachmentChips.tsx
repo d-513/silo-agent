@@ -16,11 +16,11 @@ export function AttachmentChips({ atts, onRemove }: { atts: Attachment[]; onRemo
         <span
           key={a.path}
           title={a.path}
-          className="rise inline-flex max-w-full items-center gap-1.5 rounded-sm bg-well py-1 pr-1 pl-2.5 text-[12px] text-ink"
+          className="rise inline-flex max-w-full items-center gap-1.5 rounded-sm bg-well py-1 pr-1 pl-2.5 text-label text-ink"
         >
           <Paperclip size={12} className="shrink-0 text-ink-2" />
           <span className="max-w-[180px] truncate font-medium">{a.name}</span>
-          <span className="shrink-0 font-mono text-[11px] text-ink-3">{fmtBytes(a.size)}</span>
+          <span className="shrink-0 font-mono text-micro text-ink-3">{fmtBytes(a.size)}</span>
           <button
             type="button"
             title={t("Remove attachment")}

@@ -19,9 +19,9 @@ export function useManagedBots(spaceId: string): Bot[] | null {
 export function BotsStep({ bots, value, onChange }: { bots: Bot[]; value: string[]; onChange: (ids: string[]) => void }) {
   return (
     <section className="mt-6 rounded-card bg-well p-4">
-      <h3 className="text-[13.5px] font-medium text-ink">{t("Which Bots can use it")}</h3>
+      <h3 className="text-row font-medium text-ink">{t("Which Bots can use it")}</h3>
       {bots.length === 0 ? (
-        <p className="mt-1 text-[12.5px] text-ink-3">{t("No Bot can use it yet. Give it to one later from Choose Bots.")}</p>
+        <p className="mt-1 text-meta text-ink-3">{t("No Bot can use it yet. Give it to one later from Choose Bots.")}</p>
       ) : (
         <div className="mt-2.5 flex flex-wrap gap-2">
           {bots.map((b) => {
@@ -32,7 +32,7 @@ export function BotsStep({ bots, value, onChange }: { bots: Bot[]; value: string
                 type="button"
                 aria-pressed={on}
                 onClick={() => onChange(on ? value.filter((x) => x !== b.id) : [...value, b.id])}
-                className={`flex h-9 items-center gap-2 rounded-control px-2.5 text-[13px] font-medium transition-[background-color,box-shadow] duration-[160ms] ease-quiet ${
+                className={`flex h-9 items-center gap-2 rounded-control px-2.5 text-small font-medium transition-[background-color,box-shadow] duration-[160ms] ease-quiet ${
                   on ? "bg-surface text-ink shadow-[inset_0_0_0_1px_var(--color-cobalt)]" : "bg-surface/60 text-ink-2 hover:bg-surface"
                 }`}
               >
@@ -54,14 +54,14 @@ export function UsedBy({ ids, hidden = 0 }: { ids: string[]; hidden?: number }) 
   const { bots } = useBots();
   const shown = (bots ?? []).filter((b) => ids.includes(b.id));
   const more = Math.max(0, shown.length - 5) + hidden;
-  if (shown.length === 0 && hidden === 0) return <span className="text-[12px] text-ink-3">{t("No Bot uses it")}</span>;
+  if (shown.length === 0 && hidden === 0) return <span className="text-label text-ink-3">{t("No Bot uses it")}</span>;
   return (
     <span className="flex items-center gap-1.5" title={shown.map((b) => b.name).join(", ")}>
-      <span className="text-[11px] font-medium text-ink-3">{t("Used by")}</span>
+      <span className="text-micro font-medium text-ink-3">{t("Used by")}</span>
       {shown.slice(0, 5).map((b) => (
         <Crest key={b.id} index={b.crest} size={20} />
       ))}
-      {more > 0 ? <span className="text-[11px] font-medium text-ink-3">{`+${more}`}</span> : null}
+      {more > 0 ? <span className="text-micro font-medium text-ink-3">{`+${more}`}</span> : null}
     </span>
   );
 }
@@ -96,7 +96,7 @@ export function ChooseBots({
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="h-8 rounded-control px-2.5 text-[12.5px] font-medium text-ink-2 transition-colors hover:bg-well hover:text-ink aria-expanded:bg-well"
+        className="h-8 rounded-control px-2.5 text-meta font-medium text-ink-2 transition-colors hover:bg-well hover:text-ink aria-expanded:bg-well"
       >
         {t("Choose Bots")}
       </button>
@@ -105,14 +105,14 @@ export function ChooseBots({
             <div ref={menu} role="dialog" aria-label={t("Choose Bots")} className="fixed z-50 max-h-[300px] w-[280px] overflow-auto rounded-control bg-surface p-1 shadow-slip" style={box}>
               <div className="rise">
                 {bots.length === 0 ? (
-                  <p className="px-2.5 py-2 text-[12.5px] text-ink-3">{t("You manage no Bot in this workspace.")}</p>
+                  <p className="px-2.5 py-2 text-meta text-ink-3">{t("You manage no Bot in this workspace.")}</p>
                 ) : (
                   bots.map((b) => {
                     const on = granted.includes(b.id);
                     return (
                       <div key={b.id} className="flex h-10 items-center gap-2.5 rounded-sm px-2">
                         <Crest index={b.crest} size={20} />
-                        <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{b.name}</span>
+                        <span className="min-w-0 flex-1 truncate text-small text-ink">{b.name}</span>
                         <Switch
                           on={on}
                           disabled={busy === b.id}

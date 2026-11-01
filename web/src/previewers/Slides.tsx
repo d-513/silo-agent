@@ -67,8 +67,8 @@ export default function Slides({ data }: { data: Uint8Array }) {
               <span>{t("Slide {{n}} of {{total}}", { n: i + 1, total: deck.slides.length })}</span>
             </figcaption>
             {loose.length ? (
-              <div className="rounded-sm bg-well p-3 text-[13px]">
-                <p className="mb-1 text-[12px] text-ink-3">{t("Not placed on the slide:")}</p>
+              <div className="rounded-sm bg-well p-3 text-small">
+                <p className="mb-1 text-label text-ink-3">{t("Not placed on the slide:")}</p>
                 {loose.map((sh, j) => (
                   <Outline key={j} sh={sh} />
                 ))}

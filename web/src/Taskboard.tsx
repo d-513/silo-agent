@@ -50,12 +50,12 @@ export function Taskboard({
           type="button"
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
-          className="relative flex h-9 w-full min-w-0 items-center gap-2 overflow-hidden rounded-card px-3 text-left text-[13px]"
+          className="relative flex h-9 w-full min-w-0 items-center gap-2 overflow-hidden rounded-card px-3 text-left text-small"
         >
           <ChevronRight size={14} className={`shrink-0 text-ink-3 transition-transform duration-[160ms] ${open ? "rotate-90" : ""}`} />
           <ListChecks size={14} className="shrink-0 text-ink-2" />
           <span className="shrink-0 font-medium text-ink">{t("Tasks")}</span>
-          <span className="shrink-0 font-mono text-[12px] text-ink-3">
+          <span className="shrink-0 font-mono text-label text-ink-3">
             {done}/{items.length}
           </span>
           <span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
@@ -73,21 +73,21 @@ export function Taskboard({
               {items.map((task) => {
                 const dim = mine !== undefined && task.assignee.toLowerCase() !== mine.toLowerCase();
                 return (
-                  <li key={task.n} className={`flex items-start gap-2 rounded-control px-2 py-1.5 text-[13px] leading-5 ${dim ? "opacity-55" : ""}`}>
+                  <li key={task.n} className={`flex items-start gap-2 rounded-control px-2 py-1.5 text-small leading-5 ${dim ? "opacity-55" : ""}`}>
                     <span
                       aria-label={task.done ? t("done") : t("open")}
                       className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] ${task.done ? "bg-emerald text-on-accent" : "shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]"}`}
                     >
                       {task.done ? <Check size={11} strokeWidth={3} /> : null}
                     </span>
-                    <span className="w-7 shrink-0 font-mono text-[12px] leading-5 text-ink-3">#{task.n}</span>
+                    <span className="w-7 shrink-0 font-mono text-label leading-5 text-ink-3">#{task.n}</span>
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-1.5">
                         {task.assignee ? <AgentChip name={task.assignee} to={agentHref?.(task.assignee)} /> : null}
                         <span className={task.done ? "text-ink-2 line-through decoration-ink-3/60" : "text-ink"}>{task.text}</span>
                       </span>
                       {task.done && (task.doneBy || task.note) ? (
-                        <span className="block text-[12px] leading-[18px] text-ink-3">
+                        <span className="block text-label leading-[18px] text-ink-3">
                           {task.doneBy ? t("done by {{name}}", { name: task.doneBy }) : t("done")}
                           {task.note ? ` · ${task.note}` : ""}
                         </span>
@@ -102,7 +102,7 @@ export function Taskboard({
                 <button
                   type="button"
                   onClick={() => clear.fire(onClear)}
-                  className={`inline-flex h-7 items-center gap-1.5 rounded-control px-2 text-[12.5px] transition-colors duration-[160ms] ${
+                  className={`inline-flex h-7 items-center gap-1.5 rounded-control px-2 text-meta transition-colors duration-[160ms] ${
                     clear.armed ? "bg-vermilion text-on-accent" : "text-ink-2 hover:bg-well hover:text-vermilion"
                   }`}
                 >

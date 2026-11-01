@@ -29,7 +29,7 @@ export default function Sheet({ data }: { data: Uint8Array }) {
               key={s}
               type="button"
               onClick={() => setTab(i)}
-              className={`h-7 rounded-control px-2.5 text-[12.5px] font-medium transition-colors duration-[160ms] ${i === tab ? "bg-ink text-on-ink" : "bg-well text-ink-2 hover:text-ink"}`}
+              className={`h-7 rounded-control px-2.5 text-meta font-medium transition-colors duration-[160ms] ${i === tab ? "bg-ink text-on-ink" : "bg-well text-ink-2 hover:text-ink"}`}
             >
               {s}
             </button>
@@ -40,7 +40,7 @@ export default function Sheet({ data }: { data: Uint8Array }) {
         <p className="text-ink-2">{t("This sheet is empty.")}</p>
       ) : (
         <div className="silo-md-table">
-          <table className="text-[12.5px]">
+          <table className="text-meta">
             <thead>
               <tr>
                 <th className="text-ink-3">#</th>
@@ -64,7 +64,7 @@ export default function Sheet({ data }: { data: Uint8Array }) {
           </table>
         </div>
       )}
-      {rows.length > MAX_ROWS ? <p className="text-[12.5px] text-ink-3">{t("Showing the first {{n}} rows.", { n: MAX_ROWS })}</p> : null}
+      {rows.length > MAX_ROWS ? <p className="text-meta text-ink-3">{t("Showing the first {{n}} rows.", { n: MAX_ROWS })}</p> : null}
     </div>
   );
 }

@@ -71,7 +71,7 @@ export function ArtifactsPane({
         <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
           <Package size={20} className="text-ink-3" />
           <p className="text-ink-2">{t("No artifacts yet.")}</p>
-          <p className="max-w-sm text-[12.5px] text-ink-3">{t("When the Bot hands you a file, a skill, or an app with the artifact tool, it is kept here across versions.")}</p>
+          <p className="max-w-sm text-meta text-ink-3">{t("When the Bot hands you a file, a skill, or an app with the artifact tool, it is kept here across versions.")}</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -79,7 +79,7 @@ export function ArtifactsPane({
             const label = sourceLabel(item);
             return (
               <div key={item.id} className="space-y-1.5">
-                <p className="flex min-w-0 items-center gap-1.5 px-1 text-[12px] leading-4 text-ink-3">
+                <p className="flex min-w-0 items-center gap-1.5 px-1 text-label leading-4 text-ink-3">
                   <span className="shrink-0 font-mono">{feedStamp(item.updatedAt || item.createdAt)}</span>
                   {label ? (
                     <>

@@ -6,13 +6,13 @@ import { t } from "./i18n.ts";
 // ring plus the global 2px cobalt outline. Inside a Field with an error the
 // ring turns vermilion on a vermilion-pale ground.
 const fieldBase =
-  "w-full rounded-control bg-surface text-[14px] text-ink outline-none shadow-[inset_0_0_0_1px_var(--color-line-strong)] transition-[box-shadow,background-color] duration-[160ms] ease-quiet placeholder:text-ink-3 focus:shadow-[inset_0_0_0_1px_var(--color-cobalt)] disabled:cursor-not-allowed disabled:bg-well disabled:text-ink-3 group-data-[invalid]/field:bg-vermilion-pale group-data-[invalid]/field:shadow-[inset_0_0_0_1px_var(--color-vermilion)] aria-[invalid=true]:bg-vermilion-pale aria-[invalid=true]:shadow-[inset_0_0_0_1px_var(--color-vermilion)]";
+  "w-full rounded-control bg-surface text-body text-ink outline-none shadow-[inset_0_0_0_1px_var(--color-line-strong)] transition-[box-shadow,background-color] duration-[160ms] ease-quiet placeholder:text-ink-3 focus:shadow-[inset_0_0_0_1px_var(--color-cobalt)] disabled:cursor-not-allowed disabled:bg-well disabled:text-ink-3 group-data-[invalid]/field:bg-vermilion-pale group-data-[invalid]/field:shadow-[inset_0_0_0_1px_var(--color-vermilion)] aria-[invalid=true]:bg-vermilion-pale aria-[invalid=true]:shadow-[inset_0_0_0_1px_var(--color-vermilion)]";
 
 export const inputClass = `h-9 px-3 ${fieldBase}`;
 
 export const textareaClass = `resize-y px-3 py-2 leading-[22px] ${fieldBase}`;
 
-export const labelClass = "text-[12px] font-medium leading-4 text-ink-3";
+export const labelClass = "text-label font-medium leading-4 text-ink-3";
 
 export function Field({
   label,
@@ -44,11 +44,11 @@ export function Field({
       ) : null}
       {children}
       {error ? (
-        <p role="alert" className="mt-1.5 text-[12px] leading-4 text-vermilion">
+        <p role="alert" className="mt-1.5 text-label leading-4 text-vermilion">
           {error}
         </p>
       ) : hint ? (
-        <p className="mt-1.5 text-[12.5px] leading-[18px] text-ink-3">{hint}</p>
+        <p className="mt-1.5 text-meta leading-[18px] text-ink-3">{hint}</p>
       ) : null}
     </div>
   );
@@ -81,7 +81,7 @@ export function Panel({
         <header className="flex items-start justify-between gap-3 px-5 py-4 shadow-[inset_0_-1px_0_var(--color-line)]">
           <div className="min-w-0">
             <h3 className="text-card-title leading-5 text-ink">{title}</h3>
-            {note ? <p className="mt-1 text-[12.5px] leading-[18px] text-ink-2">{note}</p> : null}
+            {note ? <p className="mt-1 text-meta leading-[18px] text-ink-2">{note}</p> : null}
           </div>
           {action}
         </header>
@@ -112,7 +112,7 @@ export function SettingGroup({
     >
       <header className="min-w-0 @4xl/page:pt-3.5">
         <h3 className={`text-card-title leading-5 ${tone === "danger" ? "text-vermilion" : "text-ink"}`}>{title}</h3>
-        {note ? <p className="mt-1 text-[12.5px] leading-[18px] text-ink-2">{note}</p> : null}
+        {note ? <p className="mt-1 text-meta leading-[18px] text-ink-2">{note}</p> : null}
       </header>
       <div className="min-w-0 divide-y divide-line overflow-hidden rounded-card bg-surface shadow-card">{children}</div>
     </section>
@@ -145,15 +145,15 @@ export function SettingRow({
     >
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-[13.5px] font-medium leading-5 text-ink">{label}</span>
+          <span className="text-row font-medium leading-5 text-ink">{label}</span>
           {meta ? <span className="ml-auto flex items-center gap-2">{meta}</span> : null}
         </div>
-        {hint ? <div className="mt-0.5 text-[12.5px] leading-[18px] text-ink-2">{hint}</div> : null}
+        {hint ? <div className="mt-0.5 text-meta leading-[18px] text-ink-2">{hint}</div> : null}
       </div>
       <div className={`min-w-0 ${stack ? "" : "flex flex-col @2xl/page:items-end"}`}>
         {children}
         {error ? (
-          <p role="alert" className="mt-1.5 self-stretch text-[12px] leading-4 text-vermilion">
+          <p role="alert" className="mt-1.5 self-stretch text-label leading-4 text-vermilion">
             {error}
           </p>
         ) : null}
@@ -165,7 +165,7 @@ export function SettingRow({
 // An error that belongs to the whole form or page rather than one field.
 export function ErrorWell({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div role="alert" className={`flex items-start gap-2 rounded-sm bg-vermilion-pale px-3 py-2.5 text-[13px] leading-5 text-vermilion ${className}`}>
+    <div role="alert" className={`flex items-start gap-2 rounded-sm bg-vermilion-pale px-3 py-2.5 text-small leading-5 text-vermilion ${className}`}>
       <CircleAlert size={15} className="mt-0.5 shrink-0" />
       <span className="min-w-0 break-words">{children}</span>
     </div>

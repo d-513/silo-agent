@@ -14,7 +14,7 @@ import { lineDiff } from "./lineDiff";
 
 const hatchBtn = "flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-on-hatch/70 transition-colors duration-[160ms] hover:bg-on-hatch/10 hover:text-on-hatch";
 const hatchToggle = (on: boolean) =>
-  `flex h-8 items-center gap-1.5 rounded-sm px-2.5 text-[12.5px] font-medium transition-colors duration-[160ms] ${on ? "bg-on-hatch/15 text-on-hatch" : "text-on-hatch/70 hover:bg-on-hatch/10 hover:text-on-hatch"}`;
+  `flex h-8 items-center gap-1.5 rounded-sm px-2.5 text-meta font-medium transition-colors duration-[160ms] ${on ? "bg-on-hatch/15 text-on-hatch" : "text-on-hatch/70 hover:bg-on-hatch/10 hover:text-on-hatch"}`;
 
 // The full-screen inspector for an artifact card, at one of its versions: a
 // file's preview (and what changed since the version before), a skill's
@@ -99,11 +99,11 @@ export function ArtifactOverlay({
           <span className="text-on-hatch/70">
             <TypeIcon name={v.name || artifact.path} dir={tree && !app} size={18} />
           </span>
-          <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{artifact.title}</span>
+          <span className="min-w-0 flex-1 truncate text-small font-medium">{artifact.title}</span>
           {header}
         </div>
         {sharing ? <SharePanel botId={botId} artifactId={artifact.artifactId} n={v.n} hatch /> : null}
-        {err ? <p className="border-b border-on-hatch/10 px-3 py-1.5 text-[12.5px] text-vermilion">{err}</p> : null}
+        {err ? <p className="border-b border-on-hatch/10 px-3 py-1.5 text-meta text-vermilion">{err}</p> : null}
         <div className="flex min-h-0 flex-1 flex-col">
           {app && mode === "app" ? (
             <AppFrame key={v.n} botId={botId} artifactId={artifact.artifactId} n={v.n} title={artifact.title} className="h-full flex-1" />
@@ -146,21 +146,21 @@ function FileVersion({ botId, a, diffWith, full }: { botId: string; a: Artifact;
   const { file, err } = useVersionFile(botId, a.artifactId, a.version);
   const before = useVersionFile(botId, a.artifactId, diffWith);
   const pdf = kindOf(file?.name || a.path) === "pdf";
-  if (err) return <p className={`${pdf ? "p-4 " : ""}text-[13px] text-vermilion`}>{err}</p>;
+  if (err) return <p className={`${pdf ? "p-4 " : ""}text-small text-vermilion`}>{err}</p>;
   if (!file) return <div className={pdf ? "skeleton min-h-0 flex-1" : "skeleton h-40 rounded-sm"} />;
   const name = file.name || a.path;
   const text = isTextKind(name);
   if (diffWith) {
-    if (before.err) return <p className="text-[13px] text-vermilion">{before.err}</p>;
+    if (before.err) return <p className="text-small text-vermilion">{before.err}</p>;
     if (!before.file) return <div className="skeleton h-40 rounded-sm" />;
     const d = lineDiff(new TextDecoder().decode(before.file.data), new TextDecoder().decode(file.data));
     return (
       <div className="space-y-2">
-        <p className="font-mono text-[12px] text-ink-3">
+        <p className="font-mono text-label text-ink-3">
           <span className="text-emerald">+{d.stat.added}</span> <span className="text-vermilion">{"\u2212"}{d.stat.removed}</span>
         </p>
         {d.text ? (
-          <Highlighted code={d.text} lang="diff" preClass="whitespace-pre-wrap break-words rounded-sm bg-well p-3 font-mono text-[12.5px] leading-5" />
+          <Highlighted code={d.text} lang="diff" preClass="whitespace-pre-wrap break-words rounded-sm bg-well p-3 font-mono text-meta leading-5" />
         ) : (
           <p className="text-ink-2">{t("No changes.")}</p>
         )}

@@ -39,18 +39,18 @@ export function OidcSettings() {
       }
     >
       <div className="px-5 py-3.5 shadow-[inset_0_1px_0_var(--color-line-strong)]">
-        <div className="mb-1.5 text-[12px] font-medium text-ink-3">{t("Redirect URI")}</div>
+        <div className="mb-1.5 text-label font-medium text-ink-3">{t("Redirect URI")}</div>
         <div className="flex items-center gap-2 rounded-sm bg-well py-1 pl-3 pr-1">
-          <code className="min-w-0 flex-1 break-all font-mono text-[12.5px] leading-5 text-ink">{oidcRedirectUrl}</code>
+          <code className="min-w-0 flex-1 break-all font-mono text-meta leading-5 text-ink">{oidcRedirectUrl}</code>
           <CopyButton text={oidcRedirectUrl} title={t("Copy the redirect URI")} className="shrink-0" />
         </div>
-        <p className="mt-1.5 text-[12.5px] leading-[18px] text-ink-3">{t("Register this at the provider. It follows the Public URL under Server.")}</p>
+        <p className="mt-1.5 text-meta leading-[18px] text-ink-3">{t("Register this at the provider. It follows the Public URL under Server.")}</p>
         {result ? (
-          <p role="status" className={`mt-3 text-[13px] leading-5 ${result.ok ? "text-ink-2" : "text-vermilion"}`}>
+          <p role="status" className={`mt-3 text-small leading-5 ${result.ok ? "text-ink-2" : "text-vermilion"}`}>
             {result.text}
           </p>
         ) : dirty > 0 ? (
-          <p className="mt-3 text-[12.5px] leading-[18px] text-ink-3">{t("Check asks the provider with the saved settings. Save first.")}</p>
+          <p className="mt-3 text-meta leading-[18px] text-ink-3">{t("Check asks the provider with the saved settings. Save first.")}</p>
         ) : null}
       </div>
     </FieldGroup>

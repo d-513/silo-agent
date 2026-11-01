@@ -51,7 +51,7 @@ export function SubagentTray({
               >
                 <Link {...href(a)} className="flex flex-col gap-1 rounded-card px-3 py-2.5">
                   <span className="flex min-w-0 items-baseline gap-2">
-                    <span className="min-w-0 flex-1 truncate text-[13.5px] leading-[18px] font-medium text-ink">{a.name}</span>
+                    <span className="min-w-0 flex-1 truncate text-row leading-[18px] font-medium text-ink">{a.name}</span>
                     <span className="shrink-0 font-mono text-[11.5px] leading-4 text-ink-3 transition-opacity duration-[160ms] group-focus-within:opacity-0 group-hover:opacity-0 [@media(hover:none)]:mr-6">
                       {elapsed(a.createdAt, now)}
                     </span>
@@ -76,7 +76,7 @@ export function SubagentTray({
             type="button"
             onClick={onStopAll}
             title={t("Stop every running subagent")}
-            className="flex h-9 shrink-0 items-center gap-1.5 rounded-control px-2.5 text-[12.5px] text-ink-2 transition-colors duration-[160ms] hover:bg-well hover:text-vermilion"
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-control px-2.5 text-meta text-ink-2 transition-colors duration-[160ms] hover:bg-well hover:text-vermilion"
           >
             <Square size={11} />
             <span className="hidden wide:inline">{t("Stop all")}</span>
@@ -105,7 +105,7 @@ function Finished({ agents, href }: { agents: Subagent[]; href: (a: Subagent) =>
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex h-9 items-center gap-1.5 rounded-control px-2.5 text-[12.5px] text-ink-2 transition-colors duration-[160ms] hover:bg-well hover:text-ink"
+        className="flex h-9 items-center gap-1.5 rounded-control px-2.5 text-meta text-ink-2 transition-colors duration-[160ms] hover:bg-well hover:text-ink"
       >
         <Bot size={13} />
         <span>{t("{{count}} finished", { count: agents.length })}</span>
@@ -118,10 +118,10 @@ function Finished({ agents, href }: { agents: Subagent[]; href: (a: Subagent) =>
               key={a.id}
               {...href(a)}
               onClick={() => setOpen(false)}
-              className="flex items-center gap-2 rounded-control px-2.5 py-1.5 text-[13px] hover:bg-well"
+              className="flex items-center gap-2 rounded-control px-2.5 py-1.5 text-small hover:bg-well"
             >
               <span className="min-w-0 flex-1 truncate font-medium text-ink">{a.name}</span>
-              <span className={`shrink-0 text-[12px] ${finishedLook(a.status).tone}`}>{finishedLook(a.status).word}</span>
+              <span className={`shrink-0 text-label ${finishedLook(a.status).tone}`}>{finishedLook(a.status).word}</span>
             </Link>
           ))}
         </div>

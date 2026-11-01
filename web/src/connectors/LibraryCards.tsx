@@ -14,13 +14,13 @@ export function CatalogCard({ c, count, onAdd }: { c: Connector; count: number; 
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h4 className="font-semibold text-[15px] text-ink tracking-tight">{c.name}</h4>
+            <h4 className="font-semibold text-body-lg text-ink tracking-tight">{c.name}</h4>
             <ShieldCheck size={15} className="text-emerald shrink-0" />
             <McpChip transport={c.transport} />
             {c.category && <CategoryChip label={c.category} />}
           </div>
           <p className="mt-1.5 line-clamp-2 text-xs text-ink-2 leading-relaxed">{c.description}</p>
-          <div className="mt-2.5 flex items-center gap-2 text-[11px] text-ink-3">
+          <div className="mt-2.5 flex items-center gap-2 text-micro text-ink-3">
             <span className="font-mono uppercase">{c.transport}</span>
             <span>·</span>
             <span className="capitalize">{c.auth}</span>
@@ -67,9 +67,9 @@ export function FeaturedCard({ c, count, onAdd }: { c: Connector; count: number;
             <CategoryChip label={t("Built in")} />
             {c.category && <CategoryChip label={c.category} />}
           </div>
-          <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-ink-2">{c.description}</p>
+          <p className="mt-1.5 max-w-2xl text-small leading-relaxed text-ink-2">{c.description}</p>
           {points.length > 0 && (
-            <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-ink-2">
+            <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-label text-ink-2">
               {points.map((p) => (
                 <li key={p} className="inline-flex items-center gap-1.5">
                   <Check size={12} className="text-emerald" />
@@ -85,7 +85,7 @@ export function FeaturedCard({ c, count, onAdd }: { c: Connector; count: number;
             {count > 0 ? t("Add another") : t("Add {{name}}", { name: c.name })}
           </button>
           {count > 0 && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald">
+            <span className="inline-flex items-center gap-1 text-micro font-medium text-emerald">
               <Check size={11} />
               {count === 1 ? t("In use") : t("{{count}} in use", { count })}
             </span>

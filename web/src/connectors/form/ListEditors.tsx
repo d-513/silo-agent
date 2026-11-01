@@ -32,7 +32,7 @@ export function ArgsEditor({ value, set }: { value: ConnectorDraft; set: Edit })
 export function EnvEditor({ value, existing, set }: { value: ConnectorDraft; existing?: boolean; set: Edit }) {
   return (
     <>
-      <div className="mb-1 text-[12px] font-medium text-ink-3">{t("Environment")}</div>
+      <div className="mb-1 text-label font-medium text-ink-3">{t("Environment")}</div>
       <p className="mb-2 text-ink-2">{t("Values stay on the Control Plane. A secret name reads that Bot secret when the sidecar starts. Docker inspect can still see injected env.")}</p>
       {value.env.map((e, i) => (
         <div key={i} className="mb-2 flex flex-wrap gap-2">
@@ -68,7 +68,7 @@ export function EnvEditor({ value, existing, set }: { value: ConnectorDraft; exi
 export function HeadersEditor({ value, existing, set }: { value: ConnectorDraft; existing?: boolean; set: Edit }) {
   return (
     <>
-      <div className="mb-1 text-[12px] font-medium text-ink-3">{t("Extra headers")}</div>
+      <div className="mb-1 text-label font-medium text-ink-3">{t("Extra headers")}</div>
       <p className="mb-2 text-ink-2">{t("Values are stored on the Control Plane and never shown again.")}</p>
       {value.headers.map((h, i) => (
         <div key={i} className="mb-2 flex gap-2">

@@ -28,7 +28,7 @@ export function InvitePage() {
   if (done) {
     return (
       <AuthCard title={t("Password changed")}>
-        <p className="mb-6 text-[13.5px] leading-[21px] text-ink-2">{t("Sign in with your new password. Anywhere you were signed in before has been signed out.")}</p>
+        <p className="mb-6 text-row leading-[21px] text-ink-2">{t("Sign in with your new password. Anywhere you were signed in before has been signed out.")}</p>
         <Link to="/signin" className={btnClass("primary", "w-full justify-center")}>
           {t("Sign in")}
         </Link>
@@ -38,7 +38,7 @@ export function InvitePage() {
   if (invite.error) {
     return (
       <AuthCard title={t("This link has expired")}>
-        <p className="mb-6 text-[13.5px] leading-[21px] text-ink-2">{fail(invite.error)}</p>
+        <p className="mb-6 text-row leading-[21px] text-ink-2">{fail(invite.error)}</p>
         <Link to="/signin" className={btnClass("secondary", "w-full justify-center")}>
           {t("Go to sign in")}
         </Link>
@@ -76,7 +76,7 @@ export function InvitePage() {
   return (
     <AuthCard title={reset ? t("Choose a new password") : t("Welcome to Silo")}>
       <form onSubmit={onSubmit}>
-        <p className="mb-4 text-[13.5px] leading-[21px] text-ink-2">
+        <p className="mb-4 text-row leading-[21px] text-ink-2">
           <Trans
             i18nKey={reset ? "For <b>{{email}}</b>." : "You were invited as <b>{{email}}</b>. Choose a password to finish your account."}
             values={{ email: invite.data.email }}

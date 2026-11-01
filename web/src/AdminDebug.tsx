@@ -18,7 +18,7 @@ const labelClass: Record<string, string> = {
 
 function LabelChip({ label }: { label: string }) {
   return (
-    <span className={`rounded-sm px-1.5 py-0.5 text-[11px] font-medium ${labelClass[label] ?? "bg-well text-ink-3"}`}>
+    <span className={`rounded-sm px-1.5 py-0.5 text-micro font-medium ${labelClass[label] ?? "bg-well text-ink-3"}`}>
       {label || "model"}
     </span>
   );
@@ -27,29 +27,29 @@ function LabelChip({ label }: { label: string }) {
 function LogRow({ log }: { log: LLMLog }) {
   return (
     <details className="group rounded-card shadow-card bg-surface">
-      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 px-3 py-2 text-[12px] [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 px-3 py-2 text-label [&::-webkit-details-marker]:hidden">
         <span className="font-mono text-ink-3">{log.at}</span>
         <LabelChip label={log.label} />
         <span className="font-mono text-ink">{log.model}</span>
         <span className="text-ink-3">{log.provider}</span>
         {log.error ? <span className="font-medium text-vermilion">{t("error")}</span> : null}
-        <span className="ml-auto flex items-center gap-2 font-mono text-[11px] text-ink-3">
+        <span className="ml-auto flex items-center gap-2 font-mono text-micro text-ink-3">
           <span>{t("in {{tokens}}", { tokens: log.inputTokens })}</span>
           <span>{t("out {{tokens}}", { tokens: log.outputTokens })}</span>
           <span>{log.durationMs}ms</span>
         </span>
       </summary>
       <div className="space-y-3 border-t border-line-strong bg-well p-3">
-        {log.error ? <p className="break-words font-mono text-[12px] text-vermilion">{log.error}</p> : null}
+        {log.error ? <p className="break-words font-mono text-label text-vermilion">{log.error}</p> : null}
         <div>
-          <div className="mb-1 text-[11px] font-medium tracking-wide text-ink-3 uppercase">{t("Request")}</div>
-          <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface p-3 font-mono text-[12px] leading-5 text-ink">
+          <div className="mb-1 text-micro font-medium tracking-wide text-ink-3 uppercase">{t("Request")}</div>
+          <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface p-3 font-mono text-label leading-5 text-ink">
             {log.request || t("(empty)")}
           </pre>
         </div>
         <div>
-          <div className="mb-1 text-[11px] font-medium tracking-wide text-ink-3 uppercase">{t("Response")}</div>
-          <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface p-3 font-mono text-[12px] leading-5 text-ink">
+          <div className="mb-1 text-micro font-medium tracking-wide text-ink-3 uppercase">{t("Response")}</div>
+          <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface p-3 font-mono text-label leading-5 text-ink">
             {log.response || t("(empty)")}
           </pre>
         </div>
@@ -113,12 +113,12 @@ export function AdminDebug() {
       {logs.length === 0 && loading ? (
         <SkeletonRows rows={3} height={52} />
       ) : logs.length === 0 ? (
-        <div className="rounded-card bg-well p-8 text-center text-[13px] text-ink-3">{t("No model calls captured yet.")}</div>
+        <div className="rounded-card bg-well p-8 text-center text-small text-ink-3">{t("No model calls captured yet.")}</div>
       ) : (
         <div className="grid gap-2">
           {logs.map((l) => (
             <div key={l.id}>
-              {botId === "" && <div className="mb-1 px-1 text-[11px] font-medium text-ink-3">{botName(l.botId)}</div>}
+              {botId === "" && <div className="mb-1 px-1 text-micro font-medium text-ink-3">{botName(l.botId)}</div>}
               <LogRow log={l} />
             </div>
           ))}

@@ -51,7 +51,7 @@ function CsvTable({ text }: { text: string }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={t("Filter rows")}
-            className="h-8 w-56 rounded-control bg-well px-2.5 text-[13px] text-ink outline-none placeholder:text-ink-3 focus:shadow-[inset_0_0_0_1px_var(--color-cobalt)]"
+            className="h-8 w-56 rounded-control bg-well px-2.5 text-small text-ink outline-none placeholder:text-ink-3 focus:shadow-[inset_0_0_0_1px_var(--color-cobalt)]"
           />
           <span className="font-mono text-[11.5px] text-ink-3">
             {shown.length === body.length ? t("{{count}} rows", { count: body.length }) : t("{{n}} of {{total}}", { n: shown.length, total: body.length })}
@@ -59,7 +59,7 @@ function CsvTable({ text }: { text: string }) {
         </div>
       ) : null}
       <div className="max-w-full overflow-x-auto">
-        <table className="w-max min-w-full border-collapse text-left text-[13px]">
+        <table className="w-max min-w-full border-collapse text-left text-small">
           <thead>
             <tr className="border-b border-line-strong">
               {Array.from({ length: width }, (_, j) => {
@@ -92,7 +92,7 @@ function CsvTable({ text }: { text: string }) {
           </tbody>
         </table>
       </div>
-      {shown.length > 500 ? <p className="text-[12.5px] text-ink-3">{t("Showing the first {{n}} rows.", { n: 500 })}</p> : null}
+      {shown.length > 500 ? <p className="text-meta text-ink-3">{t("Showing the first {{n}} rows.", { n: 500 })}</p> : null}
     </div>
   );
 }
@@ -217,14 +217,14 @@ export function FilePreview({
     } catch {
       /* raw */
     }
-    return quotable(<Highlighted code={pretty} lang="json" preClass="whitespace-pre-wrap break-words font-mono text-[13px] leading-5" />);
+    return quotable(<Highlighted code={pretty} lang="json" preClass="whitespace-pre-wrap break-words font-mono text-small leading-5" />);
   }
   if (kind === "code" || kind === "html" || (kind === "text" && !binary)) {
     const lang = kind === "html" ? "xml" : codeLang(name);
-    return quotable(<Highlighted code={text || " "} lang={lang} preClass="whitespace-pre-wrap break-words font-mono text-[13px] leading-5" />);
+    return quotable(<Highlighted code={text || " "} lang={lang} preClass="whitespace-pre-wrap break-words font-mono text-small leading-5" />);
   }
   if (!binary && text) {
-    return quotable(<pre className="whitespace-pre-wrap font-mono text-[13px]">{text}</pre>);
+    return quotable(<pre className="whitespace-pre-wrap font-mono text-small">{text}</pre>);
   }
   return <p className="text-ink-2">{t("No preview for this type. Download it instead.")}</p>;
 }

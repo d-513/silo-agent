@@ -221,6 +221,7 @@ Wine is deliberately darker than `vermilion`, so a red Bot never reads as Needs 
 - **Source Serif 4** is used only for assistant replies in the thread (`reply`, 16.5/28, optical sizing on). It separates the machine's voice from the chrome and makes long answers calmer to read. Markdown headings inside a reply stay in the serif at 500.
 - **Geist Mono** is for machine facts: run IDs, paths, tool actions (`secrets.read`), secret names, approval args, terminal and code. It's never used for prose.
 - Tabular numbers for metrics and timestamps in tables.
+- The scale is utilities in `index.css`, and a component never writes a pixel size (`typeScale_test.ts`). `text-title`, `text-card-title` carry their whole style; the rest set the size only, and the place sets its leading and weight.
 - Scale:
   - `display`: empty states and sign-in only.
   - `title`: page titles, the slip title.
@@ -234,7 +235,7 @@ Wine is deliberately darker than `vermilion`, so a red Bot never reads as Needs 
 
 ## 4. Shape, space, elevation
 
-- 4px baseline. Folios and panels pad `md`/`gutter`, pages pad `page` on wide screens and `md` on narrow ones, and the run view uses `run` so the hatch gets the pixels.
+- 4px baseline in what DESIGN names in px, but the root is 14px, so a Tailwind step is 3.5px (`h-6` is 21px, `p-4` is 14px). Folios and panels pad `md`/`gutter`, pages pad `page` on wide screens and `md` on narrow ones, and the run view uses `run` so the hatch gets the pixels.
 - Radii:
   - `xs` (6px): glyph wells inside buttons, kbd hints.
   - `sm` (8px): tabs, mini icon buttons, chips, code blocks.

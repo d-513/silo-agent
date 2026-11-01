@@ -8,7 +8,7 @@ export function Snag({ error, onRetry }: { error: unknown; onRetry: () => void }
   return (
     <div role="alert" className="flex h-full min-h-[320px] flex-col items-center justify-center bg-well px-4 text-center wide:px-8">
       <p className="mb-2 max-w-[26rem] text-title text-ink">{t("This page hit a snag")}</p>
-      <p className="mb-6 max-w-[32rem] font-mono text-[12.5px] break-words text-ink-3">{(error instanceof Error && error.message) || String(error)}</p>
+      <p className="mb-6 max-w-[32rem] font-mono text-meta break-words text-ink-3">{(error instanceof Error && error.message) || String(error)}</p>
       <div className="flex gap-2">
         <button type="button" className={btnClass("primary")} onClick={onRetry}>
           {t("Try again")}

@@ -47,7 +47,7 @@ function Stat({ label, value, meter }: { label: string; value: string; meter?: R
   return (
     <div className="min-w-0">
       <div className="text-label-caps uppercase leading-4 text-ink-3">{label}</div>
-      <div className="mt-0.5 truncate font-mono text-[15px] font-medium tabular-nums tracking-tight text-ink">{value}</div>
+      <div className="mt-0.5 truncate font-mono text-body-lg font-medium tabular-nums tracking-tight text-ink">{value}</div>
       {meter ? <div className="mt-1.5">{meter}</div> : null}
     </div>
   );
@@ -90,7 +90,7 @@ function runningOf(containers: AdminContainer[]) {
 function CountChip({ up, total, plural }: { up: number; total: number; plural?: boolean }) {
   if (total === 0) return null;
   return (
-    <span className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[11px] font-medium tabular-nums ${up > 0 ? "bg-well text-ink-2" : "bg-well text-ink-3"}`}>{plural ? t("{{count}} Bots", { count: total }) : `${up}/${total}`}</span>
+    <span className={`shrink-0 rounded-sm px-1.5 py-0.5 text-micro font-medium tabular-nums ${up > 0 ? "bg-well text-ink-2" : "bg-well text-ink-3"}`}>{plural ? t("{{count}} Bots", { count: total }) : `${up}/${total}`}</span>
   );
 }
 
@@ -134,14 +134,14 @@ function Fold({
 
 function NetworkRow({ n }: { n: AdminNetwork }) {
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 py-1.5 text-[12.5px]">
+    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 py-1.5 text-meta">
       <Network size={13} className="shrink-0 text-ink-3" />
       <code className="font-mono text-ink">{n.name}</code>
       {n.subnet ? <code className="font-mono text-ink-3">{n.subnet}</code> : null}
       <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
         {n.containers?.length ? (
           n.containers.map((c) => (
-            <span key={c} className="truncate rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-3">{c}</span>
+            <span key={c} className="truncate rounded-sm bg-well px-1.5 py-0.5 text-micro font-medium text-ink-3">{c}</span>
           ))
         ) : (
           <span className="text-ink-3">{t("nothing attached")}</span>
@@ -167,11 +167,11 @@ function ContainerRow({ c, busy, now, onAct }: { c: AdminContainer; busy: string
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="min-w-0 truncate text-[14px] font-medium text-ink">{c.label}</span>
-            <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-3">{t(kindChip[kind.chip])}</span>
+            <span className="min-w-0 truncate text-body font-medium text-ink">{c.label}</span>
+            <span className="rounded-sm bg-well px-1.5 py-0.5 text-micro font-medium text-ink-3">{t(kindChip[kind.chip])}</span>
           </div>
-          {c.detail ? <div className="mt-0.5 truncate text-[12.5px] text-ink-2">{c.detail}</div> : null}
-          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px]">
+          {c.detail ? <div className="mt-0.5 truncate text-meta text-ink-2">{c.detail}</div> : null}
+          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-meta">
             <span className="flex items-center gap-1.5">
               <Lamp status={look.lamp} />
               <span className={`font-medium ${up ? "text-emerald" : "text-ink-3"}`}>{look.word}</span>
@@ -183,7 +183,7 @@ function ContainerRow({ c, busy, now, onAct }: { c: AdminContainer; busy: string
                 {c.networks.join(", ")}
               </span>
             ) : null}
-            <code className="min-w-0 truncate font-mono text-[12px] text-ink-3">{c.name}</code>
+            <code className="min-w-0 truncate font-mono text-label text-ink-3">{c.name}</code>
             {c.image ? <span className="hidden min-w-0 truncate font-mono text-[11.5px] text-ink-3 max-wide:hidden">{c.image}</span> : null}
           </div>
         </div>
@@ -225,7 +225,7 @@ function BotCard({ g, busy, now, onAct, onRemoveAll }: { g: AdminBotGroup; busy:
       fallback
       header={
         <>
-          <Link to="/bots/$botId/container" params={{ botId: g.botId }} className="min-w-0 truncate text-[15px] font-semibold text-ink transition-colors duration-[160ms] ease-quiet hover:text-cobalt" onClick={(e) => e.stopPropagation()}>
+          <Link to="/bots/$botId/container" params={{ botId: g.botId }} className="min-w-0 truncate text-body-lg font-semibold text-ink transition-colors duration-[160ms] ease-quiet hover:text-cobalt" onClick={(e) => e.stopPropagation()}>
             {g.botName}
           </Link>
           <Status look={machineLook(g.status)} />
@@ -358,7 +358,7 @@ export function AdminContainers() {
 
   return (
     <div>
-      <p className="mb-4 max-w-[640px] text-[13.5px] leading-[21px] text-ink-2">
+      <p className="mb-4 max-w-[640px] text-row leading-[21px] text-ink-2">
         {t("Everything Silo runs on the container engine — every Bot's machine, drive and MCP sidecars, the egress gateway, and anything left over. Only containers Silo created are listed and acted on.")}
       </p>
       {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
@@ -375,7 +375,7 @@ export function AdminContainers() {
         <SkeletonRows rows={3} height={120} />
       ) : totals.length === 0 && netCount === 0 ? (
         <Panel title={t("Nothing on the engine")} note={t("No containers and no networks belong to Silo yet.")} className="mt-2">
-          <p className="text-[13px] text-ink-2">{t("The first Bot creates its machine when it is started.")}</p>
+          <p className="text-small text-ink-2">{t("The first Bot creates its machine when it is started.")}</p>
         </Panel>
       ) : (
         <>
@@ -396,11 +396,11 @@ export function AdminContainers() {
               <Btn kind="ghost" size="sm" onClick={() => foldAll(keys, true)}>
                 {t("Expand all")}
               </Btn>
-              {visible.length !== users.length ? <span className="text-[12.5px] text-ink-3">{t("{{count}} of {{total}} users", { count: visible.length, total: users.length })}</span> : null}
+              {visible.length !== users.length ? <span className="text-meta text-ink-3">{t("{{count}} of {{total}} users", { count: visible.length, total: users.length })}</span> : null}
             </div>
           ) : null}
 
-          {users.length > 0 && visible.length === 0 ? <p className="text-[13.5px] text-ink-2">{t("No user or Bot matches.")}</p> : null}
+          {users.length > 0 && visible.length === 0 ? <p className="text-row text-ink-2">{t("No user or Bot matches.")}</p> : null}
 
           <div className="space-y-2.5">
             {visible.map((u) => (
@@ -427,7 +427,7 @@ export function AdminContainers() {
                 </ul>
                 {system?.networks?.length ? (
                   <div className="border-t border-line bg-well px-4 py-2">
-                    <p className="mb-0.5 text-[12.5px] text-ink-3">{t("A network with no Bot left is marked orphan; removing it is safe.")}</p>
+                    <p className="mb-0.5 text-meta text-ink-3">{t("A network with no Bot left is marked orphan; removing it is safe.")}</p>
                     {system.networks.map((n) => (
                       <NetworkRow key={n.name} n={n} />
                     ))}
@@ -438,7 +438,7 @@ export function AdminContainers() {
                     <ArmedButton kind="ghost" size="sm" disabled={busy !== null} armedLabel={t("Click again to remove all")} onConfirm={sweepStrays}>
                       {t("Remove {{count}} leftovers", { count: strays.length })}
                     </ArmedButton>
-                    <span className="text-[12.5px] text-ink-3">{t("Leftover sidecars are made again only if something asks for them.")}</span>
+                    <span className="text-meta text-ink-3">{t("Leftover sidecars are made again only if something asks for them.")}</span>
                   </div>
                 ) : null}
               </Fold>

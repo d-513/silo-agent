@@ -86,7 +86,7 @@ function Section({ title, items }: { title: string; items: readonly Item[] }) {
                 to={to}
                 params={{ botId: id }}
                 data-tab-on={on || undefined}
-                className={`flex h-8 shrink-0 items-center gap-1.5 self-center whitespace-nowrap rounded-sm px-2.5 text-[13px] font-medium transition-[background-color,color] duration-[160ms] ease-quiet ${
+                className={`flex h-8 shrink-0 items-center gap-1.5 self-center whitespace-nowrap rounded-sm px-2.5 text-small font-medium transition-[background-color,color] duration-[160ms] ease-quiet ${
                   on ? "text-ink" : "text-ink-3 hover:bg-well hover:text-ink"
                 }`}
               >

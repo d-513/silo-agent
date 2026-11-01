@@ -21,7 +21,7 @@ export function PageHead({ title, subtitle, mark, onBack }: { title: string; sub
       {mark}
       <div className="min-w-0">
         <h2 className="truncate text-title text-ink">{title}</h2>
-        {subtitle ? <div className="mt-0.5 text-[12.5px] text-ink-3">{subtitle}</div> : null}
+        {subtitle ? <div className="mt-0.5 text-meta text-ink-3">{subtitle}</div> : null}
       </div>
     </div>
   );

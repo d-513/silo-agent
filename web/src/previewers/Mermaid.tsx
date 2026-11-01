@@ -31,8 +31,8 @@ export default function Mermaid({ source }: { source: string }) {
   if (err) {
     return (
       <div className="space-y-1.5">
-        <p className="text-[12.5px] text-vermilion">{err}</p>
-        <pre className="overflow-auto rounded-sm bg-well p-3 font-mono text-[12.5px] leading-5">{source}</pre>
+        <p className="text-meta text-vermilion">{err}</p>
+        <pre className="overflow-auto rounded-sm bg-well p-3 font-mono text-meta leading-5">{source}</pre>
       </div>
     );
   }

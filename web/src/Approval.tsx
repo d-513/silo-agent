@@ -98,15 +98,15 @@ export function NeedYouSlip({
               <Status look={runLook({ ...started, state: "needs_you" })} />
             </span>
           </div>
-          {source ? <p className="mb-1 truncate text-[12px] leading-4 font-medium text-ink-3">{source}</p> : null}
+          {source ? <p className="mb-1 truncate text-label leading-4 font-medium text-ink-3">{source}</p> : null}
           <h2 className="mb-2 text-title">{title}</h2>
-          <p className="mb-5 text-[14px] leading-[22px] text-ink-2">{summary}</p>
+          <p className="mb-5 text-body leading-[22px] text-ink-2">{summary}</p>
           {fields && fields.length > 0 && (
             <dl className="overflow-hidden rounded-control bg-well">
               {fields.map((f) => (
                 <div key={f.label} className="flex gap-4 px-3.5 py-2.5 shadow-[inset_0_-1px_0_var(--color-line-strong)] last:shadow-none">
-                  <dt className="w-24 shrink-0 text-[12px] leading-5 font-medium text-ink-3">{f.label}</dt>
-                  <dd className="min-w-0 flex-1 whitespace-pre-wrap break-words font-mono text-[12.5px] leading-5 text-ink">{f.value}</dd>
+                  <dt className="w-24 shrink-0 text-label leading-5 font-medium text-ink-3">{f.label}</dt>
+                  <dd className="min-w-0 flex-1 whitespace-pre-wrap break-words font-mono text-meta leading-5 text-ink">{f.value}</dd>
                 </div>
               ))}
             </dl>
@@ -115,7 +115,7 @@ export function NeedYouSlip({
         <div className="shrink-0 px-6 pt-2 pb-5">
           <div className="flex flex-col gap-2">{children}</div>
           {note ? (
-            <p className="mt-4 flex items-center gap-2 text-[12.5px] leading-[18px] text-ink-3">
+            <p className="mt-4 flex items-center gap-2 text-meta leading-[18px] text-ink-3">
               <span className="breathe h-[7px] w-[7px] shrink-0 rounded-full bg-vermilion" />
               {note}
             </p>
@@ -173,7 +173,7 @@ export function ApprovalSlip({
         <Btn kind="deny" className="!h-10 w-full justify-center" onClick={() => onDecide("deny")}>
           {t("Deny")}
         </Btn>
-        <p className="mt-1 text-center text-[12.5px] leading-[18px] text-ink-3">
+        <p className="mt-1 text-center text-meta leading-[18px] text-ink-3">
           {t("Auto-approval was not sure about this one.")}{" "}
           <Link to="/bots/$botId/rules" params={{ botId: bot.id }} className="font-medium text-cobalt hover:underline">
             {t("Rules")}
@@ -224,18 +224,18 @@ export function ApprovalCard({
     <article className="rise relative flex flex-col justify-between overflow-hidden rounded-card bg-surface py-4 pr-4 pl-5 shadow-card">
       <span aria-hidden className="absolute inset-y-0 left-0 w-0.5 bg-vermilion" />
       <div>
-        <div className="flex min-w-0 items-center gap-2 text-[12px]">
+        <div className="flex min-w-0 items-center gap-2 text-label">
           <Status look={runLook({ ...started, state: "needs_you" })} />
           {sourceOf(approval) ? <span className="min-w-0 truncate text-ink-3">· {sourceOf(approval)}</span> : null}
         </div>
-        <h3 className="mt-1.5 text-[15px] leading-5 font-medium tracking-[-0.01em] text-ink">{d.title}</h3>
-        <p className="mt-0.5 text-[13px] leading-5 text-ink-2">{d.summary}</p>
+        <h3 className="mt-1.5 text-body-lg leading-5 font-medium tracking-[-0.01em] text-ink">{d.title}</h3>
+        <p className="mt-0.5 text-small leading-5 text-ink-2">{d.summary}</p>
         {d.fields && d.fields.length > 0 ? (
           <dl className="mt-3 overflow-hidden rounded-control bg-well">
             {d.fields.map((f) => (
               <div key={f.label} className="flex gap-4 px-3 py-2 shadow-[inset_0_-1px_0_var(--color-line-strong)] last:shadow-none">
-                <dt className="w-24 shrink-0 text-[12px] leading-5 font-medium text-ink-3">{f.label}</dt>
-                <dd className="min-w-0 flex-1 whitespace-pre-wrap break-words font-mono text-[12px] leading-5 text-ink">{f.value}</dd>
+                <dt className="w-24 shrink-0 text-label leading-5 font-medium text-ink-3">{f.label}</dt>
+                <dd className="min-w-0 flex-1 whitespace-pre-wrap break-words font-mono text-label leading-5 text-ink">{f.value}</dd>
               </div>
             ))}
           </dl>
@@ -264,7 +264,7 @@ export function ApprovalCard({
           <Btn kind="deny" size="sm" onClick={() => onDecide("deny")}>
             {t("Deny")}
           </Btn>
-          <span className="ml-auto text-[12px] text-ink-3">{waiting}</span>
+          <span className="ml-auto text-label text-ink-3">{waiting}</span>
         </div>
       </div>
     </article>

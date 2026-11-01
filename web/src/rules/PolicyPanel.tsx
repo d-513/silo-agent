@@ -30,7 +30,7 @@ export function PolicyPanel({
   return (
     <Panel title={title} note={note} className="mb-5">
       <textarea
-        className={`${textareaClass} h-[120px] font-mono text-[13px] leading-5`}
+        className={`${textareaClass} h-[120px] font-mono text-small leading-5`}
         placeholder={placeholder}
         value={policy}
         onChange={(e) => onChange(e.target.value)}

@@ -98,12 +98,12 @@ export function TunnelsPane({ botId }: { botId: string }) {
   return (
     <div className="silo-page silo-page-wide">
       <h2 className="text-title">{t("Tunnels & Links")}</h2>
-      <p className="mb-5 mt-1 text-[13.5px] leading-[21px] text-ink-2">
+      <p className="mb-5 mt-1 text-row leading-[21px] text-ink-2">
         {t("Addresses for services running on this Bot's machine. A private tunnel opens for you, signed in to Silo; a public one opens for anyone with the link. The Bot can open tunnels too.")}
       </p>
-      {err ? <p className="mb-4 text-[13px] text-vermilion">{err}</p> : null}
+      {err ? <p className="mb-4 text-small text-vermilion">{err}</p> : null}
       {notice ? (
-        <div className="mb-5 rounded-card bg-well px-5 py-4 text-[13.5px] leading-[21px] text-ink-2">
+        <div className="mb-5 rounded-card bg-well px-5 py-4 text-row leading-[21px] text-ink-2">
           {notice.text}{" "}
           {notice.admin ? (
             <Link to="/admin/settings/$section" params={{ section: "tunnels" }} className="font-medium text-cobalt hover:underline">
@@ -142,8 +142,8 @@ export function TunnelsPane({ botId }: { botId: string }) {
               {t("Open tunnel")}
             </Btn>
           </div>
-          <p className={`basis-full text-[12.5px] leading-[18px] ${pub ? "text-vermilion" : "text-ink-3"}`}>{accessOf(pub).caption}</p>
-          {full ? <p className="basis-full text-[12.5px] text-ink-3">{t("This Bot has {{count}} tunnels, the most it can have. Delete one to add another.", { count: data?.max })}</p> : null}
+          <p className={`basis-full text-meta leading-[18px] ${pub ? "text-vermilion" : "text-ink-3"}`}>{accessOf(pub).caption}</p>
+          {full ? <p className="basis-full text-meta text-ink-3">{t("This Bot has {{count}} tunnels, the most it can have. Delete one to add another.", { count: data?.max })}</p> : null}
         </form>
       ) : null}
 
@@ -153,7 +153,7 @@ export function TunnelsPane({ botId }: { botId: string }) {
         <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
           <Globe size={20} className="text-ink-3" />
           <p className="text-ink-2">{t("No tunnels yet.")}</p>
-          <p className="max-w-sm text-[12.5px] text-ink-3">{t("Start a service on the Bot's machine, then add its port here, or ask the Bot to open one.")}</p>
+          <p className="max-w-sm text-meta text-ink-3">{t("Start a service on the Bot's machine, then add its port here, or ask the Bot to open one.")}</p>
         </div>
       ) : (
         <ul className="space-y-2.5">
@@ -162,14 +162,14 @@ export function TunnelsPane({ botId }: { botId: string }) {
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-well text-ink-2">{tn.public ? <Globe size={18} /> : <Lock size={18} />}</div>
               <div className="min-w-0 flex-1 basis-60">
                 {tn.url ? (
-                  <a href={tn.url} target="_blank" rel="noopener noreferrer" className="block truncate font-mono text-[13.5px] font-medium text-ink hover:underline">
+                  <a href={tn.url} target="_blank" rel="noopener noreferrer" className="block truncate font-mono text-row font-medium text-ink hover:underline">
                     {tn.url.replace(/^https?:\/\//, "")}
                   </a>
                 ) : (
-                  <span className="block truncate font-mono text-[13.5px] font-medium text-ink">{tn.name}</span>
+                  <span className="block truncate font-mono text-row font-medium text-ink">{tn.name}</span>
                 )}
-                <p className={`mt-0.5 text-[12.5px] ${tn.public ? "text-vermilion" : "text-ink-2"}`}>{accessOf(tn.public).caption}</p>
-                <p className="mt-0.5 flex flex-wrap gap-x-1.5 text-[12.5px] text-ink-3">
+                <p className={`mt-0.5 text-meta ${tn.public ? "text-vermilion" : "text-ink-2"}`}>{accessOf(tn.public).caption}</p>
+                <p className="mt-0.5 flex flex-wrap gap-x-1.5 text-meta text-ink-3">
                   <span>{t("Port {{port}}", { port: tn.port })}</span>
                   <span aria-hidden>·</span>
                   <span>{tn.createdBy === "bot" ? t("Opened by the Bot") : t("Opened by you")}</span>
@@ -202,7 +202,7 @@ export function TunnelsPane({ botId }: { botId: string }) {
       )}
 
       <h2 className="mt-10 text-title">{t("Shared links")}</h2>
-      <p className="mb-5 mt-1 text-[13.5px] leading-[21px] text-ink-2">
+      <p className="mb-5 mt-1 text-row leading-[21px] text-ink-2">
         {t("Public links you created from artifact cards. Each link stays pinned to the version you shared and works while the Bot is stopped.")}
       </p>
       {sq.data === undefined ? (
@@ -211,7 +211,7 @@ export function TunnelsPane({ botId }: { botId: string }) {
         <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-10 text-center">
           <Link2 size={20} className="text-ink-3" />
           <p className="text-ink-2">{t("No shared links yet.")}</p>
-          <p className="max-w-sm text-[12.5px] text-ink-3">{t("Use Share on a file or app artifact card in a chat to create a public link.")}</p>
+          <p className="max-w-sm text-meta text-ink-3">{t("Use Share on a file or app artifact card in a chat to create a public link.")}</p>
         </div>
       ) : (
         <ul className="space-y-2.5">
@@ -222,13 +222,13 @@ export function TunnelsPane({ botId }: { botId: string }) {
               </div>
               <div className="min-w-0 flex-1 basis-60">
                 {sh.url ? (
-                  <a href={sh.url} target="_blank" rel="noopener noreferrer" className="block truncate font-mono text-[13.5px] font-medium text-ink hover:underline">
+                  <a href={sh.url} target="_blank" rel="noopener noreferrer" className="block truncate font-mono text-row font-medium text-ink hover:underline">
                     {sh.url.replace(/^https?:\/\//, "")}
                   </a>
                 ) : (
-                  <span className="block truncate font-mono text-[13.5px] font-medium text-ink">{sh.title || sh.id}</span>
+                  <span className="block truncate font-mono text-row font-medium text-ink">{sh.title || sh.id}</span>
                 )}
-                <p className="mt-0.5 flex flex-wrap gap-x-1.5 text-[12.5px] text-ink-2">
+                <p className="mt-0.5 flex flex-wrap gap-x-1.5 text-meta text-ink-2">
                   <span>{sh.title}</span>
                   {sh.version > 0 ? (
                     <>
@@ -237,7 +237,7 @@ export function TunnelsPane({ botId }: { botId: string }) {
                     </>
                   ) : null}
                 </p>
-                <p className="mt-0.5 flex flex-wrap gap-x-1.5 text-[12.5px] text-ink-3">
+                <p className="mt-0.5 flex flex-wrap gap-x-1.5 text-meta text-ink-3">
                   <span>{sh.type === "app" ? t("App") : t("File")}</span>
                   <span aria-hidden>·</span>
                   <span>{sh.lastUsedAt ? t("Used {{when}}", { when: ago(sh.lastUsedAt) }) : t("Not used yet")}</span>

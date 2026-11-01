@@ -42,7 +42,7 @@ export function IdeaList({ ideas }: { ideas: Idea[] }) {
           <button
             type="button"
             onClick={() => open(idea.prompt)}
-            className="group/idea flex w-full items-center gap-2 rounded-control px-2.5 py-2 text-left text-[13.5px] leading-5 text-ink-2 transition-colors duration-[160ms] hover:bg-well hover:text-ink"
+            className="group/idea flex w-full items-center gap-2 rounded-control px-2.5 py-2 text-left text-row leading-5 text-ink-2 transition-colors duration-[160ms] hover:bg-well hover:text-ink"
           >
             <span className="min-w-0 flex-1">{idea.title}</span>
             <ArrowUpRight size={13} className="shrink-0 text-ink-3 opacity-0 transition-opacity duration-[160ms] group-hover/idea:opacity-100" />

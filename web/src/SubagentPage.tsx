@@ -66,13 +66,13 @@ export function SubagentPage({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="shrink-0 px-4 pt-3 wide:px-7">
-        <Link {...back} className="mb-1.5 inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink">
+        <Link {...back} className="mb-1.5 inline-flex items-center gap-1 text-small text-ink-2 hover:text-ink">
           <ChevronLeft size={14} /> {t("Back to the lead")}
         </Link>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h2 className="text-[20px] leading-7 font-medium tracking-[-0.015em]">{sa.name}</h2>
+          <h2 className="text-heading leading-7 font-medium tracking-[-0.015em]">{sa.name}</h2>
           <Status look={busy ? runLook(doing ?? started) : finishedLook(sa.status)} />
-          <span className="font-mono text-[12px] text-ink-3" title={sa.model}>
+          <span className="font-mono text-label text-ink-3" title={sa.model}>
             {shortModel(sa.model)}
           </span>
           <span className="flex-1" />
@@ -80,7 +80,7 @@ export function SubagentPage({
             type="button"
             aria-expanded={brief}
             onClick={() => setBrief((v) => !v)}
-            className="inline-flex h-8 items-center gap-1 rounded-control px-2 text-[13px] text-ink-2 hover:bg-well hover:text-ink"
+            className="inline-flex h-8 items-center gap-1 rounded-control px-2 text-small text-ink-2 hover:bg-well hover:text-ink"
           >
             <ChevronRight size={13} className={`transition-transform duration-[160ms] ${brief ? "rotate-90" : ""}`} />{t("Brief")}
           </button>
@@ -91,7 +91,7 @@ export function SubagentPage({
           ) : null}
         </div>
         {brief ? (
-          <div className="rise mt-2 mb-1 max-h-[40vh] overflow-auto rounded-card bg-well px-4 py-3 text-[13px] leading-[21px]">
+          <div className="rise mt-2 mb-1 max-h-[40vh] overflow-auto rounded-card bg-well px-4 py-3 text-small leading-[21px]">
             <p className="mb-1 text-label-caps text-ink-3 uppercase">{t("Goal")}</p>
             <div className="silo-reply">
               <Md text={sa.goal} />
@@ -118,7 +118,7 @@ export function SubagentPage({
         paging={stream}
         onInspectArtifact={onInspectArtifact}
         onSaveSkill={onSaveSkill}
-        emptyState={<p className="my-auto py-14 text-center text-[13px] text-ink-3">{t("Starting…")}</p>}
+        emptyState={<p className="my-auto py-14 text-center text-small text-ink-3">{t("Starting…")}</p>}
       />
     </div>
   );

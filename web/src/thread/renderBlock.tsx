@@ -176,7 +176,7 @@ export function renderBlock(b: Block, c: BlockCtx): ReactNode {
     return <Reply text={b.text} bounds={b.bounds} streaming={b.streaming} onRetry={b.key === c.lastAssistantKey ? c.retry : undefined} speak={c.speech ? c.botId : undefined} />;
   }
   return (
-    <div role="alert" className="flex items-start gap-2 rounded-control bg-vermilion-pale px-3 py-2.5 text-[13px] text-vermilion">
+    <div role="alert" className="flex items-start gap-2 rounded-control bg-vermilion-pale px-3 py-2.5 text-small text-vermilion">
       <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-vermilion" />
       <span className="min-w-0 break-words">{b.text}</span>
     </div>

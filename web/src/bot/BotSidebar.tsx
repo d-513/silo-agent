@@ -189,7 +189,7 @@ function HeadLine({ bot }: { bot: Bot }) {
   return (
     <span className="flex min-w-0 items-center gap-1.5">
       <Status look={look} className="shrink-0" />
-      {where ? <span className="min-w-0 truncate text-[12px] leading-4 text-ink-3">{`· ${where}`}</span> : null}
+      {where ? <span className="min-w-0 truncate text-label leading-4 text-ink-3">{`· ${where}`}</span> : null}
     </span>
   );
 }
@@ -239,7 +239,7 @@ function HomeCard({
               <MessageCircle size={14} strokeWidth={2.25} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13.5px] leading-5 font-medium text-ink">{t("Main chat")}</span>
+              <span className="block truncate text-row leading-5 font-medium text-ink">{t("Main chat")}</span>
               <MainLine at={main.updatedAt} doing={mainDoing} onCall={onCallHere} />
             </span>
           </Link>
@@ -260,8 +260,8 @@ function HomeCard({
           <LayoutGrid size={14} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13.5px] leading-5 font-medium text-ink">{t("Dashboard")}</span>
-          <span className="flex h-[18px] items-center text-[12.5px] leading-[18px] text-ink-3">
+          <span className="block truncate text-row leading-5 font-medium text-ink">{t("Dashboard")}</span>
+          <span className="flex h-[18px] items-center text-meta leading-[18px] text-ink-3">
             <Digest needs={needs} asks={asks} fresh={fresh} curating={curating} />
           </span>
         </span>
@@ -275,14 +275,14 @@ function HomeCard({
 function MainLine({ at, doing, onCall }: { at: string; doing?: Doing; onCall: boolean }) {
   const now = doing ?? (onCall ? { ...started, state: "on_call" } : undefined);
   if (now) return <DoingLine look={runLook(now)} step={progress(doing as BotActivity | undefined)} className="h-[18px]" />;
-  return <span className="block truncate text-[12.5px] leading-[18px] text-ink-3">{at ? t("Last active {{when}}", { when: ago(at) }) : "\u00a0"}</span>;
+  return <span className="block truncate text-meta leading-[18px] text-ink-3">{at ? t("Last active {{when}}", { when: ago(at) }) : "\u00a0"}</span>;
 }
 
 // CallButton rings the Bot in the main chat. It carries the call: Calling…
 // while it connects, then the call's clock, which leads back to it.
 function CallButton({ call, onCall }: { call: Call; onCall: () => void }) {
   const s = call.live ? call.snap : null;
-  const base = `flex h-8 shrink-0 items-center gap-1.5 rounded-control px-2.5 text-[12.5px] font-medium ${pressClass}`;
+  const base = `flex h-8 shrink-0 items-center gap-1.5 rounded-control px-2.5 text-meta font-medium ${pressClass}`;
   if (s?.state === "connecting") {
     return (
       <button type="button" onClick={onCall} className={`${base} bg-well text-ink-2`}>
@@ -322,7 +322,7 @@ function CallButton({ call, onCall }: { call: Call; onCall: () => void }) {
 function SideChatsHead({ onNewChat }: { onNewChat: () => void }) {
   return (
     <div className="mt-4 flex h-8 items-center gap-2 pr-2 pl-5 in-data-drawer:h-10">
-      <h2 className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink-2">{t("Side chats")}</h2>
+      <h2 className="min-w-0 flex-1 truncate text-meta font-medium text-ink-2">{t("Side chats")}</h2>
       <Tip content={t("New side chat")}>
         <button
           type="button"
@@ -343,7 +343,7 @@ function People({ people }: { people: Bot["people"] }) {
   return (
     <Tip
       content={
-        <ul className="space-y-0.5 text-[12.5px]">
+        <ul className="space-y-0.5 text-meta">
           {people.map((p) => (
             <li key={p.userId}>
               {p.email} · {p.role === "manage" ? t("Can manage") : t("Can use")}
@@ -356,7 +356,7 @@ function People({ people }: { people: Bot["people"] }) {
         {people.slice(0, 3).map((p) => (
           <Initials key={p.userId} email={p.email} size={20} />
         ))}
-        {people.length > 3 ? <span className="pl-2 text-[11px] text-ink-3">{`+${people.length - 3}`}</span> : null}
+        {people.length > 3 ? <span className="pl-2 text-micro text-ink-3">{`+${people.length - 3}`}</span> : null}
       </span>
     </Tip>
   );
@@ -480,7 +480,7 @@ function ChatRow({
       <ActiveBar on={on} />
       {editing ? (
         <div className="px-1">
-          <ChatTitleInput rename={rename} cid={chat.id} className={`${inputClass} h-8 px-2 text-[13.5px]`} />
+          <ChatTitleInput rename={rename} cid={chat.id} className={`${inputClass} h-8 px-2 text-row`} />
         </div>
       ) : (
         <Link
@@ -495,7 +495,7 @@ function ChatRow({
         >
           {team ? chat.author ? <Initials email={chat.author} size={18} /> : <BotGlyph size={14} className="shrink-0 text-ink-3" aria-label={t("The Bot's own")} /> : null}
           <span
-            className={`min-w-0 flex-1 truncate text-[13.5px] leading-5 transition-colors duration-[160ms] ease-quiet ${
+            className={`min-w-0 flex-1 truncate text-row leading-5 transition-colors duration-[160ms] ease-quiet ${
               on ? "text-ink" : "text-ink-2 group-hover:text-ink"
             }`}
           >

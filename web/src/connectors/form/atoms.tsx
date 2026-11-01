@@ -37,17 +37,17 @@ export function ConnectorMark({
 
 export function McpChip({ transport }: { transport?: string }) {
   const label = transport === "builtin" ? t("Built-in") : "MCP";
-  return <span className="rounded-sm bg-ink-2 px-1.5 py-0.5 text-[11px] font-medium text-canvas">{label}</span>;
+  return <span className="rounded-sm bg-ink-2 px-1.5 py-0.5 text-micro font-medium text-canvas">{label}</span>;
 }
 
 export function CustomChip() {
-  return <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-3">{t("Custom")}</span>;
+  return <span className="rounded-sm bg-well px-1.5 py-0.5 text-micro font-medium text-ink-3">{t("Custom")}</span>;
 }
 
 export function CategoryChip({ label }: { label: string }) {
   if (!label) return null;
   return (
-    <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-sm bg-well px-2 py-0.5 text-[11px] font-medium text-ink-3">
+    <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-sm bg-well px-2 py-0.5 text-micro font-medium text-ink-3">
       {label}
     </span>
   );

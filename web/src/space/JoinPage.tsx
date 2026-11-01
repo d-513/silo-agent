@@ -31,7 +31,7 @@ export function JoinPage() {
   if (info.error) {
     return (
       <AuthCard title={t("Something went wrong")}>
-        <p className="mb-6 text-[13.5px] leading-[21px] text-ink-2">{fail(info.error)}</p>
+        <p className="mb-6 text-row leading-[21px] text-ink-2">{fail(info.error)}</p>
       </AuthCard>
     );
   }
@@ -40,7 +40,7 @@ export function JoinPage() {
   if (inv.state !== "ok") {
     return (
       <AuthCard title={inv.state === "used" ? t("This link has been used") : t("This link has expired")}>
-        <p className="mb-6 text-[13.5px] leading-[21px] text-ink-2">{t("Invite links work once, for 7 days. Ask whoever sent it for a new one.")}</p>
+        <p className="mb-6 text-row leading-[21px] text-ink-2">{t("Invite links work once, for 7 days. Ask whoever sent it for a new one.")}</p>
         <Link to="/" className={btnClass("secondary", "w-full justify-center")}>
           {session ? t("Go to Silo") : t("Go to sign in")}
         </Link>
@@ -77,7 +77,7 @@ export function JoinPage() {
   const head = (
     <div className="mb-5 flex items-center gap-3">
       <SpaceMark space={{ name: inv.spaceName, mark: inv.spaceMark }} size={40} />
-      <p className="text-[13.5px] leading-[21px] text-ink-2">
+      <p className="text-row leading-[21px] text-ink-2">
         <Trans
           i18nKey="<b>{{who}}</b> invited you to <b>{{space}}</b> as {{role}}."
           values={{ who: inv.invitedBy, space: inv.spaceName, role: roleWord(inv.role) }}
@@ -107,7 +107,7 @@ export function JoinPage() {
     return (
       <AuthCard title={t("Join {{space}}", { space: inv.spaceName })}>
         {head}
-        <p className="mb-6 text-[13.5px] leading-[21px] text-ink-2">{t("Sign in to join. No account yet? Ask the instance admin for one, then open this link again.")}</p>
+        <p className="mb-6 text-row leading-[21px] text-ink-2">{t("Sign in to join. No account yet? Ask the instance admin for one, then open this link again.")}</p>
         <Link to="/signin" search={{ from: `/join/${token}` }} className={btnClass("primary", "w-full justify-center")}>
           {t("Sign in")}
         </Link>
@@ -134,7 +134,7 @@ export function JoinPage() {
         <Btn kind="primary" className="w-full justify-center" type="submit" disabled={busy}>
           {busy ? t("Creating…") : t("Create account and join")}
         </Btn>
-        <p className="mt-4 text-center text-[12.5px] text-ink-3">
+        <p className="mt-4 text-center text-meta text-ink-3">
           <Link to="/signin" search={{ from: `/join/${token}` }} className="text-cobalt hover:text-cobalt-deep">
             {t("I have an account")}
           </Link>

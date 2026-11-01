@@ -41,7 +41,7 @@ export function ModelMapPage() {
           onJob={(j) => void navigate({ to: "/admin/settings/models/$page", params: { page: j.page } })}
           onPick={(id) => void navigate({ to: "/admin/settings/models/$page", params: { page: "providers" }, search: { provider: id } })}
         />
-        <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-1.5 pt-4 text-[12px] text-ink-3 shadow-[inset_0_1px_0_var(--color-line)]">
+        <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-1.5 pt-4 text-label text-ink-3 shadow-[inset_0_1px_0_var(--color-line)]">
           <span className="flex items-center gap-2">
             <span aria-hidden className="h-px w-5 bg-ink-3" />
             {t("Set for this job")}
@@ -64,7 +64,7 @@ function Fact({ label, value, warn }: { label: string; value: number; warn?: boo
   return (
     <div className="flex flex-col items-end gap-1.5">
       <dt className="text-label-caps text-ink-3 uppercase">{label}</dt>
-      <dd className={`font-mono text-[20px] leading-6 tabular-nums ${warn ? "text-vermilion" : "text-ink"}`}>{value}</dd>
+      <dd className={`font-mono text-heading leading-6 tabular-nums ${warn ? "text-vermilion" : "text-ink"}`}>{value}</dd>
     </div>
   );
 }

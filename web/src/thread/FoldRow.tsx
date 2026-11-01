@@ -79,7 +79,7 @@ export function FoldRow({
         aria-expanded={has ? open : undefined}
         disabled={!has}
         onClick={() => setOpen((v) => !v)}
-        className="group/row flex h-8 w-full min-w-0 items-center gap-2 rounded-control px-2 text-left text-[13px] transition-colors duration-[160ms] ease-quiet enabled:hover:bg-well disabled:cursor-default"
+        className="group/row flex h-8 w-full min-w-0 items-center gap-2 rounded-control px-2 text-left text-small transition-colors duration-[160ms] ease-quiet enabled:hover:bg-well disabled:cursor-default"
       >
         {lead}
         {title}

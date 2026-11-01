@@ -65,7 +65,7 @@ export function SpacePeople() {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-title text-ink">{t("People")}</h2>
-          <p className="mt-1 max-w-[560px] text-[13.5px] leading-[21px] text-ink-2">
+          <p className="mt-1 max-w-[560px] text-row leading-[21px] text-ink-2">
             {t("Everyone here can be given Bots to use. Admins see every Bot in the workspace, but cannot open one they are not on.")}
           </p>
         </div>
@@ -82,7 +82,7 @@ export function SpacePeople() {
         <SkeletonRows rows={2} height={56} />
       ) : solo ? (
         <div className="rounded-card bg-surface p-6 shadow-card">
-          <p className="text-[13.5px] leading-[21px] text-ink-2">
+          <p className="text-row leading-[21px] text-ink-2">
             {t("Only you are in {{name}}. Invite people to share its Bots and what they use, without sharing your own.", { name: space?.name ?? "" })}
           </p>
         </div>
@@ -95,14 +95,14 @@ export function SpacePeople() {
                 <Initials email={p.email} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="truncate text-[13.5px] font-medium text-ink">{p.email}</span>
-                    {p.you ? <span className="text-[12px] text-ink-3">{t("you")}</span> : null}
-                    {p.disabled ? <span className="rounded-sm bg-vermilion-pale px-1.5 py-0.5 text-[11px] font-medium text-vermilion">{t("Disabled")}</span> : null}
+                    <span className="truncate text-row font-medium text-ink">{p.email}</span>
+                    {p.you ? <span className="text-label text-ink-3">{t("you")}</span> : null}
+                    {p.disabled ? <span className="rounded-sm bg-vermilion-pale px-1.5 py-0.5 text-micro font-medium text-vermilion">{t("Disabled")}</span> : null}
                   </div>
-                  <div className="text-[12px] text-ink-3">{t("On {{count}} Bots", { count: p.bots })}</div>
+                  <div className="text-label text-ink-3">{t("On {{count}} Bots", { count: p.bots })}</div>
                 </div>
                 {p.role === "owner" || !editable ? (
-                  <span className="rounded-sm bg-well px-2 py-1 text-[12px] font-medium text-ink-2">{p.role === "owner" ? t("Owner", { context: "role" }) : roleWord(p.role)}</span>
+                  <span className="rounded-sm bg-well px-2 py-1 text-label font-medium text-ink-2">{p.role === "owner" ? t("Owner", { context: "role" }) : roleWord(p.role)}</span>
                 ) : (
                   <ChipRadio
                     size="sm"
@@ -120,7 +120,7 @@ export function SpacePeople() {
                   <Link
                     to="/w/$spaceId/people/$userId"
                     params={{ spaceId, userId: p.userId }}
-                    className="h-8 rounded-control px-2.5 text-[12.5px] font-medium leading-8 text-ink-2 transition-colors hover:bg-well hover:text-ink"
+                    className="h-8 rounded-control px-2.5 text-meta font-medium leading-8 text-ink-2 transition-colors hover:bg-well hover:text-ink"
                   >
                     {p.you ? t("Leave") : t("Remove")}
                   </Link>
@@ -132,12 +132,12 @@ export function SpacePeople() {
       )}
       {admin && invites.length > 0 ? (
         <section className="mt-8">
-          <h3 className="mb-2 text-[13.5px] font-medium text-ink">{t("Open invite links")}</h3>
+          <h3 className="mb-2 text-row font-medium text-ink">{t("Open invite links")}</h3>
           <ul className="space-y-2">
             {invites.map((inv) => (
               <li key={inv.id} className="flex items-center gap-3 rounded-card bg-well px-4 py-2.5">
                 <Link2 size={15} className="text-ink-3" />
-                <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
+                <span className="min-w-0 flex-1 truncate text-small text-ink">
                   {t("{{role}} · made by {{who}} · until {{date}}", { role: roleWord(inv.role), who: inv.createdBy, date: day(inv.expiresAt) })}
                 </span>
                 <ArmedButton
@@ -195,11 +195,11 @@ export function SpaceInvitePage() {
       <PageHead title={t("Invite to {{name}}", { name: space?.name ?? "" })} onBack={back} />
       {url ? (
         <div className="rounded-card bg-surface p-5 shadow-card">
-          <p className="mb-3 text-[13.5px] leading-[21px] text-ink-2">
+          <p className="mb-3 text-row leading-[21px] text-ink-2">
             {t("Send this link to the person you are inviting. It works once, for 7 days, and is shown only now.")}
           </p>
           <div className="flex items-center gap-2 rounded-control bg-well px-3 py-2">
-            <code className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-ink">{url}</code>
+            <code className="min-w-0 flex-1 truncate font-mono text-meta text-ink">{url}</code>
             <CopyButton text={url} label />
           </div>
           <div className="mt-5 flex gap-2">
@@ -213,7 +213,7 @@ export function SpaceInvitePage() {
         </div>
       ) : (
         <div className="rounded-card bg-surface p-5 shadow-card">
-          <p className="mb-2 text-[12px] font-medium text-ink-3">{t("They join as")}</p>
+          <p className="mb-2 text-label font-medium text-ink-3">{t("They join as")}</p>
           <ChipRadio
             label={t("Role")}
             value={pick}
@@ -224,7 +224,7 @@ export function SpaceInvitePage() {
               { value: "guest", label: roleWord("guest") },
             ]}
           />
-          <p className="mt-2 text-[12.5px] leading-[19px] text-ink-2">{hint[pick]}</p>
+          <p className="mt-2 text-meta leading-[19px] text-ink-2">{hint[pick]}</p>
           {err ? <ErrorWell className="mt-4">{err}</ErrorWell> : null}
           <div className="mt-5">
             <Btn kind="primary" onClick={() => void make()} disabled={busy}>
@@ -253,7 +253,7 @@ function HandoffRow({ lm, self, value, onChange }: { lm: LastManaged; self: bool
     <li className="rounded-card bg-surface p-4 shadow-card">
       <div className="mb-3 flex items-center gap-3">
         <Crest index={lm.crest} size={28} />
-        <span className="text-[13.5px] font-medium text-ink">{lm.name}</span>
+        <span className="text-row font-medium text-ink">{lm.name}</span>
       </div>
       <ChipRadio size="sm" label={lm.name} value={value.action} onChange={(action) => onChange({ ...value, action, userId: action === "manager" ? (value.userId || heirs[0]?.userId) ?? "" : "" })} options={options} />
       {value.action === "manager" ? (
@@ -264,7 +264,7 @@ function HandoffRow({ lm, self, value, onChange }: { lm: LastManaged; self: bool
               type="button"
               aria-pressed={value.userId === p.userId}
               onClick={() => onChange({ ...value, userId: p.userId })}
-              className={`flex h-8 items-center gap-2 rounded-control px-2.5 text-[12.5px] ${
+              className={`flex h-8 items-center gap-2 rounded-control px-2.5 text-meta ${
                 value.userId === p.userId ? "bg-surface text-ink shadow-[inset_0_0_0_1px_var(--color-cobalt)]" : "bg-well text-ink-2 hover:text-ink"
               }`}
             >
@@ -274,7 +274,7 @@ function HandoffRow({ lm, self, value, onChange }: { lm: LastManaged; self: bool
           ))}
         </div>
       ) : null}
-      {value.action === "delete" ? <p className="mt-2 text-[12.5px] text-vermilion">{t("Its machine, files, memories and chats are deleted.")}</p> : null}
+      {value.action === "delete" ? <p className="mt-2 text-meta text-vermilion">{t("Its machine, files, memories and chats are deleted.")}</p> : null}
     </li>
   );
 }
@@ -333,8 +333,8 @@ export function SpaceRemovePage() {
         <>
           {plan.lastManaged.length > 0 ? (
             <section className="mb-6">
-              <h3 className="mb-1 text-[13.5px] font-medium text-ink">{t("Bots nobody else manages")}</h3>
-              <p className="mb-3 text-[12.5px] text-ink-2">{t("A Bot always has a manager. Choose what happens to each.")}</p>
+              <h3 className="mb-1 text-row font-medium text-ink">{t("Bots nobody else manages")}</h3>
+              <p className="mb-3 text-meta text-ink-2">{t("A Bot always has a manager. Choose what happens to each.")}</p>
               <ul className="space-y-2.5">
                 {plan.lastManaged.map((lm) => (
                   <HandoffRow key={lm.botId} lm={lm} self={self} value={choiceOf(lm)} onChange={(h) => setChoices((c) => ({ ...c, [lm.botId]: h }))} />
@@ -344,20 +344,20 @@ export function SpaceRemovePage() {
           ) : null}
           {personal.length > 0 ? (
             <section className="mb-6">
-              <h3 className="mb-1 text-[13.5px] font-medium text-ink">{t("Deleted with them")}</h3>
-              <p className="mb-2 text-[12.5px] text-ink-2">{t("Personal sign-ins carry their account, so they go too.")}</p>
+              <h3 className="mb-1 text-row font-medium text-ink">{t("Deleted with them")}</h3>
+              <p className="mb-2 text-meta text-ink-2">{t("Personal sign-ins carry their account, so they go too.")}</p>
               <LentList items={personal} />
             </section>
           ) : null}
           {shared.length > 0 ? (
             <section className="mb-6">
-              <h3 className="mb-1 text-[13.5px] font-medium text-ink">{t("Signed out")}</h3>
-              <p className="mb-2 text-[12.5px] text-ink-2">{t("Shared sign-ins stay in the workspace and wait for someone to sign them in again.")}</p>
+              <h3 className="mb-1 text-row font-medium text-ink">{t("Signed out")}</h3>
+              <p className="mb-2 text-meta text-ink-2">{t("Shared sign-ins stay in the workspace and wait for someone to sign them in again.")}</p>
               <LentList items={shared} />
             </section>
           ) : null}
           {plan.lastManaged.length === 0 && plan.lent.length === 0 ? (
-            <p className="mb-6 text-[13.5px] text-ink-2">{self ? t("You will lose access to the workspace and its Bots.") : t("They will lose access to the workspace and its Bots. Their chats stay with the Bots.")}</p>
+            <p className="mb-6 text-row text-ink-2">{self ? t("You will lose access to the workspace and its Bots.") : t("They will lose access to the workspace and its Bots. Their chats stay with the Bots.")}</p>
           ) : null}
           {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
           <ArmedButton kind="primary" armedLabel={t("Click again to confirm")} onConfirm={() => void remove()}>
@@ -373,10 +373,10 @@ function LentList({ items }: { items: { kind: string; id: string; name: string; 
   return (
     <ul className="space-y-1.5">
       {items.map((l) => (
-        <li key={l.id} className="flex items-center gap-2 rounded-control bg-well px-3 py-2 text-[13px]">
+        <li key={l.id} className="flex items-center gap-2 rounded-control bg-well px-3 py-2 text-small">
           <span className="font-medium text-ink">{l.name}</span>
           <span className="text-ink-3">{l.kind === "drive" ? t("Drive") : t("Connector")}</span>
-          {l.bots.length + l.botsHidden > 0 ? <span className="ml-auto truncate text-[12px] text-ink-3">{t("in {{count}} Bots", { count: l.bots.length + l.botsHidden })}</span> : null}
+          {l.bots.length + l.botsHidden > 0 ? <span className="ml-auto truncate text-label text-ink-3">{t("in {{count}} Bots", { count: l.bots.length + l.botsHidden })}</span> : null}
         </li>
       ))}
     </ul>

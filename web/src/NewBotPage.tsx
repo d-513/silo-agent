@@ -82,12 +82,12 @@ export function NewBotPage() {
       <form onSubmit={create}>
         <div className="mb-5 flex flex-col items-center gap-4">
           <Crest index={crest} size={88} />
-          <span className="text-[12px] text-ink-3">{t("Pick a crest for this machine")}</span>
+          <span className="text-label text-ink-3">{t("Pick a crest for this machine")}</span>
         </div>
         <div className="mb-6">
           <CrestPicker value={crest} onChange={setCrest} />
         </div>
-        <label htmlFor="bot-name" className="mb-1.5 block text-[12px] font-medium text-ink-3">
+        <label htmlFor="bot-name" className="mb-1.5 block text-label font-medium text-ink-3">
           {t("Name")}
         </label>
         <input
@@ -98,7 +98,7 @@ export function NewBotPage() {
           onChange={(e) => setName(e.target.value)}
           autoFocus
         />
-        <label htmlFor="bot-desc" className="mb-1.5 block text-[12px] font-medium text-ink-3">
+        <label htmlFor="bot-desc" className="mb-1.5 block text-label font-medium text-ink-3">
           {t("Description")}
         </label>
         <textarea
@@ -108,7 +108,7 @@ export function NewBotPage() {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-        <p className="mb-4 text-[13px] text-ink-2">{t("A Bot is its own machine. It does not share files with the others.")}</p>
+        <p className="mb-4 text-small text-ink-2">{t("A Bot is its own machine. It does not share files with the others.")}</p>
         <ToggleRow
           className="mb-6 rounded-control bg-well px-3.5 py-3"
           label={t("Start with a short interview")}
@@ -118,8 +118,8 @@ export function NewBotPage() {
         />
         {conns.length + drives.length + skills.length > 0 ? (
           <section className="mb-6">
-            <h2 className="mb-1 text-[13.5px] font-medium text-ink">{t("What it can use")}</h2>
-            <p className="mb-3 text-[12.5px] text-ink-2">{t("The workspace's connectors, drives and skills. Untick what this Bot should not have; you can change it later in Customize.")}</p>
+            <h2 className="mb-1 text-row font-medium text-ink">{t("What it can use")}</h2>
+            <p className="mb-3 text-meta text-ink-2">{t("The workspace's connectors, drives and skills. Untick what this Bot should not have; you can change it later in Customize.")}</p>
             <div className="flex flex-wrap gap-2">
               {conns.map((c) => (
                 <Pick key={c.id} on={takes(`c:${c.id}`, blocked(c.lentBy, c.shared))} why={blocked(c.lentBy, c.shared)} onClick={() => toggle(`c:${c.id}`)}>
@@ -141,8 +141,8 @@ export function NewBotPage() {
         ) : null}
         {people.length > 0 ? (
           <section className="mb-6">
-            <h2 className="mb-1 text-[13.5px] font-medium text-ink">{t("Who can use it")}</h2>
-            <p className="mb-3 text-[12.5px] text-ink-2">{t("Just you, unless you pick people. Everyone on a Bot shares what it holds: its memory, files and connections.")}</p>
+            <h2 className="mb-1 text-row font-medium text-ink">{t("Who can use it")}</h2>
+            <p className="mb-3 text-meta text-ink-2">{t("Just you, unless you pick people. Everyone on a Bot shares what it holds: its memory, files and connections.")}</p>
             <div className="flex flex-wrap gap-2">
               {people.map((p) => {
                 const on = users.includes(p.userId);
@@ -157,7 +157,7 @@ export function NewBotPage() {
           </section>
         ) : null}
         {err && (
-          <p role="alert" className="mb-3 text-[13px] text-vermilion">
+          <p role="alert" className="mb-3 text-small text-vermilion">
             {err}
           </p>
         )}
@@ -183,7 +183,7 @@ function Pick({ on, why, onClick, children }: { on: boolean; why: string; onClic
       aria-disabled={!!why || undefined}
       title={why || undefined}
       onClick={() => !why && onClick()}
-      className={`flex h-8 items-center gap-1.5 rounded-control px-2.5 text-[12.5px] font-medium transition-[background-color,box-shadow] duration-[160ms] ease-quiet ${
+      className={`flex h-8 items-center gap-1.5 rounded-control px-2.5 text-meta font-medium transition-[background-color,box-shadow] duration-[160ms] ease-quiet ${
         why ? "cursor-default bg-well text-ink-3 line-through" : on ? "bg-surface text-ink shadow-[inset_0_0_0_1px_var(--color-cobalt)]" : "bg-well text-ink-2 hover:text-ink"
       }`}
     >

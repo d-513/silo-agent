@@ -42,7 +42,7 @@ export function SideLink({ to, botId, on, icon: Icon, label, badge = 0 }: SidePr
       to={to}
       params={{ botId }}
       data-tab-on={on || undefined}
-      className={`relative flex h-9 items-center gap-2.5 rounded-control px-3 text-[13.5px] in-data-drawer:h-10 font-medium transition-[background-color,color] duration-[160ms] ease-quiet outline-offset-[-2px] ${
+      className={`relative flex h-9 items-center gap-2.5 rounded-control px-3 text-row in-data-drawer:h-10 font-medium transition-[background-color,color] duration-[160ms] ease-quiet outline-offset-[-2px] ${
         on ? "bg-surface text-ink" : "text-ink-2 hover:bg-pressed hover:text-ink"
       }`}
     >
@@ -62,7 +62,7 @@ export function UnreadBadge({ n, dot = false }: { n: number; dot?: boolean }) {
     return <span aria-label={label} title={label} className="absolute top-2 right-2 h-2 w-2 rounded-full bg-cobalt ring-2 ring-well" />;
   }
   return (
-    <span aria-label={label} className="rise min-w-[18px] shrink-0 rounded-full bg-cobalt px-1.5 text-center font-mono text-[11px] leading-[18px] text-on-accent">
+    <span aria-label={label} className="rise min-w-[18px] shrink-0 rounded-full bg-cobalt px-1.5 text-center font-mono text-micro leading-[18px] text-on-accent">
       {n > 99 ? "99+" : n}
     </span>
   );

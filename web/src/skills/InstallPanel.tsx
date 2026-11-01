@@ -86,7 +86,7 @@ export function InstallPanel({ scope, spaceId = "", onDone }: { scope: "library"
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="text-card-title leading-5 text-ink">{scope === "library" ? t("Add to the library") : t("Install a skill")}</h3>
-          <p className="mt-0.5 text-[12.5px] leading-[18px] text-ink-2">
+          <p className="mt-0.5 text-meta leading-[18px] text-ink-2">
             {over
               ? t("Drop the zip to install it.")
               : scope === "library"
@@ -120,7 +120,7 @@ export function InstallPanel({ scope, spaceId = "", onDone }: { scope: "library"
           </form>
           {err ? <ErrorWell className="mt-3">{err}</ErrorWell> : null}
           {note ? (
-            <p role="status" className="mt-3 flex items-center gap-1.5 text-[13px] font-medium text-emerald">
+            <p role="status" className="mt-3 flex items-center gap-1.5 text-small font-medium text-emerald">
               <Check size={14} className="shrink-0" />
               {note}
             </p>

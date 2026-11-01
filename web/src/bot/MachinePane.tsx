@@ -115,7 +115,7 @@ function PauseSwitch({ bot, onError }: { bot: Bot; onError?: (s: string) => void
       content={
         <div className="max-w-[280px]">
           <TipTitle aside={on ? t("Paused") : t("Running")}>{t("Pause the Bot on the desktop")}</TipTitle>
-          <p className="mt-1 text-[12px] leading-[17px] text-ink-2">
+          <p className="mt-1 text-label leading-[17px] text-ink-2">
             {t("While paused, the Bot cannot click, type, press keys, scroll or use Chromium here. It is told you are in control. It can still look.")}
           </p>
           <TipAction>{on ? t("Click to hand the desktop back") : t("Click to take over")}</TipAction>
@@ -167,12 +167,12 @@ export function MachinePane({
   }
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel bg-hatch">
-      <div className="flex h-9 shrink-0 items-center gap-2 px-3 text-[13px] text-on-hatch/80">
+      <div className="flex h-9 shrink-0 items-center gap-2 px-3 text-small text-on-hatch/80">
         <Crest index={bot.crest} size={20} />
         <span className="min-w-0 truncate">{bot.name}</span>
-        <span className="font-mono text-[12px] text-on-hatch/60">{label}</span>
+        <span className="font-mono text-label text-on-hatch/60">{label}</span>
         <Lamp status={machineLook(bot.machine).lamp} />
-        <span className="ml-auto font-mono text-[12px] text-on-hatch/80">{machineLook(bot.machine).word}</span>
+        <span className="ml-auto font-mono text-label text-on-hatch/80">{machineLook(bot.machine).word}</span>
         {kind === "desktop" ? <PauseSwitch bot={bot} onError={onError} /> : null}
         {actions ? <span className="-mr-1.5 flex shrink-0 items-center gap-0.5">{actions}</span> : null}
       </div>

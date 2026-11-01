@@ -28,7 +28,7 @@ const categorySuggestions = [
 function AdvancedSettings({ children }: { children: ReactNode }) {
   return (
     <details className="group mb-6">
-      <summary className="flex cursor-pointer items-center gap-2 rounded-sm bg-well px-3 py-2 text-[12px] font-medium tracking-wide text-ink-3">
+      <summary className="flex cursor-pointer items-center gap-2 rounded-sm bg-well px-3 py-2 text-label font-medium tracking-wide text-ink-3">
         <ChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />{t("Advanced settings")}
       </summary>
       <div className="mt-4">{children}</div>
@@ -39,7 +39,7 @@ function AdvancedSettings({ children }: { children: ReactNode }) {
 function PromptField({ value, set }: { value: ConnectorDraft; set: Edit }) {
   return (
     <>
-      <label className="mb-1 block text-[12px] font-medium text-ink-3">{t("Prompt")}</label>
+      <label className="mb-1 block text-label font-medium text-ink-3">{t("Prompt")}</label>
       <p className="mb-2 text-ink-2">{t("Extra instructions added to the system prompt while this connector is authorized and its tools are ready.")}</p>
       <textarea
         className="mb-3 min-h-24 w-full rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3 py-2"
@@ -61,7 +61,7 @@ function ImageField({ value, onChange }: { value: ConnectorDraft; onChange: (nex
   }
   return (
     <>
-      <label className="mb-1 block text-[12px] font-medium text-ink-3">{t("Image")}</label>
+      <label className="mb-1 block text-label font-medium text-ink-3">{t("Image")}</label>
       <div className="mb-3 flex items-center gap-3">
         <ConnectorMark id={value.imageId} hasImage={value.hasImage && !value.clearImage} previewUrl={value.previewUrl} />
         <input type="file" accept="image/*" onChange={(e) => void onFile(e.target.files?.[0])} />
@@ -86,7 +86,7 @@ function ImageField({ value, onChange }: { value: ConnectorDraft; onChange: (nex
 function DefaultModeField({ value, set, builtin }: { value: ConnectorDraft; set: Edit; builtin: boolean }) {
   return (
     <>
-      <div className="mb-1 text-[12px] font-medium text-ink-3">{t("Default for tools")}</div>
+      <div className="mb-1 text-label font-medium text-ink-3">{t("Default for tools")}</div>
       <p className="mb-2 text-ink-2">
         {builtin
           ? t("Each action already has its own default (reading allowed, sending asks); this covers anything else. Rules can still override.")
@@ -124,7 +124,7 @@ function CatalogHeader({ value, guide }: { value: ConnectorDraft; guide?: string
       {guide && (
         <div className="mb-5 rounded-card border-l-4 border-cobalt bg-well px-4 py-3">
           <p className="mb-2 text-label-caps uppercase text-ink-3">{t("Before you add")}</p>
-          <p className="whitespace-pre-wrap text-[15px] leading-6 text-ink">{guide}</p>
+          <p className="whitespace-pre-wrap text-body-lg leading-6 text-ink">{guide}</p>
         </div>
       )}
     </>
@@ -201,7 +201,7 @@ export function ConnectorFields({
       )}
       <PromptField value={value} set={set} />
       <ImageField value={value} onChange={onChange} />
-      <div className="mb-1 text-[12px] font-medium text-ink-3">{t("Type")}</div>
+      <div className="mb-1 text-label font-medium text-ink-3">{t("Type")}</div>
       <p className="mb-3 text-ink-2">{builtin ? t("Built-in — runs on the Silo server") : "MCP"}</p>
       {!builtin && <TransportFields value={value} set={set} existing={existing} fromCatalog={fromCatalog} allowStdioImage={allowStdioImage} />}
       <DefaultModeField value={value} set={set} builtin={builtin} />

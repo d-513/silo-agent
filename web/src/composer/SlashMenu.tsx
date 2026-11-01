@@ -36,9 +36,9 @@ export function SlashMenu({ items, active, onHover, onPick }: { items: SlashComm
             onClick={() => onPick(c)}
             className={`flex w-full items-baseline gap-2 rounded-sm px-2.5 py-1.5 text-left transition-colors duration-[160ms] ${i === active ? "bg-well text-ink" : "text-ink hover:bg-well"}`}
           >
-            <span className="shrink-0 font-mono text-[13px]">/{c.name}</span>
-            {c.args ? <span className="shrink-0 font-mono text-[12px] text-ink-3">{c.args}</span> : null}
-            <span className="min-w-0 flex-1 truncate text-[12px] text-ink-3">{summaries[c.name] ? t(summaries[c.name]) : c.summary}</span>
+            <span className="shrink-0 font-mono text-small">/{c.name}</span>
+            {c.args ? <span className="shrink-0 font-mono text-label text-ink-3">{c.args}</span> : null}
+            <span className="min-w-0 flex-1 truncate text-label text-ink-3">{summaries[c.name] ? t(summaries[c.name]) : c.summary}</span>
           </button>
         ))}
       </div>

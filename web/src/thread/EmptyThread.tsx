@@ -40,7 +40,7 @@ export function EmptyThread({ botName, botCrest, onSelectPrompt }: { botName?: s
         {botCrest !== undefined ? <Crest index={botCrest} size={56} /> : <MessageCircle size={30} className="text-ink-2" />}
       </div>
       <h2 className="text-card-title leading-5 text-ink">{botName ? botName : t("Silo Bot")}</h2>
-      <p className="mt-1.5 max-w-md text-[12.5px] leading-[18px] text-ink-2">
+      <p className="mt-1.5 max-w-md text-meta leading-[18px] text-ink-2">
         {t("Ready for your prompt. Run code in the container, inspect files, or command the browser and desktop.")}
       </p>
       {onSelectPrompt && (

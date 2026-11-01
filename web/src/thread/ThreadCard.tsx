@@ -30,7 +30,7 @@ export function ThreadCard({ botId, card, asked }: { botId: string; card: Dashbo
         onSubmit={(c, values) => guard(() => ui.submitDashboardCard({ botId, id: c.id, valuesJson: JSON.stringify(values) }))}
         onDismiss={(c, suppressKind) => guard(() => ui.dismissDashboardCard({ botId, id: c.id, suppressKind }))}
       />
-      {err ? <p className="px-1 text-[12px] text-vermilion">{err}</p> : null}
+      {err ? <p className="px-1 text-label text-vermilion">{err}</p> : null}
     </div>
   );
 }

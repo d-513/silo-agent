@@ -86,7 +86,7 @@ function FolderPicker({
     <div>
       <FolderNav rootLabel="workspace" at={cwd} dirs={dirs} err={err} onGo={setCwd} empty={t("No subfolders.")} />
       {drive && (
-        <p className="px-5 pt-3 text-[12.5px] leading-[18px] text-ink-2">
+        <p className="px-5 pt-3 text-meta leading-[18px] text-ink-2">
           {t("This folder is on a drive. Indexing reads every file over the network, so a large folder, or a provider that rate-limits, can be slow. It is re-checked less often than local folders.")}
         </p>
       )}
@@ -97,7 +97,7 @@ function FolderPicker({
         <Btn kind="ghost" onClick={onCancel}>
           {t("Cancel")}
         </Btn>
-        {blocked && <span className="text-[12.5px] text-ink-3">{blocked}</span>}
+        {blocked && <span className="text-meta text-ink-3">{blocked}</span>}
       </div>
     </div>
   );
@@ -121,10 +121,10 @@ function FolderRow({
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[13.5px] break-all">{f.path}</span>
-            {f.drive && <span className="rounded-xs bg-well px-1.5 py-px font-mono text-[11px] text-ink-2">{t("drive")}</span>}
+            <span className="font-mono text-row break-all">{f.path}</span>
+            {f.drive && <span className="rounded-xs bg-well px-1.5 py-px font-mono text-micro text-ink-2">{t("drive")}</span>}
           </p>
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12.5px] text-ink-2">
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-meta text-ink-2">
             {syncing ? (
               <>
                 <Spinner size={12} />
@@ -139,14 +139,14 @@ function FolderRow({
             )}
             {f.status === "error" && f.lastSyncAt && <span className="text-ink-3">{t("last attempt {{when}}", { when: ago(f.lastSyncAt) })}</span>}
           </p>
-          {f.status === "idle" && f.detail && <p className="mt-0.5 text-[12.5px] text-ink-2">{f.detail}</p>}
+          {f.status === "idle" && f.detail && <p className="mt-0.5 text-meta text-ink-2">{f.detail}</p>}
           {f.skipped > 0 && (
-            <button type="button" className="mt-1 text-[12.5px] text-cobalt-deep hover:underline" onClick={() => setOpen(!open)}>
+            <button type="button" className="mt-1 text-meta text-cobalt-deep hover:underline" onClick={() => setOpen(!open)}>
               {t("{{count}} not indexed", { count: f.skipped })} {open ? "▾" : "▸"}
             </button>
           )}
           {open && (
-            <ul className="mt-1.5 space-y-0.5 font-mono text-[12px] text-ink-2">
+            <ul className="mt-1.5 space-y-0.5 font-mono text-label text-ink-2">
               {f.issues.map((i) => (
                 <li key={i.path} className="break-all">
                   {i.path} <span className="text-ink-3">— {i.detail}</span>
@@ -201,11 +201,11 @@ function SearchPanel({ botId, onError }: { botId: string; onError: (s: string) =
       ) : (
         hits.map((h, i) => (
           <div key={`${h.path}:${h.locator}:${i}`} className="px-5 py-3 shadow-[inset_0_-1px_0_var(--color-line)] last:shadow-none">
-            <p className="font-mono text-[12.5px] break-all">
+            <p className="font-mono text-meta break-all">
               {h.path} <span className="text-ink-3">· {h.locator}</span>
             </p>
-            <p className="mt-1 line-clamp-4 text-[13.5px] break-words whitespace-pre-wrap text-ink-2">{h.snippet}</p>
-            <p className="mt-0.5 font-mono text-[11px] text-ink-3">{t("indexed {{when}}", { when: day(h.indexedAt) })}</p>
+            <p className="mt-1 line-clamp-4 text-row break-words whitespace-pre-wrap text-ink-2">{h.snippet}</p>
+            <p className="mt-0.5 font-mono text-micro text-ink-3">{t("indexed {{when}}", { when: day(h.indexedAt) })}</p>
           </div>
         ))
       )}
@@ -271,7 +271,7 @@ export function KnowledgePane({ bot, onError, onStart }: { bot: Bot; onError: (s
       <p className="mb-6 text-ink-2">
         {t("Pick folders of documents and the Bot can search them by meaning and by exact words, with the file and page cited. Files stay on the Bot's machine; only their text and an embedding are kept in the control plane.")}
       </p>
-      {!enabled && <p className="mb-4 text-[13px] text-vermilion">{t("The operator turned knowledge off (knowledge.enabled), so nothing new is indexed and the Bot has no search_docs tool.")}</p>}
+      {!enabled && <p className="mb-4 text-small text-vermilion">{t("The operator turned knowledge off (knowledge.enabled), so nothing new is indexed and the Bot has no search_docs tool.")}</p>}
       <Panel
         title={t("Indexed folders")}
         note={t("PDFs, Word and OpenDocument files, HTML, Markdown, and plain text or code. Scanned PDF pages and images (English and Polish) are read with OCR. Changes are picked up every few minutes, sooner when the Bot or you write there.")}

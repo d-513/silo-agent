@@ -24,7 +24,7 @@ export function TransportFields({
 }) {
   return (
     <>
-      <div className="mb-1 text-[12px] font-medium text-ink-3">{t("Transport")}</div>
+      <div className="mb-1 text-label font-medium text-ink-3">{t("Transport")}</div>
       <div className="mb-3">
         <Segmented
           value={value.transport}
@@ -35,7 +35,7 @@ export function TransportFields({
           ]}
         />
       </div>
-      <p className="mb-3 rounded-sm bg-well px-3 py-2 text-[12px] text-ink-3">
+      <p className="mb-3 rounded-sm bg-well px-3 py-2 text-label text-ink-3">
         <Trans
           i18nKey="You can reference operator connector variables as <mono>{{name}}</mono> in the URL, headers, OAuth fields, command, arguments, and env values. Set them under Admin → Settings."
           values={{ name: "${NAME}" }}
@@ -61,7 +61,7 @@ function HttpFields({ value, set, fromCatalog, existing }: { value: ConnectorDra
   return (
     <>
       <TextRow label={t("URL")} mono value={value.httpUrl} onChange={(e) => set("httpUrl", e.target.value)} placeholder={"https://…"} required={!fromCatalog} />
-      <div className="mb-1 text-[12px] font-medium text-ink-3">{t("Auth")}</div>
+      <div className="mb-1 text-label font-medium text-ink-3">{t("Auth")}</div>
       <div className="mb-3">
         <Segmented
           value={value.auth}
@@ -78,7 +78,7 @@ function HttpFields({ value, set, fromCatalog, existing }: { value: ConnectorDra
             <Trans i18nKey="Leave blank when the server registers clients itself. GitHub and similar need a pre-registered OAuth App whose callback is <mono>/oauth/callback</mono> on this Silo." components={{ mono: <span className="font-mono" /> }} />
           </p>
           <TextRow label={t("OAuth Client ID")} mono value={value.oauthClientId} onChange={(e) => set("oauthClientId", e.target.value)} autoComplete="off" />
-          <label className="mb-1 block text-[12px] font-medium text-ink-3">{t("OAuth Client Secret")}</label>
+          <label className="mb-1 block text-label font-medium text-ink-3">{t("OAuth Client Secret")}</label>
           <input
             className="mb-3 h-9 w-full rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface px-3 font-mono"
             type="password"

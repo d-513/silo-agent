@@ -48,12 +48,12 @@ export function MailPane({ bot, onError, actions }: { bot: Bot; onError: (s: str
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line-strong px-3 text-[13px]">
+      <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line-strong px-3 text-small">
         <MailIcon size={15} className="shrink-0 text-ink-2" />
         <span className="shrink-0 font-medium">{t("Mail")}</span>
         {box?.address ? (
           <span className="flex min-w-0 items-center gap-0.5">
-            <span className="truncate font-mono text-[12px] text-ink-3">{box.address}</span>
+            <span className="truncate font-mono text-label text-ink-3">{box.address}</span>
             <CopyButton text={box.address} title={t("Copy address")} size={13} className="shrink-0" />
           </span>
         ) : null}
@@ -66,7 +66,7 @@ export function MailPane({ bot, onError, actions }: { bot: Bot; onError: (s: str
       </header>
       <div className="min-h-0 flex-1 overflow-auto p-3">
         {notice ? (
-          <div className="mb-3 rounded-card bg-well px-4 py-3 text-[12.5px] leading-[19px] text-ink-2">
+          <div className="mb-3 rounded-card bg-well px-4 py-3 text-meta leading-[19px] text-ink-2">
             {notice.text}{" "}
             {notice.admin ? (
               <Link to="/admin/settings/$section" params={{ section: "mail" }} className="font-medium text-cobalt hover:underline">
@@ -82,7 +82,7 @@ export function MailPane({ bot, onError, actions }: { bot: Bot; onError: (s: str
           <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
             <MailIcon size={20} className="text-ink-3" />
             <p className="text-ink-2">{t("No mail yet.")}</p>
-            {box.address ? <p className="max-w-sm text-[12.5px] text-ink-3">{t("Anything sent to the address above lands here, usually within a minute.")}</p> : null}
+            {box.address ? <p className="max-w-sm text-meta text-ink-3">{t("Anything sent to the address above lands here, usually within a minute.")}</p> : null}
           </div>
         ) : (
           <section>
@@ -91,7 +91,7 @@ export function MailPane({ bot, onError, actions }: { bot: Bot; onError: (s: str
                 <MailRow key={m.id} botId={botId} mail={m} first={i === 0} open={open === m.id} onToggle={() => setOpen(open === m.id ? "" : m.id)} onDelete={() => void remove(m.id)} />
               ))}
             </ul>
-            <p className="mt-2 px-1 text-[12.5px] text-ink-3">
+            <p className="mt-2 px-1 text-meta text-ink-3">
               {t("The newest {{count}} messages are kept. A dot marks one the Bot has not read yet.", { count: box.keep })}
             </p>
           </section>
@@ -136,7 +136,7 @@ export function MailSettings({ bot, onError }: { bot: Bot; onError: (s: string) 
       {notice || box?.problem ? (
         <div className="grid gap-3 px-5 py-4">
           {notice ? (
-            <div className="rounded-card bg-well px-4 py-3 text-[13px] leading-[20px] text-ink-2">
+            <div className="rounded-card bg-well px-4 py-3 text-small leading-[20px] text-ink-2">
               {notice.text}{" "}
               {notice.admin ? (
                 <Link to="/admin/settings/$section" params={{ section: "mail" }} className="font-medium text-cobalt hover:underline">
@@ -169,8 +169,8 @@ function AddressRow({ address, onRotate }: { address: string; onRotate: () => vo
         <MailIcon size={18} />
       </div>
       <div className="min-w-0 flex-1 basis-60">
-        <p className="truncate font-mono text-[13.5px] font-medium text-ink">{address}</p>
-        <p className="mt-0.5 text-[12.5px] text-ink-2">{t("Anyone who knows it can write to it. Adding +anything before the @ reaches the same mailbox.")}</p>
+        <p className="truncate font-mono text-row font-medium text-ink">{address}</p>
+        <p className="mt-0.5 text-meta text-ink-2">{t("Anyone who knows it can write to it. Adding +anything before the @ reaches the same mailbox.")}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         <CopyButton text={address} label title={t("Copy address")} />
@@ -236,7 +236,7 @@ function WakeFields({ botId, box, onSaved }: { botId: string; box: Mailbox; onSa
           hint={t("One per line: an address (ada@example.com) or a whole domain (@example.com). Only mail the sender's domain vouches for counts, so a forged From address wakes nobody.")}
         >
           <textarea
-            className={`${textareaClass} font-mono text-[13px]`}
+            className={`${textareaClass} font-mono text-small`}
             rows={3}
             spellCheck={false}
             placeholder={"you@example.com"}
@@ -277,17 +277,17 @@ function MailRow({ botId, mail: m, first, open, onToggle, onDelete }: { botId: s
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center gap-2">
             {m.read ? null : <span aria-label={t("Not read by the Bot yet")} title={t("Not read by the Bot yet")} className="h-1.5 w-1.5 shrink-0 rounded-full bg-cobalt" />}
-            <span className="truncate text-[13.5px] font-medium text-ink">{senderName(m.from, m.fromAddress)}</span>
+            <span className="truncate text-row font-medium text-ink">{senderName(m.from, m.fromAddress)}</span>
             {m.verified ? null : (
               <span title={t("Sender not verified: the From address may be forged")} className="flex shrink-0 items-center text-ink-3">
                 <ShieldAlert size={13} aria-label={t("Sender not verified")} />
               </span>
             )}
             {m.attachments.length > 0 ? <Paperclip size={12} className="shrink-0 text-ink-3" aria-label={t("{{count}} attached", { count: m.attachments.length })} /> : null}
-            <span className="ml-auto shrink-0 font-mono text-[12px] text-ink-3">{feedStamp(m.receivedAt)}</span>
+            <span className="ml-auto shrink-0 font-mono text-label text-ink-3">{feedStamp(m.receivedAt)}</span>
           </span>
-          <span className="mt-0.5 block truncate text-[13.5px] text-ink">{m.subject || t("(no subject)")}</span>
-          {open ? null : <span className="mt-0.5 block truncate text-[12.5px] text-ink-3">{m.preview}</span>}
+          <span className="mt-0.5 block truncate text-row text-ink">{m.subject || t("(no subject)")}</span>
+          {open ? null : <span className="mt-0.5 block truncate text-meta text-ink-3">{m.preview}</span>}
         </span>
       </button>
       {open ? <MailBody botId={botId} mail={m} onDelete={onDelete} /> : null}
@@ -301,13 +301,13 @@ function MailBody({ botId, mail: m, onDelete }: { botId: string; mail: Mail; onD
   const Shield = m.verified ? ShieldCheck : ShieldAlert;
   return (
     <div className="px-4 pb-4 pl-[42px]">
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12.5px] leading-[18px]">
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-meta leading-[18px]">
         <dt className="text-ink-3">{t("From")}</dt>
         <dd className="min-w-0 break-words text-ink-2">{m.from || t("Unknown")}</dd>
         <dt className="text-ink-3">{t("To")}</dt>
         <dd className="min-w-0 break-words text-ink-2">{m.to || t("Not named")}</dd>
       </dl>
-      <p className={`mt-2 flex items-start gap-1.5 text-[12.5px] leading-[18px] ${m.verified ? "text-ink-2" : "text-vermilion"}`} title={m.authDetail}>
+      <p className={`mt-2 flex items-start gap-1.5 text-meta leading-[18px] ${m.verified ? "text-ink-2" : "text-vermilion"}`} title={m.authDetail}>
         <Shield size={13} className={`mt-[2.5px] shrink-0 ${m.verified ? "text-emerald" : ""}`} />
         <span>{m.verified ? t("Sender verified: their domain vouched for this message.") : t("Sender not verified: the From address may be forged.")}</span>
       </p>
@@ -316,14 +316,14 @@ function MailBody({ botId, mail: m, onDelete }: { botId: string; mail: Mail; onD
       ) : full === null ? (
         <SkeletonRows rows={1} height={64} className="mt-3" />
       ) : (
-        <pre className="mt-3 max-h-[480px] overflow-auto whitespace-pre-wrap break-words rounded-sm bg-well px-3 py-2.5 font-sans text-[13.5px] leading-[21px] text-ink">
+        <pre className="mt-3 max-h-[480px] overflow-auto whitespace-pre-wrap break-words rounded-sm bg-well px-3 py-2.5 font-sans text-row leading-[21px] text-ink">
           {full.text || t("(no text)")}
         </pre>
       )}
       {m.attachments.length > 0 ? (
         <ul className="mt-3 flex flex-wrap gap-1.5">
           {m.attachments.map((a) => (
-            <li key={a.index} className="flex max-w-full items-center gap-1.5 rounded-sm bg-well px-2 py-1 text-[12.5px] text-ink-2">
+            <li key={a.index} className="flex max-w-full items-center gap-1.5 rounded-sm bg-well px-2 py-1 text-meta text-ink-2">
               <Paperclip size={12} className="shrink-0 text-ink-3" />
               <span className="truncate">{a.name}</span>
               <span className="shrink-0 font-mono text-[11.5px] text-ink-3">{fmtBytes(a.size)}</span>

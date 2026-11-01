@@ -18,8 +18,8 @@ const glyphWell: Record<BtnKind, string> = {
 };
 
 const sizeClass: Record<BtnSize, { box: string; icon: string }> = {
-  md: { box: "h-9 gap-2 px-3 text-[14px]", icon: "w-9 px-0" },
-  sm: { box: "h-8 gap-1.5 px-2.5 text-[12.5px]", icon: "w-8 px-0" },
+  md: { box: "h-9 gap-2 px-3 text-body", icon: "w-9 px-0" },
+  sm: { box: "h-8 gap-1.5 px-2.5 text-meta", icon: "w-8 px-0" },
 };
 
 // Buttons press down in 70ms and settle back over the 160ms hover curve.

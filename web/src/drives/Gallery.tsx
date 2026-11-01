@@ -26,7 +26,7 @@ export function Gallery({ templates, admin, onPick, onBack }: { templates: Drive
         <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
         <input autoFocus className={`${inputClass} pl-9`} placeholder={t("Search providers")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t("Search providers")} />
       </div>
-      {groups.length === 0 ? <p className="text-[13px] text-ink-3">{t("Nothing matches “{{search}}”.", { search: q })}</p> : null}
+      {groups.length === 0 ? <p className="text-small text-ink-3">{t("Nothing matches “{{search}}”.", { search: q })}</p> : null}
       <div className="space-y-6">
         {groups.map(({ c, items }) => (
           <section key={c}>
@@ -48,8 +48,8 @@ export function Gallery({ templates, admin, onPick, onBack }: { templates: Drive
                   >
                     <DriveMark svg={tpl.iconSvg} size={40} muted={!tpl.available} />
                     <div className="min-w-0 flex-1">
-                      <div className={`text-[14px] font-medium leading-5 ${tpl.available ? "text-ink" : "text-ink-3"}`}>{tpl.title}</div>
-                      <div className="truncate text-[12.5px] leading-[18px] text-ink-3">{tpl.available ? tpl.blurb : t("Needs admin setup")}</div>
+                      <div className={`text-body font-medium leading-5 ${tpl.available ? "text-ink" : "text-ink-3"}`}>{tpl.title}</div>
+                      <div className="truncate text-meta leading-[18px] text-ink-3">{tpl.available ? tpl.blurb : t("Needs admin setup")}</div>
                     </div>
                     {tpl.available ? <ChevronRight size={15} className="shrink-0 text-ink-3 transition-transform duration-[160ms] ease-quiet group-hover:translate-x-0.5" /> : null}
                   </button>
@@ -64,11 +64,11 @@ export function Gallery({ templates, admin, onPick, onBack }: { templates: Drive
                         <TipTitle>{t("{{title}} is not set up yet", { title: tpl.title })}</TipTitle>
                         {admin ? (
                           <>
-                            <p className="mt-1 text-[12px] leading-[17px] text-ink-2">{t("It needs an OAuth client registered with {{provider}}, once for everyone.", { provider: tpl.authLabel || tpl.title })}</p>
+                            <p className="mt-1 text-label leading-[17px] text-ink-2">{t("It needs an OAuth client registered with {{provider}}, once for everyone.", { provider: tpl.authLabel || tpl.title })}</p>
                             <TipAction>{t("Click to set it up in Admin → Drives")}</TipAction>
                           </>
                         ) : (
-                          <p className="mt-1 text-[12px] leading-[17px] text-ink-2">{t("An admin has to enable it once, in Admin → Drives.")}</p>
+                          <p className="mt-1 text-label leading-[17px] text-ink-2">{t("An admin has to enable it once, in Admin → Drives.")}</p>
                         )}
                       </>
                     }

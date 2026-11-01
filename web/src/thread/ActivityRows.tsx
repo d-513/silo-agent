@@ -17,7 +17,7 @@ export function Receipt({ b }: { b: ReceiptBlock }) {
   const allowed = b.decision === "allow_once" || b.decision === "always";
   const Icon = allowed ? ShieldCheck : ShieldX;
   return (
-    <div className="flex min-w-0 items-center gap-2 text-[12.5px] leading-[18px]">
+    <div className="flex min-w-0 items-center gap-2 text-meta leading-[18px]">
       <Icon size={15} className={`shrink-0 ${allowed ? "text-emerald" : "text-ink-3"}`} aria-hidden />
       <span className="shrink-0 font-medium text-ink">{receiptWord[b.decision] ? t(receiptWord[b.decision]) : b.decision}</span>
       <span className="min-w-0 truncate text-ink-3">
@@ -54,7 +54,7 @@ export function Thinking({ text, streaming, ms }: { text: string; streaming: boo
         )
       }
     >
-      {text.trim() ? <div className="whitespace-pre-wrap break-words text-[13px] leading-[21px] text-ink-2">{text}</div> : null}
+      {text.trim() ? <div className="whitespace-pre-wrap break-words text-small leading-[21px] text-ink-2">{text}</div> : null}
     </FoldRow>
   );
 }
@@ -75,7 +75,7 @@ export function Compaction({ text, reason, running }: { text: string; reason: st
       tail={reason === "auto" && !running ? <span className="truncate text-ink-3">· {t("the context window was nearly full")}</span> : null}
     >
       {text.trim() ? (
-        <div className="silo-reply text-[13px] leading-[21px] text-ink-2">
+        <div className="silo-reply text-small leading-[21px] text-ink-2">
           <Md text={text} />
         </div>
       ) : null}
@@ -92,7 +92,7 @@ export function Boundary({ kind, count }: { kind: "cleared" | "wiped"; count: nu
   return (
     <div className="flex items-center gap-3 pt-4 pb-1" title={hint}>
       <span aria-hidden className="h-px flex-1 bg-line" />
-      <span className="flex items-center gap-1.5 text-[12px] leading-4 font-medium text-ink-3">
+      <span className="flex items-center gap-1.5 text-label leading-4 font-medium text-ink-3">
         {kind === "cleared" ? <Eraser size={12} /> : <Trash2 size={12} />}
         {label}
       </span>
@@ -107,7 +107,7 @@ export function CallMark({ edge, seconds }: { edge: "start" | "end"; seconds: nu
   return (
     <div className="flex items-center gap-3 pt-3 pb-1">
       <span aria-hidden className="h-px flex-1 bg-line" />
-      <span className="flex items-center gap-1.5 text-[12px] leading-4 font-medium text-ink-3">
+      <span className="flex items-center gap-1.5 text-label leading-4 font-medium text-ink-3">
         {edge === "start" ? <Phone size={12} /> : <PhoneOff size={12} />}
         {edge === "start" ? t("Call started") : t("Call ended · {{length}}", { length: callClock(seconds * 1000) })}
       </span>
@@ -122,7 +122,7 @@ export function InterviewMark() {
   return (
     <div className="flex items-center gap-3 pt-2 pb-1">
       <span aria-hidden className="h-px flex-1 bg-line" />
-      <span className="flex items-center gap-1.5 text-[12px] leading-4 font-medium text-ink-3">
+      <span className="flex items-center gap-1.5 text-label leading-4 font-medium text-ink-3">
         <Sparkles size={12} />
         {t("Getting to know you")}
       </span>

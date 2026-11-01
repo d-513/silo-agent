@@ -38,7 +38,7 @@ export function AutoenablePanel({ list, onSave }: { list?: AutoenableConnectors;
       note={t("Library connectors every new Bot starts with, on top of the ones switched on in the Connectors Library. Removing one from a Bot does not re-add it.")}
     >
       {locked ? (
-        <p className="mb-4 flex items-start gap-2 text-[13px] text-vermilion">
+        <p className="mb-4 flex items-start gap-2 text-small text-vermilion">
           <TriangleAlert className="mt-0.5 shrink-0" size={16} />
           <span>
             <Trans i18nKey="Set by <mono>{{envName}}</mono>; change it there." values={{ envName: list?.envName }} components={{ mono: <span className="font-mono" /> }} />
@@ -46,7 +46,7 @@ export function AutoenablePanel({ list, onSave }: { list?: AutoenableConnectors;
         </p>
       ) : null}
       {ids.length === 0 ? (
-        <p className="mb-3 text-[13px] text-ink-2">{t("No connectors listed.")}</p>
+        <p className="mb-3 text-small text-ink-2">{t("No connectors listed.")}</p>
       ) : (
         <ul className="mb-3 grid gap-2">
           {ids.map((id) => {
@@ -55,11 +55,11 @@ export function AutoenablePanel({ list, onSave }: { list?: AutoenableConnectors;
               <li key={id} className="flex items-center gap-3">
                 <ConnectorMark id={c?.id} hasImage={!!c?.hasImage} size={28} />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[14px] text-ink">{c ? c.name : <span className="font-mono text-[13px]">{id}</span>}</div>
+                  <div className="truncate text-body text-ink">{c ? c.name : <span className="font-mono text-small">{id}</span>}</div>
                   {c ? (
-                    <div className="truncate font-mono text-[12px] text-ink-3">{id}</div>
+                    <div className="truncate font-mono text-label text-ink-3">{id}</div>
                   ) : lib.isPending ? null : (
-                    <div className="text-[12px] text-vermilion">{t("Not in the library, so nothing is added.")}</div>
+                    <div className="text-label text-vermilion">{t("Not in the library, so nothing is added.")}</div>
                   )}
                 </div>
                 {locked ? null : (

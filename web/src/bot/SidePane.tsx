@@ -148,7 +148,7 @@ export function SidePane({
     has(k) ? (
       <div className={`min-h-0 flex-1 flex-col p-3 ${kind === k ? "flex" : "hidden"}`}>
         <MachinePane bot={bot} onStart={onStart} visible={kind === k} kind={k} actions={actions(true)} onError={onError} />
-        {max ? <p className="mt-2 text-[12.5px] text-ink-2">{t(captions[k])}</p> : null}
+        {max ? <p className="mt-2 text-meta text-ink-2">{t(captions[k])}</p> : null}
       </div>
     ) : null;
 
@@ -179,7 +179,7 @@ export function SidePane({
         {has("mail") ? (
           <div className={`min-h-0 flex-1 flex-col ${kind === "mail" ? "flex" : "hidden"}`}>
             <MailPane bot={bot} onError={onError} actions={actions(false)} />
-            {max ? <p className="mt-2 px-3 pb-3 text-[12.5px] text-ink-2">{captions.mail}</p> : null}
+            {max ? <p className="mt-2 px-3 pb-3 text-meta text-ink-2">{captions.mail}</p> : null}
           </div>
         ) : null}
       </Suspense>

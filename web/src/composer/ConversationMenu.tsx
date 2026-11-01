@@ -120,7 +120,7 @@ export function ConversationMenu({
           aria-label={t("This conversation, context {{percent}}% full", { percent: pct })}
           onClick={() => setOpen((v) => !v)}
           onKeyDown={onTriggerKey}
-          className={`relative flex h-[34px] min-w-[34px] shrink-0 items-center justify-center gap-1.5 rounded-control px-2 font-mono text-[11px] transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.96] active:duration-[70ms] aria-expanded:bg-well ${
+          className={`relative flex h-[34px] min-w-[34px] shrink-0 items-center justify-center gap-1.5 rounded-control px-2 font-mono text-micro transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.96] active:duration-[70ms] aria-expanded:bg-well ${
             fill ? fill.tone : "text-ink-3"
           }`}
         >
@@ -163,27 +163,27 @@ export function ConversationMenu({
               <div className="rise">
                 <div className="px-2 pt-1.5 pb-2.5">
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-[12.5px] font-medium text-ink">{t("Context window")}</span>
-                    {measured ? <span className={`font-mono text-[11px] ${fill!.tone}`}>{pct}%</span> : null}
+                    <span className="text-meta font-medium text-ink">{t("Context window")}</span>
+                    {measured ? <span className={`font-mono text-micro ${fill!.tone}`}>{pct}%</span> : null}
                   </div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-well">
                     {fill ? <div className={`h-full rounded-full ${fill.barTone}`} style={{ width: `${Math.max(2, pct)}%` }} /> : null}
                   </div>
                   {measured ? (
-                    <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 text-[12px] text-ink-3">
+                    <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 text-label text-ink-3">
                       <dt>{t("Used")}</dt>
-                      <dd className="text-right font-mono text-[11px] text-ink">{fmtTokens(fill!.used)}</dd>
+                      <dd className="text-right font-mono text-micro text-ink">{fmtTokens(fill!.used)}</dd>
                       <dt>{t("Model limit")}</dt>
-                      <dd className="text-right font-mono text-[11px] text-ink">{fmtTokens(usage!.window)}</dd>
+                      <dd className="text-right font-mono text-micro text-ink">{fmtTokens(usage!.window)}</dd>
                       {usage!.cacheRead > 0 ? (
                         <>
                           <dt>{t("From cache")}</dt>
-                          <dd className="text-right font-mono text-[11px] text-ink">{fmtTokens(usage!.cacheRead)}</dd>
+                          <dd className="text-right font-mono text-micro text-ink">{fmtTokens(usage!.cacheRead)}</dd>
                         </>
                       ) : null}
                     </dl>
                   ) : null}
-                  <p className="mt-2 text-[12px] leading-[17px] text-ink-3">
+                  <p className="mt-2 text-label leading-[17px] text-ink-3">
                     {t("Near the limit the conversation is summarized automatically; the thread keeps everything.")}
                   </p>
                 </div>
@@ -223,7 +223,7 @@ export function ConversationMenu({
                     />
                   ) : null}
                   {collect.state.kind === "done" && collect.state.res.memories.length > 0 ? (
-                    <ul className="mx-2 mb-1 ml-[34px] grid gap-1 text-[12px] leading-[17px] text-ink-2">
+                    <ul className="mx-2 mb-1 ml-[34px] grid gap-1 text-label leading-[17px] text-ink-2">
                       {collect.state.res.memories.slice(0, 4).map((m) => (
                         <li key={m.id} className="line-clamp-2">
                           {m.content}
@@ -286,8 +286,8 @@ function Item({
     >
       <span className={`mt-px flex h-[18px] items-center ${disabled && !busy ? "text-ink-3" : "text-ink-2"}`}>{icon}</span>
       <span className="min-w-0">
-        <span className={`block text-[13px] leading-[18px] font-medium ${disabled && !busy ? "text-ink-3" : "text-ink"}`}>{label}</span>
-        {hint ? <span className="mt-0.5 block text-[12px] leading-[17px] text-ink-3">{hint}</span> : null}
+        <span className={`block text-small leading-[18px] font-medium ${disabled && !busy ? "text-ink-3" : "text-ink"}`}>{label}</span>
+        {hint ? <span className="mt-0.5 block text-label leading-[17px] text-ink-3">{hint}</span> : null}
       </span>
       {toggle ? (
         <span
@@ -303,7 +303,7 @@ function Item({
           />
         </span>
       ) : aside ? (
-        <span className="mt-px max-w-[110px] truncate text-right text-[12px] leading-[18px] text-ink-3">{aside}</span>
+        <span className="mt-px max-w-[110px] truncate text-right text-label leading-[18px] text-ink-3">{aside}</span>
       ) : null}
     </button>
   );

@@ -74,7 +74,7 @@ export function Quotable({ target, children, className = "" }: { target: QuoteTa
               onPointerDown={(e) => e.preventDefault()}
               onClick={take}
               style={{ left: spot.x, top: above ? spot.top - 8 : spot.bottom + 8 }}
-              className={`rise fixed z-[60] flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-control bg-ink px-3 text-[12.5px] font-medium text-on-ink shadow-float transition-[transform] duration-[160ms] ease-quiet active:scale-[.97] active:duration-[70ms] ${above ? "-translate-y-full" : ""}`}
+              className={`rise fixed z-[60] flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-control bg-ink px-3 text-meta font-medium text-on-ink shadow-float transition-[transform] duration-[160ms] ease-quiet active:scale-[.97] active:duration-[70ms] ${above ? "-translate-y-full" : ""}`}
             >
               {taken ? <Check size={13} className="pop" /> : <TextQuote size={13} />}
               <span>{taken ? t("Quoted") : t("Quote")}</span>

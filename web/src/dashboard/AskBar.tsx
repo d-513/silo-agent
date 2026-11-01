@@ -48,7 +48,7 @@ export function AskBar({
       className="flex items-end gap-2 rounded-[18px] bg-surface py-2 pr-2 pl-3 shadow-float transition-shadow duration-[160ms] focus-within:shadow-float-focus"
     >
       {picked ? (
-        <span className="mb-1 inline-flex h-[26px] max-w-[40%] shrink-0 items-center gap-1 rounded-sm bg-cobalt-pale pr-1 pl-2 text-[12.5px] font-medium text-cobalt">
+        <span className="mb-1 inline-flex h-[26px] max-w-[40%] shrink-0 items-center gap-1 rounded-sm bg-cobalt-pale pr-1 pl-2 text-meta font-medium text-cobalt">
           <span className="truncate">{picked.title}</span>
           <button type="button" aria-label={t("Remove")} onClick={onUnpick} className="grid h-5 w-5 place-items-center rounded-xs hover:bg-surface/60">
             <X size={12} />
@@ -68,7 +68,7 @@ export function AskBar({
         }}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="max-h-[120px] min-h-[34px] flex-1 resize-none bg-transparent py-[5px] text-[15px] leading-6 text-ink outline-none [field-sizing:content] placeholder:text-ink-3"
+        className="max-h-[120px] min-h-[34px] flex-1 resize-none bg-transparent py-[5px] text-body-lg leading-6 text-ink outline-none [field-sizing:content] placeholder:text-ink-3"
       />
       <SendStop sending={false} canSend={can} onStop={() => {}} />
     </form>

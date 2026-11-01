@@ -92,7 +92,7 @@ export function BotTopBar({
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[14.5px] leading-[18px] font-semibold text-ink">{bot.name}</span>
-          {label ? <span className="block truncate text-[12.5px] leading-4 text-ink-3">{label}</span> : null}
+          {label ? <span className="block truncate text-meta leading-4 text-ink-3">{label}</span> : null}
         </span>
       </button>
       {call ? (
@@ -142,7 +142,7 @@ const paneTo = {
 } as const;
 
 const tile =
-  "relative flex h-10 min-w-0 items-center gap-2 rounded-control px-2.5 text-[13px] font-medium transition-[background-color,color,box-shadow] duration-[160ms] ease-quiet outline-offset-[-2px] disabled:opacity-50";
+  "relative flex h-10 min-w-0 items-center gap-2 rounded-control px-2.5 text-small font-medium transition-[background-color,color,box-shadow] duration-[160ms] ease-quiet outline-offset-[-2px] disabled:opacity-50";
 
 // MachineTiles are the drawer's way to the machine: each pane as its own
 // page (there is no room to dock one), and Start/Stop.

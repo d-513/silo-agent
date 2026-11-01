@@ -81,7 +81,7 @@ export function ChannelSetup({
     </div>
   ) : null;
   const message =
-    state?.message && state.kind !== "qr" && state.kind !== "error" ? <div className="rounded-sm bg-well p-3 text-[13px] text-ink-2">{state.message}</div> : null;
+    state?.message && state.kind !== "qr" && state.kind !== "error" ? <div className="rounded-sm bg-well p-3 text-small text-ink-2">{state.message}</div> : null;
 
   return (
     <div className={widePage}>
@@ -95,7 +95,7 @@ export function ChannelSetup({
         ) : null}
 
         <div className="min-w-0 space-y-4 lg:order-1">
-          <div className="flex items-center gap-2 rounded-card bg-surface px-4 py-3 text-[13px] shadow-card">
+          <div className="flex items-center gap-2 rounded-card bg-surface px-4 py-3 text-small shadow-card">
             <Lamp status={look.lamp} />
             <span className={`font-medium ${look.tone === "text-ink-3" ? "text-ink" : look.tone}`}>{look.word}</span>
             {channel.statusDetail ? <span className="min-w-0 truncate text-ink-3">· {channel.statusDetail}</span> : null}
@@ -106,7 +106,7 @@ export function ChannelSetup({
             <Panel title={t("Link your device")} note={t("Scan this code in the app. It refreshes by itself until you do.")}>
               <div className="flex flex-col items-center gap-3 rounded-card bg-well p-5">
                 <img src={state.qr} alt={t("Login QR code")} className="w-56 rounded-card bg-white p-2 shadow-card" />
-                <span className="max-w-sm text-center text-[13px] text-ink-2">{state.message}</span>
+                <span className="max-w-sm text-center text-small text-ink-2">{state.message}</span>
               </div>
             </Panel>
           ) : null}
@@ -114,7 +114,7 @@ export function ChannelSetup({
           {adapter.requiresTarget ? (
             <Panel title={t("Target chat")} note={t("The one conversation this channel reads and writes. The Bot ignores every other chat.")}>
               <div className="space-y-5">
-                <div className="rounded-sm bg-well px-3.5 py-3 text-[14px]">
+                <div className="rounded-sm bg-well px-3.5 py-3 text-body">
                   {target.id ? (
                     <span className="flex items-center gap-1.5 font-medium text-ink">
                       <CircleCheck size={16} className="shrink-0 text-emerald" />
@@ -149,7 +149,7 @@ export function ChannelSetup({
                             type="button"
                             disabled={busy}
                             aria-pressed={on}
-                            className={`flex items-center justify-between gap-2 rounded-control p-3 text-left text-[13px] transition-[background-color,box-shadow] duration-[160ms] ease-quiet disabled:cursor-not-allowed disabled:opacity-60 ${
+                            className={`flex items-center justify-between gap-2 rounded-control p-3 text-left text-small transition-[background-color,box-shadow] duration-[160ms] ease-quiet disabled:cursor-not-allowed disabled:opacity-60 ${
                               on ? "bg-cobalt-pale font-medium text-ink shadow-[inset_0_0_0_1px_var(--color-cobalt)]" : "bg-surface shadow-card hover:shadow-float"
                             }`}
                             onClick={() => void choose(o.value, o.label)}

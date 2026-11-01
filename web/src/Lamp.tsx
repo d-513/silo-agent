@@ -74,7 +74,7 @@ export function StatusWord({ look: l, className = "" }: { look: StatusLook; clas
   const [shown, setShown] = useState<{ cur: StatusLook; old: StatusLook | null; n: number }>({ cur: l, old: null, n: 0 });
   if (shown.cur.word !== l.word || shown.cur.tone !== l.tone) setShown({ cur: l, old: shown.cur, n: shown.n + 1 });
   return (
-    <span className={`inline-grid min-w-0 grid-cols-[minmax(0,1fr)] text-[12px] leading-4 font-medium ${className}`} aria-live="polite" title={l.word}>
+    <span className={`inline-grid min-w-0 grid-cols-[minmax(0,1fr)] text-label leading-4 font-medium ${className}`} aria-live="polite" title={l.word}>
       {shown.old ? (
         <span
           key={`o${shown.n}`}

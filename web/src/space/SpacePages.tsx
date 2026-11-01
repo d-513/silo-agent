@@ -44,11 +44,11 @@ function NameFields({ name, mark, onName, onMark }: { name: string; mark: string
         <SpaceMark space={{ name, mark: markOf(name, mark) }} size={44} />
       </div>
       <div className="min-w-0 flex-1">
-        <label htmlFor="space-name" className="mb-1.5 block text-[12px] font-medium text-ink-3">
+        <label htmlFor="space-name" className="mb-1.5 block text-label font-medium text-ink-3">
           {t("Name")}
         </label>
         <input id="space-name" className={`${inputClass} mb-4`} placeholder={"Acme labs"} value={name} onChange={(e) => onName(e.target.value)} autoFocus />
-        <label htmlFor="space-mark" className="mb-1.5 block text-[12px] font-medium text-ink-3">
+        <label htmlFor="space-mark" className="mb-1.5 block text-label font-medium text-ink-3">
           {t("Letters on its tile")}
         </label>
         <input
@@ -87,7 +87,7 @@ export function NewSpacePage() {
   return (
     <div className="silo-page silo-page-sm rise">
       <h1 className="mb-1.5 text-title">{t("New workspace")}</h1>
-      <p className="mb-6 text-[13px] text-ink-2">{t("A workspace holds Bots and what they share. Each Bot still has its own machine.")}</p>
+      <p className="mb-6 text-small text-ink-2">{t("A workspace holds Bots and what they share. Each Bot still has its own machine.")}</p>
       <form onSubmit={create}>
         <NameFields name={name} mark={mark} onName={setName} onMark={setMark} />
         {err ? <ErrorWell className="mt-4">{err}</ErrorWell> : null}
@@ -249,24 +249,24 @@ function OtherBots({ spaceId }: { spaceId: string }) {
   }
   return (
     <section className="mt-6">
-      <h2 className="text-[13.5px] font-medium text-ink">{t("Other Bots")}</h2>
-      <p className="mb-3 mt-0.5 text-[12.5px] text-ink-2">{t("Bots in this workspace you are not on. As an admin you can delete one, but not open it.")}</p>
-      {err ? <p role="alert" className="mb-3 text-[13px] text-vermilion">{err}</p> : null}
+      <h2 className="text-row font-medium text-ink">{t("Other Bots")}</h2>
+      <p className="mb-3 mt-0.5 text-meta text-ink-2">{t("Bots in this workspace you are not on. As an admin you can delete one, but not open it.")}</p>
+      {err ? <p role="alert" className="mb-3 text-small text-vermilion">{err}</p> : null}
       <div className="grid grid-cols-1 gap-3 min-[1100px]:grid-cols-2 min-[1440px]:grid-cols-3">
         {others.map((b) => (
           <div key={b.id} className="flex items-center gap-3.5 rounded-card bg-surface/70 p-4 shadow-card">
-            <Tip content={<p className="text-[12.5px]">{t("Only people on {{name}} can open it.", { name: b.name })}</p>}>
+            <Tip content={<p className="text-meta">{t("Only people on {{name}} can open it.", { name: b.name })}</p>}>
               <span tabIndex={0} className="opacity-60 outline-none">
                 <Crest index={b.crest} size={40} />
               </span>
             </Tip>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[14px] font-medium text-ink-2">{b.name}</div>
+              <div className="truncate text-body font-medium text-ink-2">{b.name}</div>
               <div className="mt-1 flex items-center gap-1">
                 {b.people.slice(0, 4).map((p) => (
                   <Initials key={p} email={p} size={20} />
                 ))}
-                {b.people.length > 4 ? <span className="text-[11px] text-ink-3">{`+${b.people.length - 4}`}</span> : null}
+                {b.people.length > 4 ? <span className="text-micro text-ink-3">{`+${b.people.length - 4}`}</span> : null}
                 <span className="ml-1.5 text-[11.5px] text-ink-3">{t("{{count}} grants", { count: b.grants })}</span>
               </div>
             </div>

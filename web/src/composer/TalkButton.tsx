@@ -17,7 +17,7 @@ export function TalkButton({ onTalk, botName }: { onTalk: () => void; botName: s
       <button
         type="button"
         aria-label={t("Talk with {{name}}", { name: botName || t("the Bot") })}
-        className="flex h-[34px] shrink-0 items-center gap-1.5 rounded-control px-2 text-[13px] font-medium text-ink-2 transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms]"
+        className="flex h-[34px] shrink-0 items-center gap-1.5 rounded-control px-2 text-small font-medium text-ink-2 transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms]"
         onClick={onTalk}
       >
         <AudioLines size={17} />

@@ -85,10 +85,10 @@ function RoleRow({ role: r }: { role: Role }) {
     <div className="grid gap-x-8 gap-y-2.5 px-5 py-4 @min-[640px]:grid-cols-[minmax(0,1fr)_minmax(0,300px)] @min-[640px]:items-start">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-[13.5px] leading-5 font-medium text-ink">{t(r.label ?? LABELS[r.key] ?? r.key)}</span>
+          <span className="text-row leading-5 font-medium text-ink">{t(r.label ?? LABELS[r.key] ?? r.key)}</span>
           {f ? <span className="ml-auto flex items-center gap-2 @min-[640px]:ml-0">{<SourceChips field={f} />}</span> : null}
         </div>
-        {r.hint || HINTS[r.key] ? <p className="mt-0.5 max-w-[56ch] text-[12.5px] leading-[18px] text-ink-2">{t(r.hint ?? HINTS[r.key])}</p> : null}
+        {r.hint || HINTS[r.key] ? <p className="mt-0.5 max-w-[56ch] text-meta leading-[18px] text-ink-2">{t(r.hint ?? HINTS[r.key])}</p> : null}
       </div>
       <div className="min-w-0">
         <Select
@@ -100,7 +100,7 @@ function RoleRow({ role: r }: { role: Role }) {
           emptyLabel={none}
         />
         {follows ? (
-          <p className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[12px] leading-[17px] text-ink-3">
+          <p className="mt-1.5 flex min-w-0 items-center gap-1.5 text-label leading-[17px] text-ink-3">
             <CornerDownRight size={12} className="shrink-0" />
             <span className="min-w-0 truncate font-mono">{use.model}</span>
             <span className="shrink-0">· {t("from {{job}}", { job: t(ROLE_NAMES[use.from] ?? use.from) })}</span>
@@ -125,14 +125,14 @@ export function ModelsHead({ icon: Icon, title, note, kinds = [], children }: { 
       </span>
       <div className="min-w-0 flex-1">
         <h2 className="text-title text-ink">{title}</h2>
-        <p className="mt-1 max-w-[64ch] text-[13.5px] leading-5 text-ink-2">{note}</p>
+        <p className="mt-1 max-w-[64ch] text-row leading-5 text-ink-2">{note}</p>
       </div>
       {children ??
         (kinds.length ? (
           <div className="flex shrink-0 flex-col items-end gap-1.5 pt-1 max-sm:hidden">
             <span className="text-label-caps text-ink-3 uppercase">{t("Allowed", { context: "count" })}</span>
             <span className="flex items-center gap-2">
-              <span className="font-mono text-[20px] leading-6 text-ink tabular-nums">{ids.length}</span>
+              <span className="font-mono text-heading leading-6 text-ink tabular-nums">{ids.length}</span>
               {from.length ? (
                 <span className="flex items-center gap-1">
                   {from.slice(0, 4).map((p) => (

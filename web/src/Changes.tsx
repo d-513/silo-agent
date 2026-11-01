@@ -54,10 +54,10 @@ export function ChangesPane({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line-strong px-3 text-[13px]">
+      <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line-strong px-3 text-small">
         <GitCompareArrows size={15} className="shrink-0 text-ink-2" />
         <span className="shrink-0 font-medium">{t("Changes")}</span>
-        <span className="truncate font-mono text-[12px] text-ink-3">{drives ? "/workspace/drives" : "/workspace"}</span>
+        <span className="truncate font-mono text-label text-ink-3">{drives ? "/workspace/drives" : "/workspace"}</span>
         {actions ? (
           <>
             <span aria-hidden className="ml-auto h-4 w-px shrink-0 bg-line-strong" />
@@ -118,7 +118,7 @@ function WorkspaceChanges({ botId, data, onError }: { botId: string; data: ListC
   const notice = data ? changesNotice(data.state) : null;
   if (notice) {
     return (
-      <div className="rounded-card bg-well px-4 py-3 text-[12.5px] leading-[19px] text-ink-2">
+      <div className="rounded-card bg-well px-4 py-3 text-meta leading-[19px] text-ink-2">
         {notice.text}{" "}
         {notice.reset ? (
           <Link to="/bots/$botId/container" params={{ botId }} className="font-medium text-cobalt hover:underline">
@@ -134,10 +134,10 @@ function WorkspaceChanges({ botId, data, onError }: { botId: string; data: ListC
   return (
     <>
       {data.indexing ? (
-        <p className="mb-3 rounded-card bg-well px-4 py-3 text-[12.5px] leading-[19px] text-ink-2">{t("Still reading this workspace for the first time. Changes show once that is done.")}</p>
+        <p className="mb-3 rounded-card bg-well px-4 py-3 text-meta leading-[19px] text-ink-2">{t("Still reading this workspace for the first time. Changes show once that is done.")}</p>
       ) : null}
       {done ? (
-        <p role="status" className="mb-3 rounded-card bg-well px-4 py-3 text-[12.5px] leading-[19px] text-ink-2">
+        <p role="status" className="mb-3 rounded-card bg-well px-4 py-3 text-meta leading-[19px] text-ink-2">
           {done}
         </p>
       ) : null}
@@ -145,7 +145,7 @@ function WorkspaceChanges({ botId, data, onError }: { botId: string; data: ListC
         <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
           <GitCompareArrows size={20} className="text-ink-3" />
           <p className="text-ink-2">{t("Nothing has changed yet.")}</p>
-          <p className="max-w-sm text-[12.5px] text-ink-3">{t("When the Bot, a script it runs, or you change a file in /workspace, the difference shows here.")}</p>
+          <p className="max-w-sm text-meta text-ink-3">{t("When the Bot, a script it runs, or you change a file in /workspace, the difference shows here.")}</p>
         </div>
       ) : (
         <ul className="overflow-hidden rounded-card bg-surface shadow-card">
@@ -170,12 +170,12 @@ function WorkspaceChanges({ botId, data, onError }: { botId: string; data: ListC
           })}
         </ul>
       )}
-      <p className="mt-2 px-1 text-[12.5px] leading-[19px] text-ink-3">
+      <p className="mt-2 px-1 text-meta leading-[19px] text-ink-3">
         {data.since ? t("The workspace is compared before and after each run, since {{date}}.", { date: day(data.since) }) : t("The workspace is compared before and after each run.")}{" "}
         <Trans
           i18nKey="Drives, <mono>tmp/</mono>, <mono>bot/</mono> and dependency folders are left out, and a file over {{size}} is recorded by its size only, so it cannot be put back. Undoing a change keeps what it replaces: the restore is listed as a change of its own."
           values={{ size: fmtBytes(cap) }}
-          components={{ mono: <span className="font-mono text-[12px]" /> }}
+          components={{ mono: <span className="font-mono text-label" /> }}
         />
       </p>
     </>
@@ -187,7 +187,7 @@ function WorkspaceChanges({ botId, data, onError }: { botId: string; data: ListC
 // drive's files is kept, so there is no diff.
 function DriveJournal({ entries, keep, off }: { entries: DriveChangeEntry[]; keep: number; off: boolean }) {
   if (off) {
-    return <div className="rounded-card bg-well px-4 py-3 text-[12.5px] leading-[19px] text-ink-2">{changesNotice("off")?.text}</div>;
+    return <div className="rounded-card bg-well px-4 py-3 text-meta leading-[19px] text-ink-2">{changesNotice("off")?.text}</div>;
   }
   return (
     <>
@@ -195,24 +195,24 @@ function DriveJournal({ entries, keep, off }: { entries: DriveChangeEntry[]; kee
         <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
           <HardDrive size={20} className="text-ink-3" />
           <p className="text-ink-2">{t("Nothing has been changed on a drive yet.")}</p>
-          <p className="max-w-sm text-[12.5px] text-ink-3">{t("A file written, deleted or renamed under /workspace/drives is noted here, whatever did it.")}</p>
+          <p className="max-w-sm text-meta text-ink-3">{t("A file written, deleted or renamed under /workspace/drives is noted here, whatever did it.")}</p>
         </div>
       ) : (
         <ul className="overflow-hidden rounded-card bg-surface shadow-card">
           {entries.map((e, i) => (
             <li key={e.id} className={`px-4 py-2.5 ${i === 0 ? "" : "shadow-[inset_0_1px_0_var(--color-line)]"}`}>
               <div className="flex min-w-0 items-center gap-2">
-                <span title={drivePath(e.drive, e.path)} className="min-w-0 truncate font-mono text-[12.5px] text-ink [direction:rtl] [text-align:left]">
+                <span title={drivePath(e.drive, e.path)} className="min-w-0 truncate font-mono text-meta text-ink [direction:rtl] [text-align:left]">
                   <bdi>{drivePath(e.drive, e.path)}</bdi>
                 </span>
-                <span className="ml-auto shrink-0 font-mono text-[12px] text-ink-3">{feedStamp(e.at)}</span>
+                <span className="ml-auto shrink-0 font-mono text-label text-ink-3">{feedStamp(e.at)}</span>
               </div>
-              <p className={`mt-0.5 truncate text-[12.5px] ${e.op === "deleted" ? "text-ink-2" : "text-ink-3"}`}>{driveLine(e)}</p>
+              <p className={`mt-0.5 truncate text-meta ${e.op === "deleted" ? "text-ink-2" : "text-ink-3"}`}>{driveLine(e)}</p>
             </li>
           ))}
         </ul>
       )}
-      <p className="mt-2 px-1 text-[12.5px] leading-[19px] text-ink-3">
+      <p className="mt-2 px-1 text-meta leading-[19px] text-ink-3">
         {t("A record of what was written, deleted or renamed on a drive, not a copy of it: to get a file back, use the provider's own version history or trash. An upload is noted when it reaches the provider, a few seconds after the file is saved.")}
         {keep ? ` ${t("The newest {{count}} lines are kept.", { count: keep })}` : ""}
       </p>
@@ -252,10 +252,10 @@ function ChangeRow({
         <ChevronRight size={14} className={`mt-[3px] shrink-0 text-ink-3 transition-transform duration-200 ease-quiet ${open ? "rotate-90" : ""}`} />
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-[13.5px] font-medium text-ink">{sourceTitle(c.sources, c.restore)}</span>
-            <span className="ml-auto shrink-0 font-mono text-[12px] text-ink-3">{c.pending ? t("Now") : feedStamp(c.at)}</span>
+            <span className="truncate text-row font-medium text-ink">{sourceTitle(c.sources, c.restore)}</span>
+            <span className="ml-auto shrink-0 font-mono text-label text-ink-3">{c.pending ? t("Now") : feedStamp(c.at)}</span>
           </span>
-          <span className="mt-0.5 flex items-center gap-2 text-[12.5px] text-ink-3">
+          <span className="mt-0.5 flex items-center gap-2 text-meta text-ink-3">
             <span>{fileCount(c.files)}</span>
             <Counts added={c.added} deleted={c.deleted} />
           </span>
@@ -263,7 +263,7 @@ function ChangeRow({
       </button>
       <Collapse open={open}>
         <div className="px-4 pb-4 pl-[42px]">
-          {hint ? <p className="mb-2 text-[12.5px] leading-[18px] text-ink-2">{hint}</p> : null}
+          {hint ? <p className="mb-2 text-meta leading-[18px] text-ink-2">{hint}</p> : null}
           <ChangeFiles botId={botId} change={c} cap={cap} busy={busy} onRestore={onRestore} />
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
             <ArmedButton
@@ -278,7 +278,7 @@ function ChangeRow({
               {t("Undo this change")}
             </ArmedButton>
             {chats.map((s) => (
-              <Link key={s.chatId} {...chatLink(botId, s.chatId)} className="flex min-w-0 items-center gap-1.5 text-[12.5px] font-medium text-cobalt hover:underline">
+              <Link key={s.chatId} {...chatLink(botId, s.chatId)} className="flex min-w-0 items-center gap-1.5 text-meta font-medium text-cobalt hover:underline">
                 <MessageCircle size={13} className="shrink-0" />
                 <span className="truncate">{t("Open “{{name}}”", { name: s.name })}</span>
               </Link>
@@ -294,7 +294,7 @@ function ChangeRow({
 function Counts({ added, deleted }: { added: number; deleted: number }) {
   if (added === 0 && deleted === 0) return null;
   return (
-    <span className="font-mono text-[12px] tabular-nums">
+    <span className="font-mono text-label tabular-nums">
       {added > 0 ? `+${added}` : ""}
       {added > 0 && deleted > 0 ? " " : ""}
       {deleted > 0 ? `−${deleted}` : ""}
@@ -328,7 +328,7 @@ function ChangeFiles({ botId, change: c, cap, busy, onRestore }: { botId: string
           />
         ))}
       </ul>
-      {q.data.truncated ? <p className="mt-2 text-[12.5px] text-ink-3">{t("Only the first {{count}} files are listed.", { count: q.data.files.length })}</p> : null}
+      {q.data.truncated ? <p className="mt-2 text-meta text-ink-3">{t("Only the first {{count}} files are listed.", { count: q.data.files.length })}</p> : null}
     </>
   );
 }
@@ -364,7 +364,7 @@ function FileRow({
         aria-expanded={open}
         onClick={onToggle}
         title={f.oldPath ? `${f.oldPath} → ${f.path}` : f.path}
-        className="flex h-8 w-full min-w-0 items-center gap-2 rounded-control px-2 text-left text-[12.5px] transition-colors duration-[160ms] ease-quiet hover:bg-well"
+        className="flex h-8 w-full min-w-0 items-center gap-2 rounded-control px-2 text-left text-meta transition-colors duration-[160ms] ease-quiet hover:bg-well"
       >
         <ChevronRight size={12} className={`shrink-0 text-ink-3 transition-transform duration-200 ease-quiet ${open ? "rotate-90" : ""}`} />
         {/* The end of a path names the file, so a long one is cut at its start. */}
@@ -372,22 +372,22 @@ function FileRow({
           <bdi>{f.path}</bdi>
         </span>
         {statusWords[f.status] ? <span className="shrink-0 text-ink-3">{t(statusWords[f.status])}</span> : null}
-        <span className="ml-auto shrink-0 text-ink-3">{note ? <span className="font-mono text-[12px] tabular-nums">{sizes}</span> : <Counts added={f.added} deleted={f.deleted} />}</span>
+        <span className="ml-auto shrink-0 text-ink-3">{note ? <span className="font-mono text-label tabular-nums">{sizes}</span> : <Counts added={f.added} deleted={f.deleted} />}</span>
       </button>
       <Collapse open={open}>
         <div className="px-2 pt-1 pb-2">
           {f.oldPath ? (
-            <p className="mb-1.5 text-[12.5px] text-ink-3">
-              <Trans i18nKey="Was <mono>{{oldPath}}</mono>" values={{ oldPath: f.oldPath }} components={{ mono: <span className="font-mono text-[12px]" /> }} />
+            <p className="mb-1.5 text-meta text-ink-3">
+              <Trans i18nKey="Was <mono>{{oldPath}}</mono>" values={{ oldPath: f.oldPath }} components={{ mono: <span className="font-mono text-label" /> }} />
             </p>
           ) : null}
-          {note ? <p className="rounded-sm bg-well px-3 py-2.5 text-[12.5px] leading-[18px] text-ink-2">{note}</p> : <FilePatch botId={botId} change={c} file={f} />}
+          {note ? <p className="rounded-sm bg-well px-3 py-2.5 text-meta leading-[18px] text-ink-2">{note}</p> : <FilePatch botId={botId} change={c} file={f} />}
           {canRestore(f) ? (
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
               <ArmedButton kind="ghost" size="sm" disabled={busy} armedLabel={armedLabel} icon={<Undo2 size={13} />} onConfirm={() => onRestore(f.path, f.oldPath)}>
                 {label}
               </ArmedButton>
-              <span className="text-[12.5px] text-ink-3">{t("As it was before this change.")}</span>
+              <span className="text-meta text-ink-3">{t("As it was before this change.")}</span>
             </div>
           ) : null}
         </div>
@@ -405,12 +405,12 @@ function FilePatch({ botId, change: c, file: f }: { botId: string; change: Chang
   if (!q.data) return <SkeletonRows rows={1} height={64} />;
   if (lines.length === 0) {
     const why = q.data.binary ? t("Not text, so there are no lines to compare.") : f.status === "renamed" ? t("Moved without a change to its lines.") : t("No lines changed.");
-    return <p className="rounded-sm bg-well px-3 py-2.5 text-[12.5px] leading-[18px] text-ink-2">{why}</p>;
+    return <p className="rounded-sm bg-well px-3 py-2.5 text-meta leading-[18px] text-ink-2">{why}</p>;
   }
   return (
     <>
       <Diff lines={lines} />
-      {q.data.truncated ? <p className="mt-1.5 text-[12.5px] text-ink-3">{t("The diff is long; only its start is shown.")}</p> : null}
+      {q.data.truncated ? <p className="mt-1.5 text-meta text-ink-3">{t("The diff is long; only its start is shown.")}</p> : null}
     </>
   );
 }
@@ -428,7 +428,7 @@ const lineSign: Record<DiffLine["kind"], string> = { add: "+", del: "−", ctx: 
 // deletions `vermilion`, on a `well` block that scrolls sideways on its own.
 function Diff({ lines }: { lines: DiffLine[] }) {
   return (
-    <div className="max-h-[480px] overflow-auto rounded-sm bg-well py-2 font-mono text-[12px] leading-[18px]">
+    <div className="max-h-[480px] overflow-auto rounded-sm bg-well py-2 font-mono text-label leading-[18px]">
       <table className="border-separate border-spacing-0">
         <tbody>
           {lines.map((l, i) =>

@@ -48,10 +48,10 @@ export function TwoFactorPanel({ user, onChange }: { user: User; onChange: (u: U
   if (step.at === "codes") {
     body = (
       <div>
-        <p className="mb-3 text-[13.5px] leading-[21px] text-ink-2">
+        <p className="mb-3 text-row leading-[21px] text-ink-2">
           {t("Keep these recovery codes somewhere safe. Each one signs you in once if you lose your phone. They are not shown again.")}
         </p>
-        <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5 rounded-sm bg-well px-4 py-3 font-mono text-[13px] text-ink">
+        <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5 rounded-sm bg-well px-4 py-3 font-mono text-small text-ink">
           {step.codes.map((c) => (
             <li key={c}>{c}</li>
           ))}
@@ -95,14 +95,14 @@ export function TwoFactorPanel({ user, onChange }: { user: User; onChange: (u: U
           })
         }
       >
-        <p className="text-[13.5px] leading-[21px] text-ink-2">{t("Scan this with your authenticator app, then enter the code it shows.")}</p>
+        <p className="text-row leading-[21px] text-ink-2">{t("Scan this with your authenticator app, then enter the code it shows.")}</p>
         <div className="flex flex-wrap items-start gap-5">
           {/* A QR code is black on white whatever the theme, or it does not scan. */}
           <img src={setup.qr} alt={t("QR code for your authenticator app")} width={168} height={168} className="rounded-sm shadow-[0_0_0_1px_var(--color-line-strong)]" />
           <div className="min-w-0 flex-1 basis-48">
-            <div className="mb-1 text-[12px] font-medium text-ink-3">{t("Or type this key")}</div>
+            <div className="mb-1 text-label font-medium text-ink-3">{t("Or type this key")}</div>
             <div className="flex items-center gap-1">
-              <code className="min-w-0 break-all font-mono text-[12.5px] text-ink">{setup.secret}</code>
+              <code className="min-w-0 break-all font-mono text-meta text-ink">{setup.secret}</code>
               <CopyButton text={setup.secret} title={t("Copy the key")} />
             </div>
           </div>

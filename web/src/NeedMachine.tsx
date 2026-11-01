@@ -18,7 +18,7 @@ export function NeedMachine({
       {starting ? (
         <WakeMark />
       ) : (
-        <button type="button" className={btnClass("primary", "!h-11 pl-5 pr-2 text-[15px]")} onClick={onStart}>
+        <button type="button" className={btnClass("primary", "!h-11 pl-5 pr-2 text-body-lg")} onClick={onStart}>
           {t("Start Bot")}
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-xs bg-on-ink/20">
             <Power size={15} />
@@ -39,8 +39,8 @@ function WakeMark() {
   return (
     <div className="flex flex-col items-center" aria-busy="true" aria-live="polite">
       <div className="silo-wake" />
-      <p className="mt-4 text-[15px] font-medium text-ink">{line}</p>
-      <p className="mt-1 font-mono text-[12.5px] tabular-nums text-ink-3">{sec}s</p>
+      <p className="mt-4 text-body-lg font-medium text-ink">{line}</p>
+      <p className="mt-1 font-mono text-meta tabular-nums text-ink-3">{sec}s</p>
     </div>
   );
 }

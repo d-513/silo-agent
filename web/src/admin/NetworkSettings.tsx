@@ -52,21 +52,21 @@ function EgressHealth() {
       note={t("Every Bot's own network meets the gateway here. It answers DNS, keeps the threat lists below current, and records what it blocks or flags on the Bot's timeline.")}
       action={
         status ? (
-          <span className="flex items-center gap-2 text-[12.5px]">
+          <span className="flex items-center gap-2 text-meta">
             {off ? <ShieldAlert size={16} className="text-vermilion" /> : <ShieldCheck size={16} className="text-emerald" />}
             <span className={off ? "text-vermilion" : "text-ink-2"}>{off ? t("Off") : t("Serving")}</span>
           </span>
         ) : null
       }
     >
-      {err ? <p className="mb-3 text-[13px] text-vermilion">{err}</p> : null}
-      {status?.problem ? <p className="mb-3 text-[13px] text-vermilion">{status.problem}</p> : null}
-      <dl className="mb-4 grid grid-cols-2 gap-x-4 gap-y-2 text-[13px] wide:grid-cols-3">
+      {err ? <p className="mb-3 text-small text-vermilion">{err}</p> : null}
+      {status?.problem ? <p className="mb-3 text-small text-vermilion">{status.problem}</p> : null}
+      <dl className="mb-4 grid grid-cols-2 gap-x-4 gap-y-2 text-small wide:grid-cols-3">
         <Fact label={t("Bots on their own network")}>{status?.networks ?? 0}</Fact>
         <Fact label={t("Last word from the gateway")}>{status?.healthyAt || t("never")}</Fact>
         <Fact label={t("DNS servers")}>
           {status?.dnsServers.length ? (
-            <span className="font-mono text-[12px] break-all">
+            <span className="font-mono text-label break-all">
               {status.dnsServers.join(", ")}
               <span className="ml-1.5 font-sans text-ink-3">{status.dnsSource === "settings" ? t("(set above)") : t("(the system's)")}</span>
             </span>
@@ -77,7 +77,7 @@ function EgressHealth() {
         <Fact label={t("Gateway certificate")}>
           {status?.caFingerprint ? (
             <span className="flex items-center gap-1">
-              <span className="font-mono text-[12px] break-all">{status.caFingerprint}</span>
+              <span className="font-mono text-label break-all">{status.caFingerprint}</span>
               <CopyButton text={status.caFingerprint} title={t("Copy")} />
             </span>
           ) : (
@@ -87,7 +87,7 @@ function EgressHealth() {
       </dl>
 
       <div className="silo-scroll-x mb-3">
-        <table className="w-full min-w-[30rem] text-left text-[13px]">
+        <table className="w-full min-w-[30rem] text-left text-small">
           <thead className="text-ink-3">
             <tr>
               <th className="py-1.5 pr-3 font-medium">{t("Threat list")}</th>
@@ -111,7 +111,7 @@ function EgressHealth() {
       </div>
 
       <div className="flex items-center justify-between gap-3 border-t border-line pt-3">
-        <p className="text-[12.5px] leading-[18px] text-ink-3">
+        <p className="text-meta leading-[18px] text-ink-3">
           {t("Rotating makes a new certificate for the gateway, which signs with it at once. A running machine or connector sidecar still trusts the old one, so HTTPS through the gateway fails there until its next start, which recreates it with the new certificate (files, drives and caches are kept).")}
         </p>
         <SaveButton kind="secondary" state={saver.state} onClick={() => void rotate()}>

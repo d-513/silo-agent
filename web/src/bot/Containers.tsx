@@ -50,7 +50,7 @@ function BoxStat({ label, value, meter }: { label: string; value: string; meter?
   return (
     <div className="min-w-0">
       <div className="text-label-caps uppercase leading-4 text-ink-3">{label}</div>
-      <div className="mt-0.5 truncate font-mono text-[15px] font-medium tabular-nums tracking-tight text-ink">{value}</div>
+      <div className="mt-0.5 truncate font-mono text-body-lg font-medium tabular-nums tracking-tight text-ink">{value}</div>
       {meter ? <div className="mt-1.5">{meter}</div> : null}
     </div>
   );
@@ -75,8 +75,8 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
   return (
     <div className="silo-page silo-page-wide">
       <h2 className="text-title">{t("Containers")}</h2>
-      <p className="mb-5 mt-1 text-[13.5px] leading-[21px] text-ink-2">{t("Everything this Bot runs on. Usage comes from the container engine and refreshes every few seconds.")}</p>
-      {err ? <p className="mb-4 text-[13px] text-vermilion">{err}</p> : null}
+      <p className="mb-5 mt-1 text-row leading-[21px] text-ink-2">{t("Everything this Bot runs on. Usage comes from the container engine and refreshes every few seconds.")}</p>
+      {err ? <p className="mb-4 text-small text-vermilion">{err}</p> : null}
 
       <div className="mb-5 grid grid-cols-3 gap-4 rounded-card bg-well px-5 py-4">
         <BoxStat label={t("Running")} value={boxes ? `${running.length} of ${boxes.length}` : "—"} />
@@ -104,16 +104,16 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-card-title text-ink">{b.label}</span>
-                      <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-3">{t(kind.chip)}</span>
+                      <span className="rounded-sm bg-well px-1.5 py-0.5 text-micro font-medium text-ink-3">{t(kind.chip)}</span>
                     </div>
-                    <div className="mt-0.5 truncate text-[12.5px] text-ink-2">{b.detail}</div>
-                    <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px]">
+                    <div className="mt-0.5 truncate text-meta text-ink-2">{b.detail}</div>
+                    <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-meta">
                       <span className="flex items-center gap-1.5">
                         <Lamp status={look.lamp} />
                         <span className={`font-medium ${up ? "text-emerald" : "text-ink-3"}`}>{look.word}</span>
                       </span>
                       {up && b.startedAt ? <span className="text-ink-3">{uptime(b.startedAt, now)}</span> : null}
-                      <code className="min-w-0 truncate font-mono text-[12px] text-ink-3">{b.name}</code>
+                      <code className="min-w-0 truncate font-mono text-label text-ink-3">{b.name}</code>
                     </div>
                   </div>
                   {b.kind === "bot" ? (
@@ -158,7 +158,7 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
           >
             {t("Remove all containers")}
           </ArmedButton>
-          {removed && !anyUp ? <span className="text-[12.5px] text-ink-3">{t("Removed. Start the Bot to bring them back.")}</span> : null}
+          {removed && !anyUp ? <span className="text-meta text-ink-3">{t("Removed. Start the Bot to bring them back.")}</span> : null}
         </div>
       </Panel>
     </div>

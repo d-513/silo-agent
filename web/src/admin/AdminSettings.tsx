@@ -88,7 +88,7 @@ function SectionList({ open, sub }: { open: SectionId; sub?: ModelPage }) {
               data-tab-on={on || undefined}
               data-parent-on={parent || undefined}
               aria-current={on ? "page" : undefined}
-              className={`relative flex h-9 shrink-0 items-center gap-2.5 rounded-control px-3 text-[13.5px] font-medium whitespace-nowrap transition-[background-color,color] duration-[160ms] ease-quiet outline-offset-[-2px] ${
+              className={`relative flex h-9 shrink-0 items-center gap-2.5 rounded-control px-3 text-row font-medium whitespace-nowrap transition-[background-color,color] duration-[160ms] ease-quiet outline-offset-[-2px] ${
                 on ? "bg-well text-ink" : parent ? "text-ink max-wide:bg-well hover:bg-well" : "text-ink-2 hover:bg-well hover:text-ink"
               }`}
             >
@@ -112,7 +112,7 @@ function SectionList({ open, sub }: { open: SectionId; sub?: ModelPage }) {
                       params={{ page: m.id }}
                       data-tab-on={lit || undefined}
                       aria-current={lit ? "page" : undefined}
-                      className={`relative flex h-8 items-center gap-2 rounded-control px-2.5 text-[13px] whitespace-nowrap transition-[background-color,color] duration-[160ms] ease-quiet outline-offset-[-2px] ${
+                      className={`relative flex h-8 items-center gap-2 rounded-control px-2.5 text-small whitespace-nowrap transition-[background-color,color] duration-[160ms] ease-quiet outline-offset-[-2px] ${
                         lit ? "bg-well font-medium text-ink" : "text-ink-2 hover:bg-well hover:text-ink"
                       }`}
                     >
@@ -151,7 +151,7 @@ function Tab({ to, page, lit, icon: Icon, label }: { to: "/admin/settings/models
       to={to}
       params={page ? { page } : {}}
       aria-current={lit ? "page" : undefined}
-      className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-medium whitespace-nowrap transition-[background-color,color,box-shadow] duration-[160ms] ease-quiet ${
+      className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-meta font-medium whitespace-nowrap transition-[background-color,color,box-shadow] duration-[160ms] ease-quiet ${
         lit ? "bg-surface text-ink shadow-card" : "text-ink-2 hover:bg-well hover:text-ink"
       }`}
     >

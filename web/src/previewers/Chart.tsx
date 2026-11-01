@@ -35,7 +35,7 @@ export default function Chart({ text }: { text: string }) {
   }, [text]);
   return (
     <div className="space-y-2">
-      {err ? <p className="text-[13px] text-vermilion">{err}</p> : null}
+      {err ? <p className="text-small text-vermilion">{err}</p> : null}
       <div ref={box} className="max-w-full overflow-auto" />
     </div>
   );

@@ -119,7 +119,7 @@ export function CopyButton({
       title={copied ? t("Copied") : title}
       aria-label={copied ? t("Copied") : title}
       className={`inline-flex items-center gap-1.5 rounded-sm text-ink-2 transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms] ${
-        label ? "h-7 px-2 text-[12px] font-medium" : "h-7 w-7 justify-center"
+        label ? "h-7 px-2 text-label font-medium" : "h-7 w-7 justify-center"
       } ${className}`}
     >
       <span className="grid place-items-center">

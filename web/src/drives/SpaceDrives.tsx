@@ -90,10 +90,10 @@ export function SpaceDrives() {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-title text-ink">{t("Drives")}</h2>
-          <p className="mt-1 max-w-[520px] text-[13.5px] leading-[21px] text-ink-2">
+          <p className="mt-1 max-w-[520px] text-row leading-[21px] text-ink-2">
             <Trans
               i18nKey="Connect cloud storage or a file server once for the whole workspace, then choose which Bots mount it in <code>/workspace/drives</code>. Sign-ins and passwords stay on the Silo server."
-              components={{ code: <code className="font-mono text-[12.5px] text-ink" /> }}
+              components={{ code: <code className="font-mono text-meta text-ink" /> }}
             />
           </p>
         </div>
@@ -119,7 +119,7 @@ export function SpaceDrives() {
             <HardDrive size={28} />
           </div>
           <h3 className="text-base font-semibold text-ink">{t("No drives in this workspace yet")}</h3>
-          <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-2">{t("Add one, then choose which Bots mount it.")}</p>
+          <p className="mx-auto mt-1 max-w-md text-small text-ink-2">{t("Add one, then choose which Bots mount it.")}</p>
           <button type="button" className={`${btnClass("primary")} mt-6`} onClick={gallery}>
             <Plus size={15} />
             {t("Add drive")}
@@ -137,10 +137,10 @@ export function SpaceDrives() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-card-title text-ink">{d.name}</span>
-                      <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-3">{tpl?.title ?? d.template}</span>
-                      {d.readOnly ? <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-3">{t("Read-only")}</span> : null}
+                      <span className="rounded-sm bg-well px-1.5 py-0.5 text-micro font-medium text-ink-3">{tpl?.title ?? d.template}</span>
+                      {d.readOnly ? <span className="rounded-sm bg-well px-1.5 py-0.5 text-micro font-medium text-ink-3">{t("Read-only")}</span> : null}
                     </div>
-                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 text-[12.5px]">
+                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 text-meta">
                       <Lamp status={look.lamp} />
                       <span className={`shrink-0 font-medium ${look.tone}`}>{look.word}</span>
                       {d.account ? <span className="truncate text-ink-3">· {d.account}</span> : null}
@@ -261,7 +261,7 @@ function Missing({ onBack }: { onBack: () => void }) {
   return (
     <div className="silo-page">
       <PageHead title={t("Drives")} onBack={onBack} />
-      <p className="text-[13.5px] text-ink-2">{t("That drive is gone. It may have been removed.")}</p>
+      <p className="text-row text-ink-2">{t("That drive is gone. It may have been removed.")}</p>
     </div>
   );
 }

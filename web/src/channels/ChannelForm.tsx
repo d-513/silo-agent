@@ -155,7 +155,7 @@ export function ChannelForm({
 
             <Field label={t("Prompt")} hint={t("Extra instructions for runs on this channel, e.g. “This is WhatsApp; keep replies short.”")}>
               <textarea
-                className={`${textareaClass} h-[130px] font-mono text-[13px] leading-5`}
+                className={`${textareaClass} h-[130px] font-mono text-small leading-5`}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder={t("Keep answers concise...")}

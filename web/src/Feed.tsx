@@ -80,7 +80,7 @@ export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: st
         <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
           <Inbox size={20} className="text-ink-3" />
           <p className="text-ink-2">{t("Nothing yet.")}</p>
-          <p className="max-w-sm text-[12.5px] text-ink-3">{t("The Bot posts here with the feed tool — from a chat, an automation, or a channel.")}</p>
+          <p className="max-w-sm text-meta text-ink-3">{t("The Bot posts here with the feed tool — from a chat, an automation, or a channel.")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -89,7 +89,7 @@ export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: st
               <header className="mb-2 flex items-start gap-3">
                 <div className="min-w-0 flex-1">
                   {p.title ? <h3 className="text-card-title leading-5 text-ink">{p.title}</h3> : null}
-                  <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] leading-4 text-ink-3">
+                  <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-label leading-4 text-ink-3">
                     {fresh.has(p.id) ? <span aria-label={t("New")} className="h-1.5 w-1.5 shrink-0 rounded-full bg-cobalt" /> : null}
                     <span className="shrink-0 font-mono">{feedStamp(p.createdAt)}</span>
                     {src(p) ? (

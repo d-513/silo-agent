@@ -148,8 +148,8 @@ export function FileBrowser({
     ? "min-h-0 w-[240px] shrink-0 overflow-auto border-r border-on-hatch/10 text-on-hatch @max-[640px]:w-full @max-[640px]:border-r-0"
     : "min-h-0 w-[240px] shrink-0 overflow-auto border-r border-line text-ink @max-[640px]:w-full @max-[640px]:border-r-0";
   const headCls = hatch
-    ? "flex h-10 shrink-0 items-center gap-2 border-b border-on-hatch/10 px-3 text-[13px] text-on-hatch"
-    : "flex h-10 shrink-0 items-center gap-2 border-b border-line-strong px-3 text-[13px]";
+    ? "flex h-10 shrink-0 items-center gap-2 border-b border-on-hatch/10 px-3 text-small text-on-hatch"
+    : "flex h-10 shrink-0 items-center gap-2 border-b border-line-strong px-3 text-small";
 
   // Under 640px of its own width (a phone, or a pane docked beside the chat)
   // the browser shows the tree or the preview, not both.
@@ -200,7 +200,7 @@ export function FileBrowser({
           />
         </nav>
         <section className={`flex min-w-0 flex-1 flex-col bg-surface text-ink ${file ? "" : "@max-[640px]:hidden"}`}>
-          {file?.truncated && <p className="border-b border-line-strong px-3 py-1 text-[12px] text-ink-3">{t("Showing the first 2 MB.")}</p>}
+          {file?.truncated && <p className="border-b border-line-strong px-3 py-1 text-label text-ink-3">{t("Showing the first 2 MB.")}</p>}
           <div className={`min-h-0 flex-1 ${!busy && file && kindOf(file.name) === "pdf" ? "flex flex-col overflow-hidden" : "overflow-auto p-3"}`}>
             {busy ? <p className="text-ink-2">{t("Opening\u2026")}</p> : null}
             {!busy && file ? <FilePreview name={file.name} content={file.content} data={file.data} binary={file.binary} full quote={source.quote?.(sel)} /> : null}
@@ -262,8 +262,8 @@ function Tree({
                 onClick={() => (e.dir ? onToggle(e.path) : onFile(e.path))}
               >
                 <TypeIcon name={e.name} dir={e.dir} />
-                <span className="min-w-0 truncate text-[13px]">{e.name}</span>
-                {!e.dir && <span className="ml-auto shrink-0 font-mono text-[11px] opacity-50">{fmtBytes(e.size)}</span>}
+                <span className="min-w-0 truncate text-small">{e.name}</span>
+                {!e.dir && <span className="ml-auto shrink-0 font-mono text-micro opacity-50">{fmtBytes(e.size)}</span>}
               </button>
               {onDelete && (
                 <button

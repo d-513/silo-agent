@@ -29,17 +29,17 @@ export function ChannelCard({ botId, c, a, onLog, onDeleted }: { botId: string; 
           <AdapterLogo adapter={a} size={48} />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-semibold text-[15px] text-ink tracking-tight">{c.name}</span>
-              <span className="rounded-sm bg-well px-2 py-0.5 text-[11px] font-medium text-ink-3">
+              <span className="font-semibold text-body-lg text-ink tracking-tight">{c.name}</span>
+              <span className="rounded-sm bg-well px-2 py-0.5 text-micro font-medium text-ink-3">
                 {c.adapterName || c.adapter}
               </span>
               {!c.enabled && (
-                <span className="rounded-sm bg-well px-2 py-0.5 text-[11px] font-medium text-ink-3">
+                <span className="rounded-sm bg-well px-2 py-0.5 text-micro font-medium text-ink-3">
                   {t("Disabled")}
                 </span>
               )}
               {!c.inbound && (
-                <span className="rounded-sm bg-well px-2 py-0.5 text-[11px] font-medium text-ink-3">
+                <span className="rounded-sm bg-well px-2 py-0.5 text-micro font-medium text-ink-3">
                   {t("Send-only")}
                 </span>
               )}
@@ -61,7 +61,7 @@ export function ChannelCard({ botId, c, a, onLog, onDeleted }: { botId: string; 
             )}
 
             {/* Status */}
-            <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-medium text-ink-3">
+            <div className="mt-2.5 flex items-center gap-1.5 text-micro font-medium text-ink-3">
               <Lamp status={look.lamp} />
               <span className={look.tone}>{look.word}</span>
               {c.statusDetail && (

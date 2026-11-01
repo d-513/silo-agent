@@ -186,8 +186,8 @@ export function ArtifactCard({
         <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => onOpen(a)} disabled={legacy}>
           <TypeBadge name={v.name || block.path} kind={block.artifactType} />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13.5px] leading-5 font-medium text-ink">{block.title}</span>
-            <span className="flex items-center gap-1 truncate text-[12.5px] leading-[18px] text-ink-3">
+            <span className="block truncate text-row leading-5 font-medium text-ink">{block.title}</span>
+            <span className="flex items-center gap-1 truncate text-meta leading-[18px] text-ink-3">
               {subtitle(a, v)}
               <LiveNote v={v} />
             </span>
@@ -230,7 +230,7 @@ export function ArtifactCard({
         </button>
       ) : null}
       {sharing ? <SharePanel botId={botId} artifactId={a.artifactId} n={v.n} /> : null}
-      {err ? <p className="px-3 pb-2.5 text-[12.5px] text-vermilion">{err}</p> : null}
+      {err ? <p className="px-3 pb-2.5 text-meta text-vermilion">{err}</p> : null}
     </div>
   );
 }
@@ -244,7 +244,7 @@ function Preview({ v, skill }: { v: ArtifactVersion; skill: boolean }) {
       </div>
     );
   }
-  if (skill) return <p className="line-clamp-3 px-3 pb-3 text-[13px] leading-5 text-ink-2">{p.text}</p>;
+  if (skill) return <p className="line-clamp-3 px-3 pb-3 text-small leading-5 text-ink-2">{p.text}</p>;
   return (
     <pre className="mx-3 mb-3 max-h-36 overflow-hidden rounded-sm bg-well px-3 py-2 font-mono text-[11.5px] leading-[17px] whitespace-pre-wrap break-words text-ink-2">
       {p.text}
@@ -257,8 +257,8 @@ function Preview({ v, skill }: { v: ArtifactVersion; skill: boolean }) {
 function LiveNote({ v }: { v: ArtifactVersion }) {
   if (v.pinned) return null;
   return (
-    <Tip content={<span className="text-[12.5px]">{t("This version was too large to keep ({{why}}), so the card shows the file as it is now.", { why: v.note || "" })}</span>}>
-      <span className="rounded-xs bg-well px-1.5 text-[11px] font-medium text-ink-2">{t("live file")}</span>
+    <Tip content={<span className="text-meta">{t("This version was too large to keep ({{why}}), so the card shows the file as it is now.", { why: v.note || "" })}</span>}>
+      <span className="rounded-xs bg-well px-1.5 text-micro font-medium text-ink-2">{t("live file")}</span>
     </Tip>
   );
 }
@@ -283,7 +283,7 @@ export function AppFrame({ botId, artifactId, n, title, className }: { botId: st
       dead = true;
     };
   }, [botId, artifactId, n]);
-  if (err) return <div className={`flex items-center justify-center bg-well p-6 text-center text-[13px] text-ink-2 ${className}`}>{err}</div>;
+  if (err) return <div className={`flex items-center justify-center bg-well p-6 text-center text-small text-ink-2 ${className}`}>{err}</div>;
   if (!url) return <div className={`skeleton ${className}`} />;
   return <iframe key={url} src={url} title={title} sandbox={APP_SANDBOX} referrerPolicy="no-referrer" className={`block w-full border-0 bg-surface ${className}`} />;
 }
@@ -314,12 +314,12 @@ function AppCard({
       <div className="flex items-center gap-3 p-3">
         <TypeBadge name={v.name} kind="app" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13.5px] leading-5 font-medium text-ink">{a.title}</span>
-          <span className="flex items-center gap-1.5 truncate text-[12.5px] leading-[18px] text-ink-3">
+          <span className="block truncate text-row leading-5 font-medium text-ink">{a.title}</span>
+          <span className="flex items-center gap-1.5 truncate text-meta leading-[18px] text-ink-3">
             {subtitle(a, v)}
             {v.network ? (
-              <Tip content={<span className="text-[12.5px]">{t("This app may load from and talk to the internet.")}</span>}>
-                <span className="inline-flex items-center gap-1 rounded-xs bg-well px-1.5 text-[11px] font-medium text-ink-2">
+              <Tip content={<span className="text-meta">{t("This app may load from and talk to the internet.")}</span>}>
+                <span className="inline-flex items-center gap-1 rounded-xs bg-well px-1.5 text-micro font-medium text-ink-2">
                   <Globe size={11} />
                   {t("Network")}
                 </span>
@@ -344,20 +344,20 @@ function AppCard({
       </div>
       {sharing ? <SharePanel botId={botId} artifactId={a.artifactId} n={v.n} /> : null}
       {!v.pinned || legacy ? (
-        <p className="border-t border-line px-4 py-6 text-center text-[13px] text-ink-2">{t("This app was too large to keep, so it cannot run here. Download it instead.")}</p>
+        <p className="border-t border-line px-4 py-6 text-center text-small text-ink-2">{t("This app was too large to keep, so it cannot run here. Download it instead.")}</p>
       ) : run ? (
         <AppFrame botId={botId} artifactId={a.artifactId} n={v.n} title={a.title} className="h-[440px] border-t border-line" />
       ) : (
         <button
           type="button"
           onClick={() => setRun(true)}
-          className="flex h-40 w-full items-center justify-center gap-2 border-t border-line bg-well text-[13.5px] font-medium text-ink transition-colors duration-[160ms] hover:bg-pressed"
+          className="flex h-40 w-full items-center justify-center gap-2 border-t border-line bg-well text-row font-medium text-ink transition-colors duration-[160ms] hover:bg-pressed"
         >
           <Play size={15} />
           {t("Run app")}
         </button>
       )}
-      {err ? <p className="px-3 py-2 text-[12.5px] text-vermilion">{err}</p> : null}
+      {err ? <p className="px-3 py-2 text-meta text-vermilion">{err}</p> : null}
     </div>
   );
 }
@@ -422,7 +422,7 @@ export function SharePanel({ botId, artifactId, n, hatch }: { botId: string; art
     });
   const tone = hatch ? "text-on-hatch" : "text-ink";
   return (
-    <div className={`border-t px-3 py-2.5 text-[13px] ${hatch ? "border-on-hatch/10" : "border-line bg-canvas"} ${tone}`}>
+    <div className={`border-t px-3 py-2.5 text-small ${hatch ? "border-on-hatch/10" : "border-line bg-canvas"} ${tone}`}>
       {share === undefined && !err ? <div className="skeleton h-6 rounded-xs" /> : null}
       {share === null && !err ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -434,7 +434,7 @@ export function SharePanel({ botId, artifactId, n, hatch }: { botId: string; art
       ) : null}
       {share ? (
         <div className="flex flex-wrap items-center gap-2">
-          <a href={share.url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate font-mono text-[12.5px] underline-offset-2 hover:underline">
+          <a href={share.url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate font-mono text-meta underline-offset-2 hover:underline">
             {share.url}
           </a>
           <CopyButton text={share.url} title={t("Copy link")} size={13} />
@@ -443,7 +443,7 @@ export function SharePanel({ botId, artifactId, n, hatch }: { botId: string; art
           </button>
         </div>
       ) : null}
-      {err ? <p className="text-[12.5px] text-vermilion">{err}</p> : null}
+      {err ? <p className="text-meta text-vermilion">{err}</p> : null}
     </div>
   );
 }
@@ -451,7 +451,7 @@ export function SharePanel({ botId, artifactId, n, hatch }: { botId: string; art
 // ArtifactUpdateRow marks where a card further up gained a version.
 export function ArtifactUpdateRow({ title, version }: { title: string; version: number }) {
   return (
-    <div className="flex h-8 items-center gap-2 text-[13px] text-ink-3">
+    <div className="flex h-8 items-center gap-2 text-small text-ink-3">
       <History size={14} className="shrink-0" />
       <span className="min-w-0 truncate">{t("Updated {{title}} to version {{n}}", { title, n: version })}</span>
     </div>

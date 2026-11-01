@@ -71,7 +71,7 @@ export function InviteUser() {
 export function LinkWell({ url }: { url: string }) {
   return (
     <div className="flex items-center gap-2 rounded-sm bg-well py-1.5 pl-3 pr-1.5">
-      <code className="min-w-0 flex-1 break-all font-mono text-[12.5px] leading-5 text-ink">{url}</code>
+      <code className="min-w-0 flex-1 break-all font-mono text-meta leading-5 text-ink">{url}</code>
       <CopyButton label text={url} title={t("Copy the link")} className="shrink-0" />
     </div>
   );

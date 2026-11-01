@@ -39,9 +39,9 @@ export default function Notebook({ text }: { text: string }) {
           ) : c.cell_type === "code" ? (
             <div className="space-y-1.5">
               <div className="flex gap-2">
-                <span className="w-9 shrink-0 pt-2 text-right font-mono text-[11px] text-ink-3">[{c.execution_count ?? " "}]</span>
+                <span className="w-9 shrink-0 pt-2 text-right font-mono text-micro text-ink-3">[{c.execution_count ?? " "}]</span>
                 <div className="min-w-0 flex-1 rounded-sm bg-well p-2.5">
-                  <Highlighted code={joined(c.source) || " "} lang={lang} preClass="whitespace-pre-wrap break-words font-mono text-[12.5px] leading-5" />
+                  <Highlighted code={joined(c.source) || " "} lang={lang} preClass="whitespace-pre-wrap break-words font-mono text-meta leading-5" />
                 </div>
               </div>
               {(c.outputs ?? []).map((o, j) => (
@@ -51,7 +51,7 @@ export default function Notebook({ text }: { text: string }) {
               ))}
             </div>
           ) : (
-            <pre className="whitespace-pre-wrap font-mono text-[12.5px] text-ink-2">{joined(c.source)}</pre>
+            <pre className="whitespace-pre-wrap font-mono text-meta text-ink-2">{joined(c.source)}</pre>
           )}
         </div>
       ))}
@@ -60,7 +60,7 @@ export default function Notebook({ text }: { text: string }) {
 }
 
 function CellOutput({ o }: { o: Output }) {
-  const pre = "max-h-80 overflow-auto whitespace-pre-wrap break-words font-mono text-[12.5px] leading-5";
+  const pre = "max-h-80 overflow-auto whitespace-pre-wrap break-words font-mono text-meta leading-5";
   if (o.output_type === "stream") {
     return <pre className={`${pre} ${o.name === "stderr" ? "text-vermilion" : "text-ink-2"}`}>{joined(o.text)}</pre>;
   }

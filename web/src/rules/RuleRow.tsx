@@ -15,15 +15,15 @@ export function RuleRow({ rule: r, side, onChange }: { rule: Rule; side: Side; o
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className={r.connector === "secrets" ? "font-mono text-[13px] font-medium text-ink" : "text-[14px] font-medium text-ink"}>
+            <span className={r.connector === "secrets" ? "font-mono text-small font-medium text-ink" : "text-body font-medium text-ink"}>
               {r.title || r.action}
             </span>
             {r.connector !== "secrets" && r.title && r.action && r.title !== r.action && r.action !== "*" && (
-              <span className="rounded-sm bg-well px-1.5 py-0.5 font-mono text-[11px] text-ink-3">{r.action}</span>
+              <span className="rounded-sm bg-well px-1.5 py-0.5 font-mono text-micro text-ink-3">{r.action}</span>
             )}
-            {r.connector === "secrets" && <span className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] text-ink-3">{t("Secret")}</span>}
+            {r.connector === "secrets" && <span className="rounded-sm bg-well px-1.5 py-0.5 text-micro text-ink-3">{t("Secret")}</span>}
             {floor && (
-              <span className="inline-flex items-center gap-1 rounded-sm bg-well px-1.5 py-0.5 text-[11px] text-ink-2">
+              <span className="inline-flex items-center gap-1 rounded-sm bg-well px-1.5 py-0.5 text-micro text-ink-2">
                 <Lock size={10} />
                 {held.by === "workspace" ? t("Set by the workspace: {{mode}}", { mode: modeLabel(floor, side) }) : t("Operator: {{mode}}", { mode: modeLabel(floor, side) })}
               </span>

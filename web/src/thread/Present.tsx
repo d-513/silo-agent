@@ -43,8 +43,8 @@ function fileSize(f: LoadedFile) {
 function PreviewBody({ file, err, path, className = "" }: { file: LoadedFile | null; err: string; path: string; className?: string }) {
   return (
     <div className={`space-y-2 ${className}`.trim()}>
-      {file?.truncated ? <p className="text-[12.5px] text-ink-3">{t("Showing the first 2 MB.")}</p> : null}
-      {err ? <p className="text-[13px] text-vermilion">{err}</p> : null}
+      {file?.truncated ? <p className="text-meta text-ink-3">{t("Showing the first 2 MB.")}</p> : null}
+      {err ? <p className="text-small text-vermilion">{err}</p> : null}
       {!file && !err ? <div className="skeleton h-40 rounded-sm" /> : null}
       {file ? <FilePreview name={file.name} content={file.content} data={file.data} binary={file.binary} quote={{ source: "file", ref: path, label: path }} /> : null}
     </div>
@@ -66,8 +66,8 @@ export function PresentFile({ botId, path }: { botId: string; path: string }) {
       <div className="flex items-center gap-3 px-3 py-2.5">
         <TypeBadge name={name} />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[13.5px] leading-5 font-medium text-ink">{name}</div>
-          <div className="truncate text-[12.5px] leading-[18px] text-ink-3">
+          <div className="truncate text-row leading-5 font-medium text-ink">{name}</div>
+          <div className="truncate text-meta leading-[18px] text-ink-3">
             {[kindLabel(name), file ? fmtBytes(fileSize(file)) : "", t("in Files")].filter(Boolean).join(" · ")}
           </div>
         </div>

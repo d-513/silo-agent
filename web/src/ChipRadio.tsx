@@ -80,7 +80,7 @@ export function ChipRadio<V extends string | boolean>({
               onChange(o.value);
             }}
             className={`flex items-center justify-center rounded-sm font-medium transition-[transform,background-color,color,box-shadow] duration-[200ms] ease-quiet active:duration-[70ms] ${chip} ${
-              size === "sm" ? "h-7 text-[11.5px]" : "h-8 text-[12.5px]"
+              size === "sm" ? "h-7 text-[11.5px]" : "h-8 text-meta"
             } ${active ? `bg-surface shadow-card ${o.tone ?? "text-ink"}` : (o.look ?? (off ? "text-ink-3" : "text-ink-3 hover:bg-pressed hover:text-ink"))} ${
               off ? "cursor-not-allowed opacity-50" : "cursor-pointer active:scale-[.97]"
             }`}

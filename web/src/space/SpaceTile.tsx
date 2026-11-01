@@ -96,7 +96,7 @@ export function SpaceTile({ space, spaces }: { space: Space | undefined; spaces:
       >
         {space ? <SpaceMark space={space} /> : <span className="skeleton block h-8 w-8 rounded-sm" />}
       </button>
-      <span className="font-semibold max-wide:hidden wide:text-[11px] wide:leading-4">{"Silo"}</span>
+      <span className="font-semibold max-wide:hidden wide:text-micro wide:leading-4">{"Silo"}</span>
       {open
         ? createPortal(
             <div
@@ -126,9 +126,9 @@ export function SpaceTile({ space, spaces }: { space: Space | undefined; spaces:
                     >
                       {current ? <span aria-hidden className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-cobalt" /> : null}
                       <SpaceMark space={s} size={24} />
-                      <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-ink">{s.name}</span>
+                      <span className="min-w-0 flex-1 truncate text-row font-medium text-ink">{s.name}</span>
                       {roleWord(s.role) ? (
-                        <span className="shrink-0 rounded-xs bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-2">{roleWord(s.role)}</span>
+                        <span className="shrink-0 rounded-xs bg-well px-1.5 py-0.5 text-micro font-medium text-ink-2">{roleWord(s.role)}</span>
                       ) : null}
                     </button>
                   );
@@ -138,7 +138,7 @@ export function SpaceTile({ space, spaces }: { space: Space | undefined; spaces:
                   to="/w/new"
                   role="menuitem"
                   onClick={() => setOpen(false)}
-                  className="flex h-9 items-center gap-2.5 rounded-sm px-2 text-[13px] text-ink-2 transition-colors hover:bg-well hover:text-ink"
+                  className="flex h-9 items-center gap-2.5 rounded-sm px-2 text-small text-ink-2 transition-colors hover:bg-well hover:text-ink"
                 >
                   <Plus size={15} className="mx-[4.5px]" />
                   {t("New workspace")}

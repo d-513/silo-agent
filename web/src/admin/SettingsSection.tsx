@@ -137,9 +137,9 @@ function Yaml() {
         </SaveButton>
       }
     >
-      <p className="mb-3 font-mono text-[12px] break-all text-ink-3">{yamlPath || "silo.yaml"}</p>
+      <p className="mb-3 font-mono text-label break-all text-ink-3">{yamlPath || "silo.yaml"}</p>
       {env.length > 0 ? (
-        <p className="mb-3 flex items-start gap-2 text-[13px] text-vermilion">
+        <p className="mb-3 flex items-start gap-2 text-small text-vermilion">
           <TriangleAlert className="mt-0.5 shrink-0" size={16} />
           <span>{t("Overridden by env and will not apply until unset: {{names}}", { names: env.map((f) => f.envName).join(", ") })}</span>
         </p>

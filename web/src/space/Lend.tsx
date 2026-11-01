@@ -27,12 +27,12 @@ export function LendChip({ lentBy, shared, solo, onShare }: { lentBy: string; sh
     <span className="flex items-center gap-1.5">
       <Tip
         content={
-          <p className="max-w-[280px] text-[12.5px]">
+          <p className="max-w-[280px] text-meta">
             {shared ? t("Any Bot in the workspace may get it, and acts as {{who}}.", { who: lentBy }) : t("Only Bots that {{who}} alone uses may get it.", { who: lentBy })}
           </p>
         }
       >
-        <span tabIndex={0} className="rounded-sm bg-well px-1.5 py-0.5 text-[11px] font-medium text-ink-2 outline-none">
+        <span tabIndex={0} className="rounded-sm bg-well px-1.5 py-0.5 text-micro font-medium text-ink-2 outline-none">
           {shared ? t("Shared") : t("Personal")}
         </span>
       </Tip>
@@ -74,7 +74,7 @@ export function SignInChoice({ solo, space, onSignIn }: { solo: boolean; space: 
   }
   return (
     <span className="flex flex-wrap items-center gap-1.5">
-      <Tip content={<p className="max-w-[260px] text-[12.5px]">{t("Bots that only you use. Nobody else can give it to a Bot.")}</p>}>
+      <Tip content={<p className="max-w-[260px] text-meta">{t("Bots that only you use. Nobody else can give it to a Bot.")}</p>}>
         <Btn kind="primary" onClick={() => onSignIn(false)}>
           {t("Only my Bots")}
         </Btn>

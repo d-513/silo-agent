@@ -54,10 +54,10 @@ export function LibraryTab({
 
       {filtered.length === 0 ? (
         <div className="rounded-card shadow-card bg-surface p-8 text-center text-ink-3">
-          <p className="text-[13px]">{t("No catalog connectors found matching your criteria.")}</p>
+          <p className="text-small">{t("No catalog connectors found matching your criteria.")}</p>
           <button
             type="button"
-            className="mt-2 text-[12px] font-medium text-cobalt hover:underline"
+            className="mt-2 text-label font-medium text-cobalt hover:underline"
             onClick={() => {
               setSearch("");
               setSelectedCategory("all");

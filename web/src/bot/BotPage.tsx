@@ -322,7 +322,7 @@ export function BotPage() {
           </>
         )}
         {actErr && (
-          <div role="alert" className="rise flex items-center gap-2 bg-vermilion-pale px-4 py-2 text-[13px] text-vermilion">
+          <div role="alert" className="rise flex items-center gap-2 bg-vermilion-pale px-4 py-2 text-small text-vermilion">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-vermilion" />
             <span className="min-w-0 flex-1">{actErr}</span>
             <button type="button" title={t("Dismiss")} className="rounded-xs p-1 hover:bg-surface/60" onClick={() => setActErr("")}>

@@ -10,7 +10,7 @@ export function RulesFilter({ value, onChange }: { value: string; onChange: (v: 
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={t("Filter rules...")}
-        className="h-8 w-full rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface pr-7 pl-8 text-[13px] text-ink placeholder:text-ink-3 focus:outline-none"
+        className="h-8 w-full rounded-sm shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-surface pr-7 pl-8 text-small text-ink placeholder:text-ink-3 focus:outline-none"
       />
       {value && (
         <button

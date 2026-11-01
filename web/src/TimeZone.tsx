@@ -91,7 +91,7 @@ export function TimeZoneSettings({ bot, onError }: { bot: Bot; onError: (s: stri
           error={zoneError}
         >
           <input
-            className={`${inputClass} font-mono text-[13px]`}
+            className={`${inputClass} font-mono text-small`}
             list={listId}
             spellCheck={false}
             autoComplete="off"

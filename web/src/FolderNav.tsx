@@ -26,7 +26,7 @@ export function FolderNav({
   const trail = crumbs(at, rootLabel);
   return (
     <>
-      <nav className="silo-scroll-x flex items-center gap-1 px-2 py-2 text-[12.5px] shadow-[inset_0_-1px_0_var(--color-line)]" aria-label={t("Folder path")}>
+      <nav className="silo-scroll-x flex items-center gap-1 px-2 py-2 text-meta shadow-[inset_0_-1px_0_var(--color-line)]" aria-label={t("Folder path")}>
         {trail.map((c, i) => {
           const last = i === trail.length - 1;
           const button = (
@@ -57,13 +57,13 @@ export function FolderNav({
         ) : dirs === null ? (
           <SkeletonRows rows={3} height={32} className="p-2" />
         ) : dirs.length === 0 ? (
-          <p className="px-4 py-3 text-[12.5px] text-ink-3">{empty}</p>
+          <p className="px-4 py-3 text-meta text-ink-3">{empty}</p>
         ) : (
           dirs.map((d) => (
             <button
               key={d.path}
               type="button"
-              className="flex h-9 w-full items-center gap-2.5 px-3 text-left text-[13.5px] text-ink transition-colors duration-[160ms] ease-quiet hover:bg-well"
+              className="flex h-9 w-full items-center gap-2.5 px-3 text-left text-row text-ink transition-colors duration-[160ms] ease-quiet hover:bg-well"
               onClick={() => onGo(d.path)}
             >
               <Folder size={15} className="shrink-0 text-ink-3" />

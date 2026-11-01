@@ -46,9 +46,9 @@ export function NetworkCard({ botId }: { botId: string }) {
       title={t("Network")}
       note={t("Your Bot's machine has its own network: it can reach other machines on the internet but nothing on yours, and every connection leaves through a gateway that records the host. These lists say where it may go. Anything the operator set is shown locked and stays as it is.")}
     >
-      {err ? <p className="mb-3 text-[13px] text-vermilion">{err}</p> : null}
+      {err ? <p className="mb-3 text-small text-vermilion">{err}</p> : null}
       {net && !net.enabled ? (
-        <p className="mb-3 rounded-card bg-well p-3 text-[13px] text-ink-2">
+        <p className="mb-3 rounded-card bg-well p-3 text-small text-ink-2">
           {t("The operator has the network filter turned off, so connections are not being watched. These lists are kept and take effect when it is on again.")}
         </p>
       ) : null}
@@ -68,17 +68,17 @@ export function NetworkCard({ botId }: { botId: string }) {
 
       <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-line pt-4">
         <label className="min-w-0 flex-1">
-          <span className="mb-1 block text-[12.5px] font-medium text-ink-2">{t("Add a host")}</span>
+          <span className="mb-1 block text-meta font-medium text-ink-2">{t("Add a host")}</span>
           <input
             value={pattern}
             onChange={(e) => setPattern(e.target.value)}
             placeholder="example.com, *.example.com, 10.0.0.1"
             spellCheck={false}
-            className={`${inputClass} h-9 font-mono text-[13px]`}
+            className={`${inputClass} h-9 font-mono text-small`}
           />
         </label>
         <label className="w-[9.5rem] shrink-0">
-          <span className="mb-1 block text-[12.5px] font-medium text-ink-2">{t("List")}</span>
+          <span className="mb-1 block text-meta font-medium text-ink-2">{t("List")}</span>
           <Select value={kind} onChange={setKind} options={KINDS.map((k) => ({ value: k.id, label: t(k.label) }))} />
         </label>
         <Btn
@@ -123,24 +123,24 @@ function HostList({
   return (
     <div>
       <div className="flex flex-wrap items-baseline gap-x-2">
-        <span className="text-[13.5px] font-medium text-ink">{label}</span>
-        <span className="text-[12px] text-ink-3">{hint}</span>
+        <span className="text-row font-medium text-ink">{label}</span>
+        <span className="text-label text-ink-3">{hint}</span>
       </div>
       {entries.length === 0 ? (
-        <p className="mt-1 text-[12.5px] text-ink-3">{t("Nothing here.")}</p>
+        <p className="mt-1 text-meta text-ink-3">{t("Nothing here.")}</p>
       ) : (
         <ul className="mt-1.5 flex flex-wrap gap-1.5">
           {entries.map((p) => (
             <li
               key={p.kind + "\u0000" + p.pattern}
-              className={`flex items-center gap-1.5 rounded-sm py-1 pr-1 pl-2 font-mono text-[12.5px] ${
+              className={`flex items-center gap-1.5 rounded-sm py-1 pr-1 pl-2 font-mono text-meta ${
                 p.fromOperator ? "bg-well text-ink-2" : "bg-cobalt-pale text-ink"
               }`}
             >
               {p.fromOperator ? <Lock size={11} className="shrink-0 text-ink-3" /> : null}
               {p.pattern}
               {p.fromOperator ? (
-                <span className="font-sans text-[11px] text-ink-3">{t("from the operator")}</span>
+                <span className="font-sans text-micro text-ink-3">{t("from the operator")}</span>
               ) : (
                 <button
                   type="button"

@@ -185,13 +185,13 @@ export function RunPane({
         />
       ) : null}
       {fresh && !chatId && bot.people.length > 1 ? (
-        <p className="mx-auto w-full max-w-[760px] px-4 pb-2 text-center text-[12px] leading-[18px] text-ink-3">
+        <p className="mx-auto w-full max-w-[760px] px-4 pb-2 text-center text-label leading-[18px] text-ink-3">
           {t("{{name}}'s managers can read this chat. What you tell {{name}}, it may remember for everyone who uses it.", { name: bot.name })}
         </p>
       ) : null}
       {chat && !chat.mine ? (
         <div className="mx-auto mb-4 flex w-full max-w-[760px] items-center gap-3 rounded-card bg-well px-4 py-3">
-          <p className="min-w-0 flex-1 text-[13px] leading-5 text-ink-3">
+          <p className="min-w-0 flex-1 text-small leading-5 text-ink-3">
             {chat.author
               ? t("{{who}}'s chat. You can read it and stop it; only {{who}} writes in it.", { who: chat.author })
               : t("{{name}}'s own chat. You can read it and stop it.", { name: bot.name })}

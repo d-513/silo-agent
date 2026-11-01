@@ -24,7 +24,7 @@ function Opening({ onBack }: { onBack: () => void }) {
   return (
     <div className={widePage}>
       <PageHead title={t("Channels")} onBack={onBack} />
-      <p className="text-ink-2 text-[13px]">{t("Opening…")}</p>
+      <p className="text-ink-2 text-small">{t("Opening…")}</p>
     </div>
   );
 }
@@ -106,7 +106,7 @@ export function ChannelsList({ botId }: { botId: string }) {
             <h1 className="text-title text-ink">{t("Channels")}</h1>
             {loaded ? <Count n={channels.length} /> : null}
           </div>
-          <p className="max-w-3xl text-[13px] leading-relaxed text-ink-2">
+          <p className="max-w-3xl text-small leading-relaxed text-ink-2">
             {t("Channels let you talk to this Bot from chat apps like Telegram, WhatsApp or Discord. Each one binds an adapter to a single conversation: the Bot answers there, and can send to it from its tools.")}
           </p>
         </div>
@@ -131,7 +131,7 @@ export function ChannelsList({ botId }: { botId: string }) {
             <Radio size={28} />
           </div>
           <h3 className="text-base font-semibold text-ink">{t("No channels yet")}</h3>
-          <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-2">{t("Pick an app to start with. You can add more later, one conversation each.")}</p>
+          <p className="mx-auto mt-1 max-w-md text-small text-ink-2">{t("Pick an app to start with. You can add more later, one conversation each.")}</p>
           {adapters.length > 0 ? (
             <div className="mx-auto mt-6 grid max-w-2xl grid-cols-1 gap-2.5 text-left sm:grid-cols-3">
               {adapters.map((a) => (
@@ -142,13 +142,13 @@ export function ChannelsList({ botId }: { botId: string }) {
                   onClick={() => add(a.slug)}
                 >
                   <AdapterLogo adapter={a} size={36} />
-                  <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-ink">{a.name}</span>
+                  <span className="min-w-0 flex-1 truncate text-body font-medium text-ink">{a.name}</span>
                   <ChevronRight size={15} className="shrink-0 text-ink-3 transition-transform duration-[160ms] ease-quiet group-hover:translate-x-0.5" />
                 </button>
               ))}
             </div>
           ) : null}
-          <button type="button" className="mt-5 text-[12.5px] font-medium text-cobalt hover:underline" onClick={() => add()}>
+          <button type="button" className="mt-5 text-meta font-medium text-cobalt hover:underline" onClick={() => add()}>
             {t("Compare channels")}
           </button>
         </div>

@@ -75,13 +75,13 @@ export function OfferCard({ botId, offer }: { botId: string; offer: SetupOffer }
         <span className="shrink-0">{target.mark}</span>
         <div className="min-w-0 flex-1">
           <p className="text-[11.5px] leading-4 font-medium text-ink-3 uppercase">{t(kindWord[offer.kind] ?? kindWord.connector)}</p>
-          <h3 className="truncate text-[15px] leading-5 font-medium text-ink">{offer.label}</h3>
-          {target.blurb ? <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-[18px] text-ink-3">{target.blurb}</p> : null}
+          <h3 className="truncate text-body-lg leading-5 font-medium text-ink">{offer.label}</h3>
+          {target.blurb ? <p className="mt-0.5 line-clamp-2 text-meta leading-[18px] text-ink-3">{target.blurb}</p> : null}
         </div>
       </div>
-      {offer.why ? <p className="px-3.5 pb-2.5 text-[13.5px] leading-5 text-ink-2">{offer.why}</p> : null}
+      {offer.why ? <p className="px-3.5 pb-2.5 text-row leading-5 text-ink-2">{offer.why}</p> : null}
       {filled.length ? (
-        <dl className="mx-3.5 mb-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-control bg-well px-3 py-2 text-[12.5px] leading-[18px]">
+        <dl className="mx-3.5 mb-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-control bg-well px-3 py-2 text-meta leading-[18px]">
           {filled.map(([k, v]) => (
             <div key={k} className="contents">
               <dt className="text-ink-3">{optionWord[k] ? t(optionWord[k]) : target.fieldLabel(k)}</dt>
@@ -92,11 +92,11 @@ export function OfferCard({ botId, offer }: { botId: string; offer: SetupOffer }
       ) : null}
       <div className="mt-auto flex items-center gap-1.5 border-t border-line px-3.5 py-2.5">
         {offer.status === "done" ? (
-          <span className="flex items-center gap-1 text-[12.5px] font-medium text-emerald">
+          <span className="flex items-center gap-1 text-meta font-medium text-emerald">
             <Check size={13} /> {t("Added")}
           </span>
         ) : offer.status === "skipped" ? (
-          <span className="text-[12.5px] text-ink-3">{t("Not now")}</span>
+          <span className="text-meta text-ink-3">{t("Not now")}</span>
         ) : (
           <>
             <Btn kind="primary" size="sm" disabled={busy} icon={<Plus size={13} />} onClick={() => setOpen(true)}>
@@ -107,7 +107,7 @@ export function OfferCard({ botId, offer }: { botId: string; offer: SetupOffer }
             </Btn>
           </>
         )}
-        {err ? <span className="ml-auto truncate text-[12px] text-vermilion">{err}</span> : null}
+        {err ? <span className="ml-auto truncate text-label text-vermilion">{err}</span> : null}
       </div>
       {open ? (
         <SetupModal
@@ -154,7 +154,7 @@ export function OfferGroup({ botId, offers }: { botId: string; offers: SetupOffe
           <Btn kind="ghost" size="sm" disabled={busy} onClick={() => void skipAll()}>
             {t("Not now for these")}
           </Btn>
-          {err ? <span className="truncate text-[12px] text-vermilion">{err}</span> : null}
+          {err ? <span className="truncate text-label text-vermilion">{err}</span> : null}
         </div>
       ) : null}
     </div>

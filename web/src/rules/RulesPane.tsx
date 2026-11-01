@@ -55,7 +55,7 @@ export function RulesPane({ botId }: { botId: string }) {
       {output ? (
         <>
           {loaded && !rules.filterEnabled && (
-            <p className="mb-5 rounded-card bg-well p-3.5 text-[13px] text-ink-2">
+            <p className="mb-5 rounded-card bg-well p-3.5 text-small text-ink-2">
               {t("The operator has the output filter turned off. These rules are kept, but every result passes until it is on again.")}
             </p>
           )}
