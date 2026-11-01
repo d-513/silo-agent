@@ -149,9 +149,9 @@ export function MemoriesPane({ bot, onError }: { bot: Bot; onError: (s: string) 
       ) : !searchMode && rows.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
           <Brain size={20} className="text-ink-3" />
-          <p className="text-ink-2">{t("Nothing yet.")}</p>
+          <p className="text-ink-2">{t("No memories yet")}</p>
           <p className="max-w-sm text-meta text-ink-3">
-            {t("Saved by the Bot with remember, or collected from chats once they go quiet, and found by meaning.")}
+            {t("{{name}} saves what matters from your chats.", { name: bot.name })}
           </p>
         </div>
       ) : searchMode && rows.length === 0 ? (

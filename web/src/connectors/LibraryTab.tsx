@@ -1,4 +1,4 @@
-import { Plug, Plus, Sparkles } from "lucide-react";
+import { Plug, Plus } from "lucide-react";
 import { btnClass } from "../Btn";
 import { Count } from "../Count";
 import { FilterChip } from "../FilterChip";
@@ -72,7 +72,6 @@ export function LibraryTab({
           {featured.length > 0 && (
             <section className="space-y-3">
               <div className="flex items-center gap-2 border-b border-line/70 pb-2">
-                <Sparkles size={14} className="text-cobalt" />
                 <h3 className="font-semibold text-label leading-5 text-ink">{t("Featured")}</h3>
               </div>
               <div className={`grid grid-cols-1 gap-4 ${featured.length > 1 ? "md:grid-cols-2" : ""}`}>

@@ -63,7 +63,7 @@ export function Thread({
   onEditMessage?: (eventId: string, text: string, attachments?: Attachment[], quotes?: Quote[]) => void;
   onDeleteMessage?: (eventId: string) => void;
   onDivergeChat?: (eventId: string) => void;
-  // Replaces the "Ready for your prompt" empty state.
+  // Replaces the empty thread.
   emptyState?: ReactNode;
   // "run" draws each user message as a run divider (automation logs, where the
   // message is the automation's own prompt, not something a human typed).

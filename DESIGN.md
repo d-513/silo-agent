@@ -313,6 +313,7 @@ No bounce, and no overshoot beyond the settle curve.
 
 ### Thread
 
+- Empty, a thread is the Bot's crest at 88, its name, one line that could only be said of a Bot here, and the starters. It is the largest a working page draws a crest, and the one place the crest is the picture.
 - The column is 720px max, centered on `canvas`, with 16px between items; consecutive thinking / tool / receipt rows stack 2px apart. A centered `meta` date divider ("Today · 09:12") sits at the top.
 - **User**: right-aligned `well` bubble in `body-lg`. There's no border. In an automation log the user item is instead the hairline **RunMark** divider from the Automations section.
 - **Assistant**: no container, `reply` serif. While streaming, text arrives in chunks of a few words, each fading from opacity 0 with 3px blur to clear over 360ms, and a small breathing `ink` dot sits at the end. When it's done, hovering the turn reveals the action row (copy, retry), which fades up 2px over 180ms.

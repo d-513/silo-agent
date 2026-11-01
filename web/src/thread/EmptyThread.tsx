@@ -34,14 +34,15 @@ const starters = [
 // The thread before anything is said: the Bot's crest, a line, and a few
 // prompts to start from.
 export function EmptyThread({ botName, botCrest, onSelectPrompt }: { botName?: string; botCrest?: number; onSelectPrompt?: (prompt: string) => void }) {
+  const name = botName || t("Silo Bot");
   return (
     <div className="rise my-auto flex flex-col items-center justify-center px-4 py-14 text-center">
       <div className="blink mb-4">
-        {botCrest !== undefined ? <Crest index={botCrest} size={56} /> : <MessageCircle size={30} className="text-ink-2" />}
+        {botCrest !== undefined ? <Crest index={botCrest} size={88} /> : <MessageCircle size={30} className="text-ink-2" />}
       </div>
-      <h2 className="text-card-title leading-5 text-ink">{botName ? botName : t("Silo Bot")}</h2>
+      <h2 className="text-card-title leading-5 text-ink">{name}</h2>
       <p className="mt-1.5 max-w-md text-meta leading-[18px] text-ink-2">
-        {t("Ready for your prompt. Run code in the container, inspect files, or command the browser and desktop.")}
+        {t("{{name}} has its own computer and remembers what you tell it.", { name })}
       </p>
       {onSelectPrompt && (
         <div className="mt-6 flex max-w-lg flex-wrap justify-center gap-2">

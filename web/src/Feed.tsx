@@ -79,8 +79,8 @@ export function FeedPane({ bot, onError, onQuoted }: { bot: Bot; onError: (s: st
       ) : posts.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
           <Inbox size={20} className="text-ink-3" />
-          <p className="text-ink-2">{t("Nothing yet.")}</p>
-          <p className="max-w-sm text-meta text-ink-3">{t("The Bot posts here with the feed tool — from a chat, an automation, or a channel.")}</p>
+          <p className="text-ink-2">{t("No posts yet")}</p>
+          <p className="max-w-sm text-meta text-ink-3">{t("What {{name}} wants you to read turns up here.", { name: bot.name })}</p>
         </div>
       ) : (
         <div className="space-y-3">
