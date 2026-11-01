@@ -145,7 +145,7 @@ export function AdminDrives() {
 
   return (
     <div>
-      <p className="mb-5 max-w-[600px] text-row leading-[21px] text-ink-2">
+      <p className="mb-5 max-w-[600px] text-row leading-[20px] text-ink-2">
         {t("Drives let each Bot mount cloud storage as a folder. Providers that sign in with OAuth need a client registered once, here, before owners can connect them. The rest need nothing.")}
       </p>
       {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}

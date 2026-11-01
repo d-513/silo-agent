@@ -151,5 +151,5 @@ export function TipTitle({ children, aside }: { children: ReactNode; aside?: Rea
 
 // TipAction is the last line: what a click does, set off by a hairline.
 export function TipAction({ children }: { children: ReactNode }) {
-  return <div className="mt-2 border-t border-line pt-2 text-[11.5px] text-ink-3">{children}</div>;
+  return <div className="mt-2 border-t border-line pt-2 text-label text-ink-3">{children}</div>;
 }

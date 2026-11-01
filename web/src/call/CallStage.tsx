@@ -89,7 +89,7 @@ export function CallStage({
             >
               <Lamp status="working" />
               <span className="min-w-0 truncate">{callWork(s, doing)}</span>
-              {progress(doing) ? <span className="shrink-0 font-mono text-[11.5px] text-ink-3">{progress(doing)}</span> : null}
+              {progress(doing) ? <span className="shrink-0 font-mono text-label text-ink-3">{progress(doing)}</span> : null}
               <span className="shrink-0 rounded-xs bg-surface px-2 py-0.5 font-medium text-ink shadow-card">{t("Show")}</span>
             </button>
           ) : null}
@@ -185,7 +185,7 @@ function Captions({ s, botName, narrow }: { s: CallSnapshot; botName: string; na
         ) : (
           <>
             {lines.prev ? <p className="font-serif text-spoken leading-[26px] text-ink-3">{lines.prev}</p> : null}
-            {lines.cur ? <p className={`font-serif tracking-[-0.005em] text-ink ${narrow ? "text-[19px] leading-[27px]" : "text-spoken-lg leading-[34px] max-sm:text-[21px] max-sm:leading-[30px]"}`}>{lines.cur}</p> : null}
+            {lines.cur ? <p className={`font-serif tracking-[-0.005em] text-ink ${narrow ? "text-heading leading-[27px]" : "text-spoken-lg leading-[34px] max-sm:text-heading max-sm:leading-[30px]"}`}>{lines.cur}</p> : null}
           </>
         )}
       </div>
@@ -233,7 +233,7 @@ function Dock({ s, call, typing, onType }: { s: CallSnapshot; call: Call; typing
           content={
             <>
               <TipTitle>{s.ptt ? t("Hands-free") : t("Hold to talk")}</TipTitle>
-              <p className="mt-1 text-label leading-[17px] text-ink-2">{s.ptt ? t("Talk any time; a pause ends your turn.") : t("Only what you say while holding the button (or Space) is heard. For a noisy room, or speakers the Bot hears itself through.")}</p>
+              <p className="mt-1 text-label leading-[16px] text-ink-2">{s.ptt ? t("Talk any time; a pause ends your turn.") : t("Only what you say while holding the button (or Space) is heard. For a noisy room, or speakers the Bot hears itself through.")}</p>
             </>
           }
         >

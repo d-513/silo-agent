@@ -47,7 +47,7 @@ export function BotPeople({ bot }: { bot: Bot }) {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-title text-ink">{t("People")}</h2>
-          <p className="mt-1 max-w-[560px] text-row leading-[21px] text-ink-2">
+          <p className="mt-1 max-w-[560px] text-row leading-[20px] text-ink-2">
             {t("Everyone on {{name}} shares what it holds: its memory, files, machine and connections. Only its managers change what it may do.", { name: bot.name })}
           </p>
         </div>

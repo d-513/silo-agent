@@ -58,7 +58,7 @@ export function Widget({
         style={style}
         className={`rise group/w flex min-w-0 flex-col rounded-card bg-hatch px-2 pb-2 ${selected ? ring : ""} ${drag ? "cursor-grab" : ""}`}
       >
-        <div className="flex h-[34px] items-center gap-2 px-1.5 font-mono text-[11.5px] text-on-hatch/75">
+        <div className="flex h-[34px] items-center gap-2 px-1.5 font-mono text-label text-on-hatch/75">
           <span className="min-w-0 flex-1 truncate">{w.title}</span>
           {arranging ? arrange : <HeadTools w={w} selected={selected} handlers={handlers} onHatch />}
         </div>
@@ -125,16 +125,16 @@ function HeadTools({
   return (
     <div className="flex shrink-0 items-center gap-1">
       {busy ? (
-        <span className={onHatch ? "text-[11.5px]" : "shimmer-text text-[11.5px]"}>{t("Refreshing")}</span>
+        <span className={onHatch ? "text-label" : "shimmer-text text-label"}>{t("Refreshing")}</span>
       ) : extra ? (
         extra
       ) : meta ? (
         when.length ? (
           <Tip content={when.join(" · ")}>
-            <span className={`font-mono text-[11.5px] ${onHatch ? "" : "text-ink-3"}`}>{meta}</span>
+            <span className={`font-mono text-label ${onHatch ? "" : "text-ink-3"}`}>{meta}</span>
           </Tip>
         ) : (
-          <span className={`font-mono text-[11.5px] ${onHatch ? "" : "text-ink-3"}`}>{meta}</span>
+          <span className={`font-mono text-label ${onHatch ? "" : "text-ink-3"}`}>{meta}</span>
         )
       ) : null}
       <span
@@ -174,7 +174,7 @@ function ChecklistCount({ w }: { w: DashboardWidget }) {
   const all = items(obj(w.dataJson).items);
   if (!all.length) return null;
   const on = checked(w.stateJson).filter((id) => all.some((x) => text(x.id) === id)).length;
-  return <span className="font-mono text-[11.5px] text-ink-3">{`${on}/${all.length}`}</span>;
+  return <span className="font-mono text-label text-ink-3">{`${on}/${all.length}`}</span>;
 }
 
 // WidgetSnapshot is a widget as it stood when a chat quoted it: the same
@@ -184,7 +184,7 @@ export function WidgetSnapshot({ w }: { w: DashboardWidget }) {
     <div className="@container min-w-0 rounded-card bg-surface px-3.5 pt-2.5 pb-3 shadow-card">
       <header className="mb-2 flex h-6 min-w-0 items-center gap-2">
         <h3 className="min-w-0 flex-1 truncate text-small leading-[18px] font-medium text-ink">{w.title}</h3>
-        {w.source ? <span className="shrink-0 truncate font-mono text-[11.5px] text-ink-3">{w.source}</span> : null}
+        {w.source ? <span className="shrink-0 truncate font-mono text-label text-ink-3">{w.source}</span> : null}
       </header>
       {w.kind === "app" ? (
         <p className="text-meta text-ink-3">{t("A live app on the Dashboard.")}</p>
@@ -227,7 +227,7 @@ function Foot({ w, acts, handlers }: { w: DashboardWidget; acts: Action[]; handl
         </div>
       ) : null}
       {w.error ? (
-        <Tip content={<span className="block max-w-[360px] font-mono text-[11.5px] leading-[17px] whitespace-pre-wrap">{w.error}</span>}>
+        <Tip content={<span className="block max-w-[360px] font-mono text-label leading-[16px] whitespace-pre-wrap">{w.error}</span>}>
           <p className="flex items-center gap-1.5 text-label text-ink-3">
             <AlertCircle size={12.5} className="shrink-0" />
             <span className="truncate">{t("Couldn't refresh")}</span>

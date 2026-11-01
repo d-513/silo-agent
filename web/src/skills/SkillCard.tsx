@@ -49,9 +49,9 @@ export function SkillCard({
             {catalog ? <span className="rounded-sm bg-well px-2 py-0.5 text-micro font-medium text-ink-3">{t("Catalog")}</span> : null}
           </div>
           {description ? (
-            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-ink-2">{description}</p>
+            <p className="mt-1.5 line-clamp-2 text-micro leading-relaxed text-ink-2">{description}</p>
           ) : (
-            <p className="mt-1.5 text-xs leading-relaxed text-ink-3">{t("No description.")}</p>
+            <p className="mt-1.5 text-micro leading-relaxed text-ink-3">{t("No description.")}</p>
           )}
         </div>
         {aside ? <div className="shrink-0 pt-0.5">{aside}</div> : null}

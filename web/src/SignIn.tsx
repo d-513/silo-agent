@@ -85,7 +85,7 @@ export function SignIn() {
     <AuthCard title={needsCode ? t("Two-factor code") : t("Sign in")}>
       {needsCode ? (
         <form onSubmit={onSubmit}>
-          <p className="mb-4 text-row leading-[21px] text-ink-2">{t("Enter the 6-digit code from your authenticator app, or one of your recovery codes.")}</p>
+          <p className="mb-4 text-row leading-[20px] text-ink-2">{t("Enter the 6-digit code from your authenticator app, or one of your recovery codes.")}</p>
           <label htmlFor="silo-code" className={authLabel}>
             {t("Code")}
           </label>

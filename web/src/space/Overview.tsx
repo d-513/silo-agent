@@ -172,7 +172,7 @@ function BotCard({ bot: b, i }: { bot: Bot; i: number }) {
         ) : null}
       </div>
 
-      {b.description ? <p className="pointer-events-none mt-3 line-clamp-2 text-small leading-[19px] text-ink-2">{b.description}</p> : null}
+      {b.description ? <p className="pointer-events-none mt-3 line-clamp-2 text-small leading-[20px] text-ink-2">{b.description}</p> : null}
 
       <div className="mt-auto pt-4">
         <Doing bot={b} />

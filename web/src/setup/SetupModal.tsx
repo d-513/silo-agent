@@ -91,7 +91,7 @@ function ConnectorSetupForm({ botId, offer, onClose, onDone, preset, taken }: Pr
   if (signIn) {
     return (
       <Modal rise onClose={onDone}>
-        <h3 className="mb-1 text-base font-semibold text-ink">{t("Sign in to {{name}}", { name: signIn.connector?.name ?? "" })}</h3>
+        <h3 className="mb-1 text-body leading-6 font-semibold text-ink">{t("Sign in to {{name}}", { name: signIn.connector?.name ?? "" })}</h3>
         <p className="mb-5 text-small text-ink-2">{t("This connector uses OAuth. A browser window will ask you to allow Silo to call it.")}</p>
         {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
         <div className="flex items-center gap-2">

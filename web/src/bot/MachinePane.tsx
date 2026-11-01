@@ -115,7 +115,7 @@ function PauseSwitch({ bot, onError }: { bot: Bot; onError?: (s: string) => void
       content={
         <div className="max-w-[280px]">
           <TipTitle aside={on ? t("Paused") : t("Running")}>{t("Pause the Bot on the desktop")}</TipTitle>
-          <p className="mt-1 text-label leading-[17px] text-ink-2">
+          <p className="mt-1 text-label leading-[16px] text-ink-2">
             {t("While paused, the Bot cannot click, type, press keys, scroll or use Chromium here. It is told you are in control. It can still look.")}
           </p>
           <TipAction>{on ? t("Click to hand the desktop back") : t("Click to take over")}</TipAction>
@@ -128,7 +128,7 @@ function PauseSwitch({ bot, onError }: { bot: Bot; onError?: (s: string) => void
         aria-checked={on}
         aria-busy={busy}
         onClick={flip}
-        className={`flex h-6 shrink-0 items-center gap-1.5 rounded-full px-2.5 font-mono text-[11.5px] transition-colors duration-[160ms] ease-quiet ${
+        className={`flex h-6 shrink-0 items-center gap-1.5 rounded-full px-2.5 font-mono text-label transition-colors duration-[160ms] ease-quiet ${
           on ? "bg-vermilion text-on-accent hover:bg-vermilion-deep" : "text-on-hatch/75 shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-on-hatch)_18%,transparent)] hover:bg-on-hatch/10 hover:text-on-hatch"
         } ${busy ? "opacity-60" : ""}`}
       >

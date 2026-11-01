@@ -29,7 +29,7 @@ export function ChannelLog({ botId, channel, onClose }: { botId: string; channel
               <Radio size={16} />
             </div>
             <div>
-              <span className="font-semibold text-sm text-ink">{t("{{name}} Log", { name: channel.name })}</span>
+              <span className="font-semibold text-label leading-5 text-ink">{t("{{name}} Log", { name: channel.name })}</span>
               <span className="ml-2 text-meta text-ink-3">
                 {t("{{count}} conversations", { count: chats.length })}
               </span>
@@ -50,7 +50,7 @@ export function ChannelLog({ botId, channel, onClose }: { botId: string; channel
               <button
                 key={c.id}
                 type="button"
-                className={`shrink-0 rounded-sm px-3 py-1.5 text-xs transition-colors ${ c.id === chatId ? "bg-surface font-semibold text-ink shadow-2xs border border-line"
+                className={`shrink-0 rounded-sm px-3 py-1.5 text-micro leading-4 transition-colors ${ c.id === chatId ? "bg-surface font-semibold text-ink shadow-2xs border border-line"
                     : "text-ink-2 hover:text-ink hover:bg-surface/60"
                 }`}
                 onClick={() => setChatId(c.id)}

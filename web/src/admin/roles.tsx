@@ -100,7 +100,7 @@ function RoleRow({ role: r }: { role: Role }) {
           emptyLabel={none}
         />
         {follows ? (
-          <p className="mt-1.5 flex min-w-0 items-center gap-1.5 text-label leading-[17px] text-ink-3">
+          <p className="mt-1.5 flex min-w-0 items-center gap-1.5 text-label leading-[16px] text-ink-3">
             <CornerDownRight size={12} className="shrink-0" />
             <span className="min-w-0 truncate font-mono">{use.model}</span>
             <span className="shrink-0">· {t("from {{job}}", { job: t(ROLE_NAMES[use.from] ?? use.from) })}</span>

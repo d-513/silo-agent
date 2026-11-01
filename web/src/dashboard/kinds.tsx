@@ -35,7 +35,7 @@ export function Body({ w, data, acts, handlers }: { w: DashboardWidget; data: Re
   switch (w.kind) {
     case "note":
       return say(data.text) ? (
-        <div className="silo-reply text-[15.5px] leading-[26px]">
+        <div className="silo-reply text-body-lg leading-[26px]">
           <Md text={say(data.text)} />
         </div>
       ) : null;
@@ -126,7 +126,7 @@ function Chart({ data, type }: { data: Record<string, unknown>; type: "line" | "
       <div className="flex items-baseline gap-1.5">
         <span className="text-heading leading-6 font-medium tracking-[-0.015em] tabular-nums">{fmtNum(last.value)}</span>
         {unit ? <span className="font-mono text-label text-ink-3">{unit}</span> : null}
-        {last.label ? <span className="ml-auto font-mono text-[11.5px] text-ink-3">{last.label}</span> : null}
+        {last.label ? <span className="ml-auto font-mono text-label text-ink-3">{last.label}</span> : null}
       </div>
       {say(data.caption) ? <p className="mt-0.5 text-meta leading-[18px] text-ink-2">{say(data.caption)}</p> : null}
       {type === "line" ? (
@@ -221,7 +221,7 @@ function List({ data, acts, handlers }: { data: Record<string, unknown>; acts: A
               {say(r.detail) ? <div className="truncate text-label leading-4 text-ink-3">{say(r.detail)}</div> : null}
             </div>
             <RowActions acts={acts} row={r} handlers={handlers} />
-            {say(r.meta) ? <span className="shrink-0 font-mono text-[11.5px] text-ink-3">{say(r.meta)}</span> : null}
+            {say(r.meta) ? <span className="shrink-0 font-mono text-label text-ink-3">{say(r.meta)}</span> : null}
           </li>
         );
       })}
@@ -332,7 +332,7 @@ function StatusList({ data }: { data: Record<string, unknown> }) {
             <span className={`h-[7px] w-[7px] shrink-0 rounded-full ${dot}`} />
             <span className="min-w-0 flex-1 truncate font-mono text-meta text-ink">{say(r.label)}</span>
             <span className={`shrink-0 text-label font-medium ${word}`}>{say(r.word) || statusWords[tn]()}</span>
-            {say(r.meta) ? <span className="min-w-14 shrink-0 text-right font-mono text-[11.5px] whitespace-nowrap text-ink-3">{say(r.meta)}</span> : null}
+            {say(r.meta) ? <span className="min-w-14 shrink-0 text-right font-mono text-label whitespace-nowrap text-ink-3">{say(r.meta)}</span> : null}
           </li>
         );
       })}

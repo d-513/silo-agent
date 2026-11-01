@@ -177,7 +177,7 @@ export function Select({
                       >
                         <span className="min-w-0 flex-1">
                           <span className={`block truncate ${compact ? "text-label" : "text-small"}`}>{o.label}</span>
-                          {o.hint ? <span className={`block truncate text-ink-3 ${compact ? "text-[10px]" : "text-micro"}`}>{o.hint}</span> : null}
+                          {o.hint ? <span className={`block truncate text-ink-3 ${compact ? "text-micro" : "text-micro"}`}>{o.hint}</span> : null}
                         </span>
                         {selected ? <Check size={compact ? 12 : 14} className="shrink-0 text-ink" /> : null}
                       </button>

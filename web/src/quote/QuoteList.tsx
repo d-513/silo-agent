@@ -16,7 +16,7 @@ export function QuoteList({ quotes }: { quotes: Quote[] }) {
           {q.image ? (
             <div className="mt-0.5 flex items-center gap-1.5 text-meta text-ink-3">
               <ImageIcon size={12} />
-              <span className="truncate font-mono text-[11.5px]">{q.image}</span>
+              <span className="truncate font-mono text-label">{q.image}</span>
               <span>{t("a region of it")}</span>
             </div>
           ) : (

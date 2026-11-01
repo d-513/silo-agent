@@ -65,7 +65,7 @@ export function SpacePeople() {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-title text-ink">{t("People")}</h2>
-          <p className="mt-1 max-w-[560px] text-row leading-[21px] text-ink-2">
+          <p className="mt-1 max-w-[560px] text-row leading-[20px] text-ink-2">
             {t("Everyone here can be given Bots to use. Admins see every Bot in the workspace, but cannot open one they are not on.")}
           </p>
         </div>
@@ -82,7 +82,7 @@ export function SpacePeople() {
         <SkeletonRows rows={2} height={56} />
       ) : solo ? (
         <div className="rounded-card bg-surface p-6 shadow-card">
-          <p className="text-row leading-[21px] text-ink-2">
+          <p className="text-row leading-[20px] text-ink-2">
             {t("Only you are in {{name}}. Invite people to share its Bots and what they use, without sharing your own.", { name: space?.name ?? "" })}
           </p>
         </div>
@@ -195,7 +195,7 @@ export function SpaceInvitePage() {
       <PageHead title={t("Invite to {{name}}", { name: space?.name ?? "" })} onBack={back} />
       {url ? (
         <div className="rounded-card bg-surface p-5 shadow-card">
-          <p className="mb-3 text-row leading-[21px] text-ink-2">
+          <p className="mb-3 text-row leading-[20px] text-ink-2">
             {t("Send this link to the person you are inviting. It works once, for 7 days, and is shown only now.")}
           </p>
           <div className="flex items-center gap-2 rounded-control bg-well px-3 py-2">
@@ -224,7 +224,7 @@ export function SpaceInvitePage() {
               { value: "guest", label: roleWord("guest") },
             ]}
           />
-          <p className="mt-2 text-meta leading-[19px] text-ink-2">{hint[pick]}</p>
+          <p className="mt-2 text-meta leading-[20px] text-ink-2">{hint[pick]}</p>
           {err ? <ErrorWell className="mt-4">{err}</ErrorWell> : null}
           <div className="mt-5">
             <Btn kind="primary" onClick={() => void make()} disabled={busy}>

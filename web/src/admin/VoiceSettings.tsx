@@ -18,7 +18,7 @@ function how(kind: "transcription" | "speech") {
       : kind === "speech"
         ? t("One request per sentence.")
         : t("One request per turn, after you stop.");
-    return <p className={`mt-1.5 text-label leading-[17px] ${m.live ? "text-cobalt" : "text-ink-3"}`}>{words}</p>;
+    return <p className={`mt-1.5 text-label leading-[16px] ${m.live ? "text-cobalt" : "text-ink-3"}`}>{words}</p>;
   };
 }
 

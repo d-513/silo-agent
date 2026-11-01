@@ -19,7 +19,7 @@ export function CatalogCard({ c, count, onAdd }: { c: Connector; count: number; 
             <McpChip transport={c.transport} />
             {c.category && <CategoryChip label={c.category} />}
           </div>
-          <p className="mt-1.5 line-clamp-2 text-xs text-ink-2 leading-relaxed">{c.description}</p>
+          <p className="mt-1.5 line-clamp-2 text-micro text-ink-2 leading-relaxed">{c.description}</p>
           <div className="mt-2.5 flex items-center gap-2 text-micro text-ink-3">
             <span className="font-mono uppercase">{c.transport}</span>
             <span>·</span>
@@ -63,7 +63,7 @@ export function FeaturedCard({ c, count, onAdd }: { c: Connector; count: number;
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h4 className="text-[19px] font-semibold tracking-tight text-ink">{c.name}</h4>
+            <h4 className="text-heading font-semibold tracking-tight text-ink">{c.name}</h4>
             <CategoryChip label={t("Built in")} />
             {c.category && <CategoryChip label={c.category} />}
           </div>

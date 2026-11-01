@@ -130,7 +130,7 @@ export function ChannelsList({ botId }: { botId: string }) {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-well text-ink-3">
             <Radio size={28} />
           </div>
-          <h3 className="text-base font-semibold text-ink">{t("No channels yet")}</h3>
+          <h3 className="text-body leading-6 font-semibold text-ink">{t("No channels yet")}</h3>
           <p className="mx-auto mt-1 max-w-md text-small text-ink-2">{t("Pick an app to start with. You can add more later, one conversation each.")}</p>
           {adapters.length > 0 ? (
             <div className="mx-auto mt-6 grid max-w-2xl grid-cols-1 gap-2.5 text-left sm:grid-cols-3">

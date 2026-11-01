@@ -64,11 +64,11 @@ export function Gallery({ templates, admin, onPick, onBack }: { templates: Drive
                         <TipTitle>{t("{{title}} is not set up yet", { title: tpl.title })}</TipTitle>
                         {admin ? (
                           <>
-                            <p className="mt-1 text-label leading-[17px] text-ink-2">{t("It needs an OAuth client registered with {{provider}}, once for everyone.", { provider: tpl.authLabel || tpl.title })}</p>
+                            <p className="mt-1 text-label leading-[16px] text-ink-2">{t("It needs an OAuth client registered with {{provider}}, once for everyone.", { provider: tpl.authLabel || tpl.title })}</p>
                             <TipAction>{t("Click to set it up in Admin → Drives")}</TipAction>
                           </>
                         ) : (
-                          <p className="mt-1 text-label leading-[17px] text-ink-2">{t("An admin has to enable it once, in Admin → Drives.")}</p>
+                          <p className="mt-1 text-label leading-[16px] text-ink-2">{t("An admin has to enable it once, in Admin → Drives.")}</p>
                         )}
                       </>
                     }

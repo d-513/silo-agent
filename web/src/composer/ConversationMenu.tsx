@@ -144,7 +144,7 @@ export function ConversationMenu({
           {measured ? <span className="hidden @min-[400px]:inline">{pct}%</span> : null}
           {running ? <span aria-hidden className="breathe absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-cobalt" /> : null}
           {fresh && !open ? (
-            <span className="pop absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-cobalt px-1 font-sans text-[10px] font-semibold text-on-accent">
+            <span className="pop absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-cobalt px-1 font-sans text-micro font-semibold text-on-accent">
               {changed > 0 ? `+${changed}` : <Check size={10} strokeWidth={3} />}
             </span>
           ) : null}
@@ -183,7 +183,7 @@ export function ConversationMenu({
                       ) : null}
                     </dl>
                   ) : null}
-                  <p className="mt-2 text-label leading-[17px] text-ink-3">
+                  <p className="mt-2 text-label leading-[16px] text-ink-3">
                     {t("Near the limit the conversation is summarized automatically; the thread keeps everything.")}
                   </p>
                 </div>
@@ -223,7 +223,7 @@ export function ConversationMenu({
                     />
                   ) : null}
                   {collect.state.kind === "done" && collect.state.res.memories.length > 0 ? (
-                    <ul className="mx-2 mb-1 ml-[34px] grid gap-1 text-label leading-[17px] text-ink-2">
+                    <ul className="mx-2 mb-1 ml-[34px] grid gap-1 text-label leading-[16px] text-ink-2">
                       {collect.state.res.memories.slice(0, 4).map((m) => (
                         <li key={m.id} className="line-clamp-2">
                           {m.content}
@@ -287,7 +287,7 @@ function Item({
       <span className={`mt-px flex h-[18px] items-center ${disabled && !busy ? "text-ink-3" : "text-ink-2"}`}>{icon}</span>
       <span className="min-w-0">
         <span className={`block text-small leading-[18px] font-medium ${disabled && !busy ? "text-ink-3" : "text-ink"}`}>{label}</span>
-        {hint ? <span className="mt-0.5 block text-label leading-[17px] text-ink-3">{hint}</span> : null}
+        {hint ? <span className="mt-0.5 block text-label leading-[16px] text-ink-3">{hint}</span> : null}
       </span>
       {toggle ? (
         <span

@@ -54,7 +54,7 @@ export function Thinking({ text, streaming, ms }: { text: string; streaming: boo
         )
       }
     >
-      {text.trim() ? <div className="whitespace-pre-wrap break-words text-small leading-[21px] text-ink-2">{text}</div> : null}
+      {text.trim() ? <div className="whitespace-pre-wrap break-words text-small leading-[20px] text-ink-2">{text}</div> : null}
     </FoldRow>
   );
 }
@@ -75,7 +75,7 @@ export function Compaction({ text, reason, running }: { text: string; reason: st
       tail={reason === "auto" && !running ? <span className="truncate text-ink-3">· {t("the context window was nearly full")}</span> : null}
     >
       {text.trim() ? (
-        <div className="silo-reply text-small leading-[21px] text-ink-2">
+        <div className="silo-reply text-small leading-[20px] text-ink-2">
           <Md text={text} />
         </div>
       ) : null}

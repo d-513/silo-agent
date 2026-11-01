@@ -53,7 +53,7 @@ function CsvTable({ text }: { text: string }) {
             placeholder={t("Filter rows")}
             className="h-8 w-56 rounded-control bg-well px-2.5 text-small text-ink outline-none placeholder:text-ink-3 focus:shadow-[inset_0_0_0_1px_var(--color-cobalt)]"
           />
-          <span className="font-mono text-[11.5px] text-ink-3">
+          <span className="font-mono text-label text-ink-3">
             {shown.length === body.length ? t("{{count}} rows", { count: body.length }) : t("{{n}} of {{total}}", { n: shown.length, total: body.length })}
           </span>
         </div>

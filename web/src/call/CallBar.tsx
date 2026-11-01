@@ -79,7 +79,7 @@ function Bar({ s, call, botName, doing, onExpand }: { s: CallSnapshot; call: Cal
               content={
                 <>
                   <TipTitle>{s.ptt ? t("Hands-free") : t("Hold to talk")}</TipTitle>
-                  <p className="mt-1 text-label leading-[17px] text-ink-2">{s.ptt ? t("Talk any time; a pause ends your turn.") : t("Only what you say while holding the button (or Space) is heard. For a noisy room, or speakers the Bot hears itself through.")}</p>
+                  <p className="mt-1 text-label leading-[16px] text-ink-2">{s.ptt ? t("Talk any time; a pause ends your turn.") : t("Only what you say while holding the button (or Space) is heard. For a noisy room, or speakers the Bot hears itself through.")}</p>
                 </>
               }
             >

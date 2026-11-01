@@ -43,7 +43,7 @@ function MemoryRow({
       ) : null}
       <div className="min-w-0 flex-1">
         <p className="text-body leading-[22px] break-words whitespace-pre-wrap text-ink">{m.content}</p>
-        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[11.5px] leading-4 text-ink-3">
+        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-label leading-4 text-ink-3">
           {m.createdAt ? <span title={full}>{day(m.createdAt)}</span> : null}
           {m.chatId ? (
             <>

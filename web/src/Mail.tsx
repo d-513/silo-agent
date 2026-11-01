@@ -66,7 +66,7 @@ export function MailPane({ bot, onError, actions }: { bot: Bot; onError: (s: str
       </header>
       <div className="min-h-0 flex-1 overflow-auto p-3">
         {notice ? (
-          <div className="mb-3 rounded-card bg-well px-4 py-3 text-meta leading-[19px] text-ink-2">
+          <div className="mb-3 rounded-card bg-well px-4 py-3 text-meta leading-[20px] text-ink-2">
             {notice.text}{" "}
             {notice.admin ? (
               <Link to="/admin/settings/$section" params={{ section: "mail" }} className="font-medium text-cobalt hover:underline">
@@ -316,7 +316,7 @@ function MailBody({ botId, mail: m, onDelete }: { botId: string; mail: Mail; onD
       ) : full === null ? (
         <SkeletonRows rows={1} height={64} className="mt-3" />
       ) : (
-        <pre className="mt-3 max-h-[480px] overflow-auto whitespace-pre-wrap break-words rounded-sm bg-well px-3 py-2.5 font-sans text-row leading-[21px] text-ink">
+        <pre className="mt-3 max-h-[480px] overflow-auto whitespace-pre-wrap break-words rounded-sm bg-well px-3 py-2.5 font-sans text-row leading-[20px] text-ink">
           {full.text || t("(no text)")}
         </pre>
       )}
@@ -326,7 +326,7 @@ function MailBody({ botId, mail: m, onDelete }: { botId: string; mail: Mail; onD
             <li key={a.index} className="flex max-w-full items-center gap-1.5 rounded-sm bg-well px-2 py-1 text-meta text-ink-2">
               <Paperclip size={12} className="shrink-0 text-ink-3" />
               <span className="truncate">{a.name}</span>
-              <span className="shrink-0 font-mono text-[11.5px] text-ink-3">{fmtBytes(a.size)}</span>
+              <span className="shrink-0 font-mono text-label text-ink-3">{fmtBytes(a.size)}</span>
             </li>
           ))}
         </ul>

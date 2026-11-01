@@ -184,7 +184,7 @@ function ContainerRow({ c, busy, now, onAct }: { c: AdminContainer; busy: string
               </span>
             ) : null}
             <code className="min-w-0 truncate font-mono text-label text-ink-3">{c.name}</code>
-            {c.image ? <span className="hidden min-w-0 truncate font-mono text-[11.5px] text-ink-3 max-wide:hidden">{c.image}</span> : null}
+            {c.image ? <span className="hidden min-w-0 truncate font-mono text-label text-ink-3 max-wide:hidden">{c.image}</span> : null}
           </div>
         </div>
         <span className="flex shrink-0 items-center gap-1.5">
@@ -270,7 +270,7 @@ function UserGroup({ u, busy, now, onAct, onRemoveAll, open }: { u: AdminUserGro
       force={open}
       header={
         <>
-          <span className="min-w-0 truncate text-[14.5px] font-semibold text-ink">{u.email || t("Unknown account")}</span>
+          <span className="min-w-0 truncate text-body-lg font-semibold text-ink">{u.email || t("Unknown account")}</span>
           <CountChip up={up} total={u.bots.length} plural />
         </>
       }
@@ -358,7 +358,7 @@ export function AdminContainers() {
 
   return (
     <div>
-      <p className="mb-4 max-w-[640px] text-row leading-[21px] text-ink-2">
+      <p className="mb-4 max-w-[640px] text-row leading-[20px] text-ink-2">
         {t("Everything Silo runs on the container engine — every Bot's machine, drive and MCP sidecars, the egress gateway, and anything left over. Only containers Silo created are listed and acted on.")}
       </p>
       {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
@@ -415,7 +415,7 @@ export function AdminContainers() {
                 fallback
                 header={
                   <>
-                    <span className="text-[14.5px] font-semibold text-ink">{t("System & leftovers")}</span>
+                    <span className="text-body-lg font-semibold text-ink">{t("System & leftovers")}</span>
                     <CountChip up={systemContainers.filter((c) => c.state === "running").length} total={systemContainers.length} />
                   </>
                 }

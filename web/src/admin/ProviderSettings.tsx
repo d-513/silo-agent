@@ -53,7 +53,7 @@ export function ProviderSettings() {
       </ModelsHead>
       <Panel padded={false}>
         <div className="@container">
-          <div className="hidden h-9 items-center gap-2 pr-4 pl-5 text-[11.5px] font-medium tracking-[0.02em] text-ink-3 uppercase @min-[640px]:grid @min-[640px]:grid-cols-[minmax(0,1fr)_repeat(5,3.25rem)_6.5rem]">
+          <div className="hidden h-9 items-center gap-2 pr-4 pl-5 text-label font-medium tracking-[0.02em] text-ink-3 uppercase @min-[640px]:grid @min-[640px]:grid-cols-[minmax(0,1fr)_repeat(5,3.25rem)_6.5rem]">
             <span>{t("Provider")}</span>
             {CAP_KINDS.map((k) => (
               <Tip key={k.kind} content={t(k.label)}>
@@ -104,9 +104,9 @@ function ProviderRow({ provider, open, ready, inUse, allowed, onToggle }: { prov
           <span className="min-w-0">
             <span className="flex items-center gap-2 text-row leading-[18px] font-medium text-ink">
               {provider.name}
-              {inUse ? <span className="text-[11.5px] font-normal text-ink-3">{t("in use", { context: "provider" })}</span> : null}
+              {inUse ? <span className="text-label font-normal text-ink-3">{t("in use", { context: "provider" })}</span> : null}
             </span>
-            <span className="block truncate text-label leading-[17px] text-ink-3">{provider.description}</span>
+            <span className="block truncate text-label leading-[16px] text-ink-3">{provider.description}</span>
           </span>
         </span>
         {/* Wide: one column per kind. Narrow: the same cells in a strip. */}
@@ -129,7 +129,7 @@ function ProviderRow({ provider, open, ready, inUse, allowed, onToggle }: { prov
 // CapCell is one kind of one provider: nothing (a hairline), available (an
 // open square), allowed (a filled square and how many), live (a waveform).
 function CapCell({ provider, kind, cap }: { provider: string; kind: (typeof CAP_KINDS)[number]; cap: Cap }) {
-  const narrowLabel = <span className="text-[11.5px] text-ink-3 @min-[640px]:hidden">{kindWord(kind.kind)}</span>;
+  const narrowLabel = <span className="text-label text-ink-3 @min-[640px]:hidden">{kindWord(kind.kind)}</span>;
   if (!cap.served) {
     return (
       <span className="hidden items-center justify-center @min-[640px]:flex" aria-label={t("{{provider}} has no models of this kind", { provider })}>
@@ -153,7 +153,7 @@ function CapCell({ provider, kind, cap }: { provider: string; kind: (typeof CAP_
         ) : (
           <span aria-hidden className={`h-[7px] w-[7px] rounded-[2px] ${cap.allowed ? "bg-ink" : "shadow-[inset_0_0_0_1.25px_var(--color-ink-3)]"}`} />
         )}
-        {cap.allowed ? <span className="font-mono text-[11.5px] text-ink-2 tabular-nums">{cap.allowed}</span> : null}
+        {cap.allowed ? <span className="font-mono text-label text-ink-2 tabular-nums">{cap.allowed}</span> : null}
         {narrowLabel}
       </span>
     </Tip>

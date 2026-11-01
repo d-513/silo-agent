@@ -99,7 +99,7 @@ export function UserBubble({
   return (
     <div className={`group flex w-full flex-col items-end gap-1 ${fresh ? "glide" : ""}`}>
       {author ? (
-        <div className="flex items-center gap-1.5 text-[11.5px] text-ink-3">
+        <div className="flex items-center gap-1.5 text-label text-ink-3">
           <Initials email={author} size={18} />
           <span>{author}</span>
         </div>
@@ -258,7 +258,7 @@ export function SubagentReport({ text, agents, href }: { text: string; agents: {
         </span>
       }
     >
-      <div className="silo-reply text-small leading-[21px] text-ink-2">
+      <div className="silo-reply text-small leading-[20px] text-ink-2">
         <Md text={text} />
       </div>
     </FoldRow>

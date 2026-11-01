@@ -30,7 +30,7 @@ function Section({ title, count, children }: { title: string; count: number; chi
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-2 border-b border-line/70 pb-2">
-        <h3 className="text-sm font-semibold text-ink">{title}</h3>
+        <h3 className="text-label leading-5 font-semibold text-ink">{title}</h3>
         <Count n={count} />
       </div>
       {children}
@@ -44,7 +44,7 @@ function EmptyState({ title, children, actions }: { title: string; children: Rea
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-well text-ink-3">
         <BookOpen size={28} />
       </div>
-      <h3 className="text-base font-semibold text-ink">{title}</h3>
+      <h3 className="text-body leading-6 font-semibold text-ink">{title}</h3>
       <p className="mx-auto mt-1 max-w-md text-small text-ink-2">{children}</p>
       {actions ? <div className="mt-6 flex flex-wrap items-center justify-center gap-3">{actions}</div> : null}
     </div>

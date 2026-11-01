@@ -98,12 +98,12 @@ export function TunnelsPane({ botId }: { botId: string }) {
   return (
     <div className="silo-page silo-page-wide">
       <h2 className="text-title">{t("Tunnels & Links")}</h2>
-      <p className="mb-5 mt-1 text-row leading-[21px] text-ink-2">
+      <p className="mb-5 mt-1 text-row leading-[20px] text-ink-2">
         {t("Addresses for services running on this Bot's machine. A private tunnel opens for you, signed in to Silo; a public one opens for anyone with the link. The Bot can open tunnels too.")}
       </p>
       {err ? <p className="mb-4 text-small text-vermilion">{err}</p> : null}
       {notice ? (
-        <div className="mb-5 rounded-card bg-well px-5 py-4 text-row leading-[21px] text-ink-2">
+        <div className="mb-5 rounded-card bg-well px-5 py-4 text-row leading-[20px] text-ink-2">
           {notice.text}{" "}
           {notice.admin ? (
             <Link to="/admin/settings/$section" params={{ section: "tunnels" }} className="font-medium text-cobalt hover:underline">
@@ -202,7 +202,7 @@ export function TunnelsPane({ botId }: { botId: string }) {
       )}
 
       <h2 className="mt-10 text-title">{t("Shared links")}</h2>
-      <p className="mb-5 mt-1 text-row leading-[21px] text-ink-2">
+      <p className="mb-5 mt-1 text-row leading-[20px] text-ink-2">
         {t("Public links you created from artifact cards. Each link stays pinned to the version you shared and works while the Bot is stopped.")}
       </p>
       {sq.data === undefined ? (

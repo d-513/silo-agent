@@ -54,7 +54,7 @@ This file is the map of how things work and what must not be broken. Each sectio
 - Tests in `internal/app` share package globals (the dummy's scripts), so they never use `t.Parallel`; the shards are separate processes.
 - Live checks (build tag `live`, real providers, cost money) are named where the behaviour they pin is described. Re-run the relevant one after touching a prompt, schema or wire format it covers; never loop them.
 - Web: `node --experimental-strip-types web/src/<dir>/<x>_test.ts` runs one unit test; `npx tsc --noEmit` in `web/` typechecks. `web/e2e/routes.spec.ts` walks every route without sending a message; run it after any `router.tsx` change (needs the running stack).
-- Guard tests that fail when you forget a step: `TestEveryRPCChecksAccess` (a new RPC needs a line in `access.RPCs`), `TestBuiltinToolExposure` and `TestPythonToolsHaveHelpers` (a new tool), `TestPinnedKindsAreIndexed` (a new pinned automation kind), `TestHistoryIsAppendOnly` (anything that changes what a model is sent), `i18n_test.ts` (a new UI string), `TestProviderKinds` (a provider's model kinds), `TestScrapedSourcesAreLimited` (a new search source), `TestGrantsStayInSpace`.
+- Guard tests that fail when you forget a step: `TestEveryRPCChecksAccess` (a new RPC needs a line in `access.RPCs`), `TestBuiltinToolExposure` and `TestPythonToolsHaveHelpers` (a new tool), `TestPinnedKindsAreIndexed` (a new pinned automation kind), `TestHistoryIsAppendOnly` (anything that changes what a model is sent), `i18n_test.ts` (a new UI string), `TestProviderKinds` (a provider's model kinds), `TestScrapedSourcesAreLimited` (a new search source), `TestGrantsStayInSpace`, `typeScale_test.ts` (a pixel font size in a component).
 
 ## Commits
 

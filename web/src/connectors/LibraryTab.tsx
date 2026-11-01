@@ -73,7 +73,7 @@ export function LibraryTab({
             <section className="space-y-3">
               <div className="flex items-center gap-2 border-b border-line/70 pb-2">
                 <Sparkles size={14} className="text-cobalt" />
-                <h3 className="font-semibold text-sm text-ink">{t("Featured")}</h3>
+                <h3 className="font-semibold text-label leading-5 text-ink">{t("Featured")}</h3>
               </div>
               <div className={`grid grid-cols-1 gap-4 ${featured.length > 1 ? "md:grid-cols-2" : ""}`}>
                 {featured.map((c) => (
@@ -86,7 +86,7 @@ export function LibraryTab({
             <section key={categoryName} className="space-y-3">
               <div className="flex items-center justify-between border-b border-line/70 pb-2">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-sm text-ink">{categoryName}</h3>
+                  <h3 className="font-semibold text-label leading-5 text-ink">{categoryName}</h3>
                   <Count n={items.length} />
                 </div>
               </div>
@@ -102,7 +102,7 @@ export function LibraryTab({
       ) : (
         /* Flat filtered list */
         <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs text-ink-3">
+          <div className="flex items-center justify-between text-micro leading-4 text-ink-3">
             <span>
               {t("Showing {{count}} connectors", { count: filtered.length })}
             </span>
@@ -122,8 +122,8 @@ export function LibraryTab({
             <Plug size={20} />
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-ink">{t("Need a private or in-house connector?")}</h4>
-            <p className="text-xs text-ink-2">{t("Connect any standard Model Context Protocol (MCP) server over HTTP or STDIO (Docker sidecar).")}</p>
+            <h4 className="text-label leading-5 font-semibold text-ink">{t("Need a private or in-house connector?")}</h4>
+            <p className="text-micro leading-4 text-ink-2">{t("Connect any standard Model Context Protocol (MCP) server over HTTP or STDIO (Docker sidecar).")}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">

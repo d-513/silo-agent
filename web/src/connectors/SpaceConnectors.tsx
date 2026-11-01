@@ -133,7 +133,7 @@ export function SpaceConnectors() {
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-well text-ink-3">
               <Plug size={28} />
             </div>
-            <h3 className="text-base font-semibold text-ink">{t("No connectors in this workspace yet")}</h3>
+            <h3 className="text-body leading-6 font-semibold text-ink">{t("No connectors in this workspace yet")}</h3>
             <p className="mx-auto mt-1 max-w-md text-small text-ink-2">{t("Add one from the library or connect your own MCP server, then choose which Bots can use it.")}</p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <button type="button" className={btnClass("primary")} onClick={() => setTab("library")}>
@@ -244,7 +244,7 @@ export function SpaceConnectors() {
 
       {edit ? (
         <Modal onClose={() => setEdit(null)}>
-          <h3 className="mb-1 text-base font-semibold text-ink">{t("Edit connector")}</h3>
+          <h3 className="mb-1 text-body leading-6 font-semibold text-ink">{t("Edit connector")}</h3>
           {used(edit).length ? <p className="mb-4 text-meta text-ink-2">{t("Changes apply to every Bot that uses it: {{bots}}.", { bots: used(edit).join(", ") })}</p> : <div className="mb-4" />}
           <form onSubmit={(e) => void saveEdit(e)}>
             <ConnectorFields value={editDraft} onChange={setEditDraft} existing />

@@ -41,8 +41,8 @@ export function SinceLooked({ botId, posts, onQuote }: { botId: string; posts: F
                 <span className="min-w-0 flex-1">
                   <span className="flex min-w-0 items-baseline gap-2.5 text-small">
                     <span className="truncate font-medium text-ink">{p.title || t("Post")}</span>
-                    {src ? <span className="hidden shrink-0 truncate font-mono text-[11.5px] text-ink-3 sm:inline">{src}</span> : null}
-                    <span className="ml-auto shrink-0 font-mono text-[11.5px] text-ink-3">{feedStamp(p.createdAt)}</span>
+                    {src ? <span className="hidden shrink-0 truncate font-mono text-label text-ink-3 sm:inline">{src}</span> : null}
+                    <span className="ml-auto shrink-0 font-mono text-label text-ink-3">{feedStamp(p.createdAt)}</span>
                   </span>
                   {!on ? <span className="mt-px block truncate text-meta text-ink-3">{p.body.replace(/[#*_`>]/g, "").slice(0, 200)}</span> : null}
                 </span>

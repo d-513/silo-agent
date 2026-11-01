@@ -23,8 +23,8 @@ export function CustomTab({
     <div className="max-w-2xl space-y-6">
       <div className="rounded-card shadow-card bg-surface p-6">
         <div className="mb-5 border-b border-line pb-4">
-          <h2 className="text-base font-semibold text-ink">{t("Connect Custom MCP Server")}</h2>
-          <p className="mt-1 text-xs text-ink-2">
+          <h2 className="text-body leading-6 font-semibold text-ink">{t("Connect Custom MCP Server")}</h2>
+          <p className="mt-1 text-micro leading-4 text-ink-2">
             {t("Attach your own MCP integration. Choose HTTP for remote servers or STDIO for an isolated Docker sidecar container.")}
           </p>
         </div>

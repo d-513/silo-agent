@@ -90,7 +90,7 @@ export function SpaceDrives() {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-title text-ink">{t("Drives")}</h2>
-          <p className="mt-1 max-w-[520px] text-row leading-[21px] text-ink-2">
+          <p className="mt-1 max-w-[520px] text-row leading-[20px] text-ink-2">
             <Trans
               i18nKey="Connect cloud storage or a file server once for the whole workspace, then choose which Bots mount it in <code>/workspace/drives</code>. Sign-ins and passwords stay on the Silo server."
               components={{ code: <code className="font-mono text-meta text-ink" /> }}
@@ -118,7 +118,7 @@ export function SpaceDrives() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-well text-ink-3">
             <HardDrive size={28} />
           </div>
-          <h3 className="text-base font-semibold text-ink">{t("No drives in this workspace yet")}</h3>
+          <h3 className="text-body leading-6 font-semibold text-ink">{t("No drives in this workspace yet")}</h3>
           <p className="mx-auto mt-1 max-w-md text-small text-ink-2">{t("Add one, then choose which Bots mount it.")}</p>
           <button type="button" className={`${btnClass("primary")} mt-6`} onClick={gallery}>
             <Plus size={15} />

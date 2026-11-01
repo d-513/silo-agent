@@ -268,7 +268,7 @@ function Listed({
 }) {
   return (
     <>
-      <span className={`flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11.5px] font-medium ${cls}`}>
+      <span className={`flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-label font-medium ${cls}`}>
         {p.fromOperator ? <Lock size={10} className="shrink-0" /> : null}
         {own ? label : t("{{label}} by {{pattern}}", { label, pattern: p.pattern })}
       </span>
@@ -283,7 +283,7 @@ function Listed({
 
 function Verdict({ decision }: { decision: string }) {
   const { label, cls } = verdictOf(decision);
-  return <span className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[11.5px] font-medium ${cls}`}>{label}</span>;
+  return <span className={`shrink-0 rounded-sm px-1.5 py-0.5 text-label font-medium ${cls}`}>{label}</span>;
 }
 
 function verdictOf(d: string): { label: string; cls: string } {

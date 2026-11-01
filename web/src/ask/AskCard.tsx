@@ -71,7 +71,7 @@ export function BlockRenderer({
             const toneCls = m.tone === "good" ? "text-emerald" : m.tone === "bad" ? "text-vermilion" : m.tone === "warn" ? "text-ink-2" : "text-ink-3";
             return (
               <div key={`${m.label}-${idx}`} className="rounded-control bg-well px-3 py-2.5">
-                <div className="truncate text-[11.5px] font-medium text-ink-3">{m.label}</div>
+                <div className="truncate text-label font-medium text-ink-3">{m.label}</div>
                 <div className="mt-0.5 flex items-baseline gap-1.5">
                   <span className="font-mono text-lead font-semibold tracking-tight text-ink">{m.value}</span>
                   {m.delta ? <span className={`font-mono text-micro font-medium ${toneCls}`}>{m.delta}</span> : null}
@@ -87,7 +87,7 @@ export function BlockRenderer({
       const content = block.patch ?? block.after ?? "";
       return (
         <div className="overflow-hidden rounded-control bg-well">
-          {block.path ? <div className="border-b border-line px-3 py-1.5 font-mono text-[11.5px] font-medium text-ink-2">{block.path}</div> : null}
+          {block.path ? <div className="border-b border-line px-3 py-1.5 font-mono text-label font-medium text-ink-2">{block.path}</div> : null}
           <pre className="max-h-56 overflow-auto p-3 font-mono text-label leading-5 text-ink">{content}</pre>
         </div>
       );
@@ -366,7 +366,7 @@ export function AskSlip({
               )}
             </span>
           ) : null}
-          <span className="ml-auto shrink-0 font-mono text-[11.5px] text-ink-3">{feedStamp(card.updatedAt || card.createdAt)}</span>
+          <span className="ml-auto shrink-0 font-mono text-label text-ink-3">{feedStamp(card.updatedAt || card.createdAt)}</span>
         </div>
         {titled ? <h3 className="mt-3 text-body-lg leading-5 font-semibold tracking-[-0.01em] text-ink">{card.title}</h3> : null}
         {question ? (

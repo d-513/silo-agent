@@ -59,7 +59,7 @@ export function SpaceRules() {
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
         <div>
           <h2 className="text-title text-ink">{t("Rules")}</h2>
-          <p className="mt-1 max-w-[620px] text-row leading-[21px] text-ink-2">
+          <p className="mt-1 max-w-[620px] text-row leading-[20px] text-ink-2">
             {output
               ? t("The least each Bot in this workspace must do with a result before reading it. Pass leaves it to each Bot.")
               : t("The least strict each Bot in this workspace may be. Set Ask on an action and no Bot can Allow it; Allow leaves it to each Bot.")}

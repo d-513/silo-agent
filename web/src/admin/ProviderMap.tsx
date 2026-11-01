@@ -75,7 +75,7 @@ export function ProviderMap({ jobs, providers, ready, onJob, onPick }: { jobs: J
                 <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => onPick(p.id)}>
                   <ArrowRight size={13} className="shrink-0 text-ink-3" />
                   <span className="shrink-0 font-medium text-ink">{p.name}</span>
-                  <span className="min-w-0 truncate font-mono text-[11.5px] text-ink-3">{modelOf(j.model)}</span>
+                  <span className="min-w-0 truncate font-mono text-label text-ink-3">{modelOf(j.model)}</span>
                 </button>
               ) : (
                 <span className="min-w-0 truncate text-ink-3">{t(j.idle)}</span>
@@ -125,9 +125,9 @@ export function ProviderMap({ jobs, providers, ready, onJob, onPick }: { jobs: J
             >
               <span className="flex items-center gap-1.5 text-small leading-[18px] font-medium text-ink">
                 {t(j.label)}
-                {missing ? <span className="text-[11.5px] font-normal text-vermilion">{t("needs a key")}</span> : null}
+                {missing ? <span className="text-label font-normal text-vermilion">{t("needs a key")}</span> : null}
               </span>
-              <span className="truncate font-mono text-[11.5px] leading-4 text-ink-3">{j.model ? modelOf(j.model) : t(j.idle)}</span>
+              <span className="truncate font-mono text-label leading-4 text-ink-3">{j.model ? modelOf(j.model) : t(j.idle)}</span>
               {/* Where a line leaves; a job nobody does has an open end. */}
               <span aria-hidden className={`absolute top-1/2 -right-[3px] h-[6px] w-[6px] -translate-y-1/2 rounded-full ${p ? "bg-ink-3" : "shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-canvas"}`} />
             </button>
@@ -160,7 +160,7 @@ export function ProviderMap({ jobs, providers, ready, onJob, onPick }: { jobs: J
               <ProviderMark id={id} name={p.name} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-row leading-[18px] font-medium text-ink">{p.name}</span>
-                <span className="block truncate text-[11.5px] leading-4 text-ink-3">{t("{{count}} jobs", { count })}</span>
+                <span className="block truncate text-label leading-4 text-ink-3">{t("{{count}} jobs", { count })}</span>
               </span>
               <Status ok={ok} />
             </button>
@@ -180,7 +180,7 @@ export function ProviderMark({ id, name, small }: { id: string; name: string; sm
   return (
     <span
       title={small ? name : undefined}
-      className={`flex shrink-0 items-center justify-center rounded-sm bg-well font-mono font-semibold tracking-wide text-ink-2 ${small ? "h-6 w-6 text-[9.5px]" : "h-8 w-8 text-micro"}`}
+      className={`flex shrink-0 items-center justify-center rounded-sm bg-well font-mono font-semibold tracking-wide text-ink-2 ${small ? "h-6 w-6 text-micro" : "h-8 w-8 text-micro"}`}
     >
       {icon ? (
         <svg aria-hidden viewBox="0 0 24 24" width={size} height={size} fill="currentColor" fillRule={icon.evenOdd ? "evenodd" : undefined}>

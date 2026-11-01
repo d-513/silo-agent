@@ -91,7 +91,7 @@ export function SubagentPage({
           ) : null}
         </div>
         {brief ? (
-          <div className="rise mt-2 mb-1 max-h-[40vh] overflow-auto rounded-card bg-well px-4 py-3 text-small leading-[21px]">
+          <div className="rise mt-2 mb-1 max-h-[40vh] overflow-auto rounded-card bg-well px-4 py-3 text-small leading-[20px]">
             <p className="mb-1 text-label-caps text-ink-3 uppercase">{t("Goal")}</p>
             <div className="silo-reply">
               <Md text={sa.goal} />

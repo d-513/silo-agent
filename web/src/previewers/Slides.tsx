@@ -63,7 +63,7 @@ export default function Slides({ data }: { data: Uint8Array }) {
                 <Placed key={j} sh={sh} deck={deck} media={media} />
               ))}
             </div>
-            <figcaption className="flex items-center justify-between font-mono text-[11.5px] text-ink-3">
+            <figcaption className="flex items-center justify-between font-mono text-label text-ink-3">
               <span>{t("Slide {{n}} of {{total}}", { n: i + 1, total: deck.slides.length })}</span>
             </figcaption>
             {loose.length ? (

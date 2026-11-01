@@ -15,7 +15,7 @@ export function DoingLine({ look, step, className = "" }: { look: StatusLook; st
   return (
     <span className={`flex min-w-0 items-center gap-1.5 ${className}`}>
       <Status look={look} />
-      {step ? <span className="shrink-0 font-mono text-[11.5px] leading-4 text-ink-3">{step}</span> : null}
+      {step ? <span className="shrink-0 font-mono text-label leading-4 text-ink-3">{step}</span> : null}
     </span>
   );
 }
@@ -33,7 +33,7 @@ export function DoingRow({ bot, row, className = "" }: { bot: Pick<Bot, "id">; r
       <span className={`min-w-0 flex-1 truncate ${look.lamp === "working" ? "text-ink-3" : look.tone}`} title={look.word}>
         {look.word}
       </span>
-      {progress(row) ? <span className="shrink-0 font-mono text-[11.5px] text-ink-3">{progress(row)}</span> : null}
+      {progress(row) ? <span className="shrink-0 font-mono text-label text-ink-3">{progress(row)}</span> : null}
     </>
   );
   if (!row.chatId) return <div className={`${rowClass} hover:bg-transparent hover:text-ink-2 ${className}`}>{body}</div>;

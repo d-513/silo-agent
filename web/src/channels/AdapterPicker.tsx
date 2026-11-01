@@ -37,7 +37,7 @@ function AdapterCard({ a, count, onAdd }: { a: ChannelAdapter; count: number; on
 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-[19px] font-semibold tracking-tight text-ink">{a.name}</h3>
+            <h3 className="text-heading font-semibold tracking-tight text-ink">{a.name}</h3>
             {traits.map((t) => (
               <span key={t} className="rounded-sm bg-well px-2 py-0.5 text-micro font-medium text-ink-3">
                 {t}
@@ -127,8 +127,8 @@ export function AdapterPicker({
             <Plug size={20} />
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-ink">{t("Looking for email, a calendar, or another service?")}</h4>
-            <p className="text-xs text-ink-2">{t("Those are Connectors: the Bot calls them as tools instead of chatting through them.")}</p>
+            <h4 className="text-label leading-5 font-semibold text-ink">{t("Looking for email, a calendar, or another service?")}</h4>
+            <p className="text-micro leading-4 text-ink-2">{t("Those are Connectors: the Bot calls them as tools instead of chatting through them.")}</p>
           </div>
         </div>
         <button type="button" className={btnClass("secondary")} disabled={!spaceId} onClick={() => void navigate({ to: "/w/$spaceId/connectors", params: { spaceId } })}>

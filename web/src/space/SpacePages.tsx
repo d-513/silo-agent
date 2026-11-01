@@ -267,7 +267,7 @@ function OtherBots({ spaceId }: { spaceId: string }) {
                   <Initials key={p} email={p} size={20} />
                 ))}
                 {b.people.length > 4 ? <span className="text-micro text-ink-3">{`+${b.people.length - 4}`}</span> : null}
-                <span className="ml-1.5 text-[11.5px] text-ink-3">{t("{{count}} grants", { count: b.grants })}</span>
+                <span className="ml-1.5 text-label text-ink-3">{t("{{count}} grants", { count: b.grants })}</span>
               </div>
             </div>
             <ArmedButton kind="ghost" size="sm" iconOnly title={t("Delete {{name}}", { name: b.name })} armedLabel={t("Click again to delete")} icon={<Trash2 size={14} />} onConfirm={() => void remove(b)} />

@@ -439,7 +439,7 @@ function RowState({ doing }: { doing: Doing }) {
   return (
     <span className="flex shrink-0 items-center gap-1.5" title={look.word}>
       <Lamp status="working" />
-      <span className="font-mono text-[11.5px] leading-4 text-ink-3">{progress(doing as BotActivity) || null}</span>
+      <span className="font-mono text-label leading-4 text-ink-3">{progress(doing as BotActivity) || null}</span>
     </span>
   );
 }

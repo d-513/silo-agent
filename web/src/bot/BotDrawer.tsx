@@ -91,7 +91,7 @@ export function BotTopBar({
           <Lamp status={botLook(bot).lamp} onCrest="well" className="absolute -right-0.5 -bottom-0.5" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14.5px] leading-[18px] font-semibold text-ink">{bot.name}</span>
+          <span className="block truncate text-body-lg leading-[18px] font-semibold text-ink">{bot.name}</span>
           {label ? <span className="block truncate text-meta leading-4 text-ink-3">{label}</span> : null}
         </span>
       </button>

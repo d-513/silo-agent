@@ -101,7 +101,7 @@ export function TypeBadge({ name, kind }: { name: string; kind?: ArtifactType })
   const pdf = ext === "PDF";
   return (
     <span
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-sm text-[10px] leading-none font-semibold tracking-[0.04em] ${
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-sm text-micro leading-none font-semibold tracking-[0.04em] ${
         pdf ? "bg-vermilion-pale text-vermilion" : "bg-well text-ink-2"
       }`}
     >
@@ -121,7 +121,7 @@ export function VersionSwitch({ versions, n, onPick, hatch }: { versions: Artifa
     ? "flex h-7 w-7 items-center justify-center rounded-sm text-on-hatch/70 hover:bg-on-hatch/10 hover:text-on-hatch disabled:opacity-30"
     : "flex h-7 w-7 items-center justify-center rounded-sm text-ink-2 hover:bg-well hover:text-ink disabled:opacity-30";
   return (
-    <span className={`flex shrink-0 items-center font-mono text-[11.5px] ${hatch ? "text-on-hatch/70" : "text-ink-3"}`}>
+    <span className={`flex shrink-0 items-center font-mono text-label ${hatch ? "text-on-hatch/70" : "text-ink-3"}`}>
       <button type="button" className={btn} disabled={at === 0} onClick={() => onPick(versions[at - 1].n)} title={t("Older version")} aria-label={t("Older version")}>
         <ChevronLeft size={14} />
       </button>
@@ -246,7 +246,7 @@ function Preview({ v, skill }: { v: ArtifactVersion; skill: boolean }) {
   }
   if (skill) return <p className="line-clamp-3 px-3 pb-3 text-small leading-5 text-ink-2">{p.text}</p>;
   return (
-    <pre className="mx-3 mb-3 max-h-36 overflow-hidden rounded-sm bg-well px-3 py-2 font-mono text-[11.5px] leading-[17px] whitespace-pre-wrap break-words text-ink-2">
+    <pre className="mx-3 mb-3 max-h-36 overflow-hidden rounded-sm bg-well px-3 py-2 font-mono text-label leading-[16px] whitespace-pre-wrap break-words text-ink-2">
       {p.text}
       {p.more ? "\n\u2026" : ""}
     </pre>

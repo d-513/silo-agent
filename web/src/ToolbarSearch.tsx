@@ -39,7 +39,7 @@ export function ToolbarSearch({ value, onChange, placeholder, className = "sm:w-
         </button>
       ) : (
         <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5">
-          <kbd className="rounded bg-well px-1.5 py-0.5 font-mono text-[10px] text-ink-3">⌘K</kbd>
+          <kbd className="rounded bg-well px-1.5 py-0.5 font-mono text-micro text-ink-3">⌘K</kbd>
         </span>
       )}
     </div>

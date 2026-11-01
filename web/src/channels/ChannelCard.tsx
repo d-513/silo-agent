@@ -47,7 +47,7 @@ export function ChannelCard({ botId, c, a, onLog, onDeleted }: { botId: string; 
 
             {/* Target Info */}
             {a?.requiresTarget && (
-              <div className="mt-1.5 text-xs">
+              <div className="mt-1.5 text-micro leading-4">
                 {c.externalId ? (
                   <span className="text-ink-3">
                     <Trans i18nKey="Chat: <b>{{chat}}</b>" values={{ chat: c.targetTitle || c.externalId }} components={{ b: <span className="font-medium text-ink" /> }} />

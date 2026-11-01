@@ -30,7 +30,7 @@ export function UsersList() {
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-xl text-row leading-[21px] text-ink-2">{t("People get an account from an invite link, which they open to choose their own password.")}</p>
+        <p className="max-w-xl text-row leading-[20px] text-ink-2">{t("People get an account from an invite link, which they open to choose their own password.")}</p>
         <Link to="/admin/users/invite" className={btnClass("primary", "pr-[7px]")}>
           {t("Invite someone")}
           <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-xs bg-on-ink/20 text-on-ink">

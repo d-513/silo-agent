@@ -75,7 +75,7 @@ export default function GeoMap({ text }: { text: string }) {
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full rounded-sm bg-surface shadow-card" role="img">
         {shapes}
       </svg>
-      <p className="font-mono text-[11.5px] text-ink-3">
+      <p className="font-mono text-label text-ink-3">
         {t("{{count}} features", { count: features.length })} · {minY.toFixed(3)}, {minX.toFixed(3)} → {maxY.toFixed(3)}, {maxX.toFixed(3)}
       </p>
     </div>

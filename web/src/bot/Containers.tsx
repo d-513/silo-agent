@@ -75,7 +75,7 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
   return (
     <div className="silo-page silo-page-wide">
       <h2 className="text-title">{t("Containers")}</h2>
-      <p className="mb-5 mt-1 text-row leading-[21px] text-ink-2">{t("Everything this Bot runs on. Usage comes from the container engine and refreshes every few seconds.")}</p>
+      <p className="mb-5 mt-1 text-row leading-[20px] text-ink-2">{t("Everything this Bot runs on. Usage comes from the container engine and refreshes every few seconds.")}</p>
       {err ? <p className="mb-4 text-small text-vermilion">{err}</p> : null}
 
       <div className="mb-5 grid grid-cols-3 gap-4 rounded-card bg-well px-5 py-4">
@@ -134,7 +134,7 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
                     <BoxStat label={t("RAM")} value={`${fmtBytes(memUsed)}${memCap ? ` / ${fmtBytes(memCap)}` : ""}`} meter={<Meter value={memUsed} max={memCap} />} />
                   </div>
                 ) : null}
-                {b.image ? <div className="mt-3 truncate pl-[54px] font-mono text-[11.5px] text-ink-3 max-wide:pl-0">{b.image}</div> : null}
+                {b.image ? <div className="mt-3 truncate pl-[54px] font-mono text-label text-ink-3 max-wide:pl-0">{b.image}</div> : null}
               </li>
             );
           })}

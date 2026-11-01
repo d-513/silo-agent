@@ -42,7 +42,7 @@ export function SpaceActivityPage() {
   return (
     <div className="silo-page silo-page-wide rise">
       <h2 className="text-title text-ink">{t("Activity")}</h2>
-      <p className="mb-5 mt-1 max-w-[560px] text-row leading-[21px] text-ink-2">
+      <p className="mb-5 mt-1 max-w-[560px] text-row leading-[20px] text-ink-2">
         {t("People joining and leaving, Bots made and deleted, what was given to which Bot, and sign-ins. What a Bot does with it stays with its managers.")}
       </p>
       {q.error ? <ErrorWell>{fail(q.error)}</ErrorWell> : null}

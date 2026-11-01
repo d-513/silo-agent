@@ -178,7 +178,7 @@ export function CatalogList() {
               {Array.from(groups.entries()).map(([categoryName, items]) => (
                 <section key={categoryName} className="space-y-3">
                   <div className="flex items-center gap-2 border-b border-line/70 pb-2">
-                    <h3 className="text-sm font-semibold text-ink">{categoryName}</h3>
+                    <h3 className="text-label leading-5 font-semibold text-ink">{categoryName}</h3>
                     <Count n={items.length} />
                   </div>
                   {grid(items)}

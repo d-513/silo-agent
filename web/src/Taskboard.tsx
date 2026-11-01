@@ -9,7 +9,7 @@ import { t } from "./i18n.ts";
 function AgentChip({ name, to }: { name: string; to?: AgentLink }) {
   const inner = (
     <>
-      <span className="truncate font-mono text-[11.5px] leading-4">{name}</span>
+      <span className="truncate font-mono text-label leading-4">{name}</span>
     </>
   );
   const cls = "inline-flex h-5 max-w-[9rem] shrink-0 items-center rounded-xs bg-pressed px-1.5 text-ink-2";

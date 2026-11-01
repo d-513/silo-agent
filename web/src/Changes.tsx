@@ -118,7 +118,7 @@ function WorkspaceChanges({ botId, data, onError }: { botId: string; data: ListC
   const notice = data ? changesNotice(data.state) : null;
   if (notice) {
     return (
-      <div className="rounded-card bg-well px-4 py-3 text-meta leading-[19px] text-ink-2">
+      <div className="rounded-card bg-well px-4 py-3 text-meta leading-[20px] text-ink-2">
         {notice.text}{" "}
         {notice.reset ? (
           <Link to="/bots/$botId/container" params={{ botId }} className="font-medium text-cobalt hover:underline">
@@ -134,10 +134,10 @@ function WorkspaceChanges({ botId, data, onError }: { botId: string; data: ListC
   return (
     <>
       {data.indexing ? (
-        <p className="mb-3 rounded-card bg-well px-4 py-3 text-meta leading-[19px] text-ink-2">{t("Still reading this workspace for the first time. Changes show once that is done.")}</p>
+        <p className="mb-3 rounded-card bg-well px-4 py-3 text-meta leading-[20px] text-ink-2">{t("Still reading this workspace for the first time. Changes show once that is done.")}</p>
       ) : null}
       {done ? (
-        <p role="status" className="mb-3 rounded-card bg-well px-4 py-3 text-meta leading-[19px] text-ink-2">
+        <p role="status" className="mb-3 rounded-card bg-well px-4 py-3 text-meta leading-[20px] text-ink-2">
           {done}
         </p>
       ) : null}
@@ -170,7 +170,7 @@ function WorkspaceChanges({ botId, data, onError }: { botId: string; data: ListC
           })}
         </ul>
       )}
-      <p className="mt-2 px-1 text-meta leading-[19px] text-ink-3">
+      <p className="mt-2 px-1 text-meta leading-[20px] text-ink-3">
         {data.since ? t("The workspace is compared before and after each run, since {{date}}.", { date: day(data.since) }) : t("The workspace is compared before and after each run.")}{" "}
         <Trans
           i18nKey="Drives, <mono>tmp/</mono>, <mono>bot/</mono> and dependency folders are left out, and a file over {{size}} is recorded by its size only, so it cannot be put back. Undoing a change keeps what it replaces: the restore is listed as a change of its own."
@@ -187,7 +187,7 @@ function WorkspaceChanges({ botId, data, onError }: { botId: string; data: ListC
 // drive's files is kept, so there is no diff.
 function DriveJournal({ entries, keep, off }: { entries: DriveChangeEntry[]; keep: number; off: boolean }) {
   if (off) {
-    return <div className="rounded-card bg-well px-4 py-3 text-meta leading-[19px] text-ink-2">{changesNotice("off")?.text}</div>;
+    return <div className="rounded-card bg-well px-4 py-3 text-meta leading-[20px] text-ink-2">{changesNotice("off")?.text}</div>;
   }
   return (
     <>
@@ -212,7 +212,7 @@ function DriveJournal({ entries, keep, off }: { entries: DriveChangeEntry[]; kee
           ))}
         </ul>
       )}
-      <p className="mt-2 px-1 text-meta leading-[19px] text-ink-3">
+      <p className="mt-2 px-1 text-meta leading-[20px] text-ink-3">
         {t("A record of what was written, deleted or renamed on a drive, not a copy of it: to get a file back, use the provider's own version history or trash. An upload is noted when it reaches the provider, a few seconds after the file is saved.")}
         {keep ? ` ${t("The newest {{count}} lines are kept.", { count: keep })}` : ""}
       </p>
