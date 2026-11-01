@@ -385,7 +385,7 @@ public final class SiloClient: Sendable {
 
     /// Send every field; a blank one clears it (so callers pass the Bot's current values through).
     public func updateBot(_ bot: Silo_V1_Bot, name: String? = nil, description: String? = nil, soul: String? = nil,
-                          model: String? = nil, autoApprove: String? = nil) async throws -> Silo_V1_Bot {
+                          model: String? = nil, autoApprove: String? = nil, crest: Int32? = nil) async throws -> Silo_V1_Bot {
         var request = Silo_V1_UpdateBotRequest()
         request.id = bot.id
         request.name = name ?? bot.name
@@ -393,6 +393,7 @@ public final class SiloClient: Sendable {
         request.soul = soul ?? bot.soul
         request.autoApprove = autoApprove ?? bot.autoApprove
         request.model = model ?? bot.model
+        if let crest { request.crest = crest }
         return try unwrap(await ui.updateBot(request: request, headers: [:]))
     }
 

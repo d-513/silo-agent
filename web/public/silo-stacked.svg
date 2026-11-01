@@ -1,4 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Silo">
-  <path d="M22 18a10 10 0 0 1 20 0v14a2 2 0 0 1-2 2H24a2 2 0 0 1-2-2ZM27.8 17.2h8.4a0.8 0.8 0 0 1 0 1.6h-8.4a0.8 0.8 0 0 1 0-1.6Z" fill="#1A1917" fill-rule="evenodd"/>
-  <text x="32" y="52" text-anchor="middle" font-family="Geist, 'Geist Variable', ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="500" letter-spacing="0.04em" fill="#1A1917">SILO</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80" role="img" aria-label="Silo">
+  <g transform="translate(14 0) scale(.81)">
+    <defs>
+    <radialGradient id="hat-felt" cx="0.36" cy="0.2" r="0.9"><stop offset="0" stop-color="#74B29C"/><stop offset=".5" stop-color="#0F7A55"/><stop offset="1" stop-color="#0A4E36"/></radialGradient>
+    <radialGradient id="coat-felt" cx="0.4" cy="0.1" r="0.9"><stop offset="0" stop-color="#548D79"/><stop offset=".5" stop-color="#0B5C40"/><stop offset="1" stop-color="#073726"/></radialGradient>
+    <radialGradient id="beard-wool" cx="0.4" cy="0.1" r="0.9"><stop offset="0" stop-color="#FAF8F3"/><stop offset=".5" stop-color="#F6F1E7"/><stop offset="1" stop-color="#CFCAC2"/></radialGradient>
+    <radialGradient id="nose-felt" cx="0.34" cy="0.3" r="0.8"><stop offset="0" stop-color="#F0CFBE"/><stop offset=".5" stop-color="#E7B499"/><stop offset="1" stop-color="#B9907A"/></radialGradient>
+    <radialGradient id="boot-felt" cx="0.4" cy="0.2" r="0.9"><stop offset="0" stop-color="#80756E"/><stop offset=".5" stop-color="#4A3A30"/><stop offset="1" stop-color="#312620"/></radialGradient>
+    <filter id="felt" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="1.15" numOctaves="2" seed="2"/>
+      <feDisplacementMap in="SourceGraphic" scale=".9" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <g id="boots" fill="url(#boot-felt)"><ellipse cx="24.5" cy="59" rx="6.4" ry="3.6"/><ellipse cx="39.5" cy="59" rx="6.4" ry="3.6"/></g>
+  <g filter="url(#felt)">
+    <path id="coat" fill="url(#coat-felt)" d="M20.5 40C17.5 47.5 18.5 54.5 22.5 58h19c4-3.5 5-10.5 2-18Z"/>
+    <path id="beard" fill="url(#beard-wool)" d="M18 37.500C19 47.5 26.5 54 32 54s13-6.5 14-16.500Z"/>
+    <path id="hat" fill="url(#hat-felt)" d="M14.5 39.500C17.5 29 24 15.5 32 8.500c4.7-4 12.7-4 15.3 2.7 1.2 3.3-2.4 5.3-4.4 3.1-1.6-1.7-3.7-1.7-5.2-.3C41.5 22.5 46.7 32 49.5 39.5 40 44 24 44 14.5 39.500Z"/>
+  </g>
+  <circle id="nose" cx="32" cy="42" r="6" fill="url(#nose-felt)"/>
+  </g>
+  <path fill="#1A1917" d="M28.93 74.21Q27.82 74.21 27.01 73.81Q26.19 73.4 25.72 72.69Q25.26 71.97 25.18 71.02L26.62 70.93Q26.71 71.58 27 72.03Q27.29 72.47 27.77 72.7Q28.26 72.93 28.95 72.93Q29.55 72.93 29.97 72.78Q30.39 72.63 30.61 72.33Q30.83 72.04 30.83 71.61Q30.83 71.22 30.64 70.91Q30.46 70.61 29.93 70.36Q29.41 70.1 28.39 69.86Q27.28 69.59 26.62 69.26Q25.96 68.93 25.66 68.44Q25.37 67.96 25.37 67.24Q25.37 66.44 25.75 65.84Q26.14 65.24 26.86 64.9Q27.57 64.56 28.57 64.56Q29.63 64.56 30.37 64.95Q31.12 65.34 31.56 66.02Q31.99 66.69 32.1 67.56L30.66 67.65Q30.59 67.11 30.33 66.7Q30.07 66.3 29.62 66.07Q29.18 65.84 28.54 65.84Q27.75 65.84 27.28 66.21Q26.82 66.58 26.82 67.18Q26.82 67.58 27.01 67.85Q27.2 68.11 27.68 68.31Q28.17 68.5 29.07 68.72Q30.27 69 30.97 69.4Q31.67 69.79 31.98 70.32Q32.28 70.85 32.28 71.52Q32.28 72.35 31.85 72.95Q31.43 73.56 30.68 73.88Q29.93 74.21 28.93 74.21Z M34.62 74V64.77H36.02V74Z M38.78 74V64.77H40.18V73.48L39.44 72.72H44.68V74Z M50.64 74.21Q49.3 74.21 48.33 73.63Q47.37 73.05 46.85 71.97Q46.33 70.89 46.33 69.4Q46.33 67.91 46.85 66.82Q47.37 65.73 48.33 65.15Q49.29 64.56 50.64 64.56Q51.99 64.56 52.95 65.15Q53.92 65.73 54.44 66.82Q54.95 67.91 54.95 69.4Q54.95 70.89 54.44 71.97Q53.92 73.05 52.95 73.63Q51.99 74.21 50.64 74.21ZM50.64 72.93Q51.54 72.93 52.17 72.51Q52.81 72.09 53.15 71.3Q53.49 70.51 53.49 69.4Q53.49 68.29 53.15 67.49Q52.81 66.69 52.17 66.27Q51.54 65.84 50.64 65.84Q49.75 65.84 49.11 66.27Q48.47 66.69 48.13 67.49Q47.79 68.29 47.79 69.4Q47.79 70.51 48.13 71.3Q48.47 72.09 49.11 72.51Q49.75 72.93 50.64 72.93Z"/>
 </svg>

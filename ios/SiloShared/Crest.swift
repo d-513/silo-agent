@@ -16,7 +16,7 @@ let CREST_COLORS: [Color] = [
 ]
 
 let SHAPE_COUNT = 8
-let CREST_SHAPE_NAMES = ["circle", "blob", "squircle", "pill", "triangle", "hex", "cloud", "drop"]
+let CREST_SHAPE_NAMES = ["Bobble hat", "Bent tip", "Wide brim", "Paper boat", "Cone", "Striped cone", "Baker's toque", "Stocking cap"]
 
 func packCrest(shape: Int, color: Int) -> Int32 {
     let s = ((shape % SHAPE_COUNT) + SHAPE_COUNT) % SHAPE_COUNT
@@ -42,124 +42,29 @@ extension Color {
     }
 }
 
-// Ink eyes on the two light fills (mist, yellow); canvas eyes on the rest.
-private func crestIsLight(_ index: Int32) -> Bool {
-    let color = unpackCrest(index).color
-    return color == 0 || color == 4
-}
-
-/// The crest body, drawn in a 48x48 design space and scaled to `rect`.
-nonisolated struct CrestShape: Shape {
-    let shape: Int
-
-    func path(in rect: CGRect) -> Path {
-        let s = min(rect.width, rect.height) / 48
-        let ox = rect.midX - 24 * s
-        let oy = rect.midY - 24 * s
-        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: ox + x * s, y: oy + y * s) }
-        func r(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> CGRect {
-            CGRect(x: ox + x * s, y: oy + y * s, width: w * s, height: h * s)
-        }
-
-        var path = Path()
-        switch shape {
-        case 1:
-            path.move(to: p(25, 6.5))
-            path.addQuadCurve(to: p(41.5, 22), control: p(40, 8))
-            path.addQuadCurve(to: p(23, 41.5), control: p(43.5, 40))
-            path.addQuadCurve(to: p(6.5, 25), control: p(5, 42))
-            path.addQuadCurve(to: p(25, 6.5), control: p(7, 8))
-            path.closeSubpath()
-        case 2:
-            path.addRoundedRect(in: r(8, 8, 32, 32), cornerSize: CGSize(width: 11 * s, height: 11 * s))
-        case 3:
-            path.addRoundedRect(in: r(5, 15, 38, 18), cornerSize: CGSize(width: 9 * s, height: 9 * s))
-        case 4:
-            path.move(to: p(24, 6.5))
-            path.addLine(to: p(41, 39.5))
-            path.addLine(to: p(7, 39.5))
-            path.closeSubpath()
-        case 5:
-            path.move(to: p(24, 6.5))
-            path.addLine(to: p(39.2, 15.4))
-            path.addLine(to: p(39.2, 32.6))
-            path.addLine(to: p(24, 41.5))
-            path.addLine(to: p(8.8, 32.6))
-            path.addLine(to: p(8.8, 15.4))
-            path.closeSubpath()
-        case 6:
-            path.addEllipse(in: r(9, 16, 17, 15))
-            path.addEllipse(in: r(16, 11, 18, 17))
-            path.addEllipse(in: r(24, 17, 16, 14))
-            path.addRoundedRect(in: r(10, 24, 28, 9), cornerSize: CGSize(width: 4.5 * s, height: 4.5 * s))
-        case 7:
-            path.move(to: p(24, 6.8))
-            path.addCurve(to: p(39.4, 31), control1: p(31.6, 15), control2: p(39.4, 22.8))
-            path.addCurve(to: p(24, 42.6), control1: p(39.4, 38.2), control2: p(33, 42.6))
-            path.addCurve(to: p(8.6, 31), control1: p(15, 42.6), control2: p(8.6, 38.2))
-            path.addCurve(to: p(24, 6.8), control1: p(8.6, 22.8), control2: p(16.4, 15))
-            path.closeSubpath()
-        default:
-            path.addEllipse(in: r(7.5, 7.5, 33, 33))
-        }
-        return path
-    }
-}
-
-/// The two dots. Same 48x48 space so they line up with `CrestShape`.
-nonisolated struct CrestEyes: Shape {
-    let shape: Int
-
-    func path(in rect: CGRect) -> Path {
-        let s = min(rect.width, rect.height) / 48
-        let ox = rect.midX - 24 * s
-        let oy = rect.midY - 24 * s
-        let (cx, cy, spread): (CGFloat, CGFloat, CGFloat) = {
-            switch shape {
-            case 1: return (23.2, 20, 4.6)
-            case 3: return (24, 24, 6.2)
-            case 4: return (24, 26.5, 4.6)
-            case 5: return (24, 22, 4.6)
-            case 6: return (24, 24.5, 4.6)
-            case 7: return (24, 27, 4.6)
-            default: return (24, 21, 4.6)
-            }
-        }()
-
-        var path = Path()
-        let radius = 1.65 * s
-        for dx in [-spread, spread] {
-            let center = CGPoint(x: ox + (cx + dx) * s, y: oy + cy * s)
-            path.addEllipse(in: CGRect(
-                x: center.x - radius,
-                y: center.y - radius,
-                width: radius * 2,
-                height: radius * 2
-            ))
-        }
-        return path
-    }
-}
-
+/// A Bot's skrzat. The images come from `make brand`: small ones in every
+/// target, large ones in the app, because the rough felt edge is not something
+/// a SwiftUI shape can draw and an extension must stay light.
 struct CrestView: View {
     let index: Int32
     var size: CGFloat = 40
 
+    private var asset: String {
+        let crest = unpackCrest(index)
+        let name = crest.color * SHAPE_COUNT + crest.shape
+        #if SILO_EXTENSION
+        return "crest-\(name)"
+        #else
+        return size > 44 ? "crest-large-\(name)" : "crest-\(name)"
+        #endif
+    }
+
     var body: some View {
-        let shape = unpackCrest(index).shape
-        let fill = CREST_COLORS[unpackCrest(index).color]
-        let light = crestIsLight(index)
-        let eyeColor = light ? Color(hex: 0x1A1917) : Color(hex: 0xFAF9F7)
-        ZStack {
-            // Only mist takes the hairline outline (line-strong on canvas).
-            if unpackCrest(index).color == 0 {
-                CrestShape(shape: shape).stroke(Color(hex: 0xD8D7D4), lineWidth: max(1, size / 48))
-            }
-            CrestShape(shape: shape).fill(fill)
-            CrestEyes(shape: shape).fill(eyeColor)
-        }
-        .frame(width: size, height: size)
-        .accessibilityHidden(true)
+        Image(asset)
+            .resizable()
+            .interpolation(.high)
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
     }
 }
 
@@ -171,7 +76,7 @@ struct CrestPicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Shape").font(.silo(12, .medium)).foregroundStyle(Theme.ink3)
+                Text("Hat").font(.silo(12, .medium)).foregroundStyle(Theme.ink3)
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 8) {
                     ForEach(0..<SHAPE_COUNT, id: \.self) { shape in
                         let on = shape == selection.shape
@@ -222,3 +127,36 @@ struct CrestPicker: View {
         .sensoryFeedback(.selection, trigger: value)
     }
 }
+
+#if !SILO_EXTENSION
+/// A select whose value is the Bot's crest: it sits beside a field and opens the picker in a sheet.
+struct CrestSelect: View {
+    @Binding var value: Int32
+    @State private var open = false
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+        Button { open = true } label: {
+            HStack(spacing: 4) {
+                CrestView(index: value, size: 34)
+                Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.ink3)
+            }
+            .padding(.leading, 4)
+            .padding(.trailing, 8)
+            .frame(height: 44)
+            .background(Theme.surface, in: shape)
+            .overlay(shape.strokeBorder(Theme.lineStrong, lineWidth: 1))
+        }
+        .buttonStyle(.press)
+        .accessibilityLabel("Change crest")
+        .sheet(isPresented: $open) {
+            VStack(spacing: 0) {
+                SheetHead(title: "Crest", cancel: "Done", onCancel: { open = false })
+                CrestPicker(value: $value).padding(16)
+                Spacer(minLength: 0)
+            }
+            .siloSheet(detents: [.medium])
+        }
+    }
+}
+#endif

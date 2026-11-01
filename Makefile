@@ -43,7 +43,7 @@ WATCH_OPTS  := \
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install deps web-install build build-cp build-worker \
+.PHONY: help install deps web-install brand build build-cp build-worker \
 	build-bridge build-drive build-egress build-all images bot-image stdio-image drive-image egress-image run run-control \
 	run-frontend watch-control dev attach test test-fast test-containers \
 	test-integration e2e fmt vet tidy proto rebuild \
@@ -67,6 +67,9 @@ silo.yaml: ## Create silo.yaml from the example if it is missing
 
 deps: ## Download Go module dependencies
 	$(GO) mod download
+
+brand: ## Export brand/ to the favicons and app icons (needs ImageMagick with librsvg)
+	python3 -I brand/export.py
 
 web-install: ## Install frontend dependencies
 	$(PNPM) --dir web install

@@ -136,6 +136,7 @@ Mail sent this way is always *not verified* (no DKIM, and loopback has no SPF), 
 | `internal/channels/**`       | restart the CP; sessions live under `data/channels/<id>/`                             |
 | `botimage/silo_runtime.py`   | `make bot-image`, recreate the Bot container                                           |
 | `web/**`                     | Vite reloads. `pnpm build` is the production bundle only                              |
+| `brand/**`                   | `make brand` rewrites the icons and `web/src/crestArt.ts`                             |
 
 A running Bot keeps its old image. **Start** will not rebuild it. Stop the Bot, `podman rm -f silo-<botId>`, then Start (or delete and create the Bot). After a reboot or manual `podman rm`, the stored ID is stale; `GetBot` / `StartBot` recover by name (`silo-<id>`).
 

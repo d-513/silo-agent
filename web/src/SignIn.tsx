@@ -9,7 +9,7 @@ import { inputClass } from "./Field";
 import { UI } from "./gen/silo/v1/ui_pb";
 import { oidcStart, signInError } from "./signinFlow";
 import { tunnelNext } from "./signinNext";
-import { SiloGlyph } from "./SiloMark";
+import { SiloMark } from "./SiloMark";
 import { followUser, t } from "./i18n.ts";
 
 // The card every signed-out page sits in: Sign in, and an invite link's page.
@@ -18,9 +18,7 @@ export function AuthCard({ title, children }: { title: string; children: ReactNo
     <div className="flex min-h-dvh items-start justify-center bg-canvas px-4 pt-[18vh]">
       <div className="rise w-full max-w-[400px] rounded-card bg-surface p-8 shadow-card">
         <div className="mb-7 flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-well text-ink">
-            <SiloGlyph className="h-5 w-5" />
-          </span>
+          <SiloMark className="h-11 w-11" />
           <span className="text-[14px] font-medium">{"Silo Agent"}</span>
         </div>
         <h1 className="mb-6 text-title">{title}</h1>

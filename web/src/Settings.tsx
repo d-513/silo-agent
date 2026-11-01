@@ -1,4 +1,5 @@
 import { ProactivitySettings } from "./Proactivity";
+import { CrestSelect } from "./Crest";
 import { RotateCcw, Trash2 } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -51,8 +52,8 @@ const noModels: ModelOption[] = [];
 
 // The fields the page's Save bar saves; Proactivity, Time zone and Mail apply
 // on their own.
-type Form = { name: string; description: string; soul: string; model: string; language: string };
-const formKeys = ["name", "description", "soul", "model", "language"] as const;
+type Form = { name: string; description: string; crest: number; soul: string; model: string; language: string };
+const formKeys = ["name", "description", "crest", "soul", "model", "language"] as const;
 
 export function SettingsPane({
   bot,
@@ -78,12 +79,13 @@ export function SettingsPane({
   const form: Form = {
     name: edits.name ?? bot.name,
     description: edits.description ?? bot.description,
+    crest: edits.crest ?? bot.crest,
     soul: edits.soul ?? bot.soul,
     model: edits.model ?? bot.model,
     language: edits.language ?? bot.language,
   };
   const dirty = formKeys.filter((k) => form[k] !== bot[k]).length;
-  const edit = (k: keyof Form) => (v: string) => {
+  const edit = <K extends keyof Form>(k: K) => (v: Form[K]) => {
     setEdits((e) => ({ ...e, [k]: v }));
     setSaveErr("");
   };
@@ -104,6 +106,7 @@ export function SettingsPane({
           id: bot.id,
           name: form.name.trim(),
           description: form.description.trim(),
+          crest: form.crest,
           soul: form.soul,
           autoApprove: bot.autoApprove,
           model: selectedModel,
@@ -163,7 +166,10 @@ export function SettingsPane({
       >
         <SettingGroup title={t("Identity")} note={t("Shown on the folio and in the sidebar.")}>
           <SettingRow label={t("Name")} error={form.name.trim() ? undefined : t("A Bot needs a name.")}>
-            <input className={inputClass} aria-label={t("Name")} value={form.name} onChange={(e) => edit("name")(e.target.value)} />
+            <div className="flex w-full gap-2">
+              <CrestSelect value={form.crest} onChange={edit("crest")} />
+              <input className={`${inputClass} min-w-0`} aria-label={t("Name")} value={form.name} onChange={(e) => edit("name")(e.target.value)} />
+            </div>
           </SettingRow>
           <SettingRow label={t("Description")} hint={t("One line. Use it to remember what this machine is for.")}>
             <textarea

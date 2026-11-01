@@ -246,17 +246,14 @@ struct SignInView: View {
 
 // MARK: - Pieces
 
-/// The Silo glyph and name, as on the web's sign-in card.
+/// The skrzat and the name, as on the web's sign-in card.
 struct AuthMark: View {
     var body: some View {
-        let tile = RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
         HStack(spacing: 12) {
-            SiloGlyph()
-                .fill(Theme.ink, style: FillStyle(eoFill: true))
-                .frame(width: 22, height: 22)
-                .frame(width: 40, height: 40)
-                .background(Theme.well, in: tile)
-                .overlay(tile.strokeBorder(Theme.line, lineWidth: 1))
+            Image("silo-mark")
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 44, height: 44)
             Text("Silo Agent").font(.silo(15, .medium)).foregroundStyle(Theme.ink)
         }
         .accessibilityElement(children: .combine)
@@ -330,24 +327,5 @@ private struct ServerBand: View {
         .padding(.trailing, 6)
         .frame(minHeight: 44)
         .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
-    }
-}
-
-/// The Silo mark (`web/src/SiloMark.tsx`): a silo with a slot, on a 32-unit grid.
-struct SiloGlyph: Shape {
-    func path(in rect: CGRect) -> Path {
-        let s = min(rect.width, rect.height) / 32
-        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: rect.minX + x * s, y: rect.minY + y * s) }
-        var path = Path()
-        path.move(to: p(6, 12))
-        path.addArc(center: p(16, 12), radius: 10 * s, startAngle: .degrees(180), endAngle: .degrees(0), clockwise: false)
-        path.addLine(to: p(26, 26))
-        path.addQuadCurve(to: p(24, 28), control: p(26, 28))
-        path.addLine(to: p(8, 28))
-        path.addQuadCurve(to: p(6, 26), control: p(6, 28))
-        path.closeSubpath()
-        path.addRoundedRect(in: CGRect(origin: p(11.8, 11.2), size: CGSize(width: 8.4 * s, height: 1.6 * s)),
-                            cornerSize: CGSize(width: 0.8 * s, height: 0.8 * s))
-        return path
     }
 }

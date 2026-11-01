@@ -171,8 +171,10 @@ struct BotWidgetView: View {
     private func circular(_ bot: SharedBot) -> some View {
         ZStack {
             AccessoryWidgetBackground()
-            CrestShape(shape: unpackCrest(bot.crest).shape).frame(width: 34, height: 34)
-            CrestEyes(shape: unpackCrest(bot.crest).shape).frame(width: 34, height: 34).blendMode(.destinationOut)
+            Image("crest-mono-\(unpackCrest(bot.crest).shape)")
+                .resizable()
+                .renderingMode(.template)
+                .frame(width: 34, height: 34)
         }
         .widgetURL(SiloLink.mainChat(bot: bot.id).url)
         .accessibilityLabel("\(bot.name), \(bot.look.word)")

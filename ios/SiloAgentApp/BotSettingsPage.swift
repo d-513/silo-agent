@@ -8,6 +8,7 @@ struct BotSettingsPage: View {
     @State private var description = ""
     @State private var soul = ""
     @State private var botModel = ""
+    @State private var crest: Int32 = 0
     /// The Bot as `GetBot` has it: the list leaves SOUL out, so the form starts from this.
     @State private var full: Silo_V1_Bot?
     @State private var saved = 0
@@ -16,7 +17,10 @@ struct BotSettingsPage: View {
         PageScroll(spacing: 20) {
             PanelSection(title: "General", footer: "A chat's own model choice overrides this.") {
                 VStack(alignment: .leading, spacing: 14) {
-                    SiloField(label: "Name", prompt: "Name", text: $name)
+                    HStack(alignment: .bottom, spacing: 8) {
+                        CrestSelect(value: $crest)
+                        SiloField(label: "Name", prompt: "Name", text: $name)
+                    }
                     SiloField(label: "Description", prompt: "What is this Bot for?", text: $description, axis: .vertical, lines: 1...4)
                     SiloPicker(label: "Default model", options: modelOptions, selection: $botModel)
                 }
@@ -50,7 +54,7 @@ struct BotSettingsPage: View {
 
     private var dirty: Bool {
         guard let bot = full else { return false }
-        return name != bot.name || description != bot.description_p || soul != bot.soul || botModel != bot.model
+        return name != bot.name || description != bot.description_p || soul != bot.soul || botModel != bot.model || crest != bot.crest
     }
 
     private func load() async {
@@ -68,12 +72,13 @@ struct BotSettingsPage: View {
         description = bot.description_p
         soul = bot.soul
         botModel = bot.model
+        crest = bot.crest
     }
 
     private func save() async -> Bool {
         guard let bot = full else { return false }
         do {
-            let fresh = try await model.client.updateBot(bot, name: name, description: description, soul: soul, model: botModel)
+            let fresh = try await model.client.updateBot(bot, name: name, description: description, soul: soul, model: botModel, crest: crest)
             full = fresh
             model.applyBot(fresh)
             saved += 1

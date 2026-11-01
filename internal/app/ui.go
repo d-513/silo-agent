@@ -235,6 +235,13 @@ func (a *App) UpdateBot(ctx context.Context, req *connect.Request[v1.UpdateBotRe
 	if name := strings.TrimSpace(req.Msg.GetName()); name != "" {
 		b.Name = name
 	}
+	if req.Msg.Crest != nil {
+		crest := int(req.Msg.GetCrest())
+		if crest < 0 || crest >= ids.CrestCount {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("no such crest"))
+		}
+		b.Crest = crest
+	}
 	b.Description = clipDesc(req.Msg.GetDescription())
 	b.Soul = req.Msg.GetSoul()
 	b.AutoApprove = req.Msg.GetAutoApprove()

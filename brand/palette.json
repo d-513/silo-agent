@@ -1,0 +1,27 @@
+{
+  "ink": "#1A1917",
+  "paper": "#FAF9F7",
+  "dark": "#171615",
+  "on_dark": "#EDEBE6",
+  "nose": "#E7B499",
+  "beard": "#F6F1E7",
+  "boots": "#4A3A30",
+  "mist_edge": "#D8D7D4",
+  "logo_hat": "#0F7A55",
+  "logo_coat": "#0B5C40",
+  "crest_fills": [
+    {"name": "mist", "fill": "#F3F2EF", "detail": "#1A1917", "coat": "#D8D7D4"},
+    {"name": "brown", "fill": "#8B5A3C", "detail": "#FAF9F7", "coat": "#6F4830"},
+    {"name": "wine", "fill": "#9F1239", "detail": "#FAF9F7", "coat": "#7F0E2E"},
+    {"name": "orange", "fill": "#EA580C", "detail": "#FAF9F7", "coat": "#BB460A"},
+    {"name": "yellow", "fill": "#E0AE1C", "detail": "#1A1917", "coat": "#B38B16"},
+    {"name": "green", "fill": "#16A34A", "detail": "#FAF9F7", "coat": "#12823B"},
+    {"name": "emerald", "fill": "#0F7A55", "detail": "#FAF9F7", "coat": "#0B5C40"},
+    {"name": "cobalt", "fill": "#2B4FC7", "detail": "#FAF9F7", "coat": "#223F9F"},
+    {"name": "purple", "fill": "#6D28D9", "detail": "#FAF9F7", "coat": "#5720AE"},
+    {"name": "pink", "fill": "#DB2777", "detail": "#FAF9F7", "coat": "#AF1F5F"},
+    {"name": "graphite", "fill": "#55534E", "detail": "#FAF9F7", "coat": "#43413D"},
+    {"name": "ink", "fill": "#1A1917", "detail": "#FAF9F7", "coat": "#33312E"}
+  ],
+  "crest_shapes": ["bobble", "bent", "brim", "boat", "cone", "striped", "toque", "stocking"]
+}

@@ -1039,6 +1039,8 @@ message UpdateBotRequest {
   optional string output_policy = 11;
   // off | quiet | active; it also puts the Heartbeat on that level's schedule.
   optional string proactivity = 12;
+  // color * 8 + shape. Optional, so a save of the other fields leaves it alone.
+  optional int32 crest = 13;
 }
 
 message GetBotRequest {

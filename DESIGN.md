@@ -160,7 +160,7 @@ Never use opacity to make grey text. Pick a level.
 | `vermilion-deep` | `#A82E24` | Hover on vermilion fills.                                                                                                                      |
 | `vermilion-pale` | `#FBEAE8` | Hover behind Deny, PDF file badge, error field background.                                                                                     |
 
-The accents never appear as gradients, glows or large fields. Orange, amber, gold, purple and cyan never appear in the UI. The crest fills below are the only exception.
+The accents never appear as gradients, glows or large fields. Orange, amber, gold, purple and cyan never appear in the UI. The crest fills below are the only exception, and a crest is the one drawing in the UI with shading.
 
 ### The hatch
 
@@ -188,7 +188,7 @@ Dark is the same system re-inked, not a second design: every component names the
 - **Raised is lighter.** On paper the order is `surface` over `canvas` over `well` over `pressed`. In the dark it is `canvas`, `well`, `surface`, `pressed` from deepest to lightest, so a card still lifts, a hover still answers, and a code block inside a card still sits in.
 - **Fills flip their label.** The lifted accents are too light for white text, so a primary button is a paper fill with a dark label, and Stop, an armed delete and the Feed count carry `on-accent`.
 - **Shade is black and heavier** (`--shade-*`), but the ring does the work: a dark card is seated by its `line`, not its shadow.
-- **Crests do not change.** A crest is the Bot's face: fills and eyes are the same in both themes. The ink crest takes a faint edge in the dark, as mist takes one on paper.
+- **Crests do not change.** A crest is the Bot's own skrzat: its colors are the same in both themes. The ink crest takes a faint edge in the dark, as mist takes one on paper.
 - **Brand logos keep a paper tile** (`mark`, with a 2px halo in the dark): they are drawn for a light page, and a black mark must not sink into the ground.
 - A QR code stays black on white.
 - **Choosing:** the rail's sun/moon item, just above the account avatar. Until the reader picks, the app follows the system setting and keeps following it; the pick is remembered in the browser. The glyph morphs (the moon turns out as the sun turns in, 320ms `ease-settle`) and shows where a press leads; the palette itself changes in one frame, with no fade.
@@ -198,7 +198,7 @@ Dark is the same system re-inked, not a second design: every component names the
 
 The order is fixed because it's packed into the `crest` int as `color * 8 + shape`. Never reorder these, only restyle them.
 
-| #   | Name     | Fill                                    | Eyes     |
+| #   | Name     | Fill                                    | Detail   |
 | --- | -------- | --------------------------------------- | -------- |
 | 0   | mist     | `#F3F2EF` + 1.4px `line-strong` outline | `ink`    |
 | 1   | brown    | `#8B5A3C`                               | `canvas` |
@@ -359,8 +359,8 @@ The Bot's question (`ask_owner`), the same card in a thread and on the Dashboard
 
 ### Crests
 
-- Eight silhouettes (circle, blob, squircle, pill, triangle, hex, cloud, drop) filled with one of the twelve fills, plus two dots. Sizes are 20 / 28 / 56 / 88.
-- **Blink:** on hover, the eyes squash to `scaleY(.12)` and back over 220ms (`transform-box: fill-box; transform-origin: center`). Working Bots in the rail blink by themselves about every 6s. That's the only personality animation in the product.
+- A crest is the whole skrzat: one body (coat, mittens, wool beard, boots, a felt nose) under one of eight hats (bobble, bent tip, wide brim, paper boat, cone, striped cone, baker's toque, stocking cap) in one of the twelve fills. The fill takes the hat and mittens, its darker `coat` the coat, and Detail the hat's stripes. Each surface is a soft three-stop radial gradient with a slightly rough felt edge; nothing finer, because fiber noise and highlights go dirty at these sizes. The art lives in [brand/](brand/README.md), and `make brand` generates `web/src/crestArt.ts` from it. Sizes run from 16 to 104. The web draws them live; iOS shows the same art as images, and has no nod.
+- **Nod:** on hover, the hat dips over the nose and back over 220ms (`.crest-hat`, the bottom of the hat as its origin). Working Bots in the rail nod by themselves about every 6s. That's the only personality animation in the product.
 - Picker: selected cell `cobalt-pale` with an inset 1px `cobalt` ring; selected color dot `0 0 0 2px surface, 0 0 0 4px cobalt`.
 
 ### Rules
@@ -514,4 +514,4 @@ The Bot's question (`ask_owner`), the same card in a thread and on the Dashboard
 - Loop any animation other than the Working lamp's breathing.
 - Use IBM Plex, Inter or decorative display faces. Geist, Geist Mono and Source Serif 4 (replies only) are the only fonts.
 - Show a secret value.
-- Add illustrations, mascots or 3D robots. The crest is the character.
+- Add illustrations, other mascots or 3D robots. The skrzat is the one character: a vector crest in the app, and a felt render only on sign-in and first run ([brand/](brand/README.md)).

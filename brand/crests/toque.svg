@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="Baker's toque">
+  <defs>
+    <radialGradient id="hat-felt" cx="0.36" cy="0.2" r="0.9"><stop offset="0" stop-color="#8499DF"/><stop offset=".5" stop-color="#2B4FC7"/><stop offset="1" stop-color="#1C337F"/></radialGradient>
+    <radialGradient id="coat-felt" cx="0.4" cy="0.1" r="0.9"><stop offset="0" stop-color="#6479BC"/><stop offset=".5" stop-color="#223F9F"/><stop offset="1" stop-color="#14265F"/></radialGradient>
+    <radialGradient id="beard-wool" cx="0.4" cy="0.1" r="0.9"><stop offset="0" stop-color="#FAF8F3"/><stop offset=".5" stop-color="#F6F1E7"/><stop offset="1" stop-color="#CFCAC2"/></radialGradient>
+    <radialGradient id="nose-felt" cx="0.34" cy="0.3" r="0.8"><stop offset="0" stop-color="#F0CFBE"/><stop offset=".5" stop-color="#E7B499"/><stop offset="1" stop-color="#B9907A"/></radialGradient>
+    <radialGradient id="boot-felt" cx="0.4" cy="0.2" r="0.9"><stop offset="0" stop-color="#80756E"/><stop offset=".5" stop-color="#4A3A30"/><stop offset="1" stop-color="#312620"/></radialGradient>
+    <filter id="felt" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="1.5" numOctaves="2" seed="2"/>
+      <feDisplacementMap in="SourceGraphic" scale="0.9" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <g id="boots" fill="url(#boot-felt)"><ellipse cx="18.5" cy="44.3" rx="4.8" ry="2.7"/><ellipse cx="29.5" cy="44.3" rx="4.8" ry="2.7"/></g>
+  <g filter="url(#felt)">
+    <path id="coat" fill="url(#coat-felt)" d="M15.5 30C13 35.5 13.8 41 16.8 43.5h14.4C34.2 41 35 35.5 32.5 30Z"/>
+    <g id="mittens" fill="url(#hat-felt)"><ellipse cx="10.8" cy="37" rx="3.5" ry="4.3"/><ellipse cx="37.2" cy="37" rx="3.5" ry="4.3"/></g>
+    <path id="beard" fill="url(#beard-wool)" d="M13.8 28C14.5 35.5 20 40.5 24 40.5S33.5 35.5 34.2 28Z"/>
+    <g id="hat" fill="url(#hat-felt)"><path d="M14 30V21.5C7 20 7.5 10 15 10.5c2-6.5 16-6.5 18 0 7.5-.5 8 9.5 1 11V30C28 33 20 33 14 30Z"/><path class="detail" d="M14.5 25.8C20 27.6 28 27.6 33.5 25.8" fill="none" stroke="#FAF9F7" stroke-width="1.7" stroke-linecap="round"/></g>
+  </g>
+  <circle id="nose" cx="24" cy="31.5" r="4.3" fill="url(#nose-felt)"/>
+</svg>

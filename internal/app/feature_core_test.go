@@ -11,6 +11,7 @@ import (
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/apptest"
 	"silo.agent/internal/db"
+	"silo.agent/internal/ids"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/llm/dummy"
 )
@@ -476,5 +477,38 @@ func TestSwitchModelTool(t *testing.T) {
 	h.DB.First(&row, "id = ?", chat)
 	if row.Model != "dummy/alt" {
 		t.Fatalf("chat model after switch_model = %q", row.Model)
+	}
+}
+
+// The owner changes a Bot's crest in Settings. Other saves leave it alone, and
+// a number that is no crest is refused rather than stored.
+func TestUpdateBotCrest(t *testing.T) {
+	dummy.Reset()
+	h := apptest.New(t)
+	id := botNamed(t, h, "Scout").GetId()
+	update := func(m *v1.UpdateBotRequest) (*v1.Bot, error) {
+		m.Id, m.Name = id, "Scout"
+		res, err := h.Client.UpdateBot(h.Ctx(), rq(m))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg, nil
+	}
+	for _, want := range []int32{0, 61, ids.CrestCount - 1} {
+		if b, err := update(&v1.UpdateBotRequest{Crest: &want}); err != nil || b.GetCrest() != want {
+			t.Fatalf("crest %d: %d %v", want, b.GetCrest(), err)
+		}
+	}
+	if b, err := update(&v1.UpdateBotRequest{Description: "an unrelated save"}); err != nil || b.GetCrest() != ids.CrestCount-1 {
+		t.Fatalf("an unrelated save moved the crest: %d %v", b.GetCrest(), err)
+	}
+	for _, bad := range []int32{-1, ids.CrestCount} {
+		if _, err := update(&v1.UpdateBotRequest{Crest: &bad}); code(err) != connect.CodeInvalidArgument {
+			t.Errorf("crest %d: %v", bad, err)
+		}
+	}
+	got, err := h.Client.GetBot(h.Ctx(), rq(&v1.GetBotRequest{Id: id}))
+	if err != nil || got.Msg.GetCrest() != ids.CrestCount-1 {
+		t.Fatalf("a refused crest was kept: %d %v", got.Msg.GetCrest(), err)
 	}
 }

@@ -5705,7 +5705,9 @@ type UpdateBotRequest struct {
 	// Optional, so a save of the other fields leaves the output policy alone.
 	OutputPolicy *string `protobuf:"bytes,11,opt,name=output_policy,json=outputPolicy,proto3,oneof" json:"output_policy,omitempty"`
 	// off | quiet | active; it also puts the Heartbeat on that level's schedule.
-	Proactivity   *string `protobuf:"bytes,12,opt,name=proactivity,proto3,oneof" json:"proactivity,omitempty"`
+	Proactivity *string `protobuf:"bytes,12,opt,name=proactivity,proto3,oneof" json:"proactivity,omitempty"`
+	// color * 8 + shape. Optional, so a save of the other fields leaves it alone.
+	Crest         *int32 `protobuf:"varint,13,opt,name=crest,proto3,oneof" json:"crest,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5815,6 +5817,13 @@ func (x *UpdateBotRequest) GetProactivity() string {
 		return *x.Proactivity
 	}
 	return ""
+}
+
+func (x *UpdateBotRequest) GetCrest() int32 {
+	if x != nil && x.Crest != nil {
+		return *x.Crest
+	}
+	return 0
 }
 
 type GetBotRequest struct {
@@ -28994,7 +29003,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\n" +
 	"skills_off\x18\t \x03(\tR\tskillsOff\x12\x19\n" +
 	"\buser_ids\x18\n" +
-	" \x03(\tR\auserIds\"\xc0\x03\n" +
+	" \x03(\tR\auserIds\"\xe5\x03\n" +
 	"\x10UpdateBotRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -29007,13 +29016,15 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\blanguage\x18\n" +
 	" \x01(\tH\x02R\blanguage\x88\x01\x01\x12(\n" +
 	"\routput_policy\x18\v \x01(\tH\x03R\foutputPolicy\x88\x01\x01\x12%\n" +
-	"\vproactivity\x18\f \x01(\tH\x04R\vproactivity\x88\x01\x01B\f\n" +
+	"\vproactivity\x18\f \x01(\tH\x04R\vproactivity\x88\x01\x01\x12\x19\n" +
+	"\x05crest\x18\r \x01(\x05H\x05R\x05crest\x88\x01\x01B\f\n" +
 	"\n" +
 	"_time_zoneB\x13\n" +
 	"\x11_time_zone_pinnedB\v\n" +
 	"\t_languageB\x10\n" +
 	"\x0e_output_policyB\x0e\n" +
-	"\f_proactivityJ\x04\b\x05\x10\x06\"\x1f\n" +
+	"\f_proactivityB\b\n" +
+	"\x06_crestJ\x04\b\x05\x10\x06\"\x1f\n" +
 	"\rGetBotRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"~\n" +
 	"\tContainer\x12\x18\n" +

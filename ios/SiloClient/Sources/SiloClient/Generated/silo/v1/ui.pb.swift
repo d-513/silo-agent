@@ -1917,6 +1917,16 @@ public nonisolated struct Silo_V1_UpdateBotRequest: Sendable {
   /// Clears the value of `proactivity`. Subsequent reads from it will return its default value.
   public mutating func clearProactivity() {self._proactivity = nil}
 
+  /// color * 8 + shape. Optional, so a save of the other fields leaves it alone.
+  public var crest: Int32 {
+    get {_crest ?? 0}
+    set {_crest = newValue}
+  }
+  /// Returns true if `crest` has been explicitly set.
+  public var hasCrest: Bool {self._crest != nil}
+  /// Clears the value of `crest`. Subsequent reads from it will return its default value.
+  public mutating func clearCrest() {self._crest = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1926,6 +1936,7 @@ public nonisolated struct Silo_V1_UpdateBotRequest: Sendable {
   fileprivate var _language: String? = nil
   fileprivate var _outputPolicy: String? = nil
   fileprivate var _proactivity: String? = nil
+  fileprivate var _crest: Int32? = nil
 }
 
 public nonisolated struct Silo_V1_GetBotRequest: Sendable {
@@ -12853,7 +12864,7 @@ nonisolated extension Silo_V1_CreateBotRequest: SwiftProtobuf.Message, SwiftProt
 
 nonisolated extension Silo_V1_UpdateBotRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UpdateBotRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}description\0\u{1}soul\0\u{4}\u{2}auto_approve\0\u{1}model\0\u{3}time_zone\0\u{3}time_zone_pinned\0\u{1}language\0\u{3}output_policy\0\u{1}proactivity\0\u{c}\u{5}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}description\0\u{1}soul\0\u{4}\u{2}auto_approve\0\u{1}model\0\u{3}time_zone\0\u{3}time_zone_pinned\0\u{1}language\0\u{3}output_policy\0\u{1}proactivity\0\u{1}crest\0\u{c}\u{5}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -12872,6 +12883,7 @@ nonisolated extension Silo_V1_UpdateBotRequest: SwiftProtobuf.Message, SwiftProt
       case 10: try { try decoder.decodeSingularStringField(value: &self._language) }()
       case 11: try { try decoder.decodeSingularStringField(value: &self._outputPolicy) }()
       case 12: try { try decoder.decodeSingularStringField(value: &self._proactivity) }()
+      case 13: try { try decoder.decodeSingularInt32Field(value: &self._crest) }()
       default: break
       }
     }
@@ -12915,6 +12927,9 @@ nonisolated extension Silo_V1_UpdateBotRequest: SwiftProtobuf.Message, SwiftProt
     try { if let v = self._proactivity {
       try visitor.visitSingularStringField(value: v, fieldNumber: 12)
     } }()
+    try { if let v = self._crest {
+      try visitor.visitSingularInt32Field(value: v, fieldNumber: 13)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -12930,6 +12945,7 @@ nonisolated extension Silo_V1_UpdateBotRequest: SwiftProtobuf.Message, SwiftProt
     if lhs._language != rhs._language {return false}
     if lhs._outputPolicy != rhs._outputPolicy {return false}
     if lhs._proactivity != rhs._proactivity {return false}
+    if lhs._crest != rhs._crest {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
