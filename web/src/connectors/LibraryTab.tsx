@@ -1,5 +1,7 @@
 import { Plug, Plus, Sparkles } from "lucide-react";
 import { btnClass } from "../Btn";
+import { Count } from "../Count";
+import { FilterChip } from "../FilterChip";
 import type { Connector } from "../gen/silo/v1/ui_pb";
 import { CatalogCard, FeaturedCard } from "./LibraryCards";
 import { t } from "../i18n.ts";
@@ -36,32 +38,16 @@ export function LibraryTab({
 }) {
   return (
     <div className="space-y-6">
-      {/* Category Filter Pills */}
       <div className="flex flex-wrap items-center gap-1.5 border-b border-line pb-3">
-        <button
-          type="button"
-          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${ selectedCategory === "all"
-              ? "bg-ink text-on-ink font-semibold shadow-2xs"
-              : "bg-well text-ink-2 hover:text-ink hover:bg-pressed"
-          }`}
-          onClick={() => setSelectedCategory("all")}
-        >
+        <FilterChip on={selectedCategory === "all"} onClick={() => setSelectedCategory("all")}>
           {t("All ({{count}})", { count: catalog.length })}
-        </button>
+        </FilterChip>
         {categories.map((cat) => {
           const count = catalog.filter((c) => (c.category?.trim() || t("General")) === cat).length;
-          const active = selectedCategory.toLowerCase() === cat.toLowerCase();
           return (
-            <button
-              key={cat}
-              type="button"
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${ active ? "bg-ink text-on-ink font-semibold shadow-2xs"
-                  : "bg-well text-ink-2 hover:text-ink hover:bg-pressed"
-              }`}
-              onClick={() => setSelectedCategory(cat)}
-            >
+            <FilterChip key={cat} on={selectedCategory.toLowerCase() === cat.toLowerCase()} onClick={() => setSelectedCategory(cat)}>
               {cat} ({count})
-            </button>
+            </FilterChip>
           );
         })}
       </div>
@@ -101,7 +87,7 @@ export function LibraryTab({
               <div className="flex items-center justify-between border-b border-line/70 pb-2">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-sm text-ink">{categoryName}</h3>
-                  <span className="rounded-full bg-well px-2 py-0.5 text-[10px] font-medium text-ink-3">{items.length}</span>
+                  <Count n={items.length} />
                 </div>
               </div>
 

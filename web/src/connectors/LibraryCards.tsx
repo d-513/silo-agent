@@ -64,9 +64,7 @@ export function FeaturedCard({ c, count, onAdd }: { c: Connector; count: number;
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h4 className="text-[19px] font-semibold tracking-tight text-ink">{c.name}</h4>
-            <span className="rounded-full bg-cobalt-pale px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-cobalt">
-              {t("Built in")}
-            </span>
+            <CategoryChip label={t("Built in")} />
             {c.category && <CategoryChip label={c.category} />}
           </div>
           <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-ink-2">{c.description}</p>

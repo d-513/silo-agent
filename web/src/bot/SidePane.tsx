@@ -33,7 +33,7 @@ function Act({ dark, label, icon: Icon, onClick }: { dark: boolean; label: strin
       aria-label={label}
       onClick={onClick}
       className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-sm transition-colors duration-[160ms] ease-quiet ${
-        dark ? "text-white/70 hover:bg-white/10 hover:text-white" : "text-ink-2 hover:bg-well hover:text-ink"
+        dark ? "text-on-hatch/70 hover:bg-on-hatch/10 hover:text-on-hatch" : "text-ink-2 hover:bg-well hover:text-ink"
       }`}
     >
       <Icon size={14} />

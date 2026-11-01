@@ -160,11 +160,11 @@ Never use opacity to make grey text. Pick a level.
 | `vermilion-deep` | `#A82E24` | Hover on vermilion fills.                                                                                                                      |
 | `vermilion-pale` | `#FBEAE8` | Hover behind Deny, PDF file badge, error field background.                                                                                     |
 
-The accents never appear as gradients, glows or large fields. Orange, amber, gold, purple and cyan never appear in the UI. The crest fills below are the only exception, and a crest is the one drawing in the UI with shading.
+The accents never appear as gradients, glows or large fields, with one exception: the faint `cobalt-pale` corner of a featured card (a connector in the library, a channel adapter), a radial fade from the top right. Orange, amber, gold, purple and cyan never appear in the UI. The crest fills below are the only exception, and a crest is the one drawing in the UI with shading.
 
 ### The hatch
 
-The live desktop and console are a dark window in a light room: `hatch` (`#141413`) frame, `matte` (`#0E0E0D`) inset 8px, status text white at 80% in Geist Mono. Text set on it is `on-hatch` (`#FAF9F7`), never `ink` or `canvas`, because the hatch is dark in both themes. The Desktop hatch's bar carries one more control before the pane's own: **Pause Bot**, a mono pill outlined in `on-hatch` at 18% with a hand glyph. On, it fills `vermilion` ("You're in control · Resume", a play glyph) and the matte takes a 2px `vermilion` edge, so a glance says the screen is the owner's; a Tip says what the Bot can and cannot do meanwhile.
+The live desktop and console are a dark window in a light room: `hatch` (`#141413`) frame, `matte` (`#0E0E0D`) inset 8px, status text `on-hatch` at 80% in Geist Mono. Text, hairlines and hover tones set on it are `on-hatch` (`#FAF9F7`) at some opacity, never `ink`, `canvas` or `white`, because the hatch is dark in both themes. The Desktop hatch's bar carries one more control before the pane's own: **Pause Bot**, a mono pill outlined in `on-hatch` at 18% with a hand glyph. On, it fills `vermilion` ("You're in control · Resume", a play glyph) and the matte takes a 2px `vermilion` edge, so a glance says the screen is the owner's; a Tip says what the Bot can and cannot do meanwhile.
 
 ### Dark
 
@@ -244,7 +244,7 @@ Wine is deliberately darker than `vermilion`, so a red Bot never reads as Needs 
   - The composer is 18px.
   - User bubble: `bubble` with a 6px bottom-right corner.
   - `full`: switches, lamps, avatars.
-  - No pill buttons.
+  - No pill buttons. `full` is for a **filter chip** (§6), the Models chip row below 960 and the hatch's Pause Bot.
 - Elevation:
   - `shadow-card`: `0 0 0 1px var(--line)` only. Resting cards are flat.
   - `shadow-float`: `0 0 0 1px var(--line), 0 1px 2px rgba(20,18,14,.04), 0 6px 20px -8px rgba(20,18,14,.08)`. Used for the composer, and for folio hover.
@@ -283,6 +283,14 @@ No bounce, and no overshoot beyond the settle curve.
 - **Deny**: `vermilion` label, no fill. Hover fills `vermilion-pale`. It's only used on the approval slip. A destructive confirm uses the armed pattern (below).
 - **Glyph**: Start Bot / Stop Bot put a 22px glyph well (`xs` radius, `well` fill, or white at 20% on ink) on the right of the label, with a power glyph for the machine. Send is its own component.
 - Focus is always a 2px `cobalt` outline at a 2px offset, never a glow.
+
+### Filter chips
+
+`FilterChip`, a wrapping row with `gap-1.5` that narrows a list to one kind of thing (the connector library's categories). `h-6` (21px: the root is 14px, see §4), `full` radius, 11/500. Resting: `well` with an `ink-2` label; hover `pressed` and `ink`. The open one is an `ink` fill with an `on-ink` label, at the same weight, so picking one moves nothing. The count is part of the label: "Productivity (4)". A chip never acts; a control that does something is a button.
+
+### Counts
+
+`Count`: how many there are beside a title, a group head or a tab, a plain number in mono 12 `ink-3` with no fill. Only a count that asks to be read wears a fill: the Feed's unread pill.
 
 ### Send / Stop (composer)
 
@@ -441,7 +449,7 @@ The Bot's question (`ask_owner`), the same card in a thread and on the Dashboard
 
 ### Skills and Channels
 
-- Both list pages wear the Connectors frame: a `widePage`, a title with a count chip and one calm sentence, then the toolbar — `TabPills` (a `well` tray, the open tab lifted, counts in `cobalt-pale`) and the `ToolbarSearch` field with its ⌘K hint — over a two-up grid of `surface` cards (`shadow-card`, `shadow-float` on hover). Empty and no-match states are dashed or `surface` wells with one next step, never a bare sentence.
+- Both list pages wear the Connectors frame: a `widePage`, a title with its `Count` and one calm sentence, then the toolbar — `TabPills` (a `well` tray, the open tab lifted at the same weight, each with its `Count`) and the `ToolbarSearch` field with its ⌘K hint — over a two-up grid of `surface` cards (`shadow-card`, `shadow-float` on hover). Empty and no-match states are dashed or `surface` wells with one next step, never a bare sentence.
 - **Skill Hub** (`/skills`): **Personal | Library**. A skill card is a 48px scroll mark on `well`, the name in 15/600 with a `Catalog` chip for the embedded ones, two lines of description, and a hairline footer with the source in mono (a GitHub URL shrinks to `owner/repo`), **Inspect**, and an armed **Remove** where it applies. The whole card opens the hatch. Personal opens with the install band: a `well` panel (not a card) holding the URL field, **Install** and **Upload zip**; a zip can be dropped on it, and the band takes a 1.5px `cobalt` ring while one is over it. Library groups into **Catalog** and **Added by admins**. The Bot's Skills tab is the same card with a switch top-right and a footer word, **In the prompt** (`emerald`) or **Off**.
 - **Add a channel** (`/bots/:id/channels/new`): one card per adapter in the Connectors "featured" style — the real logo in a lifted tile on a faint `cobalt-pale` corner, the name in 19/600, `well` chips for how it signs in (**Bot token** / **QR login**, **One chat**), the description, three emerald-check points, and a full-width **Add Telegram** (**Add another** with an emerald "In use" when the Bot already has one). A footer callout points at Connectors for email and calendar. The list's empty state offers the adapters as quick tiles.
 - **Add / edit a channel** and **Setup** are two columns, not a narrow strip on the left: the form in numbered `Step` cards (**Connect**: name and credentials, short fields side by side and tokens full width; **Behavior**: reply mode, the Enabled and Deliver toggles as `well` rows, the prompt) beside the adapter's guide in a sticky `well` panel that scrolls on its own. Below 1024 the guide is a shut fold above the form. Setup stacks a status strip, the QR (**Link your device**), the **Target chat** panel (bound state, the adapter's actions, the picker, set-directly) and, on adapters with no target, an **Actions** panel. A channel that needs you wears the 2px `vermilion` ribbon.
@@ -506,7 +514,7 @@ The Bot's question (`ask_owner`), the same card in a thread and on the Dashboard
 
 ## 9. Do not
 
-- Use blue button fills, gradients, glows, glass or blur.
+- Use blue button fills, gradients (a featured card's corner aside, §2), glows, glass or blur.
 - Use orange, amber, purple or cyan anywhere except crest fills.
 - Put a border on every box. Use tone first.
 - Use spinners where a skeleton or an in-place morph works.

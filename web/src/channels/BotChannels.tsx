@@ -14,6 +14,7 @@ import { ChannelCard } from "./ChannelCard";
 import { ChannelForm } from "./ChannelForm";
 import { ChannelLog } from "./ChannelLog";
 import { ChannelSetup } from "./ChannelSetup";
+import { Count } from "../Count";
 import { t } from "../i18n.ts";
 
 const noAdapters: ChannelAdapter[] = [];
@@ -103,7 +104,7 @@ export function ChannelsList({ botId }: { botId: string }) {
         <div className="space-y-1.5">
           <div className="flex items-center gap-2.5">
             <h1 className="text-title text-ink">{t("Channels")}</h1>
-            {loaded ? <span className="rounded-full bg-well px-2 py-0.5 text-[11px] font-semibold text-ink-3">{channels.length}</span> : null}
+            {loaded ? <Count n={channels.length} /> : null}
           </div>
           <p className="max-w-3xl text-[13px] leading-relaxed text-ink-2">
             {t("Channels let you talk to this Bot from chat apps like Telegram, WhatsApp or Discord. Each one binds an adapter to a single conversation: the Bot answers there, and can send to it from its tools.")}

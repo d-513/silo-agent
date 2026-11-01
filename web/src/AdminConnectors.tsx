@@ -10,6 +10,7 @@ import { inputClass, SkeletonRows } from "./Field";
 import { Select } from "./Select";
 import { UI, type Connector } from "./gen/silo/v1/ui_pb";
 import { reload } from "./query";
+import { Count } from "./Count";
 import { fail } from "./errors";
 import { t } from "./i18n.ts";
 import { Trans } from "./Trans.tsx";
@@ -178,7 +179,7 @@ export function CatalogList() {
                 <section key={categoryName} className="space-y-3">
                   <div className="flex items-center gap-2 border-b border-line/70 pb-2">
                     <h3 className="text-sm font-semibold text-ink">{categoryName}</h3>
-                    <span className="rounded-full bg-well px-2 py-0.5 text-[10px] font-medium text-ink-3">{items.length}</span>
+                    <Count n={items.length} />
                   </div>
                   {grid(items)}
                 </section>

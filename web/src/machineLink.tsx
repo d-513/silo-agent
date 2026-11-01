@@ -35,7 +35,7 @@ export function LinkSurface({
     <div className="relative h-full min-h-0 w-full bg-matte">
       <div ref={surfaceRef} className={`${surfaceClass} h-full min-h-[320px] w-full`} onMouseDown={onMouseDown} />
       {phase !== "connected" && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center font-mono text-[12.5px] text-white/80">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center font-mono text-[12.5px] text-on-hatch/80">
           {phase === "off" ? t("{{name}} not connected", { name: noun }) : phase === "connecting" ? t("Opening {{name}}…", { name: noun.toLowerCase() }) : t("{{name}} lost", { name: noun })}
         </div>
       )}

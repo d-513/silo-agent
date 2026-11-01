@@ -118,7 +118,7 @@ export function VersionSwitch({ versions, n, onPick, hatch }: { versions: Artifa
   if (versions.length < 2) return null;
   const at = Math.max(0, versions.findIndex((v) => v.n === n));
   const btn = hatch
-    ? "flex h-7 w-7 items-center justify-center rounded-sm text-on-hatch/70 hover:bg-white/10 hover:text-on-hatch disabled:opacity-30"
+    ? "flex h-7 w-7 items-center justify-center rounded-sm text-on-hatch/70 hover:bg-on-hatch/10 hover:text-on-hatch disabled:opacity-30"
     : "flex h-7 w-7 items-center justify-center rounded-sm text-ink-2 hover:bg-well hover:text-ink disabled:opacity-30";
   return (
     <span className={`flex shrink-0 items-center font-mono text-[11.5px] ${hatch ? "text-on-hatch/70" : "text-ink-3"}`}>
@@ -422,7 +422,7 @@ export function SharePanel({ botId, artifactId, n, hatch }: { botId: string; art
     });
   const tone = hatch ? "text-on-hatch" : "text-ink";
   return (
-    <div className={`border-t px-3 py-2.5 text-[13px] ${hatch ? "border-white/10" : "border-line bg-canvas"} ${tone}`}>
+    <div className={`border-t px-3 py-2.5 text-[13px] ${hatch ? "border-on-hatch/10" : "border-line bg-canvas"} ${tone}`}>
       {share === undefined && !err ? <div className="skeleton h-6 rounded-xs" /> : null}
       {share === null && !err ? (
         <div className="flex flex-wrap items-center gap-2">

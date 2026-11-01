@@ -12,9 +12,9 @@ import { Highlighted } from "./Highlighted";
 import { t } from "./i18n.ts";
 import { lineDiff } from "./lineDiff";
 
-const hatchBtn = "flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-on-hatch/70 transition-colors duration-[160ms] hover:bg-white/10 hover:text-on-hatch";
+const hatchBtn = "flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-on-hatch/70 transition-colors duration-[160ms] hover:bg-on-hatch/10 hover:text-on-hatch";
 const hatchToggle = (on: boolean) =>
-  `flex h-8 items-center gap-1.5 rounded-sm px-2.5 text-[12.5px] font-medium transition-colors duration-[160ms] ${on ? "bg-white/15 text-on-hatch" : "text-on-hatch/70 hover:bg-white/10 hover:text-on-hatch"}`;
+  `flex h-8 items-center gap-1.5 rounded-sm px-2.5 text-[12.5px] font-medium transition-colors duration-[160ms] ${on ? "bg-on-hatch/15 text-on-hatch" : "text-on-hatch/70 hover:bg-on-hatch/10 hover:text-on-hatch"}`;
 
 // The full-screen inspector for an artifact card, at one of its versions: a
 // file's preview (and what changed since the version before), a skill's
@@ -79,7 +79,7 @@ export function ArtifactOverlay({
         </Btn>
       ) : null}
       {artifact.artifactType !== "skill" ? (
-        <button type="button" className={`${hatchBtn} ${sharing ? "bg-white/15 text-on-hatch" : ""}`} title={t("Share a public link")} aria-label={t("Share a public link")} onClick={() => setSharing((x) => !x)}>
+        <button type="button" className={`${hatchBtn} ${sharing ? "bg-on-hatch/15 text-on-hatch" : ""}`} title={t("Share a public link")} aria-label={t("Share a public link")} onClick={() => setSharing((x) => !x)}>
           <Link2 size={15} />
         </button>
       ) : null}
@@ -94,8 +94,8 @@ export function ArtifactOverlay({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-hatch p-0 wide:p-3">
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none bg-hatch ring-1 ring-white/10 wide:rounded-[10px]">
-        <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-2 text-on-hatch">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none bg-hatch ring-1 ring-on-hatch/10 wide:rounded-[10px]">
+        <div className="flex shrink-0 items-center gap-2 border-b border-on-hatch/10 px-3 py-2 text-on-hatch">
           <span className="text-on-hatch/70">
             <TypeIcon name={v.name || artifact.path} dir={tree && !app} size={18} />
           </span>
@@ -103,7 +103,7 @@ export function ArtifactOverlay({
           {header}
         </div>
         {sharing ? <SharePanel botId={botId} artifactId={artifact.artifactId} n={v.n} hatch /> : null}
-        {err ? <p className="border-b border-white/10 px-3 py-1.5 text-[12.5px] text-vermilion">{err}</p> : null}
+        {err ? <p className="border-b border-on-hatch/10 px-3 py-1.5 text-[12.5px] text-vermilion">{err}</p> : null}
         <div className="flex min-h-0 flex-1 flex-col">
           {app && mode === "app" ? (
             <AppFrame key={v.n} botId={botId} artifactId={artifact.artifactId} n={v.n} title={artifact.title} className="h-full flex-1" />

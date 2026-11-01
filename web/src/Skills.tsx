@@ -18,6 +18,7 @@ import { filterSkills } from "./skills/model";
 import { SkillCard } from "./skills/SkillCard";
 import { TabPill, TabPills } from "./TabPills";
 import { ToolbarSearch } from "./ToolbarSearch";
+import { Count } from "./Count";
 import { t } from "./i18n.ts";
 
 function SkillGrid({ columns = 2, children }: { columns?: 1 | 2; children: ReactNode }) {
@@ -30,7 +31,7 @@ function Section({ title, count, children }: { title: string; count: number; chi
     <section className="space-y-3">
       <div className="flex items-center gap-2 border-b border-line/70 pb-2">
         <h3 className="text-sm font-semibold text-ink">{title}</h3>
-        <span className="rounded-full bg-well px-2 py-0.5 text-[10px] font-medium text-ink-3">{count}</span>
+        <Count n={count} />
       </div>
       {children}
     </section>
@@ -76,7 +77,7 @@ function Header({ title, count, children }: { title: string; count?: number; chi
     <div className="mb-6 space-y-1.5">
       <div className="flex items-center gap-2.5">
         <h1 className="text-title text-ink">{title}</h1>
-        {count !== undefined ? <span className="rounded-full bg-well px-2 py-0.5 text-[11px] font-semibold text-ink-3">{count}</span> : null}
+        {count !== undefined ? <Count n={count} /> : null}
       </div>
       <p className="max-w-3xl text-[13px] leading-relaxed text-ink-2">{children}</p>
     </div>

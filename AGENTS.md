@@ -710,6 +710,7 @@ pnpm + React + Tailwind in `web/`, ConnectRPC to the CP plus WebSockets. DESIGN.
 - One hatch overlay for Workspace Skills, the Admin library and Artifact inspect.
 - `Tip` (`web/src/Tip.tsx`): the tooltip card for controls whose meaning needs more than a word (portaled, 350 ms rest delay then warm, flips and clamps to the viewport, never on touch; `TipTitle`/`TipAction`) instead of a native `title`. A control that should explain itself while unavailable uses `aria-disabled`, not `disabled`: disabled buttons get no pointer events.
 - `Md` for markdown; tables scroll inside the thread (`silo-md-table`) and must not widen the column.
+- `FilterChip`: the pill that narrows a list (never a button that acts). `Count`: a number beside a title, a group head or a tab, with no fill.
 
 ## Layout
 

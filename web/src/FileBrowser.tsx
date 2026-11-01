@@ -145,10 +145,10 @@ export function FileBrowser({
     void toggleDir(path);
   }
   const treeCls = hatch
-    ? "min-h-0 w-[240px] shrink-0 overflow-auto border-r border-white/10 text-on-hatch @max-[640px]:w-full @max-[640px]:border-r-0"
+    ? "min-h-0 w-[240px] shrink-0 overflow-auto border-r border-on-hatch/10 text-on-hatch @max-[640px]:w-full @max-[640px]:border-r-0"
     : "min-h-0 w-[240px] shrink-0 overflow-auto border-r border-line text-ink @max-[640px]:w-full @max-[640px]:border-r-0";
   const headCls = hatch
-    ? "flex h-10 shrink-0 items-center gap-2 border-b border-white/10 px-3 text-[13px] text-on-hatch"
+    ? "flex h-10 shrink-0 items-center gap-2 border-b border-on-hatch/10 px-3 text-[13px] text-on-hatch"
     : "flex h-10 shrink-0 items-center gap-2 border-b border-line-strong px-3 text-[13px]";
 
   // Under 640px of its own width (a phone, or a pane docked beside the chat)
@@ -246,7 +246,7 @@ function Tree({
         return (
           <li key={e.path}>
             <div
-              className={`group flex h-8 items-center gap-1 pr-2 ${active ? (hatch ? "bg-white/10" : "bg-well") : hatch ? "hover:bg-white/5" : "hover:bg-well"}`}
+              className={`group flex h-8 items-center gap-1 pr-2 ${active ? (hatch ? "bg-on-hatch/10" : "bg-well") : hatch ? "hover:bg-on-hatch/5" : "hover:bg-well"}`}
               style={{ paddingLeft: 8 + depth * 12 }}
             >
               {e.dir ? (
@@ -308,7 +308,7 @@ export function SkillBrowserOverlay({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-hatch p-0 wide:p-3">
-      <div className="flex min-h-0 flex-1 overflow-hidden rounded-none bg-hatch ring-1 ring-white/10 wide:rounded-[10px]">
+      <div className="flex min-h-0 flex-1 overflow-hidden rounded-none bg-hatch ring-1 ring-on-hatch/10 wide:rounded-[10px]">
         <FileBrowser
           source={source}
           chrome="hatch"

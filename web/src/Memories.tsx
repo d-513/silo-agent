@@ -13,6 +13,7 @@ import { UI, type Bot, type Memory } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
 import { patch } from "./query";
 import { day, fullTime } from "./format";
+import { Count } from "./Count";
 import { t } from "./i18n.ts";
 
 // match turns a cosine distance (0 = same, 2 = opposite) into a 0–100 score.
@@ -124,9 +125,7 @@ export function MemoriesPane({ bot, onError }: { bot: Bot; onError: (s: string) 
       <div className="mb-1 flex items-center gap-2.5">
         <h2 className="text-title text-ink">{t("Memories")}</h2>
         {all && all.length > 0 ? (
-          <span className="rounded-full bg-well px-2 py-0.5 font-mono text-[11px] font-medium tabular-nums text-ink-3">
-            {all.length}
-          </span>
+          <Count n={all.length} />
         ) : null}
       </div>
       <p className="mb-6 text-ink-2">

@@ -30,7 +30,7 @@ export function ChannelLog({ botId, channel, onClose }: { botId: string; channel
             </div>
             <div>
               <span className="font-semibold text-sm text-ink">{t("{{name}} Log", { name: channel.name })}</span>
-              <span className="ml-2 rounded-full bg-well px-2 py-0.5 text-[11px] font-medium text-ink-3">
+              <span className="ml-2 text-[12.5px] text-ink-3">
                 {t("{{count}} conversations", { count: chats.length })}
               </span>
             </div>
