@@ -2,7 +2,7 @@ import { Upload } from "lucide-react";
 import { useRef, useState, type KeyboardEvent } from "react";
 import type { CollectMemoriesResponse, ModelOption } from "../gen/silo/v1/ui_pb";
 import type { Usage } from "../useRunStream";
-import { AttachmentChips, type Attachment } from "./AttachmentChips";
+import { AttachmentChips, type Attachment, type Upload as PendingUpload } from "./AttachmentChips";
 import { QuoteChips } from "../quote/QuoteChips";
 import type { DraftQuote } from "../quote/model";
 import { DictationStrip } from "./DictationStrip";
@@ -26,6 +26,8 @@ export interface ComposerProps {
   quotes?: DraftQuote[];
   onRemoveQuote?: (id: string) => void;
   attachErr?: string;
+  // Files still uploading: the message waits for them.
+  uploading?: PendingUpload[];
   onAttach: (files: FileList | null) => Promise<void> | void;
   onSend: () => void;
   onStop: () => void;
@@ -72,6 +74,7 @@ export function Composer({
   quotes = [],
   onRemoveQuote,
   attachErr,
+  uploading = [],
   onAttach,
   onSend,
   onStop,
@@ -105,6 +108,7 @@ export function Composer({
     textareaRef,
     text,
     attCount: atts.length + quotes.length,
+    uploading: uploading.length > 0,
     ready,
     workerConnected,
     sending,
@@ -175,7 +179,7 @@ export function Composer({
 
           {quotes.length > 0 && <QuoteChips quotes={quotes} onRemove={(id) => onRemoveQuote?.(id)} />}
 
-          {atts.length > 0 && <AttachmentChips atts={atts} onRemove={onRemoveAtt} />}
+          {atts.length + uploading.length > 0 && <AttachmentChips atts={atts} uploading={uploading} onRemove={onRemoveAtt} />}
 
           {attachErr && <Notice text={attachErr} />}
 

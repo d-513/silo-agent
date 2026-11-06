@@ -8,19 +8,30 @@ import { t } from "./i18n.ts";
  * Returns `armed` so the button can show its vermilion state and drain bar.
  */
 export function useArmed(ms = 3000) {
-  const [armed, setArmed] = useState(false);
+  const row = useArmedRow(ms);
+  const { fire: fireRow } = row;
+  const fire = useCallback((action: () => void) => fireRow("on", action), [fireRow]);
+  return { armed: row.armed === "on", fire, disarm: row.disarm, ms };
+}
+
+/**
+ * useArmed for a list: one row at a time is armed (`armed` is its key, ""
+ * when none), and pressing another row arms that one instead.
+ */
+export function useArmedRow(ms = 3000) {
+  const [armed, setArmed] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   const disarm = useCallback(() => {
     clearTimeout(timer.current);
-    setArmed(false);
+    setArmed("");
   }, []);
   const fire = useCallback(
-    (action: () => void) => {
-      if (!armed) {
-        setArmed(true);
+    (key: string, action: () => void) => {
+      if (armed !== key) {
+        setArmed(key);
         clearTimeout(timer.current);
-        timer.current = setTimeout(() => setArmed(false), ms);
+        timer.current = setTimeout(() => setArmed(""), ms);
         return;
       }
       disarm();

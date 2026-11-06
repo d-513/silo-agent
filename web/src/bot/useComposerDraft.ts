@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import type { Upload } from "../composer/AttachmentChips";
 import { ui } from "../api";
 import { fail } from "../errors";
 import { joinPath } from "../fs";
@@ -16,11 +17,14 @@ export function useComposerDraft(botId: string, workerConnected: boolean | undef
   const [atts, setAtts] = useState<Att[]>([]);
   const [attachErr, setAttachErr] = useState("");
   const [quotes, setQuotes] = useState<DraftQuote[]>([]);
+  // Files on their way up; a message waits for them (canSend, send).
+  const [uploading, setUploading] = useState<Upload[]>([]);
+  const uploadSeq = useRef(0);
 
   async function attach(list: FileList | null) {
     if (!list?.length || !workerConnected) return;
     setAttachErr("");
-    const added: Att[] = [];
+    const files: { f: File; path: string; key: string }[] = [];
     for (const f of list) {
       if (f.size > 50 << 20) {
         setAttachErr(t("{{name}} is larger than 50 MB", { name: f.name }));
@@ -28,19 +32,20 @@ export function useComposerDraft(botId: string, workerConnected: boolean | undef
       }
       const path = joinPath("tmp", f.name);
       if (!path) continue;
+      files.push({ f, path, key: `u${++uploadSeq.current}` });
+    }
+    setUploading((xs) => [...xs, ...files.map(({ f, key }) => ({ key, name: f.name, size: f.size }))]);
+    for (const { f, path, key } of files) {
       try {
         const buf = new Uint8Array(await f.arrayBuffer());
         await ui.putFile({ botId, path, data: buf });
-        added.push({ name: f.name, path, size: f.size });
+        // Each file joins the draft as it lands.
+        setAtts((xs) => (xs.some((x) => x.path === path) ? xs : [...xs, { name: f.name, path, size: f.size }]));
       } catch (ex) {
         setAttachErr(fail(ex));
+      } finally {
+        setUploading((xs) => xs.filter((x) => x.key !== key));
       }
-    }
-    if (added.length) {
-      setAtts((xs) => {
-        const seen = new Set(xs.map((x) => x.path));
-        return [...xs, ...added.filter((a) => !seen.has(a.path))];
-      });
     }
   }
 
@@ -54,7 +59,7 @@ export function useComposerDraft(botId: string, workerConnected: boolean | undef
     return path;
   }
 
-  return { text, setText, atts, setAtts, attachErr, attach, quotes, setQuotes, quote, unquote, upload };
+  return { text, setText, atts, setAtts, attachErr, attach, uploading, quotes, setQuotes, quote, unquote, upload };
 }
 
 export type ComposerDraft = ReturnType<typeof useComposerDraft>;

@@ -70,10 +70,26 @@ export function runActions(c: Ctx) {
   // send sends the draft, or `typed` (a command picked from the menu).
   async function send(e?: FormEvent, typed?: string, confirmed = false) {
     e?.preventDefault();
-    const { text, atts, quotes } = typed === undefined ? draft : { text: typed, atts: [], quotes: [] };
+    const own = typed === undefined;
+    // A message waits for its files: sent now it would go without them.
+    if (own && draft.uploading.length > 0) return;
+    const { text, atts, quotes } = own ? draft : { text: typed, atts: [], quotes: [] };
     if (!text.trim() && atts.length === 0 && quotes.length === 0) return;
     const msg = text.trim();
-    if (typed === undefined) draft.setText("");
+    // The draft empties at once, so a second Enter has nothing to send, and
+    // anything attached while this is in flight stays for the next message.
+    // A failed send puts it all back.
+    if (own) {
+      draft.setText("");
+      draft.setAtts([]);
+      draft.setQuotes([]);
+    }
+    const restore = () => {
+      if (!own) return;
+      draft.setText((cur) => (cur.trim() ? `${msg}\n${cur}` : msg));
+      draft.setAtts((xs) => [...atts.filter((a) => !xs.some((x) => x.path === a.path)), ...xs]);
+      draft.setQuotes((xs) => [...quotes.filter((q) => !xs.some((x) => x.id === q.id)), ...xs]);
+    };
     const command = msg.startsWith("/") && !msg.startsWith("//") && atts.length === 0 && quotes.length === 0;
     if (!command) run.markSent();
     onError("");
@@ -95,8 +111,6 @@ export function runActions(c: Ctx) {
       });
       if (res.command) return afterCommand(res, msg);
       if (command) run.markSent();
-      draft.setAtts([]);
-      draft.setQuotes([]);
       reloadBot(id);
       // The new chat is in the list before its page opens, so the sidebar
       // lights it and the composer shows its model.
@@ -106,10 +120,11 @@ export function runActions(c: Ctx) {
       } else void refreshChats();
     } catch (ex) {
       run.setSending(false);
+      // The message is back in the composer to send again (a refused
+      // command with its text to fix).
+      restore();
       if (!command) return onError(fail(ex));
-      // A refused command is the answer to it: shown where it was typed,
-      // with the text back to fix.
-      if (typed === undefined) draft.setText(msg);
+      // A refused command is the answer to it: shown where it was typed.
       c.onSaid({ text: fail(ex) });
     }
   }

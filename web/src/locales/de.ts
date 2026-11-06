@@ -1977,6 +1977,9 @@ const de: Record<string, string> = {
   "Using {{app}}": "Nutzt {{app}}",
   "Working on {{count}} things_one": "Arbeitet an {{count}} Aufgabe",
   "Working on {{count}} things_other": "Arbeitet an {{count}} Aufgaben",
+  "Uploading {{name}}…": "{{name}} wird hochgeladen…",
+  "Uploading {{count}} files…_one": "{{count}} Datei wird hochgeladen…",
+  "Uploading {{count}} files…_other": "{{count}} Dateien werden hochgeladen…",
 };
 
 export default de;

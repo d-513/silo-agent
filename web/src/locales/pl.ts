@@ -2081,6 +2081,11 @@ const pl: Record<string, string> = {
   "Working on {{count}} things_few": "Pracuje nad {{count}} sprawami",
   "Working on {{count}} things_many": "Pracuje nad {{count}} sprawami",
   "Working on {{count}} things_other": "Pracuje nad {{count}} sprawy",
+  "Uploading {{name}}…": "Wysyłanie {{name}}…",
+  "Uploading {{count}} files…_one": "Wysyłanie {{count}} pliku…",
+  "Uploading {{count}} files…_few": "Wysyłanie {{count}} plików…",
+  "Uploading {{count}} files…_many": "Wysyłanie {{count}} plików…",
+  "Uploading {{count}} files…_other": "Wysyłanie {{count}} pliku…",
 };
 
 export default pl;

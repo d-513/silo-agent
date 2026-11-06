@@ -97,6 +97,7 @@ export function RunPane({
       quotes={draft.quotes}
       onRemoveQuote={draft.unquote}
       attachErr={draft.attachErr}
+      uploading={draft.uploading}
       onAttach={draft.attach}
       onSend={() => void actions.send()}
       onStop={() => void actions.stopRun()}

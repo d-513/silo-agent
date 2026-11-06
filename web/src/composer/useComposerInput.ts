@@ -10,6 +10,7 @@ export function useComposerInput({
   textareaRef,
   text,
   attCount,
+  uploading,
   ready,
   workerConnected,
   sending,
@@ -21,6 +22,8 @@ export function useComposerInput({
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   text: string;
   attCount: number;
+  // A file is still uploading: sending waits until it lands.
+  uploading?: boolean;
   // There is somewhere to send to: a chat, or the empty one a send creates.
   ready: boolean;
   workerConnected?: boolean;
@@ -41,7 +44,7 @@ export function useComposerInput({
     el.style.height = `${growHeight(el.scrollHeight)}px`;
   }, [text, textareaRef]);
 
-  const canSend = (text.trim().length > 0 || attCount > 0) && ready;
+  const canSend = (text.trim().length > 0 || attCount > 0) && ready && !uploading;
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Escape" && recording) return; // the window listener cancels the take

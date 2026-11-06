@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } 
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { FileBrowser } from "./FileBrowser";
+import { Spinner, useArmedRow } from "./Feedback";
 import { botSource, joinPath, parentPath, type FsEntry } from "./fs";
 import { NeedMachine } from "./NeedMachine";
 import type { Bot } from "./gen/silo/v1/ui_pb";
@@ -19,7 +20,9 @@ export function FilesPane({ bot, visible = true, onStart, openAt, actions }: { b
   const [err, setErr] = useState("");
   const [draft, setDraft] = useState<"dir" | "file" | null>(null);
   const [draftName, setDraftName] = useState("");
-  const [pendingDel, setPendingDel] = useState("");
+  const del = useArmedRow(2500);
+  // Files on their way up: the button spins and a second upload waits.
+  const [uploading, setUploading] = useState(0);
   const [tick, setTick] = useState(0);
   const [selFile, setSelFile] = useState("");
   const upload = useRef<HTMLInputElement>(null);
@@ -29,12 +32,6 @@ export function FilesPane({ bot, visible = true, onStart, openAt, actions }: { b
     if (visible && !wasVisible.current) setTick((n) => n + 1);
     wasVisible.current = visible;
   }, [visible]);
-
-  useEffect(() => {
-    if (!pendingDel) return;
-    const t = setTimeout(() => setPendingDel(""), 2500);
-    return () => clearTimeout(t);
-  }, [pendingDel]);
 
   if (!bot.workerConnected) {
     return (
@@ -63,31 +60,30 @@ export function FilesPane({ bot, visible = true, onStart, openAt, actions }: { b
   }
 
   async function onUpload(list: FileList | null) {
-    if (!list?.length) return;
+    if (!list?.length || uploading) return;
     setErr("");
+    const files = [...list];
+    setUploading(files.length);
     try {
-      for (const f of list) {
+      for (const f of files) {
         const dest = joinPath(cwd, f.name);
-        if (!dest) continue;
-        const buf = new Uint8Array(await f.arrayBuffer());
-        if (buf.byteLength > 50 << 20) {
-          setErr(t("{{name}} is larger than 50 MB", { name: f.name }));
-          continue;
-        }
-        await ui.putFile({ botId: bot.id, path: dest, data: buf });
+        if (dest && f.size > 50 << 20) setErr(t("{{name}} is larger than 50 MB", { name: f.name }));
+        else if (dest) await ui.putFile({ botId: bot.id, path: dest, data: new Uint8Array(await f.arrayBuffer()) });
+        setUploading((n) => n - 1);
       }
-      setTick((n) => n + 1);
     } catch (ex) {
       setErr(fail(ex));
+    } finally {
+      setUploading(0);
+      setTick((n) => n + 1);
     }
   }
 
-  async function remove(e: FsEntry) {
-    if (pendingDel !== e.path) {
-      setPendingDel(e.path);
-      return;
-    }
-    setPendingDel("");
+  function remove(e: FsEntry) {
+    del.fire(e.path, () => void removeNow(e));
+  }
+
+  async function removeNow(e: FsEntry) {
     setErr("");
     try {
       await ui.removeFile({ botId: bot.id, path: e.path });
@@ -124,8 +120,8 @@ export function FilesPane({ bot, visible = true, onStart, openAt, actions }: { b
         source={source}
         initialDir={openAt}
         refreshKey={tick}
-        pendingDel={pendingDel}
-        onDelete={(e) => void remove(e)}
+        pendingDel={del.armed}
+        onDelete={remove}
         onSelect={(path, dir) => {
           setCwd(dir ? path : parentPath(path));
           if (!dir) setSelFile(path);
@@ -141,8 +137,13 @@ export function FilesPane({ bot, visible = true, onStart, openAt, actions }: { b
             <button className="text-ink-2 hover:text-ink" title={t("New file")} onClick={() => { setDraft("file"); setDraftName(""); }}>
               <Plus size={16} />
             </button>
-            <button className="text-ink-2 hover:text-ink" title={t("Upload")} onClick={() => upload.current?.click()}>
-              <Upload size={16} />
+            <button
+              className="text-ink-2 hover:text-ink aria-disabled:cursor-wait"
+              title={uploading ? t("Uploading {{count}} files…", { count: uploading }) : t("Upload")}
+              aria-disabled={uploading > 0}
+              onClick={() => (uploading ? undefined : upload.current?.click())}
+            >
+              {uploading ? <Spinner size={16} /> : <Upload size={16} />}
             </button>
             <input ref={upload} type="file" multiple className="hidden" onChange={(e) => { onUpload(e.target.files); e.target.value = ""; }} />
             {actions ? (
