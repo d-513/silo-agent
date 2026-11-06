@@ -117,7 +117,7 @@ func builtinTools(d builtin.Descriptor) []mcpx.Tool {
 // refreshBuiltin checks a builtin's config and caches its tools. A config
 // with a required field unset waits for the human (needs_auth) instead of
 // failing.
-func (s *Service) refreshBuiltin(ctx context.Context, row *db.BotConnector, c *db.Connector) error {
+func (s *Service) refreshBuiltin(ctx context.Context, row *db.BotConnector, c *db.Connector, gen uint64) error {
 	bc, ok := builtinOf(c)
 	if !ok {
 		return fmt.Errorf("unknown built-in connector %q", c.Builtin)
@@ -125,16 +125,15 @@ func (s *Service) refreshBuiltin(ctx context.Context, row *db.BotConnector, c *d
 	d := bc.Descriptor()
 	cfg := s.builtinConfig(d, c, row.BotID)
 	if f := builtin.Missing(d, cfg); f != nil {
-		row.AuthStatus = StatusNeedsAuth
-		row.StatusDetail = "Fill in " + f.Label + " in the connector's settings."
-		row.LastError = ""
-		s.db.Save(row)
+		s.setStatus(row.ID, gen, map[string]any{
+			"auth_status": StatusNeedsAuth, "status_detail": "Fill in " + f.Label + " in the connector's settings.", "last_error": "",
+		})
 		return nil
 	}
 	if err := bc.Check(ctx, cfg); err != nil {
 		return err
 	}
-	return s.storeTools(row, c, builtinTools(d))
+	return s.storeTools(row, c, builtinTools(d), gen)
 }
 
 // BuiltinMode is a builtin action's default rule: the tool's own mode, then

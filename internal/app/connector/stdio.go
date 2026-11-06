@@ -44,7 +44,7 @@ func (s *Service) ensureStdio(ctx context.Context, row *db.BotConnector, c *db.C
 		// made: its HTTPS fails until it is made again with the current one.
 		if st, err := s.docker.Inspect(ctx, row.ContainerID); err == nil && s.StaleCA(st, row.BotID, row.ID) {
 			log.Printf("connector=%s: the network filter's certificate changed; recreating its sidecar", row.ID)
-			s.DropStdio(row)
+			s.dropStdio(row, false)
 		}
 	}
 	if b := s.lookupBridge(row.ID); b != nil {
@@ -60,14 +60,14 @@ func (s *Service) ensureStdio(ctx context.Context, row *db.BotConnector, c *db.C
 		switch {
 		case err == nil && !st.Running:
 			if err := s.docker.Start(ctx, st.ID); err != nil {
-				s.DropStdio(row)
+				s.dropStdio(row, false)
 			} else {
 				return s.awaitBridge(ctx, row)
 			}
 		case err == nil:
 			return s.awaitBridge(ctx, row)
 		case dockerx.IsNotFound(err):
-			s.DropStdio(row)
+			s.dropStdio(row, false)
 		default:
 			return err
 		}
@@ -82,7 +82,7 @@ func (s *Service) ensureStdio(ctx context.Context, row *db.BotConnector, c *db.C
 
 func (s *Service) awaitBridge(ctx context.Context, row *db.BotConnector) error {
 	if _, err := s.waitBridge(ctx, row.ID, stdioInitWait); err != nil {
-		s.DropStdio(row)
+		s.dropStdio(row, false)
 		return fmt.Errorf("stdio sidecar not ready: %w", err)
 	}
 	return nil
@@ -135,11 +135,15 @@ func (s *Service) startStdio(ctx context.Context, row *db.BotConnector, c *db.Co
 // dropStdio tears down a sidecar for good: closes the session and tunnel,
 // removes the container (by ID and by name), wipes its data dir, and clears
 // the remembered container/token. Idempotent.
-func (s *Service) DropStdio(row *db.BotConnector) {
+func (s *Service) DropStdio(row *db.BotConnector) { s.dropStdio(row, true) }
+
+// dropStdio is DropStdio; stale is dropMCP's (false from the sidecar's own
+// start, clearing a dead one on its way to a new one).
+func (s *Service) dropStdio(row *db.BotConnector, stale bool) {
 	if row == nil {
 		return
 	}
-	s.DropMCP(row.ID)
+	s.dropMCP(row.ID, stale)
 	if b := s.lookupBridge(row.ID); b != nil {
 		s.unregisterBridge(row.ID, b)
 		b.close(errors.New("sidecar dropped"))

@@ -145,6 +145,7 @@ func (s *Service) revoke(ctx context.Context, row *db.BotConnector) {
 		s.host.PruneRules(row.BotID, toolsgen.Slug(c.Name), nil)
 	}
 	s.db.Delete(row)
+	s.forgetStatus(row.ID)
 	if stdio && s.ClientNetDrop != nil {
 		s.ClientNetDrop(ctx, row.ID)
 	}
@@ -170,7 +171,7 @@ func (s *Service) refreshGrants(connectorID string) {
 		s.DropMCP(row.ID)
 		s.DropStdio(&row)
 		if c.Auth == AuthOAuth && !s.signedIn(&c) {
-			s.db.Model(&row).Updates(map[string]any{"auth_status": StatusNeedsAuth, "status_detail": "", "last_error": ""})
+			s.resetStatus(row.ID, map[string]any{"auth_status": StatusNeedsAuth, "status_detail": "", "last_error": ""})
 			continue
 		}
 		s.applyInit(&row, c.Transport)
@@ -372,7 +373,7 @@ func (s *Service) Unlend(ctx context.Context, l access.Lend, why string) {
 		c.EnvJSON = ""
 	}
 	s.db.Model(&db.Connector{}).Where("id = ?", c.ID).Updates(map[string]any{
-		"headers_json": c.HeadersJSON, "env_json": c.EnvJSON, "secrets_json": "", "lent_by": "",
+		"headers_json": c.HeadersJSON, "env_json": c.EnvJSON, "secrets_json": "", "lent_by": "", "shared": false,
 	})
 	s.refreshGrants(c.ID)
 	s.db.Model(&db.BotConnector{}).Where("connector_id = ?", c.ID).Update("status_detail", why)

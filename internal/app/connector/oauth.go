@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
@@ -46,17 +48,58 @@ func (s *Service) StartConnectorAuth(ctx context.Context, req *connect.Request[v
 	starter := access.User(ctx).ID
 	urlCh := make(chan string, 1)
 	errCh := make(chan error, 1)
-	codeCh := make(chan *mcpauth.AuthorizationResult, 1)
-	h, err := s.oauthHandler(&conn, redirect, true, func(ctx context.Context, args *mcpauth.AuthorizationArgs) (*mcpauth.AuthorizationResult, error) {
+	codeCh := make(chan *mcpauth.AuthorizationResult)
+	outcome := make(chan error, 1)
+	// arrived: the provider sent the browser back with a code. kept: the
+	// token it was exchanged for is the connection's now. refused: it was
+	// not kept, because the lending no longer allows it.
+	var arrived, kept atomic.Bool
+	var refused atomic.Pointer[error]
+	signIn := &signIn{
+		// The Bots may have gained people since the sign-in started: asked
+		// again when the token arrives, before anything is kept.
+		check: func() error {
+			err := access.CheckSignIn(s.db, c.Name, starter, shared, s.Grantees(c.ID))
+			if err != nil {
+				refused.Store(&err)
+			}
+			return err
+		},
+		// The sign-in is now the connection's, lent by whoever made it.
+		kept: func() {
+			kept.Store(true)
+			s.db.Model(&db.Connector{}).Where("id = ?", c.ID).Updates(map[string]any{"lent_by": starter, "shared": shared})
+		},
+	}
+	h, err := s.oauthHandler(&conn, redirect, signIn, func(ctx context.Context, args *mcpauth.AuthorizationArgs) (*mcpauth.AuthorizationResult, error) {
+		// One sign-in is one trip to the provider: once a code came back,
+		// the client trying its other transports must not open another one
+		// that nobody will answer.
+		if arrived.Load() {
+			return nil, errors.New("the sign-in did not work")
+		}
 		u := args.URL
 		// The server names this address and the browser is about to open it.
 		if !webURL(u) {
 			return nil, errors.New("the server's authorization address is not a web address")
 		}
-		if st := queryParam(u, "state"); st != "" {
+		fetched := make(chan struct{})
+		defer close(fetched)
+		st := queryParam(u, "state")
+		if st != "" {
+			w := &oauthWait{ch: codeCh, done: fetched, outcome: outcome, issuer: originOf(u), user: starter}
 			s.mu.Lock()
-			s.oauth[st] = &oauthWait{ch: codeCh, issuer: originOf(u), user: starter}
+			s.oauth[st] = w
 			s.mu.Unlock()
+			// The pending sign-in lasts as long as this wait: a callback after
+			// it finds nothing to finish and says so.
+			defer func() {
+				s.mu.Lock()
+				if s.oauth[st] == w {
+					delete(s.oauth, st)
+				}
+				s.mu.Unlock()
+			}()
 		}
 		select {
 		case urlCh <- u:
@@ -64,6 +107,7 @@ func (s *Service) StartConnectorAuth(ctx context.Context, req *connect.Request[v
 		}
 		select {
 		case res := <-codeCh:
+			arrived.Store(true)
 			return res, nil
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -73,23 +117,36 @@ func (s *Service) StartConnectorAuth(ctx context.Context, req *connect.Request[v
 		return nil, err
 	}
 	go func() {
-		cctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		cctx, cancel := context.WithTimeout(context.Background(), s.signInWait())
 		defer cancel()
 		sess, err := mcpx.Connect(cctx, s.dial(&conn, h))
-		if err != nil {
+		if err == nil {
+			_ = sess.Close()
+		}
+		switch {
+		case kept.Load():
+			// Whatever the session made of it, the token is the
+			// connection's: every grant reconnects with it and says how
+			// that went.
+			if err == nil {
+				access.Activity(s.db, c.SpaceID, starter, access.SignedInTo, c.Name, "", "connector")
+			}
+			s.refreshGrants(c.ID)
+		case refused.Load() != nil:
+			err = *refused.Load()
+		case err != nil && arrived.Load():
 			err = wrapOAuth(err)
-			s.db.Model(&db.BotConnector{}).Where("connector_id = ?", c.ID).Updates(map[string]any{"auth_status": StatusErr, "last_error": err.Error()})
+			s.signInFailed(c.ID, err)
+		}
+		// A sign-in nobody finished (the popup closed, the wait ran out)
+		// changes nothing: the connection stays as it was.
+		if err != nil {
 			select {
 			case errCh <- err:
 			default:
 			}
-			return
 		}
-		_ = sess.Close()
-		// The sign-in is now the connection's, lent by whoever made it.
-		s.db.Model(&db.Connector{}).Where("id = ?", c.ID).Updates(map[string]any{"lent_by": starter, "shared": shared})
-		access.Activity(s.db, c.SpaceID, starter, access.SignedInTo, c.Name, "", "connector")
-		s.refreshGrants(c.ID)
+		outcome <- err
 	}()
 	select {
 	case u := <-urlCh:
@@ -179,16 +236,67 @@ func (s *Service) ServeOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	select {
 	case wait.ch <- &mcpauth.AuthorizationResult{Code: q.Get("code"), State: state, Iss: iss}:
-	default:
+	case <-wait.done:
+		// The sign-in stopped waiting (it ran out of time) as this arrived.
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = io.WriteString(w, "<p>This sign-in expired before it was finished. Nothing was connected. Start it again from Silo.</p>")
+		return
 	}
-	_, _ = io.WriteString(w, "<p>Authorized — you can close this.</p>")
+	if wait.outcome == nil {
+		_, _ = io.WriteString(w, "<p>Authorized — you can close this.</p>")
+		return
+	}
+	// Say how it went, not just that the code arrived: the exchange and the
+	// first session are still to come.
+	t := time.NewTimer(callbackWait)
+	defer t.Stop()
+	select {
+	case err := <-wait.outcome:
+		if err != nil {
+			w.WriteHeader(http.StatusBadGateway)
+			_, _ = io.WriteString(w, "<p>Signing in did not work: "+html.EscapeString(err.Error())+"</p><p>Nothing was changed. You can close this window.</p>")
+			return
+		}
+		_, _ = io.WriteString(w, "<p>Authorized — you can close this.</p>")
+	case <-t.C:
+		_, _ = io.WriteString(w, "<p>Still connecting. You can close this window; the connector shows how it went.</p>")
+	case <-r.Context().Done():
+	}
+}
+
+// callbackWait bounds how long the sign-in popup waits to say how it went.
+const callbackWait = 45 * time.Second
+
+func (s *Service) signInWait() time.Duration {
+	if s.SignInWait > 0 {
+		return s.SignInWait
+	}
+	return 5 * time.Minute
+}
+
+// signInFailed records a sign-in that came back from the provider and still
+// failed, on the grants that were waiting for one. A grant that works keeps
+// working: its token was not replaced.
+func (s *Service) signInFailed(connectorID string, err error) {
+	for _, row := range s.grants(connectorID) {
+		if row.AuthStatus == StatusNeedsAuth || row.AuthStatus == StatusErr {
+			s.resetStatus(row.ID, map[string]any{"auth_status": StatusErr, "last_error": err.Error(), "status_detail": ""})
+		}
+	}
+}
+
+// signIn is what a fresh sign-in does with the token it gets: check asks
+// whether it may be kept, kept follows keeping it.
+type signIn struct {
+	check func() error
+	kept  func()
 }
 
 // oauthHandler is the OAuth side of a session on connection c. Every session
 // on the connection shares its token (connToken): the one a sign-in gets is
 // kept for all of them. fresh starts a new sign-in instead of using the one
-// kept.
-func (s *Service) oauthHandler(c *db.Connector, redirect string, fresh bool, fetch mcpauth.AuthorizationCodeFetcher) (*mcpauth.AuthorizationCodeHandler, error) {
+// kept, and says what to do with its token.
+func (s *Service) oauthHandler(c *db.Connector, redirect string, fresh *signIn, fetch mcpauth.AuthorizationCodeFetcher) (*mcpauth.AuthorizationCodeHandler, error) {
 	if fetch == nil {
 		fetch = func(context.Context, *mcpauth.AuthorizationArgs) (*mcpauth.AuthorizationResult, error) {
 			return nil, errNoToken
@@ -212,14 +320,22 @@ func (s *Service) oauthHandler(c *db.Connector, redirect string, fresh bool, fet
 			},
 		},
 		NewTokenSource: func(_ context.Context, oc *oauth2.Config, tok *oauth2.Token) (oauth2.TokenSource, error) {
+			if fresh != nil && fresh.check != nil {
+				if err := fresh.check(); err != nil {
+					return nil, err
+				}
+			}
 			s.keepSignIn(c.ID, oc, tok)
+			if fresh != nil && fresh.kept != nil {
+				fresh.kept()
+			}
 			return shared, nil
 		},
 	}
 	if creds := preregisteredClient(c); creds != nil {
 		cfg.PreregisteredClient = creds
 	}
-	if !fresh && s.signedIn(c) {
+	if fresh == nil && s.signedIn(c) {
 		cfg.InitialTokenSource = shared
 	}
 	return mcpauth.NewAuthorizationCodeHandler(cfg)
@@ -296,8 +412,12 @@ func originOf(raw string) string {
 // code to the SDK through ch; drives finish the exchange in drive and the
 // popup shows the outcome.
 type oauthWait struct {
-	ch     chan *mcpauth.AuthorizationResult
-	issuer string
+	ch chan *mcpauth.AuthorizationResult
+	// done closes when the sign-in stops waiting for the code; outcome then
+	// says how it ended. Both nil for a drive.
+	done    chan struct{}
+	outcome chan error
+	issuer  string
 	// user is who started a connector's sign-in; only their browser may
 	// finish it. Empty for a drive, whose mobile flow ends in another browser.
 	user  string

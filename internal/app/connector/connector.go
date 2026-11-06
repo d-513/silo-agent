@@ -81,11 +81,20 @@ type Service struct {
 	mu    sync.Mutex
 	oauth map[string]*oauthWait
 	mcp   map[string]*mcpx.Session
+	// epoch counts each grant's dropped sessions: a session that was being
+	// made while its grant's was dropped is built from what was dropped, and
+	// is not kept.
+	epoch map[string]uint64
 	// closed is set by CloseAll: a session a background refresh opens after
 	// it is closed at once instead of being kept (and holding its stream).
 	closed bool
 	// locks serializes session dials and sidecar starts per connector.
 	locks sync.Map
+	// status is each grant's refresh generation (status.go).
+	status statusGens
+	// SignInWait bounds a sign-in from its start to the provider's answer;
+	// zero is five minutes.
+	SignInWait time.Duration
 	// tokens holds each connection's OAuth token in memory (*tokenCell),
 	// shared by every session on it.
 	tokens sync.Map
@@ -218,7 +227,9 @@ func (s *Service) UpdateConnector(ctx context.Context, req *connect.Request[v1.U
 		if err := setConnectorImage(&row, m); err != nil {
 			return nil, err
 		}
-		s.db.Save(&row)
+		if err := s.saveEdit(&row); err != nil {
+			return nil, err
+		}
 		s.renamed(&before, &row)
 		s.restartConnector(&row)
 		return connect.NewResponse(s.editedProto(ctx, &row)), nil
@@ -311,10 +322,27 @@ func (s *Service) UpdateConnector(ctx context.Context, req *connect.Request[v1.U
 			return nil, err
 		}
 	}
-	s.db.Save(&row)
+	if err := s.saveEdit(&row); err != nil {
+		return nil, err
+	}
 	s.renamed(&before, &row)
 	s.restartConnector(&row)
 	return connect.NewResponse(s.editedProto(ctx, &row)), nil
+}
+
+// saveEdit writes an edited connector over the row as it stands. The OAuth
+// token is not the form's: a session may have refreshed it since the row was
+// loaded, and writing back the old one would strand a provider that rotates
+// refresh tokens. A row deleted meanwhile stays deleted.
+func (s *Service) saveEdit(row *db.Connector) error {
+	res := s.db.Model(row).Select("*").Omit("id", "token_json", "created_at").Updates(row)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return connect.NewError(connect.CodeNotFound, errors.New("unknown connector"))
+	}
+	return nil
 }
 
 // editedProto is the answer to an edit: a library preset as the library

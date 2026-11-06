@@ -23,9 +23,10 @@ import (
 	"silo.agent/internal/toolsgen"
 )
 
-func (s *Service) refreshTools(ctx context.Context, row *db.BotConnector, c *db.Connector) error {
+// refreshTools connects a grant and caches its tools, as refresh job gen.
+func (s *Service) refreshTools(ctx context.Context, row *db.BotConnector, c *db.Connector, gen uint64) error {
 	if c.Transport == TransportBuiltin {
-		return s.refreshBuiltin(ctx, row, c)
+		return s.refreshBuiltin(ctx, row, c, gen)
 	}
 	sess, err := s.MCPSession(ctx, row, c)
 	if err != nil {
@@ -42,21 +43,27 @@ func (s *Service) refreshTools(ctx context.Context, row *db.BotConnector, c *db.
 	if err != nil {
 		return err
 	}
-	return s.storeTools(row, c, tools)
+	return s.storeTools(row, c, tools, gen)
 }
 
 // storeTools caches a connector's discovered tools, marks it authorized,
 // drops rules for vanished actions, and resyncs the Bot's `tools` package.
-func (s *Service) storeTools(row *db.BotConnector, c *db.Connector, tools []mcpx.Tool) error {
+// A job that is no longer the grant's (or a grant revoked meanwhile) stores
+// nothing.
+func (s *Service) storeTools(row *db.BotConnector, c *db.Connector, tools []mcpx.Tool, gen uint64) error {
 	b, err := json.Marshal(tools)
 	if err != nil {
 		return err
+	}
+	if !s.setStatus(row.ID, gen, map[string]any{
+		"tools_json": string(b), "auth_status": StatusOK, "last_error": "", "status_detail": "",
+	}) {
+		return nil
 	}
 	row.ToolsJSON = string(b)
 	row.AuthStatus = StatusOK
 	row.LastError = ""
 	row.StatusDetail = ""
-	s.db.Save(row)
 	var names []string
 	for _, t := range tools {
 		if t.Name != "" {
@@ -192,14 +199,24 @@ func (s *Service) MCPSession(ctx context.Context, row *db.BotConnector, c *db.Co
 		s.mu.Unlock()
 		return live, nil
 	}
+	epoch := s.epoch[row.ID]
 	s.mu.Unlock()
+	// The connection as it is now, not as the caller loaded it: an edit or a
+	// sign-out writes the row first and then drops the sessions, so either
+	// this read sees the change or the drop moves the epoch on.
+	if s.db != nil {
+		var now db.Connector
+		if s.db.Where("id = ?", c.ID).Limit(1).Find(&now); now.ID != "" {
+			c = &now
+		}
+	}
 	c = s.Resolve(c, row.BotID)
 	if err := s.checkVars(c); err != nil {
 		return nil, err
 	}
 	var h mcpauth.OAuthHandler
 	if c.Auth == AuthOAuth {
-		oh, err := s.oauthHandler(c, s.redirectURL(), false, nil)
+		oh, err := s.oauthHandler(c, s.redirectURL(), nil, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -221,6 +238,11 @@ func (s *Service) MCPSession(ctx context.Context, row *db.BotConnector, c *db.Co
 		s.mu.Unlock()
 		go sess.Close()
 		return nil, errors.New("shutting down")
+	}
+	if s.epoch[row.ID] != epoch {
+		s.mu.Unlock()
+		go sess.Close()
+		return nil, errors.New("the connector changed while connecting; try again")
 	}
 	if old := s.mcp[row.ID]; old != nil {
 		_ = old.Close()
@@ -251,7 +273,14 @@ func (s *Service) CloseAll() {
 	s.mu.Unlock()
 }
 
-func (s *Service) DropMCP(id string) {
+// DropMCP closes a grant's session. One being made at the time is not kept
+// either: it was made from what is being dropped.
+func (s *Service) DropMCP(id string) { s.dropMCP(id, true) }
+
+// dropMCP closes a grant's session; stale says a session being made now must
+// not be kept. The session's own dial passes false when it clears a dead
+// sidecar on its way to a new one.
+func (s *Service) dropMCP(id string, stale bool) {
 	// Close the tunnel first: that unblocks the MCP read loop, so closing the
 	// session below cannot wait on a read that will never return.
 	if b := s.lookupBridge(id); b != nil {
@@ -261,6 +290,12 @@ func (s *Service) DropMCP(id string) {
 	s.mu.Lock()
 	sess := s.mcp[id]
 	delete(s.mcp, id)
+	if stale {
+		if s.epoch == nil {
+			s.epoch = map[string]uint64{}
+		}
+		s.epoch[id]++
+	}
 	s.mu.Unlock()
 	if sess != nil {
 		_ = sess.Close()
@@ -359,13 +394,15 @@ func (s *Service) applyInit(row *db.BotConnector, transport string) {
 	row.StatusDetail = initDetail(transport)
 	row.LastError = ""
 	if s.db != nil {
-		s.db.Save(row)
+		s.resetStatus(row.ID, map[string]any{"auth_status": row.AuthStatus, "status_detail": row.StatusDetail, "last_error": ""})
 	}
 }
 
 // startRefresh runs connect + tool discovery for one attachment in the
-// background. Callers set the initializing status first.
+// background. Callers set the initializing status first. The job is the
+// grant's newest: an older one still running writes nothing when it ends.
 func (s *Service) startRefresh(botConnectorID string) {
+	gen := s.newJob(botConnectorID)
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), connectorInitWait)
 		defer cancel()
@@ -377,11 +414,8 @@ func (s *Service) startRefresh(botConnectorID string) {
 		if err := s.db.First(&c, "id = ?", row.ConnectorID).Error; err != nil {
 			return
 		}
-		if err := s.refreshTools(ctx, &row, &c); err != nil {
-			row.AuthStatus = StatusErr
-			row.LastError = err.Error()
-			row.StatusDetail = ""
-			s.db.Save(&row)
+		if err := s.refreshTools(ctx, &row, &c, gen); err != nil {
+			s.setStatus(row.ID, gen, map[string]any{"auth_status": StatusErr, "last_error": err.Error(), "status_detail": ""})
 		}
 	}()
 }
