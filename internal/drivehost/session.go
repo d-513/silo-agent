@@ -25,7 +25,7 @@ const (
 // Serve keeps a session with the control plane open for the life of ctx.
 // Mounts live in sup and survive reconnects; each new session re-sends the
 // snapshot and receives a fresh DriveApply.
-func Serve(ctx context.Context, client silov1connect.DriveHostClient, sup *Supervisor, out <-chan *v1.DriveUp) error {
+func Serve(ctx context.Context, client silov1connect.DriveHostClient, sup *Supervisor, out *Box) error {
 	wait := reconnectMin
 	for {
 		if ctx.Err() != nil {
@@ -47,7 +47,7 @@ func Serve(ctx context.Context, client silov1connect.DriveHostClient, sup *Super
 	}
 }
 
-func session(ctx context.Context, client silov1connect.DriveHostClient, sup *Supervisor, out <-chan *v1.DriveUp) error {
+func session(ctx context.Context, client silov1connect.DriveHostClient, sup *Supervisor, out *Box) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	conn := client.Session(ctx)
@@ -65,6 +65,9 @@ func session(ctx context.Context, client silov1connect.DriveHostClient, sup *Sup
 	if err := send(&v1.DriveUp{Body: &v1.DriveUp_Hello{Hello: &v1.DriveHello{Version: Version}}}); err != nil {
 		return err
 	}
+	// The snapshot is every mount as it is now. A status or token still
+	// waiting in the box is the newest of its kind, so sending it after the
+	// snapshot never takes the CP back to an older state.
 	for _, m := range sup.Snapshot() {
 		if err := send(m); err != nil {
 			return err
@@ -73,14 +76,16 @@ func session(ctx context.Context, client silov1connect.DriveHostClient, sup *Sup
 	errc := make(chan error, 2)
 	go func() {
 		for {
-			select {
-			case <-ctx.Done():
-				return
-			case m := <-out:
+			for _, m := range out.Take() {
 				if err := send(m); err != nil {
 					errc <- err
 					return
 				}
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-out.Ready():
 			}
 		}
 	}()
@@ -110,18 +115,75 @@ func session(ctx context.Context, client silov1connect.DriveHostClient, sup *Sup
 	}
 }
 
-// Outbox is a buffered, never-blocking sink for supervisor frames. While no
-// session is up, frames that overflow are dropped: statuses and tokens are
-// both re-sent in the next session's snapshot.
-func Outbox() (chan *v1.DriveUp, func(*v1.DriveUp)) {
-	ch := make(chan *v1.DriveUp, 256)
-	return ch, func(m *v1.DriveUp) {
-		select {
-		case ch <- m:
-		default:
+// Box holds the supervisor's frames until a session sends them, and never
+// blocks the supervisor. Statuses and tokens are state: only the newest of
+// each per drive is kept, so a frame queued while the CP was away can never
+// arrive after a newer one. The drive journal is a log: its frames keep their
+// order, up to boxJournal of them, past which the newest are dropped.
+type Box struct {
+	mu      sync.Mutex
+	ready   chan struct{}
+	order   []string
+	state   map[string]*v1.DriveUp
+	journal []*v1.DriveUp
+}
+
+// boxJournal bounds the journal frames held while no session is up.
+const boxJournal = 256
+
+// NewBox makes an empty box.
+func NewBox() *Box {
+	return &Box{ready: make(chan struct{}, 1), state: map[string]*v1.DriveUp{}}
+}
+
+// Outbox is a box and the supervisor's emit that fills it.
+func Outbox() (*Box, func(*v1.DriveUp)) {
+	b := NewBox()
+	return b, b.Put
+}
+
+// Put queues one frame.
+func (b *Box) Put(m *v1.DriveUp) {
+	b.mu.Lock()
+	key := ""
+	switch x := m.GetBody().(type) {
+	case *v1.DriveUp_Status:
+		key = "status:" + x.Status.GetId()
+	case *v1.DriveUp_Token:
+		key = "token:" + x.Token.GetId()
+	}
+	switch {
+	case key != "":
+		if _, ok := b.state[key]; !ok {
+			b.order = append(b.order, key)
 		}
+		b.state[key] = m
+	case len(b.journal) < boxJournal:
+		b.journal = append(b.journal, m)
+	}
+	b.mu.Unlock()
+	select {
+	case b.ready <- struct{}{}:
+	default:
 	}
 }
+
+// Take empties the box: the journal in order, then each drive's newest
+// status and token.
+func (b *Box) Take() []*v1.DriveUp {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	out := b.journal
+	b.journal = nil
+	for _, k := range b.order {
+		out = append(out, b.state[k])
+	}
+	b.order, b.state = nil, map[string]*v1.DriveUp{}
+	return out
+}
+
+// Ready signals that something was put since the last Take.
+func (b *Box) Ready() <-chan struct{} { return b.ready }
 
 // NewClient dials the CP over h2c with the drive token.
 func NewClient(cpURL, token string) (silov1connect.DriveHostClient, error) {

@@ -429,6 +429,24 @@ func TestDriveGoogleSignInPickAndTokenRefresh(t *testing.T) {
 	if after := len(h.Drives.Runner.Starts()); after != before {
 		t.Fatalf("mount restarted after a refresh echo: %d -> %d", before, after)
 	}
+
+	// A new sign-in (Reconnect, maybe another account) mounts it again
+	// from scratch with the new token.
+	q = begin()
+	if page := callback("state=" + q.Get("state") + "&code=good-code"); !strings.Contains(page, "Connected") {
+		t.Fatalf("reconnect page = %s", page)
+	}
+	deadline = time.Now().Add(5 * time.Second)
+	for len(h.Drives.Runner.Starts()) == before {
+		if time.Now().After(deadline) {
+			t.Fatal("a new sign-in did not mount the drive again")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	waitDrive(t, h, bot.Id, d.Id, "mounted")
+	if b, _ := os.ReadFile(conf); !strings.Contains(string(b), `"access_token":"AT1"`) {
+		t.Fatalf("conf after reconnect = %s", b)
+	}
 }
 
 func TestDriveNotYoursAndNoWorkerNeeded(t *testing.T) {

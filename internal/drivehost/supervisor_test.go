@@ -300,15 +300,36 @@ func TestTokenRefreshRoundTrip(t *testing.T) {
 	if n := f.startCount(); n != 1 {
 		t.Fatalf("echoed token restarted the mount (%d starts)", n)
 	}
-	// A reconnect in the UI hands over a different token: restart with it.
+	// Another Bot's rclone refreshed the drive both mount: its token goes
+	// into this mount's config file, where rclone looks before refreshing,
+	// and the mount keeps running.
+	sibling := spec("tok")
+	sibling.Token = `{"access_token":"s1"}`
+	s.Apply(&v1.DriveApply{Drives: []*v1.DriveSpec{sibling}})
+	b, _ = os.ReadFile(conf)
+	if !strings.Contains(string(b), "s1") {
+		t.Fatalf("conf = %q", b)
+	}
+	time.Sleep(30 * time.Millisecond)
+	if n := f.startCount(); n != 1 {
+		t.Fatalf("another Bot's refresh restarted the mount (%d starts)", n)
+	}
+	if slices.Contains(r.tokens(), `{"access_token":"s1"}`) {
+		t.Fatal("the token the CP sent was reported back as rclone's")
+	}
+
+	// A new sign-in: the CP leaves the drive out, then hands it back with
+	// the new token. The mount starts again with it.
 	fresh := spec("tok")
 	fresh.Token = `{"access_token":"b1"}`
+	s.Apply(&v1.DriveApply{})
 	s.Apply(&v1.DriveApply{Drives: []*v1.DriveSpec{fresh}})
 	eventually(t, "restart for new sign-in", func() bool { return f.startCount() == 2 })
 	eventually(t, "conf rewritten", func() bool {
 		b, _ := os.ReadFile(conf)
 		return strings.Contains(string(b), "b1")
 	})
+	eventually(t, "mounted again", hasState(r, "tok", StateMounted))
 
 	// Snapshot re-sends status for the next session.
 	snap := s.Snapshot()
@@ -408,5 +429,54 @@ func TestCleanupRemovesStaleMounts(t *testing.T) {
 func TestUnescapeMount(t *testing.T) {
 	if got := unescapeMount(`/mnt/drives/my\040drive`); got != "/mnt/drives/my drive" {
 		t.Fatalf("got %q", got)
+	}
+}
+
+// The box keeps only the newest status and token of each drive, so a frame
+// queued while the CP was away never arrives after a newer one, and keeps
+// the journal in order.
+func TestBoxKeepsTheNewestState(t *testing.T) {
+	b, put := Outbox()
+	status := func(id, state string) *v1.DriveUp {
+		return &v1.DriveUp{Body: &v1.DriveUp_Status{Status: &v1.DriveStatus{Id: id, State: state}}}
+	}
+	change := func(id, p string) *v1.DriveUp {
+		return &v1.DriveUp{Body: &v1.DriveUp_Changes{Changes: &v1.DriveChanges{Id: id, Changes: []*v1.DriveChange{{Path: p}}}}}
+	}
+	put(status("a", StateMounting))
+	put(change("a", "one"))
+	put(&v1.DriveUp{Body: &v1.DriveUp_Token{Token: &v1.DriveToken{Id: "a", Token: "t1"}}})
+	put(status("b", StateMounted))
+	put(status("a", StateMounted))
+	put(change("a", "two"))
+	put(&v1.DriveUp{Body: &v1.DriveUp_Token{Token: &v1.DriveToken{Id: "a", Token: "t2"}}})
+	select {
+	case <-b.Ready():
+	default:
+		t.Fatal("the box did not say it holds frames")
+	}
+	var got []string
+	for _, m := range b.Take() {
+		switch {
+		case m.GetStatus() != nil:
+			got = append(got, m.GetStatus().GetId()+"="+m.GetStatus().GetState())
+		case m.GetToken() != nil:
+			got = append(got, "token="+m.GetToken().GetToken())
+		case m.GetChanges() != nil:
+			got = append(got, "change="+m.GetChanges().GetChanges()[0].GetPath())
+		}
+	}
+	want := []string{"change=one", "change=two", "a=mounted", "token=t2", "b=mounted"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("took %v, want %v", got, want)
+	}
+	if len(b.Take()) != 0 {
+		t.Fatal("a second take found frames")
+	}
+	for i := 0; i < boxJournal+10; i++ {
+		put(change("a", "x"))
+	}
+	if n := len(b.Take()); n != boxJournal {
+		t.Fatalf("held %d journal frames, want %d", n, boxJournal)
 	}
 }

@@ -226,8 +226,8 @@ func Validate(s *v1.DriveSpec) error {
 func envPrefix(remote string) string { return "RCLONE_CONFIG_" + strings.ToUpper(remote) + "_" }
 
 // specKey changes whenever anything that affects the running process changes.
-// The token is left out: rclone refreshes it itself, and a CP echo of the
-// refreshed token must not restart the mount.
+// The token is left out: rclone refreshes it itself, and neither a CP echo of
+// that refresh nor another Bot's refresh of the same drive restarts the mount.
 func specKey(s *v1.DriveSpec, cacheMax string) string {
 	h := sha256.New()
 	env := make([]string, 0, len(s.GetEnv()))
@@ -255,12 +255,13 @@ func (s *Supervisor) Apply(a *v1.DriveApply) {
 	for id, m := range s.mounts {
 		d, ok := want[id]
 		if ok && specKey(d, s.cacheMax) == m.key {
-			// A token the mount has not seen is a fresh sign-in (Reconnect);
-			// the CP echoing rclone's own refresh back matches lastToken.
-			if d.GetToken() != "" && d.GetToken() != m.lastToken() {
-				m.stop()
-				delete(s.mounts, id)
-				continue
+			// A token alone does not restart the mount: it is another Bot's
+			// rclone refreshing the drive both mount (or the CP echoing this
+			// one's own). It goes into the config file, where rclone looks
+			// for a newer token before refreshing its own. A new sign-in
+			// is the CP leaving the drive out of one set and back in the next.
+			if d.GetToken() != "" {
+				s.takeToken(m, d.GetToken())
 			}
 			delete(want, id)
 			continue
@@ -331,6 +332,25 @@ func (s *Supervisor) Cleanup() {
 func (m *mount) stop() {
 	m.cancel()
 	<-m.done
+}
+
+// takeToken puts a token the CP sent into a running mount's config file. A
+// refresh rclone wrote there that has not been reported yet is newer than
+// anything the CP holds: it stays, and goes to the CP.
+func (s *Supervisor) takeToken(m *mount, tok string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if tok == m.token {
+		return
+	}
+	conf := s.confPath(m.spec.GetId())
+	if cur, err := readToken(conf); err == nil && cur != "" && cur != m.token {
+		return
+	}
+	if err := writeConf(conf, m.spec.GetRemote(), tok); err != nil {
+		return
+	}
+	m.token = tok
 }
 
 func (m *mount) lastToken() string {
@@ -513,10 +533,16 @@ func (s *Supervisor) watch(ctx context.Context, m *mount, mp, conf string, exite
 			up = true
 			s.setStatus(m, StateMounted, "")
 		}
-		if tok, err := readToken(conf); err == nil && tok != "" && tok != m.lastToken() {
-			m.mu.Lock()
+		// Read and noted under the mount's lock, so a token the CP writes
+		// into the file (takeToken) is never mistaken for rclone's own.
+		m.mu.Lock()
+		tok, err := readToken(conf)
+		fresh := err == nil && tok != "" && tok != m.token
+		if fresh {
 			m.token = tok
-			m.mu.Unlock()
+		}
+		m.mu.Unlock()
+		if fresh {
 			s.emit(&v1.DriveUp{Body: &v1.DriveUp_Token{Token: &v1.DriveToken{Id: m.spec.GetId(), Token: tok}}})
 		}
 	}

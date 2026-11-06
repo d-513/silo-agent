@@ -15,12 +15,14 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
@@ -33,16 +35,21 @@ import (
 )
 
 // Drive states the CP stores on a row. The sidecar reports mounting, mounted,
-// error, and stopped; the renderer adds the needs_* states from
-// drives.MissingError; draft is the add form's working row.
+// error, and stopped (sidecarStates) for the drives it was asked to mount; the
+// renderer adds the needs_* states from drives.MissingError, and an error of
+// its own, for the ones it leaves out; draft is the add form's working row. A
+// box made before drives has no bind: ListDrives says so (bind_ok), read off
+// the engine, not stored.
 const (
 	driveDraft    = "draft"
 	driveMounting = "mounting"
 	driveMounted  = "mounted"
 	driveError    = "error"
 	driveStopped  = "stopped"
-	driveNoBind   = "needs_reset"
 )
+
+// sidecarStates are the states a sidecar may report.
+var sidecarStates = map[string]bool{driveMounting: true, driveMounted: true, driveError: true, driveStopped: true}
 
 const (
 	// driveWait bounds how long the CP waits for a fresh sidecar to dial in.
@@ -271,18 +278,69 @@ func (s *Service) renderApply(botID string) *v1.DriveApply {
 	return out
 }
 
-// driveSession is one live connection from a Bot's drive sidecar.
+// driveSession is one live connection from a Bot's drive sidecar. The
+// desired set is never rendered by whoever changes it and then pushed, since
+// two such pushes can arrive in the wrong order: a change marks the session
+// dirty (kick) and its one sender renders the set as it is at that moment.
 type driveSession struct {
 	botID string
 	send  chan *v1.DriveDown
+	kick  chan struct{}
 	done  chan struct{}
 	once  sync.Once
 
 	mu      sync.Mutex
 	waiters map[string]chan *v1.DriveListResult
+	// desired are the drives the last set rendered asks the sidecar to
+	// mount. A status for any other is not the sidecar's to give: the CP
+	// left that drive out and its row says why.
+	desired map[string]bool
+	// restart are drives to stop and mount again (a new sign-in) with the
+	// next set.
+	restart map[string]bool
 }
 
 func (s *driveSession) close() { s.once.Do(func() { close(s.done) }) }
+
+// dirty asks the sender for a fresh desired set.
+func (s *driveSession) dirty() {
+	select {
+	case s.kick <- struct{}{}:
+	default:
+	}
+}
+
+// restartDrive asks for a drive to be mounted again from scratch.
+func (s *driveSession) restartDrive(driveID string) {
+	s.mu.Lock()
+	if s.restart == nil {
+		s.restart = map[string]bool{}
+	}
+	s.restart[driveID] = true
+	s.mu.Unlock()
+	s.dirty()
+}
+
+// render is the desired set as it stands now, noted as what the sidecar
+// was asked for.
+func (s *Service) render(sess *driveSession) *v1.DriveApply {
+	a := s.renderApply(sess.botID)
+	want := map[string]bool{}
+	for _, d := range a.GetDrives() {
+		want[d.GetId()] = true
+	}
+	sess.mu.Lock()
+	sess.desired = want
+	sess.mu.Unlock()
+	return a
+}
+
+// asked reports whether the sidecar was asked to mount the drive.
+func (s *driveSession) asked(driveID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.desired[driveID]
+}
 
 func (s *driveSession) push(m *v1.DriveDown) bool {
 	select {
@@ -343,6 +401,7 @@ func (s *Service) Session(ctx context.Context, stream *connect.BidiStream[v1.Dri
 	sess := &driveSession{
 		botID:   host.BotID,
 		send:    make(chan *v1.DriveDown, 16),
+		kick:    make(chan struct{}, 1),
 		done:    make(chan struct{}),
 		waiters: map[string]chan *v1.DriveListResult{},
 	}
@@ -350,8 +409,9 @@ func (s *Service) Session(ctx context.Context, stream *connect.BidiStream[v1.Dri
 	h.put(sess)
 	defer h.remove(sess)
 
-	// Every session starts from the full desired set.
-	sess.send <- &v1.DriveDown{Body: &v1.DriveDown_Apply{Apply: s.renderApply(host.BotID)}}
+	// Every session starts from the full desired set, rendered before the
+	// sidecar's snapshot is read so its statuses are judged against it.
+	first := s.render(sess)
 
 	errc := make(chan error, 1)
 	go func() {
@@ -366,6 +426,12 @@ func (s *Service) Session(ctx context.Context, stream *connect.BidiStream[v1.Dri
 	}()
 	// Sends stay on this goroutine: one still sending after the handler
 	// returned would panic the whole control plane.
+	apply := func(a *v1.DriveApply) error {
+		return stream.Send(&v1.DriveDown{Body: &v1.DriveDown_Apply{Apply: a}})
+	}
+	if err := apply(first); err != nil {
+		return err
+	}
 	for {
 		select {
 		case <-ctx.Done():
@@ -376,6 +442,23 @@ func (s *Service) Session(ctx context.Context, stream *connect.BidiStream[v1.Dri
 			return err
 		case m := <-sess.send:
 			if err := stream.Send(m); err != nil {
+				return err
+			}
+		case <-sess.kick:
+			sess.mu.Lock()
+			restart := sess.restart
+			sess.restart = nil
+			sess.mu.Unlock()
+			if len(restart) > 0 {
+				// A drive left out of one set and back in the next is
+				// stopped and mounted again with what it has now.
+				cut := s.render(sess)
+				cut.Drives = slices.DeleteFunc(cut.Drives, func(d *v1.DriveSpec) bool { return restart[d.GetId()] })
+				if err := apply(cut); err != nil {
+					return err
+				}
+			}
+			if err := apply(s.render(sess)); err != nil {
 				return err
 			}
 		}
@@ -399,7 +482,10 @@ func (s *Service) driveUp(sess *driveSession, up *v1.DriveUp) {
 	switch b := up.GetBody().(type) {
 	case *v1.DriveUp_Status:
 		st := b.Status
-		if s.granted(sess.botID, st.GetId()) == nil {
+		// Only a drive it was asked to mount is the sidecar's to report on:
+		// stopping one the CP left out must not wipe the reason it was left
+		// out ("Sign in to …").
+		if !sidecarStates[st.GetState()] || !sess.asked(st.GetId()) || s.granted(sess.botID, st.GetId()) == nil {
 			return
 		}
 		s.setMountState(sess.botID, st.GetId(), st.GetState(), st.GetDetail())
@@ -443,17 +529,46 @@ func (s *Service) saveDriveToken(botID, driveID, tok string) {
 		}
 		d = &draft
 	}
-	sec := decodeSecrets(d.SecretsJSON)
-	if sec.Dynamic["token"] == tok {
+	changed := false
+	if _, err := s.editSecrets(d.ID, nil, func(sec *driveSecrets) {
+		changed = sec.Dynamic["token"] != tok
+		sec.Dynamic["token"] = tok
+	}); err != nil || !changed {
 		return
 	}
-	sec.Dynamic["token"] = tok
-	s.db.Model(&db.Drive{}).Where("id = ?", d.ID).Update("secrets_json", mustJSONString(sec))
 	for _, other := range s.grantees(d.ID) {
 		if other != botID {
 			s.applyDrives(other)
 		}
 	}
+}
+
+var errDriveGone = errors.New("the drive was removed")
+
+// editSecrets changes a drive's secrets as they are now, under the row's
+// lock, and writes the extra columns with them. A sign-in and a token refresh
+// own the dynamic values and the add form the user's answers: none writes
+// back the others' part from an older read. It answers the new column.
+func (s *Service) editSecrets(driveID string, extra map[string]any, edit func(*driveSecrets)) (string, error) {
+	var out string
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		var d db.Drive
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Select("id", "secrets_json").Where("id = ?", driveID).Limit(1).Find(&d).Error; err != nil {
+			return err
+		}
+		if d.ID == "" {
+			return errDriveGone
+		}
+		sec := decodeSecrets(d.SecretsJSON)
+		edit(&sec)
+		out = mustJSONString(sec)
+		cols := map[string]any{"secrets_json": out}
+		for k, v := range extra {
+			cols[k] = v
+		}
+		return tx.Model(&db.Drive{}).Where("id = ?", driveID).Updates(cols).Error
+	})
+	return out, err
 }
 
 type driveHostCtxKey struct{}
@@ -489,7 +604,7 @@ func (s *Service) ensureDrives(ctx context.Context, botID string, force bool) (*
 	}
 	h := s.driveHub()
 	if sess := h.get(botID); sess != nil {
-		sess.push(&v1.DriveDown{Body: &v1.DriveDown_Apply{Apply: s.renderApply(botID)}})
+		sess.dirty()
 		return sess, nil
 	}
 	if s.docker == nil {
@@ -591,13 +706,27 @@ func (s *Service) EnsureBg(botID string) {
 	}()
 }
 
-// applyDrives pushes the desired set to a connected sidecar, or starts one.
+// applyDrives has a connected sidecar sent the desired set as it is when it
+// goes out, or starts one.
 func (s *Service) applyDrives(botID string) {
 	if sess := s.driveHub().get(botID); sess != nil {
-		sess.push(&v1.DriveDown{Body: &v1.DriveDown_Apply{Apply: s.renderApply(botID)}})
+		sess.dirty()
 		return
 	}
 	s.EnsureBg(botID)
+}
+
+// remountAll mounts a drive again from scratch in every Bot it is granted
+// to: after a new sign-in, which may be another account. (A token one Bot's
+// rclone refreshed only goes to the others' config files: applyAll.)
+func (s *Service) remountAll(driveID string) {
+	for _, b := range s.grantees(driveID) {
+		if sess := s.driveHub().get(b); sess != nil {
+			sess.restartDrive(driveID)
+			continue
+		}
+		s.EnsureBg(b)
+	}
 }
 
 // listDrive asks the sidecar to list folders of a drive (saved or draft).

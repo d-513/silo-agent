@@ -440,8 +440,27 @@ func (s *Service) SaveDrive(ctx context.Context, req *connect.Request[v1.SaveDri
 		}
 		d.BotID = ""
 	}
-	if err := s.db.Save(d).Error; err != nil {
-		return nil, err
+	if m.GetId() == "" {
+		if err := s.db.Create(d).Error; err != nil {
+			return nil, err
+		}
+	} else {
+		// Over the row as it is: the sign-in's values (a token rclone just
+		// refreshed) are not the form's to write back, and a drive deleted
+		// meanwhile stays deleted.
+		res := s.db.Model(d).Select("*").Omit("id", "secrets_json", "created_at").Updates(d)
+		if res.Error != nil {
+			return nil, res.Error
+		}
+		if res.RowsAffected == 0 {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("drive not found"))
+		}
+		user := sec.User
+		out, err := s.editSecrets(d.ID, nil, func(cur *driveSecrets) { cur.User = user })
+		if err != nil {
+			return nil, err
+		}
+		d.SecretsJSON = out
 	}
 	if !d.Draft {
 		for _, b := range grantTo {
@@ -571,20 +590,29 @@ func (s *Service) completeDriveAuth(ctx context.Context, driveID, starter string
 			opts[k] = val
 		}
 	}
-	sec := decodeSecrets(d.SecretsJSON)
-	sec.Dynamic = dyn
+	// The drive's Bots may have gained people since the sign-in started:
+	// asked again before the account becomes the drive's.
+	if err := access.CheckSignIn(s.db, d.Name, starter, shared, s.grantees(d.ID)); err != nil {
+		var ce *connect.Error
+		if errors.As(err, &ce) {
+			return errors.New("Nothing was connected: " + ce.Message())
+		}
+		return err
+	}
 	// The account is now the drive's, lent by whoever signed in.
-	s.db.Model(&db.Drive{}).Where("id = ?", d.ID).Updates(map[string]any{
-		"secrets_json": mustJSONString(sec),
+	if _, err := s.editSecrets(d.ID, map[string]any{
 		"options_json": mustJSONString(opts),
 		"lent_by":      starter,
 		"shared":       shared,
-	})
-	if !d.Draft {
-		access.Activity(s.db, d.SpaceID, starter, access.SignedInTo, d.Name, "", "drive")
+	}, func(sec *driveSecrets) { sec.Dynamic = dyn }); err != nil {
+		if errors.Is(err, errDriveGone) {
+			return errors.New("this drive was removed while signing in")
+		}
+		return err
 	}
 	if !d.Draft {
-		s.applyAll(d.ID)
+		access.Activity(s.db, d.SpaceID, starter, access.SignedInTo, d.Name, "", "drive")
+		s.remountAll(d.ID)
 	}
 	return nil
 }
@@ -599,10 +627,11 @@ func (s *Service) freshDriveToken(ctx context.Context, d *db.Drive, t *drives.Te
 	if err != nil || tok == "" {
 		return err
 	}
-	sec := decodeSecrets(d.SecretsJSON)
-	sec.Dynamic["token"] = tok
-	d.SecretsJSON = mustJSONString(sec)
-	s.db.Model(&db.Drive{}).Where("id = ?", d.ID).Update("secrets_json", d.SecretsJSON)
+	out, err := s.editSecrets(d.ID, nil, func(sec *driveSecrets) { sec.Dynamic["token"] = tok })
+	if err != nil {
+		return err
+	}
+	d.SecretsJSON = out
 	if !d.Draft {
 		s.applyAll(d.ID)
 	}
@@ -836,7 +865,7 @@ func (s *Service) Unlend(_ context.Context, l access.Lend, why string) {
 		}
 		return
 	}
-	s.db.Model(&db.Drive{}).Where("id = ?", d.ID).Updates(map[string]any{"secrets_json": "", "lent_by": ""})
+	s.db.Model(&db.Drive{}).Where("id = ?", d.ID).Updates(map[string]any{"secrets_json": "", "lent_by": "", "shared": false})
 	s.db.Model(&db.BotDrive{}).Where("drive_id = ?", d.ID).Updates(map[string]any{"state": drives.StateNeedsAuth, "state_detail": why})
 	s.applyAll(d.ID)
 }
