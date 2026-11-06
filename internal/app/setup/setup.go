@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"time"
@@ -358,11 +359,50 @@ func (s *Service) ResolveSetupOffer(ctx context.Context, req *connect.Request[v1
 		s.host.Publish(c.BotID, &v1.RunEvent{ChatId: c.ChatID, Kind: StateKind, Body: c.ID, SetupOffer: proto(c)})
 	}
 	if outcome == Done || len(rest) == 0 {
+		// The answer is recorded either way; one the Bot could not be told
+		// now is told by Sweep.
 		if err := s.tell(o, rest); err != nil {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+			log.Printf("setup: tell bot=%s chat=%s: %v; trying again later", o.BotID, o.ChatID, err)
 		}
 	}
 	return connect.NewResponse(proto(o)), nil
+}
+
+// Tick is how often Sweep runs; tellWithin is how long an answer the Bot
+// could not be told is tried again.
+const (
+	Tick       = time.Minute
+	tellWithin = 24 * time.Hour
+)
+
+// Sweep tells the Bot about answers it has not heard of because telling it
+// failed when they were given (the Bot was suspended, the run could not
+// start), by the same rule as an answer: a setup at once, a "not now" once
+// the turn has no open offer left.
+func (s *Service) Sweep(now time.Time) {
+	var untold []db.SetupOffer
+	s.db.Where("status <> ? AND NOT told AND updated_at > ?", Open, now.Add(-tellWithin)).Order("updated_at").Limit(50).Find(&untold)
+	seen := map[string]bool{}
+	for i := range untold {
+		o := &untold[i]
+		key := o.BotID + "\x00" + o.ChatID + "\x00" + o.RunID
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		var open []db.SetupOffer
+		s.db.Where("bot_id = ? AND chat_id = ? AND run_id = ? AND status = ?", o.BotID, o.ChatID, o.RunID, Open).Order("created_at").Find(&open)
+		if len(open) > 0 {
+			var done int64
+			s.db.Model(&db.SetupOffer{}).Where("bot_id = ? AND chat_id = ? AND run_id = ? AND status = ? AND NOT told", o.BotID, o.ChatID, o.RunID, Done).Count(&done)
+			if done == 0 {
+				continue // a "not now" waits for the turn's other offers
+			}
+		}
+		if err := s.tell(o, open); err != nil {
+			log.Printf("setup: tell bot=%s chat=%s: %v", o.BotID, o.ChatID, err)
+		}
+	}
 }
 
 // tell gives the Bot, in one message, what the owner did with the offers of

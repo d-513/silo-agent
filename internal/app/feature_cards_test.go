@@ -331,3 +331,42 @@ func TestOfferSetupFromAutomation(t *testing.T) {
 		})
 	}
 }
+
+// An answer the Bot could not be told when it was given is told by the
+// sweep; a "not now" still waits while the turn has an open offer.
+func TestUntoldOfferAnswerIsToldLater(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_offer9",
+		memCall("offer_setup", `{"kind":"connector","target":"email"}`),
+		memCall("offer_setup", `{"kind":"connector","target":"calendar"}`),
+		dummy.Turn{Text: "offered"},
+		dummy.Turn{Text: "noted"},
+	)
+	h := apptest.New(t)
+	id := h.CreateBot("Retold").GetId()
+	main := h.FirstChat(id)
+	run, _ := h.Send(id, main, "Test_offer9_Input")
+	h.WaitRun(run)
+	var offers []db.SetupOffer
+	h.DB.Where("bot_id = ?", id).Order("created_at").Find(&offers)
+	if len(offers) != 2 {
+		t.Fatalf("%d offers", len(offers))
+	}
+	// Answered, as if telling the Bot had failed at the time.
+	h.DB.Model(&db.SetupOffer{}).Where("id = ?", offers[0].ID).Updates(map[string]any{"status": "skipped", "updated_at": time.Now()})
+	users := func() int { return len(userBodies(h.ChatEvents(main))) }
+	before := users()
+	h.App.Setup.Sweep(time.Now())
+	time.Sleep(100 * time.Millisecond)
+	if users() != before {
+		t.Fatal("a not-now was told while the turn had an open offer")
+	}
+	h.DB.Model(&db.SetupOffer{}).Where("id = ?", offers[1].ID).Updates(map[string]any{"status": "skipped", "updated_at": time.Now()})
+	h.App.Setup.Sweep(time.Now())
+	waitUserTurn(t, h, main, "Not now for **"+offers[0].Label+"**, **"+offers[1].Label+"**.")
+	h.App.Setup.Sweep(time.Now())
+	h.WaitRun(lastRun(h, main))
+	if n := users(); n != before+1 {
+		t.Fatalf("told %d times", n-before)
+	}
+}

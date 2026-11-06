@@ -330,6 +330,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		go tickLoop(a.stopAutomations, egress.Tick, func(now time.Time) { a.Egress.Reconcile(context.Background()) })
 		go tickLoop(a.stopAutomations, audit.Tick, func(now time.Time) { a.Audit.Trim(now) })
 		go tickLoop(a.stopAutomations, artifact.SweepTick, func(time.Time) { a.Artifacts.Sweep(context.Background()) })
+		go tickLoop(a.stopAutomations, setup.Tick, func(now time.Time) { a.Setup.Sweep(now) })
 		// The SMTP listener follows mail.* without a restart.
 		a.Mail.Sync()
 		go tickLoop(a.stopAutomations, mailbox.Tick, func(time.Time) { a.Mail.Sync() })
