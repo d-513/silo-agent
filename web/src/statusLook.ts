@@ -14,7 +14,7 @@ export type LampStatus = "online" | "working" | "needs_you" | "starting" | "stop
 
 export type StatusLook = { lamp: LampStatus; word: string; tone: string };
 
-const needsYou = (): StatusLook => ({ lamp: "needs_you", word: t("Needs you"), tone: "text-vermilion" });
+const needsYouLook = (): StatusLook => ({ lamp: "needs_you", word: t("Needs you"), tone: "text-vermilion" });
 const onCall = (): StatusLook => ({ lamp: "online", word: t("On a call"), tone: "text-emerald" });
 
 // What a run is about, for the status lines.
@@ -26,7 +26,7 @@ export type Doing = Pick<BotActivity, "state" | "waitingOn" | "task" | "step">;
 export function runLook(a: Doing): StatusLook {
   switch (a.state) {
     case "needs_you":
-      return needsYou();
+      return needsYouLook();
     case "waiting":
       return {
         lamp: "stopped",
@@ -70,7 +70,7 @@ export function botLook(bot: Pick<Bot, "status" | "activity" | "lastActiveAt">):
   const rows = bot.activity.filter((a) => a.state === bot.status);
   switch (bot.status) {
     case "needs_you":
-      return needsYou();
+      return needsYouLook();
     case "working":
       return rows.length > 1 ? { lamp: "working", word: t("Working on {{count}} things", { count: rows.length }), tone: "text-emerald" } : runLook(rows[0] ?? started);
     case "waiting":
@@ -92,6 +92,16 @@ export function botMood(b: Pick<Bot, "status" | "dashboardAsks">): Mood {
   if (b.status === "needs_you") return "needs_you";
   if (b.dashboardAsks > 0) return "asks";
   return b.status === "online" || b.status === "stopped" ? "resting" : "working";
+}
+
+/** The box is on its way up: Start waits, and the Bot's row is polled fast. */
+export function machineStarting(b: Pick<Bot, "machine">): boolean {
+  return b.machine === "starting";
+}
+
+/** A run or call paused until a person answers it. */
+export function pausedOnYou(a: Pick<BotActivity, "state">): boolean {
+  return a.state === "needs_you";
 }
 
 /** The word on Start/Stop, wherever the machine has one. */
@@ -124,6 +134,16 @@ export function containerLook(state: string): StatusLook {
   }
 }
 
+/** A container that is up. */
+export function containerUp(state: string): boolean {
+  return state === "running";
+}
+
+/** A container that exists, up or not (what Remove would remove). */
+export function containerMade(state: string): boolean {
+  return state !== "absent" && state !== "";
+}
+
 // A subagent that has finished.
 export function finishedLook(status: string): StatusLook {
   switch (status) {
@@ -134,6 +154,17 @@ export function finishedLook(status: string): StatusLook {
     default:
       return { lamp: "stopped", word: t("Stopped"), tone: "text-ink-3" };
   }
+}
+
+/** A run or subagent that ended in failure. */
+export function finishedFailed(status: string): boolean {
+  return status === "error";
+}
+
+/** A subagent in a report line: a tick when it is done, else its end in words. */
+export function reportMark(status: string): { mark: string; tone: string } {
+  const look = finishedLook(status);
+  return { mark: status === "done" ? "✓" : look.word, tone: look.tone };
 }
 
 // A channel adapter's connection.
@@ -190,4 +221,32 @@ export function driveLook(state: string): StatusLook {
     default:
       return { lamp: "stopped", word: t("Stopped"), tone: "text-ink-3" };
   }
+}
+
+/** A connector or drive that waits for its owner to sign in (again). */
+export function needsSignIn(state: string): boolean {
+  return state === "needs_auth";
+}
+
+/** A drive on its way to mounted: its list is polled fast. */
+export function driveSettling(state: string): boolean {
+  return state === "mounting";
+}
+
+// A Knowledge folder: being indexed, failed its last sync, or at rest.
+export type FolderPhase = "syncing" | "error" | "idle";
+export function folderPhase(status: string): FolderPhase {
+  return status === "syncing" ? "syncing" : status === "error" ? "error" : "idle";
+}
+
+// A setup offer: still to answer, set up, or put off.
+export type OfferPhase = "open" | "done" | "skipped";
+export function offerPhase(status: string): OfferPhase {
+  return status === "done" ? "done" : status === "skipped" ? "skipped" : "open";
+}
+
+// A question the Bot asked: still to answer, answered, or put away.
+export type AskPhase = "open" | "answered" | "put_away";
+export function askPhase(status: string): AskPhase {
+  return status === "open" ? "open" : status === "submitted" ? "answered" : "put_away";
 }

@@ -15,6 +15,7 @@ import { SearchBox } from "./SearchBox";
 import { useSearch } from "./useSearch";
 import { t } from "./i18n.ts";
 import { Trans } from "./Trans.tsx";
+import { machineStarting, folderPhase } from "./statusLook";
 
 // Folders the Bot cannot index even if picked; the server refuses them too.
 const scratch = new Set(["bot", "tmp"]);
@@ -70,7 +71,7 @@ function FolderPicker({
   if (!bot.workerConnected) {
     return (
       <div className="flex min-h-[200px] flex-col">
-        <NeedMachine copy={t("Start the Bot to browse its folders.")} starting={bot.machine === "starting"} onStart={onStart} />
+        <NeedMachine copy={t("Start the Bot to browse its folders.")} starting={machineStarting(bot)} onStart={onStart} />
       </div>
     );
   }
@@ -115,7 +116,8 @@ function FolderRow({
   onRemove: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const syncing = f.status === "syncing";
+  const phase = folderPhase(f.status);
+  const syncing = phase === "syncing";
   return (
     <div className="px-5 py-3 shadow-[inset_0_-1px_0_var(--color-line)] last:shadow-none">
       <div className="flex items-start gap-3">
@@ -130,16 +132,16 @@ function FolderRow({
                 <Spinner size={12} />
                 <span>{f.files > 0 ? t("Indexing… {{count}} files so far", { count: f.files }) : t("Indexing…")}</span>
               </>
-            ) : f.status === "error" ? (
+            ) : phase === "error" ? (
               <span className="text-vermilion">{f.detail || t("Sync failed.")}</span>
             ) : (
               <span>
                 {[t("{{count}} files", { count: f.files }), t("{{count}} passages", { count: f.chunks }), t("synced {{when}}", { when: ago(f.lastSyncAt) })].join(" · ")}
               </span>
             )}
-            {f.status === "error" && f.lastSyncAt && <span className="text-ink-3">{t("last attempt {{when}}", { when: ago(f.lastSyncAt) })}</span>}
+            {phase === "error" && f.lastSyncAt && <span className="text-ink-3">{t("last attempt {{when}}", { when: ago(f.lastSyncAt) })}</span>}
           </p>
-          {f.status === "idle" && f.detail && <p className="mt-0.5 text-meta text-ink-2">{f.detail}</p>}
+          {phase === "idle" && f.detail && <p className="mt-0.5 text-meta text-ink-2">{f.detail}</p>}
           {f.skipped > 0 && (
             <button type="button" className="mt-1 text-meta text-cobalt-deep hover:underline" onClick={() => setOpen(!open)}>
               {t("{{count}} not indexed", { count: f.skipped })} {open ? "▾" : "▸"}
@@ -218,7 +220,7 @@ export function KnowledgePane({ bot, onError, onStart }: { bot: Bot; onError: (s
   const q = useQuery(
     UI.method.listKnowledge,
     { botId: bot.id },
-    { refetchInterval: (x) => (x.state.data?.folders.some((f) => f.status === "syncing") ? 2500 : false) },
+    { refetchInterval: (x) => (x.state.data?.folders.some((f) => folderPhase(f.status) === "syncing") ? 2500 : false) },
   );
   const folders = q.data?.folders ?? null;
   const enabled = q.data?.enabled ?? true;

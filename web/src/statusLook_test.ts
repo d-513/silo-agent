@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { eq } from "./testing.ts";
 import type { BotActivity } from "./gen/silo/v1/ui_pb";
-import { botLook, botMood, channelLook, chatDoing, containerLook, finishedLook, powerWord, progress, runLook } from "./statusLook.ts";
+import { askPhase, botLook, botMood, channelLook, chatDoing, containerLook, containerMade, containerUp, driveSettling, finishedFailed, finishedLook, folderPhase, machineStarting, needsSignIn, offerPhase, pausedOnYou, powerWord, progress, reportMark, runLook } from "./statusLook.ts";
 
 // A QR login waiting to be scanned is not "Connected" and not an error: it
 // needs the owner, and says what for.
@@ -56,6 +56,23 @@ eq(powerWord({ machine: "stopped" }), "Start Bot", "power");
 eq(containerLook("exited").word, "Not created", "a container that is neither");
 eq(finishedLook("done").word, "Done", "a subagent's end is worded");
 
+// The predicates and phases the pages read instead of the server's words.
+eq(machineStarting({ machine: "starting" }), true, "a box on its way up");
+eq(machineStarting({ machine: "online" }), false, "an online box is not starting");
+eq(pausedOnYou({ state: "needs_you" }), true, "a run paused on you");
+eq(pausedOnYou({ state: "waiting" }), false, "waiting on someone else is not you");
+eq([containerUp("running"), containerUp("stopped")], [true, false], "a container is up only while running");
+eq([containerMade("stopped"), containerMade("absent"), containerMade("")], [true, false, false], "a stopped container exists, an absent one does not");
+eq([needsSignIn("needs_auth"), needsSignIn("authorized")], [true, false], "sign-in needed");
+eq([driveSettling("mounting"), driveSettling("mounted")], [true, false], "a drive mounting");
+eq([finishedFailed("error"), finishedFailed("done")], [true, false], "a failed run");
+eq(reportMark("done"), { mark: "✓", tone: "text-emerald" }, "a done subagent is a tick");
+eq(reportMark("error"), { mark: "Failed", tone: "text-vermilion" }, "a failed subagent is worded, not its raw status");
+eq(reportMark("interrupted").mark, "Stopped", "an interrupted subagent reads as stopped");
+eq([folderPhase("syncing"), folderPhase("error"), folderPhase("idle"), folderPhase("")], ["syncing", "error", "idle", "idle"], "folder phases");
+eq([offerPhase("open"), offerPhase("done"), offerPhase("skipped")], ["open", "done", "skipped"], "offer phases");
+eq([askPhase("open"), askPhase("submitted"), askPhase("dismissed")], ["open", "answered", "put_away"], "ask phases");
+
 // Bot state is read through statusLook, or the copies grow back.
 const walk = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -68,5 +85,9 @@ for (const f of walk(src)) {
   if (f.endsWith("statusLook.ts")) continue;
   const text = readFileSync(f, "utf8");
   eq(/\b(bot|b)\.status\s*[!=]==/.test(text), false, `${f} compares a Bot's status by hand: use statusLook`);
+  eq(/\.machine\s*[!=]==/.test(text), false, `${f} compares a Bot's machine by hand: use machineStarting or machineLook`);
+  eq(/\.state\s*[!=]==\s*"(running|absent|mounting|needs_auth)"/.test(text), false, `${f} compares a container's or drive's state by hand: use statusLook`);
+  eq(/\b(a|activity)\.state\s*[!=]==\s*"needs_you"/.test(text), false, `${f} compares a run's state by hand: use pausedOnYou`);
+  eq(/authStatus\s*[!=]==/.test(text), false, `${f} compares a connector's status by hand: use needsSignIn or connectorLook`);
   eq(/<Lamp status="(needs_you|online|stopped|starting)"\s*\/>\s*\n\s*<StatusWord/.test(text), false, `${f} pairs a lamp and word by hand: use Status`);
 }

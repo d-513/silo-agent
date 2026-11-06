@@ -15,6 +15,7 @@ import { Tip } from "../Tip";
 import { FoldRow } from "./FoldRow";
 import { t } from "../i18n.ts";
 import { Initials } from "../space/People";
+import { reportMark } from "../statusLook";
 
 const miniBtn =
   "flex h-7 w-7 items-center justify-center rounded-sm text-ink-2 transition-[background-color,color,transform] duration-[160ms] ease-quiet hover:bg-well hover:text-ink active:scale-[.94] active:duration-[70ms] disabled:cursor-not-allowed disabled:opacity-40";
@@ -214,12 +215,6 @@ export function LeadNote({ text, createdAt }: { text: string; createdAt?: string
   );
 }
 
-const reportTone: Record<string, string> = {
-  done: "text-emerald",
-  error: "text-vermilion",
-  stopped: "text-ink-3",
-  interrupted: "text-ink-3",
-};
 
 // SubagentReport opens a lead's wake run: which subagents finished, each a
 // link to its page, with the report the lead was handed folded underneath.
@@ -239,7 +234,7 @@ export function SubagentReport({ text, agents, href }: { text: string; agents: {
             const label = (
               <>
                 <span className="font-mono text-meta text-ink">{ag.name}</span>
-                <span className={`text-label ${reportTone[ag.status] ?? "text-ink-3"}`}>{ag.status === "done" ? "✓" : ag.status}</span>
+                <span className={`text-label ${reportMark(ag.status).tone}`}>{reportMark(ag.status).mark}</span>
               </>
             );
             return (

@@ -1,4 +1,5 @@
 import { Link, useParams } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { Inbox, MessageCircleQuestionMark, Plus, Timer, UserPlus } from "lucide-react";
 import { useBots } from "../bots";
 import { btnClass } from "../Btn";
@@ -8,7 +9,7 @@ import { nextWhen } from "../format";
 import type { Bot } from "../gen/silo/v1/ui_pb";
 import { t } from "../i18n.ts";
 import { Lamp, Status } from "../Lamp";
-import { botLook, botMood, type LampStatus, type Mood } from "../statusLook";
+import { botLook, botMood, type Mood } from "../statusLook";
 import { Initials } from "./People";
 import { canAdmin, canBuild, useSpaces } from "./spaces";
 import { roleWord, SpaceMark } from "./SpaceTile";
@@ -102,22 +103,20 @@ export function SpaceOverview() {
 // Pulse is the Workspace at a glance: how many need you, the questions
 // waiting, how many work, how many rest.
 function Pulse({ needs, asks, working, resting }: { needs: number; asks: number; working: number; resting: number }) {
-  const parts: { status: LampStatus | "asks"; n: number; word: string }[] = [
-    { status: "needs_you", n: needs, word: t("{{count}} need you", { count: needs }) },
-    { status: "asks", n: asks, word: t("{{count}} questions", { count: asks }) },
-    { status: "working", n: working, word: t("{{count}} at work", { count: working }) },
-    { status: "none", n: resting, word: t("{{count}} resting", { count: resting }) },
+  // Each part carries its own mark and tone: a question has no lamp.
+  const parts: { key: string; mark: ReactNode; tone: string; n: number; word: string }[] = [
+    { key: "needs_you", mark: <Lamp status="needs_you" />, tone: "text-vermilion", n: needs, word: t("{{count}} need you", { count: needs }) },
+    { key: "asks", mark: <MessageCircleQuestionMark size={14} />, tone: "text-cobalt", n: asks, word: t("{{count}} questions", { count: asks }) },
+    { key: "working", mark: <Lamp status="working" />, tone: "text-ink-2", n: working, word: t("{{count}} at work", { count: working }) },
+    { key: "resting", mark: <Lamp status="none" />, tone: "text-ink-2", n: resting, word: t("{{count}} resting", { count: resting }) },
   ];
   return (
     <div className="rise mb-8 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-card bg-well px-4 py-3 shadow-[inset_0_0_0_1px_var(--color-line)]">
       {parts
         .filter((p) => p.n > 0)
         .map((p) => (
-          <span
-            key={p.status}
-            className={`flex items-center gap-2 text-small font-medium ${p.status === "needs_you" ? "text-vermilion" : p.status === "asks" ? "text-cobalt" : "text-ink-2"}`}
-          >
-            {p.status === "asks" ? <MessageCircleQuestionMark size={14} /> : <Lamp status={p.status} />}
+          <span key={p.key} className={`flex items-center gap-2 text-small font-medium ${p.tone}`}>
+            {p.mark}
             {p.word}
           </span>
         ))}

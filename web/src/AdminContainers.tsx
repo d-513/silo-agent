@@ -11,7 +11,7 @@ import { ErrorWell, inputClass, Panel, SkeletonRows } from "./Field";
 import { UI, type AdminBotGroup, type AdminContainer, type AdminNetwork, type AdminUserGroup } from "./gen/silo/v1/ui_pb";
 import { fmtBytes } from "./format";
 import { Lamp, Status } from "./Lamp";
-import { containerLook, machineLook } from "./statusLook";
+import { containerLook, machineLook, containerUp, containerMade } from "./statusLook";
 import { msg, t } from "./i18n.ts";
 import { recheck } from "./query";
 
@@ -83,8 +83,8 @@ function uptime(iso: string, now: number) {
 }
 
 function runningOf(containers: AdminContainer[]) {
-  const any = containers.filter((c) => c.state !== "absent");
-  return { up: any.filter((c) => c.state === "running").length, total: any.length };
+  const any = containers.filter((c) => containerMade(c.state));
+  return { up: any.filter((c) => containerUp(c.state)).length, total: any.length };
 }
 
 function CountChip({ up, total, plural }: { up: number; total: number; plural?: boolean }) {
@@ -154,7 +154,7 @@ function NetworkRow({ n }: { n: AdminNetwork }) {
 function ContainerRow({ c, busy, now, onAct }: { c: AdminContainer; busy: string | null; now: number; onAct: (name: string, action: Action) => void }) {
   const kind = KIND[c.kind] ?? KIND.stray;
   const Icon = kind.icon;
-  const up = c.state === "running";
+  const up = containerUp(c.state);
   const look = containerLook(c.state);
   const mem = n64(c.memUsed);
   const cap = n64(c.memLimit);
@@ -198,7 +198,7 @@ function ContainerRow({ c, busy, now, onAct }: { c: AdminContainer; busy: string
               {t("Start")}
             </Btn>
           ) : null}
-          {c.state !== "absent" ? (
+          {containerMade(c.state) ? (
             <ArmedButton kind="ghost" size="sm" disabled={busyAct} armedLabel={t("Click again to remove")} onConfirm={() => onAct(c.name, "remove")}>
               {t("Remove")}
             </ArmedButton>
@@ -218,7 +218,7 @@ function ContainerRow({ c, busy, now, onAct }: { c: AdminContainer; busy: string
 function BotCard({ g, busy, now, onAct, onRemoveAll }: { g: AdminBotGroup; busy: string | null; now: number; onAct: (name: string, action: Action) => void; onRemoveAll: (botId: string) => void }) {
   const containers = g.containers ?? [];
   const { up } = runningOf(containers);
-  const anyUp = up > 0 || containers.some((c) => c.state === "stopped");
+  const anyUp = containers.some((c) => containerMade(c.state));
   return (
     <Fold
       id={`b:${g.botId}`}
@@ -229,7 +229,7 @@ function BotCard({ g, busy, now, onAct, onRemoveAll }: { g: AdminBotGroup; busy:
             {g.botName}
           </Link>
           <Status look={machineLook(g.status)} />
-          <CountChip up={up} total={containers.filter((c) => c.state !== "absent").length} />
+          <CountChip up={up} total={containers.filter((c) => containerMade(c.state)).length} />
         </>
       }
       rest={
@@ -350,7 +350,7 @@ export function AdminContainers() {
     await recheck(UI.method.listAdminContainers, {});
   }
 
-  const running = totals.filter((c) => c.state === "running");
+  const running = totals.filter((c) => containerUp(c.state));
   const cpu = running.reduce((n, c) => n + c.cpuPercent, 0);
   const mem = running.reduce((n, c) => n + n64(c.memUsed), 0);
   const netCount = (system?.networks?.length ?? 0) + users.reduce((n, u) => n + u.bots.reduce((m, b) => m + (b.networks?.length ?? 0), 0), 0);
@@ -416,7 +416,7 @@ export function AdminContainers() {
                 header={
                   <>
                     <span className="text-body-lg font-semibold text-ink">{t("System & leftovers")}</span>
-                    <CountChip up={systemContainers.filter((c) => c.state === "running").length} total={systemContainers.length} />
+                    <CountChip up={systemContainers.filter((c) => containerUp(c.state)).length} total={systemContainers.length} />
                   </>
                 }
               >

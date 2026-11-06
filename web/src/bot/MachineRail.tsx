@@ -2,7 +2,7 @@ import { Folder, GitCompareArrows, Mail, Monitor, Power, SquareTerminal, type Lu
 import type { Bot } from "../gen/silo/v1/ui_pb";
 import type { PaneKind } from "./tabs";
 import { msg, t } from "../i18n.ts";
-import { powerWord } from "../statusLook";
+import { powerWord, machineStarting } from "../statusLook";
 
 export const paneMeta: Record<PaneKind, { label: string; icon: LucideIcon }> = {
   files: { label: msg("Files"), icon: Folder },
@@ -35,7 +35,7 @@ export function MachineRail({
   onStart: () => void;
   onStop: () => void;
 }) {
-  const starting = bot.machine === "starting";
+  const starting = machineStarting(bot);
   const power = powerWord(bot);
   return (
     <aside className="hidden w-12 shrink-0 flex-col items-center gap-1 bg-well pt-2.5 pb-4 wide:flex" aria-label={t("Machine")}>

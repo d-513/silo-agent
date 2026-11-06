@@ -14,6 +14,7 @@ import { Switch } from "../Switch";
 import { Tip } from "../Tip";
 import { t } from "../i18n.ts";
 import { defaultFormValues, isDisplay, normalizeOptions, parseBlocks, type DashboardBlock } from "./blocks";
+import { askPhase } from "../statusLook";
 
 // An ask is a decision the Bot needs from the owner. It is a question, not an
 // alarm: no vermilion (that is for a paused run). The upper half is the Bot
@@ -297,7 +298,8 @@ export function AskSlip({
       ...prev,
     }));
   }, [card.blocksJson]);
-  const closed = card.status !== "open";
+  const phase = askPhase(card.status);
+  const closed = phase !== "open";
   const board = place === "board";
   const src = board || asked ? sourceLabel(card.sourceKind, card.sourceName) : "";
   // An answered card keeps what it showed; its controls would read as the
@@ -344,8 +346,8 @@ export function AskSlip({
         <div className="flex min-w-0 items-center gap-2 text-label leading-4">
           {closed ? (
             <span className="flex shrink-0 items-center gap-1.5 font-medium text-ink-3">
-              {card.status === "submitted" ? <Check size={13} className="text-emerald" /> : null}
-              {card.status === "submitted" ? t("Answered") : t("Put away")}
+              {phase === "answered" ? <Check size={13} className="text-emerald" /> : null}
+              {phase === "answered" ? t("Answered") : t("Put away")}
             </span>
           ) : (
             <span className="flex shrink-0 items-center gap-1.5 font-medium text-cobalt">

@@ -16,6 +16,7 @@ import { reload } from "./query";
 import { TabPill, TabPills } from "./TabPills";
 import { msg, t } from "./i18n.ts";
 import { Trans } from "./Trans.tsx";
+import { machineStarting } from "./statusLook";
 
 // ChangesPane is the right-rail pane for what changed. Workspace is one row per
 // stretch between two snapshots, newest first, each opening into its files and
@@ -83,7 +84,7 @@ export function ChangesPane({
         ) : online ? (
           <WorkspaceChanges botId={botId} data={q.data ?? null} onError={onError} />
         ) : (
-          <NeedMachine copy={t("Start the Bot to see what changed in /workspace.")} starting={bot.machine === "starting"} onStart={onStart} />
+          <NeedMachine copy={t("Start the Bot to see what changed in /workspace.")} starting={machineStarting(bot)} onStart={onStart} />
         )}
       </div>
     </div>

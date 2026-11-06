@@ -14,7 +14,7 @@ import { t } from "../i18n.ts";
 import { Lamp } from "../Lamp";
 import { PageHead } from "../PageHead";
 import { reload } from "../query";
-import { driveLook } from "../statusLook";
+import { driveLook, driveSettling, needsSignIn } from "../statusLook";
 import { Trans } from "../Trans.tsx";
 import { DriveForm } from "./DriveForm";
 import { DriveMark } from "./DriveMark";
@@ -30,7 +30,7 @@ function useHubDrives(spaceId: string) {
   const drivesQ = useQuery(
     UI.method.listSpaceDrives,
     { spaceId, draftId: "" },
-    { refetchInterval: (q) => (q.state.data?.drives.some((d) => d.state === "mounting") ? 1500 : 6000) },
+    { refetchInterval: (q) => (q.state.data?.drives.some((d) => driveSettling(d.state)) ? 1500 : 6000) },
   );
   const templates = templatesQ.data?.templates ?? null;
   const drives = drivesQ.data?.drives ?? null;
@@ -153,7 +153,7 @@ export function SpaceDrives() {
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1 self-end sm:self-center">
-                  {d.state === "needs_auth" && d.canEdit ? (
+                  {needsSignIn(d.state) && d.canEdit ? (
                     <Btn kind="primary" size="sm" type="button" onClick={() => void reconnect(d)}>
                       <RefreshCw size={13} className="breathe" />
                       {t("Reconnect")}

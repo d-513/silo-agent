@@ -1,4 +1,5 @@
 import { isGone, isSignedOut, isTransient } from "./errors.ts";
+import { machineStarting } from "./statusLook.ts";
 
 // queryPolicy.ts is the part of the query layer with no React and no generated
 // code in it: when to retry, how fast to poll. It is unit tested with node.
@@ -10,7 +11,7 @@ export function retryable(failures: number, e: unknown): boolean {
 
 /** A Bot's row is polled fast until the box settles (online or stopped). */
 export function botPollMs(bot: { machine: string } | undefined): number {
-  return bot && bot.machine !== "starting" ? 3000 : 500;
+  return bot && !machineStarting(bot) ? 3000 : 500;
 }
 
 /**

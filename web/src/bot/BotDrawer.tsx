@@ -7,7 +7,7 @@ import { Crest } from "../Crest";
 import type { Bot, Chat } from "../gen/silo/v1/ui_pb";
 import { msg, t } from "../i18n.ts";
 import { Lamp } from "../Lamp";
-import { botLook, powerWord } from "../statusLook";
+import { botLook, powerWord, machineStarting } from "../statusLook";
 import { Rail } from "../Shell";
 import { paneMeta } from "./MachineRail";
 import { onSettings, paneKinds, type PaneKind, type Tab } from "./tabs";
@@ -147,7 +147,7 @@ const tile =
 // MachineTiles are the drawer's way to the machine: each pane as its own
 // page (there is no room to dock one), and Start/Stop.
 export function MachineTiles({ bot, tab, onStart, onStop }: { bot: Bot; tab: Tab; onStart: () => void; onStop: () => void }) {
-  const starting = bot.machine === "starting";
+  const starting = machineStarting(bot);
   const power = powerWord(bot);
   const kinds = paneKinds.filter((k) => k !== "mail" || bot.mailAddress || tab === "mail");
   return (

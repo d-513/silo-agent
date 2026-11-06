@@ -13,7 +13,7 @@ import { Collapse } from "../Collapse";
 import { ago, fullTime } from "../format";
 import { UI, type Bot, type BotActivity, type Chat } from "../gen/silo/v1/ui_pb";
 import { Lamp, Status } from "../Lamp";
-import { botLook, chatDoing, type Doing, progress, runLook, started, type StatusLook } from "../statusLook";
+import { botLook, chatDoing, type Doing, progress, runLook, started, type StatusLook, pausedOnYou } from "../statusLook";
 import { type ChatGroup, groupChats, groupKeyOf, isOpen } from "./chatGroups";
 import { setGroupOpen, useGroupsPicked } from "./chatGroupsStore";
 import { ChatTitleInput } from "./ChatTitleInput";
@@ -184,7 +184,7 @@ function BotHead({ bot }: { bot: Bot }) {
 // HeadLine is the Bot's one line; what needs you says where.
 function HeadLine({ bot }: { bot: Bot }) {
   const look = botLook(bot);
-  const paused = bot.activity.find((a) => a.state === "needs_you");
+  const paused = bot.activity.find(pausedOnYou);
   const where = paused ? sourceLabel(paused.kind, paused.title, t("New chat")) : "";
   return (
     <span className="flex min-w-0 items-center gap-1.5">

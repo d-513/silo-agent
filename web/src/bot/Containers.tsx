@@ -9,7 +9,7 @@ import { Panel, SkeletonRows } from "../Field";
 import { UI, type Bot } from "../gen/silo/v1/ui_pb";
 import { fmtBytes } from "../format";
 import { Lamp } from "../Lamp";
-import { containerLook } from "../statusLook";
+import { containerLook, machineStarting, containerUp, containerMade } from "../statusLook";
 import { setBot } from "../query";
 import { msg, t } from "../i18n.ts";
 
@@ -67,10 +67,10 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
   const now = q.dataUpdatedAt || Date.now();
   const [removed, setRemoved] = useState(false);
 
-  const running = (boxes ?? []).filter((b) => b.state === "running");
+  const running = (boxes ?? []).filter((b) => containerUp(b.state));
   const cpu = running.reduce((n, b) => n + b.cpuPercent, 0);
   const mem = running.reduce((n, b) => n + n64(b.memUsed), 0);
-  const anyUp = (boxes ?? []).some((b) => b.state !== "absent");
+  const anyUp = (boxes ?? []).some((b) => containerMade(b.state));
 
   return (
     <div className="silo-page silo-page-wide">
@@ -92,7 +92,7 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
             const kind = BOX_KIND[b.kind] ?? BOX_KIND.mcp;
             const Icon = kind.icon;
             const look = containerLook(b.state);
-            const up = b.state === "running";
+            const up = containerUp(b.state);
             const memUsed = n64(b.memUsed);
             const memCap = n64(b.memLimit);
             return (
@@ -122,8 +122,8 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
                         {t("Stop")}
                       </Btn>
                     ) : (
-                      <Btn kind="primary" size="sm" onClick={onStart} disabled={bot.machine === "starting"} icon={<Power size={12} />}>
-                        {bot.machine === "starting" ? t("Starting…") : t("Start")}
+                      <Btn kind="primary" size="sm" onClick={onStart} disabled={machineStarting(bot)} icon={<Power size={12} />}>
+                        {machineStarting(bot) ? t("Starting…") : t("Start")}
                       </Btn>
                     )
                   ) : null}

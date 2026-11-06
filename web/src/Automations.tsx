@@ -8,7 +8,7 @@ import { ArmedButton, SaveButton, useSave } from "./Feedback";
 import { Field, inputClass, Panel, SkeletonRows } from "./Field";
 import { AutomationMark } from "./AutomationMark";
 import { Lamp } from "./Lamp";
-import { chatDoing, runLook, started } from "./statusLook";
+import { chatDoing, runLook, started, finishedFailed } from "./statusLook";
 import { Select } from "./Select";
 import { PromptWell } from "./Settings";
 import { Switch } from "./Switch";
@@ -191,7 +191,7 @@ function Row({ bot, a, onToggle }: { bot: Bot; a: Automation; onToggle: (on: boo
           <span className="flex items-center gap-2">
             <span className="truncate text-row font-medium text-ink">{a.name}</span>
             {a.running ? <Lamp status={runLook(chatDoing(bot, a.chatId) ?? started).lamp} /> : null}
-            {a.lastStatus === "error" ? <span className="text-label text-vermilion">{t("Last run failed")}</span> : null}
+            {finishedFailed(a.lastStatus) ? <span className="text-label text-vermilion">{t("Last run failed")}</span> : null}
           </span>
           <span className="block truncate text-meta text-ink-3">
             {describe(a.schedule)} · {nextLine(a, bot)}

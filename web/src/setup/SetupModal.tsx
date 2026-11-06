@@ -16,6 +16,7 @@ import { Modal } from "../Modal";
 import { reload } from "../query";
 import { t } from "../i18n.ts";
 import { splitPrefill } from "./prefill";
+import { needsSignIn } from "../statusLook";
 
 // SetupModal is a Bot's setup offer opened: Silo's own add form for that
 // connector, channel or drive, with the values the Bot filled in, over the
@@ -79,7 +80,7 @@ function ConnectorSetupForm({ botId, offer, onClose, onDone, preset, taken }: Pr
     setErr("");
     try {
       const row = await ui.createBotConnector({ botId, ...specOf(draft), sourceId: preset.id });
-      if (row.authStatus === "needs_auth" && row.connector?.auth === "oauth") setSignIn(row);
+      if (needsSignIn(row.authStatus) && row.connector?.auth === "oauth") setSignIn(row);
       else onDone();
     } catch (ex) {
       setErr(fail(ex));

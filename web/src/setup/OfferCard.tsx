@@ -11,6 +11,7 @@ import { UI, type SetupOffer } from "../gen/silo/v1/ui_pb";
 import { msg, t } from "../i18n.ts";
 import { optionWord } from "./prefill";
 import { SetupModal } from "./SetupModal";
+import { offerPhase } from "../statusLook";
 
 const kindWord: Record<string, string> = {
   connector: msg("Connector"),
@@ -91,11 +92,11 @@ export function OfferCard({ botId, offer }: { botId: string; offer: SetupOffer }
         </dl>
       ) : null}
       <div className="mt-auto flex items-center gap-1.5 border-t border-line px-3.5 py-2.5">
-        {offer.status === "done" ? (
+        {offerPhase(offer.status) === "done" ? (
           <span className="flex items-center gap-1 text-meta font-medium text-emerald">
             <Check size={13} /> {t("Added")}
           </span>
-        ) : offer.status === "skipped" ? (
+        ) : offerPhase(offer.status) === "skipped" ? (
           <span className="text-meta text-ink-3">{t("Not now")}</span>
         ) : (
           <>
@@ -128,7 +129,7 @@ export function OfferCard({ botId, offer }: { botId: string; offer: SetupOffer }
 // thread. With more than one still open, Not now for these answers them all
 // at once, and the Bot hears it in one message.
 export function OfferGroup({ botId, offers }: { botId: string; offers: SetupOffer[] }) {
-  const open = offers.filter((o) => o.status === "open");
+  const open = offers.filter((o) => offerPhase(o.status) === "open");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   async function skipAll() {

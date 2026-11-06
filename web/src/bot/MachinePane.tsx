@@ -6,7 +6,7 @@ import { Crest } from "../Crest";
 import { fail } from "../errors";
 import type { Bot } from "../gen/silo/v1/ui_pb";
 import { Lamp } from "../Lamp";
-import { machineLook } from "../statusLook";
+import { machineLook, machineStarting } from "../statusLook";
 import { LinkSurface, useLinkPhase } from "../machineLink";
 import { NeedMachine } from "../NeedMachine";
 import { setBot } from "../query";
@@ -161,7 +161,7 @@ export function MachinePane({
     return (
       <NeedMachine
         copy={t("{{name}} not connected", { name: label })}
-        starting={bot.machine === "starting"}
+        starting={machineStarting(bot)}
         onStart={onStart}
       />
     );

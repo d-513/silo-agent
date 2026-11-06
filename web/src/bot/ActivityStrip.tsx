@@ -4,6 +4,7 @@ import type { Bot, BotActivity } from "../gen/silo/v1/ui_pb";
 import { Lamp } from "../Lamp";
 import { chatLink } from "../links";
 import { t } from "../i18n.ts";
+import { pausedOnYou } from "../statusLook";
 
 const row = "h-7 px-2 text-meta text-ink-2";
 
@@ -18,7 +19,7 @@ export function ActivityStrip({ bot }: { bot: Bot }) {
   const runs = bot.activity.filter(elsewhere);
   const agents = bot.activity.filter((a) => a.kind === "subagent");
   if (!runs.length && !agents.length) return null;
-  const waiting = agents.some((a) => a.state === "needs_you");
+  const waiting = agents.some(pausedOnYou);
   return (
     <ul className="mx-2 mb-2 space-y-px rounded-control bg-surface/60 px-1 py-1" aria-label={t("Also at work")}>
       {runs.slice(0, 3).map((a, i) => (

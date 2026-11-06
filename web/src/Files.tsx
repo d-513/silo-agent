@@ -9,6 +9,7 @@ import { NeedMachine } from "./NeedMachine";
 import type { Bot } from "./gen/silo/v1/ui_pb";
 import { fail } from "./errors";
 import { t } from "./i18n.ts";
+import { machineStarting } from "./statusLook";
 
 // openAt lands the tree in that folder (Drives → Open in Files). `actions` are
 // the pane's own controls (dock, open as a page, close), at the header's end.
@@ -37,7 +38,7 @@ export function FilesPane({ bot, visible = true, onStart, openAt, actions }: { b
     return (
       <NeedMachine
         copy={t("Start the Bot to browse /workspace.")}
-        starting={bot.machine === "starting"}
+        starting={machineStarting(bot)}
         onStart={onStart}
       />
     );
