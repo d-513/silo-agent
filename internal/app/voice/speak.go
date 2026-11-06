@@ -215,19 +215,20 @@ func (s *Service) SetBotVoice(ctx context.Context, req *connect.Request[v1.SetBo
 // ticket is one prepared Read aloud: who may play it, and what. The first
 // request speaks it and keeps the audio, so a player that asks again (media
 // elements send range requests) is served the same bytes without a second
-// round of speech.
+// round of speech. Only a complete reading is kept: one cut short (the
+// player went away, a sentence failed) leaves the ticket to be spoken again
+// by the next request.
 type ticket struct {
 	user, bot string
 	snd       Sound
 	chunks    []string
 	exp       time.Time
 
-	mu      sync.Mutex
-	started bool
-	done    chan struct{}
-	audio   []byte
-	ctype   string
-	failed  bool
+	mu       sync.Mutex
+	speaking chan struct{} // closed when the request speaking it ends; nil when none is
+	audio    []byte
+	ctype    string
+	tooLong  bool // spoken whole but past keepMax: nothing to replay
 }
 
 // keepMax caps the audio a ticket keeps for a replay.
@@ -253,7 +254,6 @@ func (t *tickets) put(tk *ticket) string {
 			delete(t.m, k)
 		}
 	}
-	tk.done = make(chan struct{})
 	t.m[id] = tk
 	return id
 }
@@ -331,34 +331,55 @@ func (s *Service) ServeSpeak(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	tk.mu.Lock()
-	first := !tk.started
-	tk.started = true
-	tk.mu.Unlock()
-	if !first {
+	for {
+		tk.mu.Lock()
+		if tk.audio != nil || tk.tooLong {
+			audio, ctype := tk.audio, tk.ctype
+			tk.mu.Unlock()
+			if audio == nil {
+				http.NotFound(w, r)
+				return
+			}
+			w.Header().Set("Content-Type", ctype)
+			w.Header().Set("Cache-Control", "no-store")
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			http.ServeContent(w, r, "speech", time.Time{}, bytes.NewReader(audio))
+			return
+		}
+		if tk.speaking == nil {
+			done := make(chan struct{})
+			tk.speaking = done
+			tk.mu.Unlock()
+			s.speakTicket(ctx, w, tk, done)
+			return
+		}
+		wait := tk.speaking
+		tk.mu.Unlock()
 		select {
-		case <-tk.done:
+		case <-wait:
 		case <-ctx.Done():
 			return
 		}
-		if tk.failed || len(tk.audio) == 0 {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Content-Type", tk.ctype)
-		w.Header().Set("Cache-Control", "no-store")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		http.ServeContent(w, r, "speech", time.Time{}, bytes.NewReader(tk.audio))
-		return
 	}
-	defer close(tk.done)
+}
+
+// speakTicket is the request that speaks a ticket: it streams the reading to
+// w and keeps it only if it got to the end.
+func (s *Service) speakTicket(ctx context.Context, w http.ResponseWriter, tk *ticket, done chan struct{}) {
 	var kept bytes.Buffer
+	complete := false
+	ctype := ""
 	defer func() {
-		if kept.Len() > 0 && kept.Len() <= keepMax {
-			tk.audio = kept.Bytes()
-		} else {
-			tk.failed = true
+		tk.mu.Lock()
+		switch {
+		case complete && kept.Len() > 0 && kept.Len() <= keepMax:
+			tk.audio, tk.ctype = kept.Bytes(), ctype
+		case complete:
+			tk.tooLong = true
 		}
+		tk.speaking = nil
+		tk.mu.Unlock()
+		close(done)
 	}()
 	out := io.MultiWriter(flushWriter{w, nil}, &capped{&kept})
 	flusher, _ := w.(http.Flusher)
@@ -381,11 +402,11 @@ func (s *Service) ServeSpeak(w http.ResponseWriter, r *http.Request) {
 			started = sp.Format
 			w.Header().Set("Cache-Control", "no-store")
 			w.Header().Set("X-Content-Type-Options", "nosniff")
-			tk.ctype = "audio/wav"
+			ctype = "audio/wav"
 			if sp.Format == "mp3" {
-				tk.ctype = "audio/mpeg"
+				ctype = "audio/mpeg"
 			}
-			w.Header().Set("Content-Type", tk.ctype)
+			w.Header().Set("Content-Type", ctype)
 			w.WriteHeader(http.StatusOK)
 			if sp.Format == "pcm" {
 				_, _ = out.Write(speech.WAVHeader(sp.SampleRate, -1))
@@ -409,6 +430,7 @@ func (s *Service) ServeSpeak(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	complete = true
 }
 
 // capped keeps what is written up to keepMax and drops the rest.

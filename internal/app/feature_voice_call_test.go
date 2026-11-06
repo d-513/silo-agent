@@ -709,3 +709,38 @@ func TestVoiceCallLiveEndOfTurn(t *testing.T) {
 		t.Fatalf("eot %v", eot)
 	}
 }
+
+// A reading cut short is not kept as the whole: the next request speaks it
+// again instead of replaying the part that was made.
+func TestReadAloudCutShortIsSpokenAgain(t *testing.T) {
+	dummy.Reset()
+	h := voiceHarness(t)
+	id := h.CreateBot("Stutterer").GetId()
+	prep, err := h.Client.PrepareSpeech(h.Ctx(), connect.NewRequest(&v1.PrepareSpeechRequest{BotId: id,
+		Text: "This first sentence is long enough to stand on its own. The second one says Test_TTS_Error and fails."}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	url := h.URL + prep.Msg.GetUrl()
+	get := func() []byte {
+		res, err := h.HTTP.Get(url)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		if res.StatusCode != 200 {
+			t.Fatalf("status %d", res.StatusCode)
+		}
+		b, _ := io.ReadAll(res.Body)
+		return b
+	}
+	first := get()
+	n := len(dummy.Spoken())
+	if n != 1 || len(first) < 1000 {
+		t.Fatalf("first reading: %d bytes, spoke %d sentences", len(first), n)
+	}
+	get()
+	if got := len(dummy.Spoken()); got != 2*n {
+		t.Fatalf("the cut reading was replayed: spoke %d sentences in all", got)
+	}
+}
