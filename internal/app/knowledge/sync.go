@@ -8,6 +8,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pgvector/pgvector-go"
@@ -51,9 +52,25 @@ func isDrivePath(p string) bool {
 	return p == "drives" || strings.HasPrefix(p, "drives/")
 }
 
-func (s *Service) folderLock(id string) *sync.Mutex {
-	mu, _ := s.locks.LoadOrStore(id, &sync.Mutex{})
-	return mu.(*sync.Mutex)
+// folderSync is one folder's syncs in this process: mu makes them take
+// turns, n counts those running or waiting and a claim about to start one.
+// n is what says whether a folder's "syncing" is true.
+type folderSync struct {
+	mu sync.Mutex
+	n  atomic.Int32
+}
+
+func (s *Service) folderSync(id string) *folderSync {
+	fs, _ := s.locks.LoadOrStore(id, &folderSync{})
+	return fs.(*folderSync)
+}
+
+// claim takes a folder for one sync unless one is running or waiting: the
+// check and the take are one step, so two Sync nows start one sync. The
+// caller hands the claim to runSync.
+func (s *Service) claim(id string) (*folderSync, bool) {
+	fs := s.folderSync(id)
+	return fs, fs.n.CompareAndSwap(0, 1)
 }
 
 // walkEntry mirrors the worker's walk output.
@@ -102,9 +119,16 @@ func (s *Service) extract(ctx context.Context, botID, path string, ocr bool) (ex
 // the Bot's box. One sync per folder runs at a time; a folder removed while it
 // waits is a no-op. The folder's status and detail record the outcome.
 func (s *Service) SyncFolder(ctx context.Context, id string) error {
-	mu := s.folderLock(id)
-	mu.Lock()
-	defer mu.Unlock()
+	fs := s.folderSync(id)
+	fs.n.Add(1)
+	return s.runSync(ctx, id, fs)
+}
+
+// runSync is SyncFolder for a sync already counted in fs.n.
+func (s *Service) runSync(ctx context.Context, id string, fs *folderSync) error {
+	defer fs.n.Add(-1)
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	s.cancel.Store(id, cancel)
@@ -125,6 +149,9 @@ func (s *Service) SyncFolder(ctx context.Context, id string) error {
 		upd["status"], upd["detail"] = "error", textx.CapRunes(err.Error(), 400)
 	} else {
 		upd["status"], upd["detail"] = "idle", note
+	}
+	if fs.n.Load() > 1 {
+		upd["status"] = "syncing" // another sync waits its turn and says how it went
 	}
 	s.refreshFolderStats(f.ID, upd)
 	return err
@@ -367,6 +394,7 @@ func (s *Service) Sweep(now time.Time) int {
 	if s.db == nil || !cfg.Enabled || now.UnixNano() < s.pause.Load() {
 		return 0
 	}
+	s.unstick()
 	var folders []db.KnowledgeFolder
 	s.db.Where("status <> 'syncing'").Order("last_sync_at ASC NULLS FIRST").Find(&folders)
 	done := 0
@@ -383,8 +411,12 @@ func (s *Service) Sweep(now time.Time) int {
 		if (!dirty && !stale) || !s.hub.Connected(f.BotID) {
 			continue
 		}
+		fs, ok := s.claim(f.ID)
+		if !ok {
+			continue // a Sync now has it
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), knowledgeSyncTimeout)
-		err := s.SyncFolder(ctx, f.ID)
+		err := s.runSync(ctx, f.ID, fs)
 		cancel()
 		done++
 		if err != nil {
@@ -397,6 +429,21 @@ func (s *Service) Sweep(now time.Time) int {
 		}
 	}
 	return done
+}
+
+// unstick clears "syncing" on folders no sync in this process is running or
+// waiting for: what a sync that died without a word left behind.
+func (s *Service) unstick() {
+	var ids []string
+	s.db.Model(&db.KnowledgeFolder{}).Where("status = 'syncing'").Pluck("id", &ids)
+	for _, id := range ids {
+		fs, ok := s.claim(id)
+		if !ok {
+			continue
+		}
+		s.db.Model(&db.KnowledgeFolder{}).Where("id = ? AND status = 'syncing'", id).Update("status", "idle")
+		fs.n.Add(-1)
+	}
 }
 
 // Dirty notes that something wrote under (or removed) path, so
@@ -416,9 +463,9 @@ func (s *Service) dropFolder(id string) {
 	if cancel, ok := s.cancel.Load(id); ok {
 		cancel.(context.CancelFunc)()
 	}
-	mu := s.folderLock(id)
-	mu.Lock()
-	defer mu.Unlock()
+	fs := s.folderSync(id)
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
 	s.db.Where("source_id IN (?)", s.db.Model(&db.KnowledgeSource{}).Select("id").Where("folder_id = ?", id)).Delete(&db.KnowledgeChunk{})
 	s.db.Where("folder_id = ?", id).Delete(&db.KnowledgeSource{})
 	s.db.Where("id = ?", id).Delete(&db.KnowledgeFolder{})
@@ -438,12 +485,12 @@ func (s *Service) Drop(botID string) {
 	s.db.Where("bot_id = ?", botID).Delete(&db.KnowledgeFolder{})
 }
 
-// startSync runs a sync in the background (Add and Sync now).
-func (s *Service) startSync(id string) {
+// startSync runs a claimed sync in the background (Add and Sync now).
+func (s *Service) startSync(id string, fs *folderSync) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), knowledgeSyncTimeout)
 		defer cancel()
-		if err := s.SyncFolder(ctx, id); err != nil {
+		if err := s.runSync(ctx, id, fs); err != nil {
 			log.Printf("knowledge: sync %s: %v", id, err)
 		}
 	}()

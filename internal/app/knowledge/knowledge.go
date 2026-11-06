@@ -53,7 +53,8 @@ type Service struct {
 	models *models.Service
 	ws     *workspace.Service
 
-	// locks serializes syncs per folder; cancel stops a running one when its
+	// locks holds each folder's folderSync (sync.go): its syncs take turns
+	// and are counted; cancel stops a running one when its
 	// folder is removed; pause (unix nanos) holds the sweep back after a
 	// provider error.
 	locks  sync.Map
@@ -208,10 +209,12 @@ func (s *Service) AddKnowledgeFolder(ctx context.Context, req *connect.Request[v
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("cannot read %s: %w", p, err))
 	}
 	f := db.KnowledgeFolder{ID: ids.New(), BotID: b.ID, Path: p, Status: "syncing"}
+	fs, _ := s.claim(f.ID) // a new id: nobody else has it
 	if err := s.db.Create(&f).Error; err != nil {
+		fs.n.Add(-1)
 		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("that folder is already indexed"))
 	}
-	s.startSync(f.ID)
+	s.startSync(f.ID, fs)
 	return connect.NewResponse(s.view(f)), nil
 }
 
@@ -229,15 +232,16 @@ func (s *Service) SyncKnowledge(ctx context.Context, req *connect.Request[v1.Syn
 	if err != nil {
 		return nil, err
 	}
-	if f.Status == "syncing" {
-		return connect.NewResponse(s.view(*f)), nil
-	}
 	if !s.hub.Connected(b.ID) {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the Bot's machine is not running"))
 	}
-	s.db.Model(f).Update("status", "syncing")
 	f.Status = "syncing"
-	s.startSync(f.ID)
+	fs, ok := s.claim(f.ID)
+	if !ok {
+		return connect.NewResponse(s.view(*f)), nil // one is running or waiting
+	}
+	s.db.Model(&db.KnowledgeFolder{}).Where("id = ?", f.ID).Update("status", "syncing")
+	s.startSync(f.ID, fs)
 	return connect.NewResponse(s.view(*f)), nil
 }
 

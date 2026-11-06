@@ -556,3 +556,35 @@ func TestKnowledgeOCRFailureIsThatFilesProblem(t *testing.T) {
 		t.Fatalf("hits = %+v", hits)
 	}
 }
+
+// A "syncing" no sync is behind (one that died without a word) does not
+// stay: the sweep clears it, and Sync now runs one instead of trusting it.
+func TestKnowledgeStuckSyncingIsCleared(t *testing.T) {
+	f := newKnowledge(t, "docs", docsFixture)
+	stick := func() {
+		f.h.DB.Model(&db.KnowledgeFolder{}).Where("id = ?", f.folder.GetId()).Update("status", "syncing")
+	}
+	stick()
+	f.h.App.Knowledge.Sweep(time.Now())
+	if st := f.list(t).GetStatus(); st != "idle" {
+		t.Fatalf("after the sweep the folder is %q", st)
+	}
+
+	stick()
+	before := f.list(t).GetLastSyncAt()
+	time.Sleep(1100 * time.Millisecond) // last_sync_at is shown to the second
+	if _, err := f.h.Client.SyncKnowledge(f.h.Ctx(), connect.NewRequest(&v1.SyncKnowledgeRequest{BotId: f.botID, Id: f.folder.GetId()})); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		fo := f.list(t)
+		if fo.GetStatus() == "idle" && fo.GetLastSyncAt() != before {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("Sync now on a stuck folder: %+v", fo)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
