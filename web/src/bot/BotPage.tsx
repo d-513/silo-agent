@@ -98,16 +98,25 @@ export function BotPage() {
     call.start(mainId, true);
     void navigate(chatLink(id, mainId));
   }, [call, mainId, id, navigate]);
-  // A call from the empty chat makes its own: go there once it has an id.
+  // A call from the empty chat makes its own: go there once it has an id,
+  // if the empty chat is still the page. Either way that call is settled, so
+  // a later New chat never jumps to it.
   const callChat = call.snap?.chatId ?? "";
   const callFromNew = useRef(false);
   useEffect(() => {
-    if (call.snap?.chatId === "new") callFromNew.current = true;
-    else if (callFromNew.current && callChat && fresh) {
-      callFromNew.current = false;
-      void navigate(chatLink(id, callChat));
+    if (callChat === "new") {
+      callFromNew.current = true;
+      return;
     }
-  }, [callChat, fresh, id, navigate, call.snap?.chatId]);
+    if (!callFromNew.current) return;
+    if (!callChat) {
+      // Ended (and gone) before it had an id.
+      callFromNew.current = false;
+      return;
+    }
+    callFromNew.current = false;
+    if (fresh) void navigate(chatLink(id, callChat));
+  }, [callChat, fresh, id, navigate]);
   const draft = useComposerDraft(id, bot?.workerConnected);
   // Each visit to the empty chat starts from the defaults.
   const [pick, setPick] = useState<ChatPick>({ model: "", thinking: "" });
