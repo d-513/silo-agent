@@ -1,10 +1,10 @@
 import { CircleAlert, CircleCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ui } from "../api";
 import { Btn } from "../Btn";
 import { fail } from "../errors";
 import { ErrorWell, inputClass, Panel } from "../Field";
-import type { Channel, ChannelAdapter } from "../gen/silo/v1/ui_pb";
+import type { Channel, ChannelAdapter, ChannelState } from "../gen/silo/v1/ui_pb";
 import { Lamp } from "../Lamp";
 import { widePage } from "../PageHead";
 import { channelLook } from "../statusLook";
@@ -14,6 +14,9 @@ import { t } from "../i18n.ts";
 import { Trans } from "../Trans.tsx";
 
 const heading = "text-section text-ink-3";
+
+const pairing = (kind?: string) => kind === "qr" || kind === "auth";
+const stateKey = (s?: ChannelState) => (s ? `${s.kind}\u0000${s.qr}\u0000${s.message}` : "");
 
 export function ChannelSetup({
   botId,
@@ -29,25 +32,48 @@ export function ChannelSetup({
   onChanged: () => void;
 }) {
   const [state, setState] = useState(channel.state);
+  // The server's state from before the last action that ended a login: a
+  // poll that left before that action carries it, and must not bring the old
+  // code back over what the action answered.
+  const replaced = useRef<string | null>(null);
 
   // A QR login rotates its code by itself, so the page follows the server's
   // state while a login is in progress (and for the step that ends it). Any
   // other state is left alone: the chat picker's list is the user's to keep.
   useEffect(() => {
-    const pairing = (kind?: string) => kind === "qr" || kind === "auth";
-    setState((cur) => (pairing(channel.state?.kind) || pairing(cur?.kind) ? channel.state : cur));
+    const next = channel.state;
+    const stale = replaced.current !== null && replaced.current === stateKey(next);
+    // A poll that left after the action ends the watch.
+    if (!stale) replaced.current = null;
+    setState((cur) => {
+      if (!pairing(next?.kind) && !pairing(cur?.kind)) return cur;
+      if (stale && !pairing(cur?.kind)) return cur;
+      return next;
+    });
   }, [channel.state]);
   const [target, setTarget] = useState({ id: channel.externalId, title: channel.targetTitle });
+  // The binding as saved, when it changes elsewhere (another tab, the Bot).
+  useEffect(() => {
+    setTarget({ id: channel.externalId, title: channel.targetTitle });
+  }, [channel.externalId, channel.targetTitle]);
   const [manual, setManual] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
+  // adopt takes an action's answer as the page's state.
+  function adopt(next: ChannelState | undefined, before: string) {
+    replaced.current = pairing(next?.kind) ? null : before;
+    setState(next);
+  }
+
   async function run(key: string) {
+    if (busy) return;
     setBusy(true);
     setErr("");
+    const before = stateKey(channel.state);
     try {
       const res = await ui.channelAction({ botId, id: channel.id, action: key, payload: {} });
-      setState(res.state);
+      adopt(res.state, before);
     } catch (e) {
       setErr(fail(e));
     } finally {
@@ -56,12 +82,14 @@ export function ChannelSetup({
   }
 
   async function choose(value: string, label: string) {
+    if (busy) return;
     setBusy(true);
     setErr("");
+    const before = stateKey(channel.state);
     try {
       const res = await ui.channelAction({ botId, id: channel.id, action: "set_target", payload: { value, label } });
       setTarget({ id: value, title: label });
-      setState(res.state);
+      adopt(res.state, before);
       onChanged();
     } catch (e) {
       setErr(fail(e));
@@ -173,7 +201,7 @@ export function ChannelSetup({
                       value={manual}
                       onChange={(e) => setManual(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && manual.trim()) void choose(manual.trim(), manual.trim());
+                        if (e.key === "Enter" && manual.trim() && !busy) void choose(manual.trim(), manual.trim());
                       }}
                     />
                     <Btn kind="secondary" type="button" disabled={busy || !manual.trim()} onClick={() => void choose(manual.trim(), manual.trim())}>
