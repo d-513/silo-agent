@@ -1,6 +1,8 @@
 package egress
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -186,5 +188,46 @@ func TestDNSServersSettingsThenSystem(t *testing.T) {
 	s.ResolvConfs = []string{stub, filepath.Join(dir, "missing")}
 	if got, src = s.dnsServers(); len(got) != 0 || src != "" {
 		t.Fatalf("none = %v %q", got, src)
+	}
+}
+
+// A render that fails is tried again, and its problem goes once one works.
+func TestFailedRenderIsRetriedAndItsProblemCleared(t *testing.T) {
+	prev := renderRetry
+	renderRetry = 10 * time.Millisecond
+	t.Cleanup(func() { renderRetry = prev })
+
+	s := New(nil, nil, nil, withPool("10.213.0.0/16"))
+	calls := 0
+	s.render = func() (*v1.EgressApply, error) {
+		calls++
+		if calls == 1 {
+			return nil, errors.New("the CA could not be read")
+		}
+		return &v1.EgressApply{CpAddr: "cp"}, nil
+	}
+	sess := &session{dirty: make(chan struct{}, 1), done: make(chan struct{})}
+	sess.poke()
+	sent := make(chan *v1.EgressApply, 1)
+	errc := make(chan error)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		_ = s.sendLoop(ctx, sess, errc, func(a *v1.EgressApply) error { sent <- a; return nil })
+	}()
+	select {
+	case a := <-sent:
+		if a.CpAddr != "cp" {
+			t.Fatalf("sent %+v", a)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("a failed render was never tried again")
+	}
+	deadline := time.Now().Add(time.Second)
+	for s.Problem() != "" && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if p := s.Problem(); p != "" {
+		t.Fatalf("the problem stayed: %q", p)
 	}
 }

@@ -65,6 +65,9 @@ type Service struct {
 	OnTraffic func(rows []*v1.EgressTrafficRow)
 
 	hub *hub
+	// render builds the state sent to the gateway; nil is renderApply (a seam
+	// for tests).
+	render func() (*v1.EgressApply, error)
 
 	mu      sync.Mutex
 	problem string
@@ -122,6 +125,16 @@ func (s *Service) Problem() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.problem
+}
+
+// clearProblem clears the problem only while it is still msg, so a later
+// problem of another kind is not hidden.
+func (s *Service) clearProblem(msg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.problem == msg {
+		s.problem = ""
+	}
 }
 
 func (s *Service) setProblem(e error) {
@@ -808,6 +821,30 @@ func (s *Service) Session(ctx context.Context, stream *connect.BidiStream[v1.Egr
 	}()
 	// Sends stay on this goroutine: one still sending after the handler
 	// returned would panic the whole control plane.
+	return s.sendLoop(ctx, sess, errc, func(apply *v1.EgressApply) error {
+		return stream.Send(&v1.EgressDown{Body: &v1.EgressDown_Apply{Apply: apply}})
+	})
+}
+
+// renderRetry is the first wait before a failed render is tried again; it
+// doubles up to renderRetryMax.
+var (
+	renderRetry    = time.Second
+	renderRetryMax = time.Minute
+)
+
+// sendLoop sends the state each time it changes. A render that fails is the
+// session's problem and is tried again with a backoff: the change that
+// prompted it has been taken, and the gateway must not keep a stale policy
+// until some other change comes along.
+func (s *Service) sendLoop(ctx context.Context, sess *session, errc <-chan error, send func(*v1.EgressApply) error) error {
+	render := s.render
+	if render == nil {
+		render = s.renderApply
+	}
+	var retry <-chan time.Time
+	wait := renderRetry
+	failed := ""
 	for {
 		select {
 		case <-ctx.Done():
@@ -817,14 +854,25 @@ func (s *Service) Session(ctx context.Context, stream *connect.BidiStream[v1.Egr
 		case err := <-errc:
 			return err
 		case <-sess.dirty:
-			apply, err := s.renderApply()
-			if err != nil {
-				s.setProblem(err)
-				continue
-			}
-			if err := stream.Send(&v1.EgressDown{Body: &v1.EgressDown_Apply{Apply: apply}}); err != nil {
-				return err
-			}
+		case <-retry:
+		}
+		retry = nil
+		apply, err := render()
+		if err != nil {
+			log.Printf("egress: render the gateway's state: %v (trying again in %s)", err, wait)
+			s.setProblem(err)
+			failed = err.Error()
+			retry = time.After(wait)
+			wait = min(wait*2, renderRetryMax)
+			continue
+		}
+		if err := send(apply); err != nil {
+			return err
+		}
+		wait = renderRetry
+		if failed != "" {
+			s.clearProblem(failed)
+			failed = ""
 		}
 	}
 }
