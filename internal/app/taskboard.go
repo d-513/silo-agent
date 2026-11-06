@@ -164,14 +164,18 @@ func (a *App) taskTool(ctx context.Context, bot *db.Bot, runID, name string, arg
 		}
 		now := time.Now()
 		note := textx.ClipRunes(stringArg(args, "note"), taskTextMax)
-		res := a.DB.Model(&db.TaskItem{}).Where("chat_id = ? AND n IN ?", board, ns).
+		// An item is done once: marking it again keeps who did it and why.
+		res := a.DB.Model(&db.TaskItem{}).Where("chat_id = ? AND n IN ? AND NOT done", board, ns).
 			Updates(map[string]any{"done": true, "done_by": actor, "note": note, "done_at": &now})
 		if res.RowsAffected == 0 {
-			return "", fmt.Errorf("no task numbered %v", ns)
+			var n int64
+			if a.DB.Model(&db.TaskItem{}).Where("chat_id = ? AND n IN ?", board, ns).Count(&n); n == 0 {
+				return "", fmt.Errorf("no task numbered %v", ns)
+			}
 		}
-		changed = true
+		changed = res.RowsAffected > 0
 	case "reset":
-		a.DB.Where("chat_id = ?", board).Delete(&db.TaskItem{})
+		a.clearBoardLocked(board)
 		changed = true
 	}
 	if changed {
@@ -200,6 +204,18 @@ func (a *App) taskTool(ctx context.Context, bot *db.Bot, runID, name string, arg
 		return "The taskboard is empty.", nil
 	}
 	return formatBoard(items), nil
+}
+
+// clearBoard empties a chat's Taskboard, as one writer like the rest: an
+// add half done must not leave its last items on an emptied board.
+func (a *App) clearBoard(chatID string) {
+	taskMu.Lock()
+	defer taskMu.Unlock()
+	a.clearBoardLocked(chatID)
+}
+
+func (a *App) clearBoardLocked(chatID string) {
+	a.DB.Where("chat_id = ?", chatID).Delete(&db.TaskItem{})
 }
 
 func stringArg(args map[string]any, k string) string {

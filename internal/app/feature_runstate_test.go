@@ -229,3 +229,31 @@ func TestSubagentThatCannotStartIsNotLeftRunning(t *testing.T) {
 		t.Fatalf("%d subagents left behind", n)
 	}
 }
+
+// A task is done once: marking it again keeps who did it and their note.
+func TestTaskDoneTwiceKeepsTheFirst(t *testing.T) {
+	dummy.Reset()
+	h := apptest.New(t)
+	id := h.CreateBot("Board").GetId()
+	chat := h.FirstChat(id)
+	run, _ := h.Send(id, chat, "Test_rs_board")
+	h.WaitRun(run)
+	h.LiveRun(run)
+	for _, step := range []struct{ action, args string }{
+		{"add", `{"tasks":["one"]}`},
+		{"done", `{"ids":[1],"note":"found it"}`},
+		{"done", `{"ids":[1]}`},
+	} {
+		if res := pyCall(t, h, id, run, "tasks", step.action, step.args); res.GetError() != "" {
+			t.Fatalf("%s: %+v", step.action, res)
+		}
+	}
+	if res := pyCall(t, h, id, run, "tasks", "done", `{"ids":[7]}`); res.GetError() == "" {
+		t.Fatal("marking a task that is not there passed")
+	}
+	var it db.TaskItem
+	h.DB.Where("chat_id = ? AND n = 1", chat).Find(&it)
+	if !it.Done || it.Note != "found it" {
+		t.Fatalf("item %+v", it)
+	}
+}

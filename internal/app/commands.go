@@ -100,7 +100,7 @@ func (a *App) cmdClear(ctx context.Context, c command.Call) (command.Result, err
 	// (pySessionFor). What was said is not lost: the memory collector reads
 	// up to the divider like any other part of the chat.
 	a.stopSubagents(c.BotID, c.ChatID)
-	a.DB.Where("chat_id = ?", c.ChatID).Delete(&db.TaskItem{})
+	a.clearBoard(c.ChatID)
 	a.commandEvent(c.BotID, c.ChatID, contextClearedKind, "")
 	return command.Result{Notice: "Context cleared. The Bot starts fresh from here; its memories stay."}, nil
 }
@@ -160,7 +160,7 @@ func (a *App) cmdWipe(ctx context.Context, c command.Call) (command.Result, erro
 		return command.Result{}, err
 	}
 	if scope != wipeLast {
-		a.DB.Where("chat_id = ?", c.ChatID).Delete(&db.TaskItem{})
+		a.clearBoard(c.ChatID)
 	}
 	a.publishReset(c.BotID, c.ChatID)
 	a.commandEvent(c.BotID, c.ChatID, wipedKind, fmt.Sprint(n))

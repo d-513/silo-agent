@@ -98,7 +98,7 @@ func (a *App) ClearTaskboard(ctx context.Context, req *connect.Request[v1.ClearT
 		return nil, err
 	}
 	board := a.boardChat(req.Msg.GetChatId())
-	a.DB.Where("chat_id = ?", board).Delete(&db.TaskItem{})
+	a.clearBoard(board)
 	a.pingLead(req.Msg.GetBotId(), board, "board")
 	return connect.NewResponse(a.protoBoard(board)), nil
 }

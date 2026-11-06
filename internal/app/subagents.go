@@ -142,7 +142,7 @@ func (a *App) dropSubagents(botID, leadChatID string) {
 		chats.Drop(a.DB, sa.ChatID)
 		a.DB.Delete(&db.Subagent{}, "id = ?", sa.ID)
 	}
-	a.DB.Where("chat_id = ?", leadChatID).Delete(&db.TaskItem{})
+	a.clearBoard(leadChatID)
 }
 
 // --- finishing and waking ---
