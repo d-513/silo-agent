@@ -276,3 +276,63 @@ func TestAutomationToolsCreateListUpdateDelete(t *testing.T) {
 		t.Fatalf("after tools: %v", list)
 	}
 }
+
+// A firing that could not start a run (here: its owner is disabled) has used
+// its slot; the automation says it failed instead of showing the run before.
+func TestAutomationFiringThatFailsIsRecorded(t *testing.T) {
+	dummy.Reset()
+	h := apptest.New(t)
+	bot := h.CreateBot("Refused")
+	au := createAutomation(t, h, bot.GetId(), "Hourly", "Test_81_Input", "0 * * * *")
+	h.DB.Model(&db.Automation{}).Where("id = ?", au.GetId()).Update("next_run_at", time.Now().Add(-time.Minute))
+	h.DB.Model(&db.User{}).Where("email = ?", h.Email).Update("disabled", true)
+
+	if n := h.App.Automations.FireDue(time.Now()); n != 0 {
+		t.Fatalf("fired %d for a disabled owner", n)
+	}
+	var row db.Automation
+	h.DB.First(&row, "id = ?", au.GetId())
+	if row.LastStatus != "error" || row.LastRunAt == nil {
+		t.Fatalf("failed firing recorded as status %q at %v", row.LastStatus, row.LastRunAt)
+	}
+	if row.NextRunAt == nil || !row.NextRunAt.After(time.Now()) {
+		t.Fatalf("next run not advanced: %v", row.NextRunAt)
+	}
+}
+
+// Asks that race for an automation with no log chat make one between them.
+func TestAutomationLogChatIsMadeOnce(t *testing.T) {
+	dummy.Reset()
+	h := apptest.New(t)
+	bot := h.CreateBot("Crowd")
+	hb := listAutomations(t, h, bot.GetId())[0]
+	h.DB.Where("automation_id = ?", hb.GetId()).Delete(&db.Chat{})
+	h.DB.Model(&db.Automation{}).Where("id = ?", hb.GetId()).Update("chat_id", "")
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	runs := map[string]bool{}
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			id, _, err := h.App.Automations.Ask(bot.GetId(), "heartbeat", "Test_81_Input")
+			if err == nil {
+				mu.Lock()
+				runs[id] = true
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+	for id := range runs {
+		h.WaitRun(id)
+	}
+	var logs []db.Chat
+	h.DB.Where("automation_id = ?", hb.GetId()).Find(&logs)
+	var row db.Automation
+	h.DB.First(&row, "id = ?", hb.GetId())
+	if len(logs) != 1 || row.ChatID != logs[0].ID {
+		t.Fatalf("%d log chats for one automation (it points at %q)", len(logs), row.ChatID)
+	}
+}

@@ -180,8 +180,15 @@ func (s *Service) Rezone(botID string) {
 	s.db.Where("bot_id = ? AND next_run_at IS NOT NULL", botID).Find(&rows)
 	now, loc := time.Now(), s.zones()(botID)
 	for i := range rows {
-		s.db.Model(&rows[i]).Update("next_run_at", nextRun(&rows[i], now, loc))
+		s.moveNext(&rows[i], nextRun(&rows[i], now, loc))
 	}
+}
+
+// moveNext re-times one automation from the firing it was read with. A firing
+// FireDue claimed meanwhile (it moves next_run_at the same way) is left alone:
+// writing over the claim could put the slot it just fired back.
+func (s *Service) moveNext(au *db.Automation, next *time.Time) {
+	s.db.Model(&db.Automation{}).Where("id = ? AND next_run_at = ?", au.ID, au.NextRunAt).Update("next_run_at", next)
 }
 
 // --- store ---
@@ -234,7 +241,10 @@ func (s *Service) ensurePinned(botID, kind, name, prompt string) {
 	}
 }
 
-// ensureAutomationChat gives an automation its hidden log Chat.
+// ensureAutomationChat gives an automation its hidden log Chat. Callers race
+// (an Ask and a firing, several Asks), so the chat is claimed like a slot: it
+// is made, then stored only where the automation still points at the chat this
+// caller saw; a loser deletes its own and takes the winner's.
 func (s *Service) ensureAutomationChat(au *db.Automation) {
 	if au.ChatID != "" {
 		var n int64
@@ -249,11 +259,21 @@ func (s *Service) ensureAutomationChat(au *db.Automation) {
 		log.Printf("automation chat %s: %v", au.ID, err)
 		return
 	}
-	au.ChatID = c.ID
-	if au.CreatedAt.IsZero() {
+	res := s.db.Model(&db.Automation{}).Where("id = ? AND COALESCE(chat_id, '') = ?", au.ID, au.ChatID).Update("chat_id", c.ID)
+	if res.Error != nil {
+		log.Printf("automation chat %s: %v", au.ID, res.Error)
+	}
+	if res.Error == nil && res.RowsAffected == 1 {
+		au.ChatID = c.ID
+		return
+	}
+	var cur db.Automation
+	if s.db.Select("chat_id").Where("id = ?", au.ID).Limit(1).Find(&cur).RowsAffected == 0 {
+		au.ChatID = c.ID
 		return // not persisted yet; the caller's Create writes chat_id
 	}
-	s.db.Model(&db.Automation{}).Where("id = ?", au.ID).Update("chat_id", c.ID)
+	s.db.Delete(&db.Chat{}, "id = ?", c.ID)
+	au.ChatID = cur.ChatID
 }
 
 func (s *Service) listAutomations(botID string) []db.Automation {
@@ -400,7 +420,7 @@ func (s *Service) Reschedule() {
 	s.db.Where("next_run_at IS NOT NULL AND next_run_at < ?", time.Now()).Find(&rows)
 	zoneOf := s.zones()
 	for i := range rows {
-		s.db.Model(&rows[i]).Update("next_run_at", nextRun(&rows[i], time.Now(), zoneOf(rows[i].BotID)))
+		s.moveNext(&rows[i], nextRun(&rows[i], time.Now(), zoneOf(rows[i].BotID)))
 	}
 }
 
@@ -441,6 +461,9 @@ func (s *Service) fireAutomation(au *db.Automation) (string, error) {
 		return "", errAutomationBusy
 	}
 	if err != nil {
+		// The slot is spent either way: say this firing failed, rather than
+		// go on showing the run before it.
+		s.db.Model(&db.Automation{}).Where("id = ?", au.ID).Updates(map[string]any{"last_status": "error", "last_run_at": now})
 		return "", err
 	}
 	s.db.Model(&db.Automation{}).Where("id = ?", au.ID).Updates(map[string]any{"last_run_id": runID, "last_run_at": now, "last_status": ""})

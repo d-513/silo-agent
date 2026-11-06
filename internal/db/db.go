@@ -711,7 +711,8 @@ type Automation struct {
 	NextRunAt *time.Time `gorm:"index"`
 	LastRunAt *time.Time
 	LastRunID string
-	// LastStatus holds a firing that never became a run ("skipped"); a real
+	// LastStatus holds a firing that never became a run ("skipped" while the
+	// previous run was live, "error" when the run could not start); a real
 	// run's status is read from its Run row.
 	LastStatus string
 	CreatedAt  time.Time
