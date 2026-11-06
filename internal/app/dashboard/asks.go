@@ -224,7 +224,7 @@ func (s *Service) DismissDashboardCard(ctx context.Context, req *connect.Request
 		return nil, err
 	}
 	suppress := req.Msg.GetSuppressKind()
-	if err := s.claim(c, "dismissed", map[string]any{"suppressed": suppress, "dismissed_at": time.Now()}); err != nil {
+	if _, err := s.claim(c, "dismissed", map[string]any{"suppressed": suppress, "dismissed_at": time.Now()}); err != nil {
 		return nil, err
 	}
 	s.cardChanged(c)
@@ -326,22 +326,33 @@ func (s *Service) quoteChat(ctx context.Context, botID, title string, q quote.Qu
 }
 
 // claim moves an open card to status (with more columns), refusing one the
-// owner already answered: a second press must not answer it twice.
-func (s *Service) claim(c *db.DashboardCard, status string, more map[string]any) error {
-	now := time.Now()
+// owner already answered: a second press must not answer it twice. It
+// returns the claim's time, which unclaim needs.
+func (s *Service) claim(c *db.DashboardCard, status string, more map[string]any) (time.Time, error) {
+	// Postgres keeps microseconds: unclaim matches on this value.
+	now := time.Now().Truncate(time.Microsecond)
 	upd := map[string]any{"status": status, "read_at": now, "updated_at": now}
 	for k, v := range more {
 		upd[k] = v
 	}
 	res := s.db.Model(&db.DashboardCard{}).Where("id = ? AND status = 'open'", c.ID).Updates(upd)
 	if res.Error != nil {
-		return res.Error
+		return time.Time{}, res.Error
 	}
 	if res.RowsAffected == 0 {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("this card is answered already"))
+		return time.Time{}, connect.NewError(connect.CodeFailedPrecondition, errors.New("this card is answered already"))
 	}
 	c.Status = status
-	return nil
+	return now, nil
+}
+
+// unclaim takes back a claim nothing came of: the card is open again as it
+// was, read or not. Only while the card is still as the claim left it, so
+// what changed it since is not undone.
+func (s *Service) unclaim(c *db.DashboardCard, status string, at time.Time, readAt *time.Time) {
+	s.db.Model(&db.DashboardCard{}).Where("id = ? AND status = ? AND updated_at = ?", c.ID, status, at).
+		Updates(map[string]any{"status": "open", "read_at": readAt, "updated_at": time.Now()})
+	c.Status, c.ReadAt = "open", readAt
 }
 
 // SubmitDashboardCard opens a chat quoting the ask and starts a run with the
@@ -351,7 +362,9 @@ func (s *Service) SubmitDashboardCard(ctx context.Context, req *connect.Request[
 	if err != nil {
 		return nil, err
 	}
-	if err := s.claim(c, "submitted", nil); err != nil {
+	readAt := c.ReadAt
+	at, err := s.claim(c, "submitted", nil)
+	if err != nil {
 		return nil, err
 	}
 	turn := submittedTurn(c, req.Msg.GetValuesJson(), req.Msg.GetNote())
@@ -370,7 +383,7 @@ func (s *Service) SubmitDashboardCard(ctx context.Context, req *connect.Request[
 	}
 	if err != nil {
 		// Nothing heard it: the card is open again for another try.
-		s.db.Model(&db.DashboardCard{}).Where("id = ?", c.ID).Updates(map[string]any{"status": "open", "updated_at": time.Now()})
+		s.unclaim(c, "submitted", at, readAt)
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	s.cardChanged(c)

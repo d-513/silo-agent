@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/access"
 	"silo.agent/internal/apptest"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm/dummy"
@@ -368,5 +369,32 @@ func TestUntoldOfferAnswerIsToldLater(t *testing.T) {
 	h.WaitRun(lastRun(h, main))
 	if n := users(); n != before+1 {
 		t.Fatalf("told %d times", n-before)
+	}
+}
+
+// A submit nothing heard (the Bot could not start a run) leaves the card as
+// it was: open, and unread if it was.
+func TestFailedSubmitReopensTheCardAsItWas(t *testing.T) {
+	dummy.Reset()
+	h := apptest.New(t)
+	sp := homeSpace(t, h)
+	bot := h.CreateBot("Suspended")
+	bob, bu := joinSpace(t, h, sp, "bob@test.local", access.RoleMember)
+	if _, err := h.Client.AddBotPerson(h.Ctx(), connect.NewRequest(&v1.AddBotPersonRequest{BotId: bot.GetId(), UserId: bu.ID, Role: access.RoleUse})); err != nil {
+		t.Fatal(err)
+	}
+	card := db.DashboardCard{ID: "card-" + bot.GetId(), BotID: bot.GetId(), Title: "Renew?", Status: "open", CreatedAt: time.Now(), UpdatedAt: time.Now()}
+	if err := h.DB.Create(&card).Error; err != nil {
+		t.Fatal(err)
+	}
+	// Its only manager disabled, the Bot runs nothing.
+	h.DB.Model(&db.User{}).Where("email = ?", h.Email).Update("disabled", true)
+	if _, err := bob.SubmitDashboardCard(h.Ctx(), connect.NewRequest(&v1.SubmitDashboardCardRequest{BotId: bot.GetId(), Id: card.ID})); code(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("submit to a suspended Bot: %v", err)
+	}
+	var got db.DashboardCard
+	h.DB.Where("id = ?", card.ID).First(&got)
+	if got.Status != "open" || got.ReadAt != nil {
+		t.Fatalf("after a failed submit the card is %q, read %v", got.Status, got.ReadAt)
 	}
 }
