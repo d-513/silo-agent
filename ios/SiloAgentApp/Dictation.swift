@@ -18,15 +18,21 @@ final class Dictation: NSObject {
     private var recorder: AVAudioRecorder?
     private var ticker: Task<Void, Never>?
     private var url: URL?
+    // Asking for the microphone: a second press meanwhile would make a second recorder.
+    private var starting = false
 
     func start() async {
-        guard state == .idle else { return }
+        // A call has the audio session; changing its category would take the call's voice away.
+        guard state == .idle, !starting, !CallModel.shared.live else { return }
+        starting = true
+        defer { starting = false }
         error = nil
         let session = AVAudioSession.sharedInstance()
         guard await AVAudioApplication.requestRecordPermission() else {
             error = "Microphone access is off. Turn it on in Settings."
             return
         }
+        guard state == .idle, !CallModel.shared.live else { return }
         do {
             try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
             try session.setActive(true)
