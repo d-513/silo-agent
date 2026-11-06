@@ -47,7 +47,9 @@ export function useDriveForm({
   const [err, setErr] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [authErr, setAuthErr] = useState("");
-  const [test, setTest] = useState<{ state: "idle" | "busy" | "ok" | "fail"; msg: string }>({ state: "idle", msg: "" });
+  // sig is the connection fields the test ran with: a result for fields
+  // since changed proves nothing about them.
+  const [test, setTest] = useState<{ state: "idle" | "busy" | "ok" | "fail"; msg: string; sig?: string }>({ state: "idle", msg: "" });
   const saver = useSave();
   const draftRef = useRef<Drive | undefined>(drive);
   draftRef.current = draft;
@@ -57,15 +59,21 @@ export function useDriveForm({
   const connectVars = userVars.filter((v) => !v.advanced && v.type !== "pick" && v.type !== "folder");
   const mountVars = userVars.filter((v) => !v.advanced && (v.type === "pick" || v.type === "folder"));
   const advancedVars = userVars.filter((v) => v.advanced);
-  const connected = oauth ? !!draft?.connected : editing || test.state === "ok";
-  const requiredMissing = connectVars.filter((v) => v.required && !(values[v.key] || secrets[v.key] || draft?.secretsSet.includes(v.key) || v.defaultValue));
-
   // Only connection fields change what a test proves. Choosing a folder or a
   // pick never does, so it must not send the owner back to Test connection.
   const connectionField = (k: string) => {
     const v = tpl.vars.find((x) => x.kind === "user" && x.key === k);
     return !!v && v.type !== "folder" && v.type !== "pick";
   };
+  // Once the owner has tested, editing a connection field re-tests on its
+  // own after a pause instead of asking for another click.
+  const connSig = JSON.stringify([
+    Object.entries(values).filter(([k]) => connectionField(k)).sort(),
+    Object.entries(secrets).filter(([k]) => connectionField(k)).sort(),
+  ]);
+  const connected = oauth ? !!draft?.connected : editing || (test.state === "ok" && test.sig === connSig);
+  const requiredMissing = connectVars.filter((v) => v.required && !(values[v.key] || secrets[v.key] || draft?.secretsSet.includes(v.key) || v.defaultValue));
+
   const set = (k: string, val: string) => setValues((m) => ({ ...m, [k]: val }));
   const setSecret = (k: string, val: string) => setSecrets((m) => ({ ...m, [k]: val }));
 
@@ -82,15 +90,24 @@ export function useDriveForm({
 
   // Sync the draft with what is on screen. Editing a saved drive never writes
   // here: its changes apply only on Save.
-  const sync = useCallback(async (): Promise<Drive> => {
-    const cur = draftRef.current;
-    if (cur && !cur.draft) return cur;
-    const d = await ui.saveDrive({ botId, spaceId, id: cur?.id ?? "", template: tpl.key, draft: true, readOnly, options: options() });
-    setDraft(d);
-    draftRef.current = d;
-    return d;
+  // One at a time: two at once before the first draft exists would make two.
+  const syncChain = useRef<Promise<unknown>>(Promise.resolve());
+  const sync = useCallback((): Promise<Drive> => {
+    const run = async () => {
+      const cur = draftRef.current;
+      if (cur && !cur.draft) return cur;
+      const d = await ui.saveDrive({ botId, spaceId, id: cur?.id ?? "", template: tpl.key, draft: true, readOnly, options: options() });
+      setDraft(d);
+      draftRef.current = d;
+      return d;
+    };
+    const p = syncChain.current.then(run, run);
+    syncChain.current = p.catch(() => {});
+    return p;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [botId, spaceId, tpl.key, readOnly, values, secrets]);
+  const syncRef = useRef(sync);
+  syncRef.current = sync;
 
   const reloadDraft = useCallback(async () => {
     const cur = draftRef.current;
@@ -110,11 +127,17 @@ export function useDriveForm({
   const botPolled = useQuery(UI.method.listDrives, authBusy && draft && botId ? { botId, draftId } : skipToken, pollOpts);
   const spacePolled = useQuery(UI.method.listSpaceDrives, authBusy && draft && !botId ? { spaceId, draftId } : skipToken, pollOpts);
   const polled = botId ? botPolled : spacePolled;
+  // The sign-in window, and what the draft was before it opened.
+  const popup = useRef<Window | null>(null);
+  const before = useRef<{ connected: boolean; account: string }>({ connected: false, account: "" });
   useEffect(() => {
     const cur = draftRef.current;
     const fresh = cur && polled.data?.drives.find((x) => x.id === cur.id);
     if (!cur || !fresh || !authBusy) return;
-    if (fresh.connected && fresh.account !== cur.account) {
+    // A token that was not there, or another account. Signing in again with
+    // the same account looks the same as before: the message or the window
+    // closing ends that one.
+    if (fresh.connected && (!before.current.connected || fresh.account !== before.current.account)) {
       setAuthBusy(false);
       setDraft(fresh);
       setValues((m) => ({ ...fresh.options, ...m }));
@@ -123,14 +146,26 @@ export function useDriveForm({
   useEffect(() => {
     if (!authBusy) return;
     const onMsg = (e: MessageEvent) => {
+      // Only our own sign-in window speaks for it.
+      if (!popup.current || e.source !== popup.current) return;
       const m = e.data as { silo?: string; ok?: boolean; message?: string };
       if (m?.silo !== "drive-auth") return;
       setAuthBusy(false);
       if (!m.ok) setAuthErr(m.message || t("Sign-in did not finish."));
       void reloadDraft();
     };
+    // The window closed without a word (closed by hand, or the message was
+    // lost): read the draft once more and stop waiting.
+    const watch = window.setInterval(() => {
+      if (!popup.current?.closed) return;
+      setAuthBusy(false);
+      void reloadDraft().catch(() => {});
+    }, 1000);
     window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
+    return () => {
+      window.clearInterval(watch);
+      window.removeEventListener("message", onMsg);
+    };
   }, [authBusy, botId, reloadDraft]);
 
   async function signIn() {
@@ -141,7 +176,9 @@ export function useDriveForm({
     try {
       const d = await sync();
       const r = await ui.beginDriveAuth({ id: d.id });
-      if (w) {
+      if (w && !w.closed) {
+        popup.current = w;
+        before.current = { connected: d.connected, account: d.account };
         w.location.href = r.url;
         setAuthBusy(true);
       } else {
@@ -154,24 +191,21 @@ export function useDriveForm({
   }
 
   async function runTest() {
-    testedSig.current = connSig;
-    setTest({ state: "busy", msg: "" });
+    const sig = connSig;
+    testedSig.current = sig;
+    setTest({ state: "busy", msg: "", sig });
     try {
       const d = await sync();
       const r = await ui.browseDrive({ id: d.id, path: "" });
       const n = r.dirs.length;
-      setTest({ state: "ok", msg: n === 0 ? t("Connected. The drive is empty at the top level.") : t("Connected. Found {{count}} folders.", { count: n }) });
+      setTest({ state: "ok", msg: n === 0 ? t("Connected. The drive is empty at the top level.") : t("Connected. Found {{count}} folders.", { count: n }), sig });
     } catch (e) {
-      setTest({ state: "fail", msg: fail(e) });
+      setTest({ state: "fail", msg: fail(e), sig });
     }
   }
 
-  // Once the owner has tested, editing a connection field re-tests on its
-  // own after a pause instead of asking for another click.
-  const connSig = JSON.stringify([
-    Object.entries(values).filter(([k]) => connectionField(k)).sort(),
-    Object.entries(secrets).filter(([k]) => connectionField(k)).sort(),
-  ]);
+  // A field changed since the last test (also while it ran) is tested again
+  // once it finishes.
   const testedSig = useRef("");
   useEffect(() => {
     if (oauth || editing || test.state === "busy") return;
@@ -183,7 +217,7 @@ export function useDriveForm({
     const timer = setTimeout(() => void runTest(), 900);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connSig]);
+  }, [connSig, test.state]);
 
   const browse = useCallback(
     async (path: string) => {
@@ -196,8 +230,10 @@ export function useDriveForm({
   const loaders = useRef<Record<string, () => Promise<DriveOption[]>>>({});
   function pickLoader(key: string) {
     if (!loaders.current[key]) {
+      // Through the ref: a loader made on an earlier render must save the
+      // draft with what is on screen now.
       loaders.current[key] = async () => {
-        const d = await sync();
+        const d = await syncRef.current();
         return (await ui.pickDriveOptions({ id: d.id, key })).options;
       };
     }
