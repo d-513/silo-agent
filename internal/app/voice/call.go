@@ -151,6 +151,10 @@ type call struct {
 	// listened closes once every turn that arrived is dealt with.
 	listened chan struct{}
 
+	// smu orders state changes: each is decided and sent under it, so a
+	// stale decision cannot land after a newer one (smu, then mu, then the
+	// outbox's own lock).
+	smu   sync.Mutex
 	mu    sync.Mutex
 	state string
 	tool  string
@@ -716,8 +720,12 @@ func (c *call) settle() {
 // speaking, because that is when the browser lets the human cut in; what goes
 // on behind it shows once it stops.
 func (c *call) setState(st, tool string) {
-	voice := c.out.busy()
+	c.smu.Lock()
+	defer c.smu.Unlock()
 	c.mu.Lock()
+	// Read under the lock: a piece starting between this read and the
+	// change would otherwise be talked over by a stale listening.
+	voice := c.out.busy()
 	if st != stateSpeaking {
 		c.work, c.workTool = st, tool
 		if c.state == stateSpeaking && voice {

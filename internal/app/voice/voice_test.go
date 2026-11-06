@@ -108,3 +108,21 @@ func TestFlushCancelsTheSynthesis(t *testing.T) {
 		t.Fatal("the synthesis kept going")
 	}
 }
+
+// A duck the browser never ends does not hold the voice for good.
+func TestADuckNeverEndedResumes(t *testing.T) {
+	o := newOutbox()
+	o.duckMax = 30 * time.Millisecond
+	o.say("one two three", "run")
+	p := o.queue[0]
+	frames(p, 10)
+	o.take()
+	o.duck(true)
+	if f, _, _ := o.take(); f != nil {
+		t.Fatal("a ducked voice went on")
+	}
+	time.Sleep(40 * time.Millisecond)
+	if f, _, _ := o.take(); f == nil {
+		t.Fatal("the duck held past its limit")
+	}
+}

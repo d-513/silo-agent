@@ -88,6 +88,10 @@ type outbox struct {
 	queue  []*piece
 	nextID int
 	ducked bool
+	// duckedAt is when the duck began; a duck never ended (the browser went
+	// quiet) ends by itself after duckMax, so the call is not held speaking.
+	duckedAt time.Time
+	duckMax  time.Duration
 	// delay is the browser's playout delay in frames: what was sent but not
 	// heard yet when the human starts speaking.
 	delay int
@@ -100,7 +104,7 @@ type outbox struct {
 }
 
 func newOutbox() *outbox {
-	return &outbox{wake: make(chan struct{}, 1), delay: 5}
+	return &outbox{wake: make(chan struct{}, 1), delay: 5, duckMax: duckMax}
 }
 
 func (o *outbox) poke() {
@@ -126,6 +130,10 @@ func (o *outbox) busy() bool {
 	return len(o.queue) > 0
 }
 
+// duckMax is the longest a duck holds the voice. The browser ends one with
+// unduck or interrupt within a second or two; this is only the safety net.
+const duckMax = 10 * time.Second
+
 // duck pauses the voice the moment the human may be speaking, and steps back
 // over what the browser had not played yet, so resuming loses nothing.
 func (o *outbox) duck(on bool) {
@@ -135,6 +143,9 @@ func (o *outbox) duck(on bool) {
 		p.mu.Lock()
 		p.sent = max(0, p.sent-o.delay-1)
 		p.mu.Unlock()
+	}
+	if on && !o.ducked {
+		o.duckedAt = time.Now()
 	}
 	o.ducked = on
 	o.mu.Unlock()
@@ -258,6 +269,9 @@ func (o *outbox) pace(ctx context.Context) {
 func (o *outbox) take() (frame []byte, start *piece, idle bool) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
+	if o.ducked && o.duckMax > 0 && time.Since(o.duckedAt) > o.duckMax {
+		o.ducked = false // never ended: resume where the duck stepped back to
+	}
 	for len(o.queue) > 0 && !o.ducked {
 		p := o.queue[0]
 		p.mu.Lock()

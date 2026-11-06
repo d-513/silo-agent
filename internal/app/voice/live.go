@@ -252,7 +252,8 @@ func (c *call) voiceConn() llm.SpeechConn {
 	}
 	client, _, model, err := c.s.models.Client(c.snd.Model)
 	if err != nil {
-		c.ttsOff = true
+		// The provider's settings (a key) can be fixed while the call goes on.
+		c.ttsRetry = time.Now().Add(30 * time.Second)
 		return nil
 	}
 	ls, ok := client.(llm.LiveSpeaker)
