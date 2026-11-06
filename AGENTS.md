@@ -495,7 +495,7 @@ Pinned by `feature_hardening_test.go`. The console's origin is where a signed-in
 - It reads a chat's events after its watermark (`chats.memory_seq`, a `run_events.seq`) as a flat transcript (tool output capped short, failures kept longer), and one tool-less completion with `model_memory` (default: the title model) answers JSON `save` / `update` / `forget`. The model is shown the 15 closest existing memories and may `update`/`forget` only those ids. Saves go through `memory.Service.Save` (the `remember` dedupe).
 - The watermark advances after a read, including an unreadable reply, but never on a provider/embed error, so every event is read once. Chats older than the column start at their newest event (`Migrate`).
 - The sweep (a `tickLoop`, 5 min, `memory.collect`) reads web and channel chats (never automation or subagent logs) whose newest new event is over 10 min old and that have no live run, at most 5 per tick; it pauses 15 min after a provider error, and a chat whose collection fails rests 15 min, doubling up to 24 h (`restChat`). A delta over 12k tokens is split into at most 3 calls and the oldest excess dropped.
-- The composer's brain button (`MemoryCollect.tsx`, `CollectMemories`) and `/remember` run it now for one chat.
+- The composer's brain button (`MemoryCollect.tsx`, `CollectMemories`) and `/remember` run it now for one chat, refused while a reply runs there (`errReplyRunning`: a live run moves the events it reads, so a watermark taken then could skip one or read it twice). A diverged chat starts at its newest copied event: the chat it came from collects that part.
 
 ## Knowledge (RAG)
 

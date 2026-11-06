@@ -257,3 +257,44 @@ func TestTaskDoneTwiceKeepsTheFirst(t *testing.T) {
 		t.Fatalf("item %+v", it)
 	}
 }
+
+// Collecting a chat by hand waits for its reply, as the sweep does.
+func TestCollectRefusedWhileAReplyRuns(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_rs_collect", dummy.Turn{Delay: 5 * time.Second, Text: "late"})
+	h := apptest.New(t)
+	id := h.CreateBot("CollectLive").GetId()
+	chat := h.FirstChat(id)
+	runID, _ := h.Send(id, chat, "Test_rs_collect")
+	_, err := h.Client.CollectMemories(h.Ctx(), connect.NewRequest(&v1.CollectMemoriesRequest{BotId: id, ChatId: chat}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("collect during a reply: %v", err)
+	}
+	_, err = h.Client.Send(h.Ctx(), connect.NewRequest(&v1.SendRequest{BotId: id, ChatId: chat, Text: "/remember"}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("/remember during a reply: %v", err)
+	}
+	h.Client.StopRun(h.Ctx(), connect.NewRequest(&v1.StopRunRequest{BotId: id, ChatId: chat}))
+	h.WaitRun(runID)
+}
+
+// A diverged chat does not have its copied part collected again.
+func TestDivergedChatIsNotCollectedAgain(t *testing.T) {
+	dummy.Reset()
+	dummy.Collect("Test_rs_div", "```json\n{\"save\":[{\"text\":\"The dog is Rex\"}]}\n```")
+	h := apptest.New(t)
+	id := h.CreateBot("Diverger").GetId()
+	chat := h.FirstChat(id)
+	run, _ := h.Send(id, chat, "Test_rs_div my dog is Rex")
+	h.WaitRun(run)
+	run, _ = h.Send(id, chat, "and something else")
+	h.WaitRun(run)
+	if res := collect(t, h, id, chat); res.GetSaved() != 1 {
+		t.Fatalf("first collection saved %d", res.GetSaved())
+	}
+	copied := h.DivergeChat(id, chat, h.LastUserEvent(chat).ID)
+	calls := len(dummy.CollectCalls())
+	if res := collect(t, h, id, copied.GetId()); res.GetNote() != "nothing new" || len(dummy.CollectCalls()) != calls {
+		t.Fatalf("the copy was collected again: %q, %d calls", res.GetNote(), len(dummy.CollectCalls())-calls)
+	}
+}

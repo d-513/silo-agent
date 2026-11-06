@@ -62,6 +62,11 @@ var collectCaps = transcriptCaps{Args: 300, Result: 400, ErrorResult: 800}
 
 var errCollecting = errors.New("memories are already being collected for this chat")
 
+// errReplyRunning refuses to collect a chat with a live run, like the sweep:
+// the run moves the events it reads (drainInbox), so a watermark taken now
+// could skip one or read it twice.
+var errReplyRunning = errors.New("a reply is running in this chat; collect memories once it is done")
+
 type collectResult struct {
 	Saved, Updated, Forgotten int
 	// IDs are the memories this collection saved or updated.
@@ -95,6 +100,9 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 	}
 	if ch.ID == "" {
 		return collectResult{}, fmt.Errorf("no chat %s", chatID)
+	}
+	if a.LiveRunID(ch.BotID, ch.ID) != "" {
+		return collectResult{}, errReplyRunning
 	}
 	// The watermark moves past every event, streamed ones too, or the sweep
 	// would keep finding this chat; only what replay reads is loaded.
@@ -463,6 +471,9 @@ func (a *App) CollectMemories(ctx context.Context, req *connect.Request[v1.Colle
 	res, err := a.collectChat(ctx, ch.ID)
 	if errors.Is(err, errCollecting) {
 		return nil, connect.NewError(connect.CodeAborted, err)
+	}
+	if errors.Is(err, errReplyRunning) {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("memory collection failed: %w", err))

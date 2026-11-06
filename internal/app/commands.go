@@ -410,6 +410,9 @@ func (a *App) cmdRemember(ctx context.Context, c command.Call) (command.Result, 
 	if errors.Is(err, errCollecting) {
 		return command.Result{}, command.Refused("Memories are already being collected for this chat.")
 	}
+	if errors.Is(err, errReplyRunning) {
+		return command.Result{}, command.Refused("A reply is running. Use /remember once it is done.")
+	}
 	if err != nil {
 		return command.Result{}, command.Refused("Memory collection failed: " + err.Error())
 	}

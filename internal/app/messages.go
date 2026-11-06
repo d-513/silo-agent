@@ -151,6 +151,10 @@ func (a *App) copyChatPrefix(chatID, eventID string) (*db.Chat, error) {
 			return nil, err
 		}
 	}
+	// The memory collector has read, or will read, the copied part in the
+	// chat it came from: the copy starts after it.
+	a.DB.Exec(`UPDATE chats SET memory_seq = COALESCE((
+		SELECT MAX(e.seq) FROM run_events e JOIN runs r ON r.id = e.run_id WHERE r.chat_id = chats.id), 0) WHERE id = ?`, nc.ID)
 	return &nc, nil
 }
 
