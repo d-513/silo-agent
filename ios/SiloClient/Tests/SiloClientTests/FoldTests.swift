@@ -24,6 +24,22 @@ final class FoldTests: XCTestCase {
         XCTAssertFalse(blocks[0].streaming)
     }
 
+    func testDoneSettlesEveryStreamingReply() {
+        let blocks = foldEvents([ev("chunk", "Let me look."), ev("tool", "{}", tool: "read"), ev("tool_result", "x", tool: "read"), ev("done", "done")])
+        XCTAssertEqual(blocks.map(\.kind), [.assistant, .tool])
+        XCTAssertFalse(blocks[0].streaming)
+    }
+
+    func testThinkingSettlesOnlyItsOwnTurn() {
+        // Reasoning broken up by the reply keeps both parts.
+        let split = foldEvents([ev("thinking_chunk", "a"), ev("chunk", "x"), ev("thinking_chunk", "b"), ev("thinking", "ab")])
+        XCTAssertEqual(split.filter { $0.kind == .thinking }.map(\.text), ["a", "b"])
+        XCTAssertTrue(split.allSatisfy { !$0.pending && !($0.kind == .thinking && $0.streaming) })
+        // A turn with no chunks is a block of its own, never an earlier turn's.
+        let later = foldEvents([ev("thinking_chunk", "first"), ev("thinking", "first"), ev("chunk", "x"), ev("thinking", "second", run: "r2")])
+        XCTAssertEqual(later.filter { $0.kind == .thinking }.map(\.text), ["first", "second"])
+    }
+
     func testToolLifecycle() {
         let blocks = foldEvents([ev("tool_args_chunk", "{\"a\"", tool: "read"), ev("tool", "{\"a\":1}", tool: "read"), ev("tool_chunk", "out"), ev("tool_result", "done", tool: "read")])
         XCTAssertEqual(blocks.count, 1)

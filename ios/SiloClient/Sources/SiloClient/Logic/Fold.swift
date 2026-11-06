@@ -78,6 +78,8 @@ public struct Block: Identifiable, Equatable, Sendable {
     public var result: String?
     public var running = false
     public var streaming = false
+    /// thinking: made of a turn's chunks, before that turn's `thinking` event settles it.
+    public var pending = false
     public var runID = ""
     public var eventID = ""
     public var createdAt = ""
@@ -221,17 +223,26 @@ public func foldEvents(_ events: [Silo_V1_RunEvent], first: Int = 0) -> [Block] 
                 var b = block(.thinking)
                 b.text = event.body
                 b.streaming = true
+                b.pending = true
                 out.append(b)
             }
 
         case "thinking":
-            if let index = lastThinking() {
-                if !event.body.isEmpty { out[index].text = event.body }
-                out[index].streaming = false
-            } else {
+            // The turn's whole reasoning, once it is over. It settles the blocks that turn's
+            // chunks made: one block takes the full text; several (reasoning broken up by the
+            // reply) already hold its parts. A turn with no chunks is a block of its own,
+            // never an earlier turn's.
+            let mine = out.indices.filter { out[$0].kind == .thinking && out[$0].pending }
+            if mine.isEmpty {
                 var b = block(.thinking)
                 b.text = event.body
                 out.append(b)
+            } else {
+                for index in mine {
+                    if mine.count == 1, !event.body.isEmpty { out[index].text = event.body }
+                    out[index].streaming = false
+                    out[index].pending = false
+                }
             }
 
         case "chunk":
@@ -472,9 +483,15 @@ public func foldEvents(_ events: [Silo_V1_RunEvent], first: Int = 0) -> [Block] 
                 }
             }
             closeThinking()
-            if let last = out.indices.last, out[last].kind == .assistant, out[last].streaming, !event.runID.isEmpty {
-                out[last].streaming = false
+            // Every reply still streaming is over, not only a last one: a reply the tool rows
+            // came after would stay streaming for good.
+            if !event.runID.isEmpty {
+                for index in out.indices where out[index].kind == .assistant && out[index].streaming {
+                    out[index].streaming = false
+                }
             }
+            // Reasoning a cut turn never settled is settled now.
+            for index in out.indices where out[index].kind == .thinking { out[index].pending = false }
             if event.body == "stopped" {
                 var b = block(.receipt)
                 b.decision = "stopped"
