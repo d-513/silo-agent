@@ -86,6 +86,12 @@ func (a *App) ChatOfRun(runID string) string {
 // Bot's, or a finished run (a background process that outlived its command,
 // a script started from the Console) makes it an orphan: it still runs under
 // the Bot's rules, but its events and approval belong to no chat.
+//
+// It reads the run row, not a.runs: the two agree, because a run leaves
+// a.runs and its row leaves running together (cancelRuns writes both; finish
+// writes the row only while running), and a run runs no tool in the moment
+// between closeInbox and finish. The row is also what a worker test sets to
+// stand for a command still running (apptest.LiveRun).
 func (a *App) callRun(botID, runID string) string {
 	if runID == "" {
 		return ""
