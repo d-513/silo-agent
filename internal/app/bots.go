@@ -47,10 +47,7 @@ func (a *App) liveLocked(ctx context.Context, b *db.Bot) bool {
 	st, err := a.inspectBot(ctx, b)
 	if err != nil {
 		if dockerx.IsNotFound(err) {
-			if b.ContainerID != "" {
-				b.ContainerID = ""
-				a.DB.Save(b)
-			}
+			a.setContainer(b, "")
 			return false
 		}
 		log.Printf("inspect bot=%s: %v", b.ID, err)
@@ -58,15 +55,48 @@ func (a *App) liveLocked(ctx context.Context, b *db.Bot) bool {
 	}
 	if h, err := a.Docker.EnvTokenHash(ctx, st.ID); err == nil && h != "" && h != b.TokenHash {
 		a.Docker.Drop(ctx, b.ID, st.ID)
-		b.ContainerID = ""
-		a.DB.Save(b)
+		a.setContainer(b, "")
 		return false
 	}
-	if b.ContainerID != st.ID {
-		b.ContainerID = st.ID
-		a.DB.Save(b)
-	}
+	a.setContainer(b, st.ID)
 	return st.Running
+}
+
+// The bots row is written by many hands (a run's last_task, the audit
+// counter, proactivity, the zone, settings), so the box lifecycle writes only
+// its own columns, by name, and never the whole row: a row loaded before a
+// Docker call that takes seconds would put back whatever changed meanwhile,
+// and a whole-row save would insert a Bot deleted meanwhile again.
+
+// setContainer moves the Bot's container id from the one this caller saw to
+// id. The update is conditional on what was seen, so a read (GetBot, ListBots
+// polling through live) that clears a vanished box cannot undo a box made
+// since. Callers hold lockBot.
+func (a *App) setContainer(b *db.Bot, id string) {
+	if b.ContainerID == id {
+		return
+	}
+	a.DB.Model(&db.Bot{}).Where("id = ? AND COALESCE(container_id, '') = ?", b.ID, b.ContainerID).Update("container_id", id)
+	b.ContainerID = id
+}
+
+// setBox writes lifecycle columns of the Bot. Callers hold lockBot.
+func (a *App) setBox(b *db.Bot, cols map[string]any) error {
+	return a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Updates(cols).Error
+}
+
+// startFailed records why the box would not start, where the Bot's last task
+// shows, and returns err.
+func (a *App) startFailed(b *db.Bot, err error) error {
+	b.LastTask = err.Error()
+	a.setBox(b, map[string]any{"last_task": b.LastTask})
+	return err
+}
+
+// unheldToken is a token hash no worker holds: what a Bot with no box carries,
+// since token_hash is unique and an empty one would clash with the next Bot's.
+func unheldToken() string {
+	return ids.Hash(ids.Token())
 }
 
 // dropStaleCA removes a box that trusts a network filter certificate the
@@ -83,8 +113,7 @@ func (a *App) dropStaleCA(ctx context.Context, b *db.Bot) {
 	log.Printf("bot=%s: the network filter's certificate changed; recreating its box", b.ID)
 	a.Hub.Drop(b.ID)
 	a.Docker.Drop(ctx, b.ID, st.ID)
-	b.ContainerID = ""
-	a.DB.Save(b)
+	a.setContainer(b, "")
 }
 
 func (a *App) inspectBot(ctx context.Context, b *db.Bot) (dockerx.State, error) {
@@ -122,10 +151,7 @@ func (a *App) ensureRunning(ctx context.Context, b *db.Bot) (err error) {
 		st, err := a.inspectBot(ctx, b)
 		switch {
 		case err == nil && st.Running:
-			if b.ContainerID != st.ID {
-				b.ContainerID = st.ID
-				a.DB.Save(b)
-			}
+			a.setContainer(b, st.ID)
 			return nil
 		case err != nil && !dockerx.IsNotFound(err):
 			// Docker is unreachable: keep trusting the live worker rather than
@@ -140,46 +166,34 @@ func (a *App) ensureRunning(ctx context.Context, b *db.Bot) (err error) {
 	}
 	if st, err := a.inspectBot(ctx, b); err == nil {
 		if err := a.Docker.Start(ctx, st.ID); err != nil {
-			b.LastTask = err.Error()
-			a.DB.Save(b)
-			return err
+			return a.startFailed(b, err)
 		}
-		if b.ContainerID != st.ID {
-			b.ContainerID = st.ID
-		}
-		b.LastTask = ""
-		return a.DB.Save(b).Error
+		a.setContainer(b, st.ID)
+		return nil
 	} else if !dockerx.IsNotFound(err) {
-		b.LastTask = err.Error()
-		a.DB.Save(b)
-		return err
+		return a.startFailed(b, err)
 	}
 	a.Docker.Drop(ctx, b.ID, b.ContainerID)
 	token := ids.Token()
 	net, err := a.Egress.ClientNetwork(ctx, "bot", b.ID, "", b.Name)
 	if err != nil {
-		b.LastTask = err.Error()
-		a.DB.Save(b)
-		return err
+		return a.startFailed(b, err)
 	}
 	cid, err := a.Docker.Create(ctx, b.ID, token, net)
 	if err != nil {
-		b.LastTask = err.Error()
-		a.DB.Save(b)
-		return err
+		return a.startFailed(b, err)
 	}
 	if err := a.Docker.Start(ctx, cid); err != nil {
 		a.Docker.Drop(ctx, b.ID, cid)
-		b.ContainerID = ""
-		b.LastTask = err.Error()
-		a.DB.Save(b)
-		return err
+		a.setContainer(b, "")
+		return a.startFailed(b, err)
 	}
 	a.Mask(b.ID).Add(token)
+	// Only now that the box exists: a token stored for a box that failed
+	// would turn the leftover one into a stranger (see liveLocked).
 	b.TokenHash = ids.Hash(token)
 	b.ContainerID = cid
-	b.LastTask = ""
-	return a.DB.Save(b).Error
+	return a.setBox(b, map[string]any{"token_hash": b.TokenHash, "container_id": cid})
 }
 
 func (a *App) ensureRunningBg(b *db.Bot) {
@@ -201,9 +215,13 @@ func (a *App) Wake(ctx context.Context, botID string) bool {
 	return a.Hub.WaitConnected(ctx, botID, 90*time.Second)
 }
 
+// haltBot stops the Bot's box (docker stop: it keeps its id). It writes
+// nothing on the row.
 func (a *App) haltBot(ctx context.Context, b *db.Bot) {
 	unlock := a.lockBot(b.ID)
 	defer unlock()
+	// The box to stop is the one stored now, not when the caller loaded b.
+	a.reloadBot(b)
 	a.cancelBot(b.ID)
 	a.Hub.Drop(b.ID)
 	if b.ContainerID != "" {
@@ -213,11 +231,17 @@ func (a *App) haltBot(ctx context.Context, b *db.Bot) {
 	a.Drives.Stop(ctx, b.ID)
 }
 
+// destroyBot removes the Bot's box and forgets it: the container id goes, and
+// the token hash becomes one nobody holds, so the removed box's token opens
+// nothing (the next create stores its own once the box exists).
 func (a *App) destroyBot(ctx context.Context, b *db.Bot) {
 	unlock := a.lockBot(b.ID)
 	defer unlock()
+	a.reloadBot(b)
 	a.cancelBot(b.ID)
 	a.Hub.Drop(b.ID)
 	a.Docker.Drop(ctx, b.ID, b.ContainerID)
 	b.ContainerID = ""
+	b.TokenHash = unheldToken()
+	a.setBox(b, map[string]any{"container_id": "", "token_hash": b.TokenHash})
 }

@@ -67,7 +67,9 @@ func (a *App) execDoc(botID, name string, args map[string]any) (string, error) {
 	default:
 		return "", fmt.Errorf("unknown doc %s", name)
 	}
-	if err := a.DB.Save(&b).Error; err != nil {
+	// The one column: a whole-row save would undo what others wrote on the
+	// row since it was read (the box's token, a run's last_task, …).
+	if err := a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Update("soul", b.Soul).Error; err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("ok (%d chars)", len(next)), nil

@@ -329,7 +329,6 @@ func (a *App) AdminContainerAction(ctx context.Context, req *connect.Request[v1.
 			a.haltBot(ctx, &b)
 		case "remove":
 			a.destroyBot(ctx, &b)
-			a.DB.Save(&b)
 		}
 		return connect.NewResponse(&v1.AdminActionResponse{}), nil
 
@@ -396,6 +395,5 @@ func (a *App) RemoveAdminBotContainers(ctx context.Context, req *connect.Request
 	a.destroyBot(ctx, &b)
 	a.Drives.RemoveSidecar(ctx, b.ID)
 	a.Connectors.DropBotStdio(b.ID)
-	a.DB.Save(&b)
 	return connect.NewResponse(&v1.AdminActionResponse{}), nil
 }

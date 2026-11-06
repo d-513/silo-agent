@@ -42,6 +42,10 @@ type FakeHost struct {
 	// DriveLaunch, when set, runs after CreateDrive records a sidecar spec;
 	// tests use it to run the real drive guest in-process.
 	DriveLaunch func(spec dockerx.DriveSpec) func()
+	// During, when set, is called as Create, Start, Stop and Drop begin (with
+	// "create", "start", "stop" or "drop"): a test writes there what another
+	// request would write while the engine is busy.
+	During func(op string)
 
 	drive        *driveState
 	driveSpecs   map[string]dockerx.DriveSpec
@@ -109,6 +113,7 @@ func (f *FakeHost) EnvTokenHash(_ context.Context, id string) (string, error) {
 }
 
 func (f *FakeHost) Create(_ context.Context, botID, token string, net *dockerx.ClientNet) (string, error) {
+	f.during("create")
 	f.Creates.Add(1)
 	if f.CreateErr != nil {
 		return "", f.CreateErr
@@ -129,6 +134,12 @@ func (f *FakeHost) Create(_ context.Context, botID, token string, net *dockerx.C
 	f.inspect[dockerx.Name(botID)] = st
 	f.mu.Unlock()
 	return id, nil
+}
+
+func (f *FakeHost) during(op string) {
+	if f.During != nil {
+		f.During(op)
+	}
 }
 
 // caHash mirrors Docker's Inspect: the hash of SILO_EGRESS_CA, "" without one.
@@ -155,6 +166,7 @@ func (f *FakeHost) Token(botID string) string {
 }
 
 func (f *FakeHost) Start(_ context.Context, id string) error {
+	f.during("start")
 	f.Starts.Add(1)
 	if f.StartErr != nil {
 		return f.StartErr
@@ -175,6 +187,7 @@ func (f *FakeHost) Start(_ context.Context, id string) error {
 }
 
 func (f *FakeHost) Stop(_ context.Context, id string) error {
+	f.during("stop")
 	f.Stops.Add(1)
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -206,6 +219,7 @@ func (f *FakeHost) Remove(_ context.Context, id string) error {
 }
 
 func (f *FakeHost) Drop(_ context.Context, botID, containerID string) {
+	f.during("drop")
 	f.Drops.Add(1)
 	f.mu.Lock()
 	defer f.mu.Unlock()

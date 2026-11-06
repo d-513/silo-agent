@@ -183,8 +183,11 @@ func (a *App) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRe
 		// none, or one unknown here, gets the server's.
 		TimeZone: zone.Resolve(req.Msg.GetTimeZone()).String(),
 		// A Bot starts out writing in the language its maker reads Silo in.
-		Language:  lang.UI(u.Language),
-		Crest:     crest,
+		Language: lang.UI(u.Language),
+		Crest:    crest,
+		// No box yet: a hash no worker holds (token_hash is unique, so a
+		// Bot whose first box fails must not keep an empty one).
+		TokenHash: unheldToken(),
 		CreatedAt: time.Now(),
 	}
 	err = a.DB.Transaction(func(tx *gorm.DB) error {
@@ -284,9 +287,31 @@ func (a *App) UpdateBot(ctx context.Context, req *connect.Request[v1.UpdateBotRe
 		}
 		level = l
 	}
-	// proactivity is Proactivity.Set's to write, with the Heartbeat: a
-	// whole-row save would undo a set_proactivity that landed meanwhile.
-	if err := a.DB.Omit("proactivity").Save(b).Error; err != nil {
+	// Only the settings this request names, by name: the rest of the row is
+	// other writers' (the box lifecycle's container and token, a run's
+	// last_task, the audit counter, the followed zone; proactivity is
+	// Proactivity.Set's, with the Heartbeat), and a whole-row save of b, loaded
+	// before all this, would undo what they wrote meanwhile.
+	cols := []string{"description", "soul", "auto_approve", "model"}
+	if strings.TrimSpace(req.Msg.GetName()) != "" {
+		cols = append(cols, "name")
+	}
+	if req.Msg.Crest != nil {
+		cols = append(cols, "crest")
+	}
+	if req.Msg.OutputPolicy != nil {
+		cols = append(cols, "output_policy")
+	}
+	if req.Msg.TimeZone != nil {
+		cols = append(cols, "time_zone")
+	}
+	if req.Msg.TimeZonePinned != nil {
+		cols = append(cols, "time_zone_pinned")
+	}
+	if req.Msg.Language != nil {
+		cols = append(cols, "language")
+	}
+	if err := a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Select(cols).Updates(b).Error; err != nil {
 		return nil, err
 	}
 	if rezone {
@@ -364,8 +389,10 @@ func (a *App) takeDown(ctx context.Context, id string, down func(context.Context
 	if err != nil {
 		return nil, err
 	}
+	// down takes the lifecycle lock, reloads b under it and writes only the
+	// columns it changes: a save here would put back a token stored by a
+	// create that ran between loading b and the lock.
 	down(ctx, b)
-	a.DB.Save(b)
 	return connect.NewResponse(a.viewBot(ctx, b)), nil
 }
 
