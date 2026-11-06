@@ -117,13 +117,15 @@ public final class CallAudioDevice: NSObject, RTCAudioDevice {
     public func start() {
         work.async { [self] in
             held = false
-            misses = 0
+            // Asking again is no reason to try longer: only a rebuild that works clears the misses.
             guard !running else {
                 if !engine.isRunning { revive() }
                 return
             }
             running = true
+            misses = 0
             echoCancelling = microphone
+            unwatch()
             observer = NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil) { [weak self] _ in
                 self?.work.async { self?.check() }
             }
@@ -141,10 +143,7 @@ public final class CallAudioDevice: NSObject, RTCAudioDevice {
     public func stop() {
         work.sync { [self] in
             running = false
-            watchdog?.cancel()
-            watchdog = nil
-            if let observer { NotificationCenter.default.removeObserver(observer) }
-            observer = nil
+            unwatch()
             teardown()
         }
     }
@@ -174,6 +173,20 @@ public final class CallAudioDevice: NSObject, RTCAudioDevice {
         watchdog = timer
     }
 
+    private func unwatch() {
+        watchdog?.cancel()
+        watchdog = nil
+        if let observer { NotificationCenter.default.removeObserver(observer) }
+        observer = nil
+    }
+
+    // Nothing left to keep running: a later `start` begins clean.
+    private func giveUp(_ reason: String) {
+        running = false
+        unwatch()
+        onFailure?(reason)
+    }
+
     private func check() {
         guard running, !held, !engine.isRunning else { return }
         revive()
@@ -194,10 +207,7 @@ public final class CallAudioDevice: NSObject, RTCAudioDevice {
             return
         }
         misses += 1
-        if misses >= Self.maxMisses {
-            running = false
-            onFailure?("The call lost its audio.")
-        }
+        if misses >= Self.maxMisses { giveUp("The call lost its audio.") }
     }
 
     private func comeUp() {
@@ -211,8 +221,7 @@ public final class CallAudioDevice: NSObject, RTCAudioDevice {
             onNoEchoCancelling?()
             return
         }
-        running = false
-        onFailure?("The microphone could not start.")
+        giveUp("The microphone could not start.")
     }
 
     // Leaves nothing behind on failure: a tap installed twice is an exception nothing can catch.
