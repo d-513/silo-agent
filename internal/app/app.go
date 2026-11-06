@@ -688,6 +688,16 @@ func (a *App) runExited(runID string) {
 	a.mu.Unlock()
 }
 
+// trackedRun is a run whose goroutine has not exited, live or ending.
+func (a *App) trackedRun(runID string) *liveRun {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if lr := a.runs[runID]; lr != nil {
+		return lr
+	}
+	return a.ending[runID]
+}
+
 // untrackRun ends a run's time as the conversation's live run; it stays in
 // ending until its goroutine exits.
 func (a *App) untrackRun(runID string) {
@@ -709,9 +719,15 @@ func (a *App) stopChat(botID, chatID string) {
 	a.cancelRuns(botID, chatID, "stopped")
 }
 
+// cancelRuns stops a Bot's live runs (or one chat's). The run, its inbox
+// and its pending approvals are settled here, before the goroutine unwinds:
+// the run's final status is runStatus (finish keeps it), an approval waiting
+// on it is canceled, the same word the call's own gate writes when its
+// context ends, and a message sent from now on starts a new run.
 func (a *App) cancelRuns(botID, chatID, runStatus string) {
 	a.mu.Lock()
 	want := map[string]bool{}
+	var closing []*liveRun
 	for id, lr := range a.runs {
 		if lr.botID != botID {
 			continue
@@ -723,6 +739,7 @@ func (a *App) cancelRuns(botID, chatID, runStatus string) {
 		delete(a.runs, id)
 		a.endingLocked(id, lr)
 		want[id] = true
+		closing = append(closing, lr)
 	}
 	for id, w := range a.approvals {
 		if w.botID != botID {
@@ -738,6 +755,12 @@ func (a *App) cancelRuns(botID, chatID, runStatus string) {
 		delete(a.approvals, id)
 	}
 	a.mu.Unlock()
+	// injecting is taken without a.mu: inject holds it while it records.
+	for _, lr := range closing {
+		lr.injecting.Lock()
+		lr.closed = true
+		lr.injecting.Unlock()
+	}
 	q := a.DB.Model(&db.Run{}).Where("bot_id = ? AND status = ?", botID, "running")
 	if chatID != "" {
 		q = q.Where("chat_id = ?", chatID)
@@ -747,5 +770,5 @@ func (a *App) cancelRuns(botID, chatID, runStatus string) {
 	if chatID != "" {
 		aq = aq.Where("run_id IN (?)", a.DB.Model(&db.Run{}).Select("id").Where("bot_id = ? AND chat_id = ?", botID, chatID))
 	}
-	aq.Update("status", "interrupted")
+	aq.Update("status", "canceled")
 }

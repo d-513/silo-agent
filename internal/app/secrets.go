@@ -421,8 +421,14 @@ func (a *App) DecideApproval(ctx context.Context, req *connect.Request[v1.Decide
 	if row.Auto && dec == security.Always {
 		dec = security.Once
 	}
+	// Settled once: a second answer, or one to a call that was canceled or
+	// interrupted meanwhile, changes nothing (no audit line, no rule).
+	if a.DB.Model(&db.Approval{}).Where("id = ? AND status = ?", row.ID, "pending").Update("status", dec).RowsAffected == 0 {
+		var now db.Approval
+		a.DB.Select("status").Where("id = ?", row.ID).Limit(1).Find(&now)
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("this approval is already settled (%s)", now.Status))
+	}
 	row.Status = dec
-	a.DB.Save(&row)
 	u := access.User(ctx)
 	var bot db.Bot
 	a.DB.First(&bot, "id = ?", row.BotID)
@@ -433,8 +439,7 @@ func (a *App) DecideApproval(ctx context.Context, req *connect.Request[v1.Decide
 		if rule.ID == "" {
 			a.DB.Create(&db.Rule{ID: ids.New(), BotID: row.BotID, Connector: row.Connector, Action: row.Action, Decision: "allow"})
 		} else {
-			rule.Decision = "allow"
-			a.DB.Save(&rule)
+			a.DB.Model(&db.Rule{}).Where("id = ?", rule.ID).Update("decision", "allow")
 		}
 	}
 	a.emitDecision(&row, dec)

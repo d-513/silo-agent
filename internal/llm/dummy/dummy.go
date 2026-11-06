@@ -17,6 +17,7 @@ package dummy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -52,6 +53,11 @@ type Turn struct {
 	// Hold keeps the stream open this long after the turn's text, before its
 	// tool calls and its end, so a test can act while the turn is half written.
 	Hold time.Duration
+	// Fail fails the turn with this error, after its Delay, so a test can
+	// act while a turn is about to fail. It fails only while the newest user
+	// message is the one with the scenario's token: once another message is
+	// in, the turn answers with its Text.
+	Fail string
 }
 
 // CompactMarker is the heading the CP's compaction prompt starts with; a
@@ -154,6 +160,9 @@ func (c *client) Stream(ctx context.Context, req llm.Request) (llm.Stream, error
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
+	}
+	if turn.Fail != "" && firstToken(lastUserText(req)) != "" {
+		return nil, errors.New(turn.Fail)
 	}
 	events := buildEvents(turn, size)
 	st := &sliceStream{ctx: ctx, events: events}
@@ -310,6 +319,15 @@ func resolveTurn(req llm.Request) Turn {
 		return defaultTurn(token, lastUser)
 	}
 	return Turn{Text: token + "_End"}
+}
+
+func lastUserText(req llm.Request) string {
+	for i := len(req.Messages) - 1; i >= 0; i-- {
+		if req.Messages[i].Role == llm.RoleUser {
+			return req.Messages[i].Text
+		}
+	}
+	return ""
 }
 
 func defaultTurn(token, lastUser string) Turn {

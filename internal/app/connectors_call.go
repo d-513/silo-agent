@@ -120,11 +120,16 @@ func (a *App) AuthorizeAction(ctx context.Context, bot *db.Bot, runID, conn, act
 			ID: ids.New(), BotID: bot.ID, RunID: runID,
 			Connector: conn, Action: action, ArgsJSON: security.Redact(conn, action, argsJSON), Status: "pending", Auto: auto, CreatedAt: time.Now(),
 		}
-		a.DB.Create(&ap)
+		// The waiter is in place before the row can be listed, so an answer
+		// given the moment the slip shows is not lost.
 		ch := make(chan string, 1)
 		a.mu.Lock()
 		a.approvals[ap.ID] = &waiter{ch: ch, botID: bot.ID, runID: runID}
 		a.mu.Unlock()
+		if err := a.DB.Create(&ap).Error; err != nil {
+			a.dropWaiter(ap.ID)
+			return "", err
+		}
 		a.Emit(bot.ID, a.ChatOfRun(runID), runID, "approval", ap.ID, conn+"."+action)
 		var dec string
 		select {
@@ -133,6 +138,10 @@ func (a *App) AuthorizeAction(ctx context.Context, bot *db.Bot, runID, conn, act
 			a.DB.Model(&db.Approval{}).Where("id = ? AND status = ?", ap.ID, "pending").Update("status", "canceled")
 			return ap.ID, errors.New("canceled")
 		case dec = <-ch:
+		}
+		if dec == "canceled" {
+			// The run was stopped while it waited (cancelRuns).
+			return ap.ID, errors.New("canceled")
 		}
 		if !security.Granted(dec) {
 			return ap.ID, errors.New("denied")

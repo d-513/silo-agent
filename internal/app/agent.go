@@ -519,23 +519,28 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 	lastNote, cleared := past.note, past.cleared
 	if req.Compact {
 		out, err := a.compact(ctx, botID, chatID, runID, compactManual, modelID, msgs, window, false)
-		if err != nil {
+		switch {
+		case err != nil:
 			if a.stopped(ctx, botID, chatID, runID) {
 				return
 			}
 			a.Emit(botID, chatID, runID, "error", err.Error(), "")
-			a.finish(botID, chatID, runID, "error")
-			return
+			// A message sent meanwhile is still answered, from the history
+			// as it is.
+			if a.closeInbox(lr, runID) {
+				a.finish(botID, chatID, runID, "error")
+				return
+			}
+		default:
+			// A message sent while the summary was written continues as a
+			// normal turn; otherwise the run is just the compaction.
+			msgs = a.drainInbox(lr, out, true)
+			lastNote, cleared = "", 0
+			if len(msgs) == len(out) && a.closeInbox(lr, runID) {
+				a.finish(botID, chatID, runID, "done")
+				return
+			}
 		}
-		// A message sent while the summary was written continues as a normal
-		// turn; otherwise the run is just the compaction.
-		msgs = a.drainInbox(lr, out, true)
-		lastNote, cleared = "", 0
-		if len(msgs) == len(out) {
-			a.finish(botID, chatID, runID, "done")
-			return
-		}
-		userText = msgs[len(msgs)-1].Text
 	}
 	var lastLook string
 	// seen counts identical read/grep calls this run so a stuck loop does not
@@ -637,8 +642,14 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 				return
 			}
 			a.Emit(botID, chatID, runID, "error", err.Error(), "")
-			a.finish(botID, chatID, runID, "error")
-			return
+			// A message that came in while the turn failed is answered in
+			// this run, like one that came in while a reply was written:
+			// the inbox already took it, so no other run will.
+			if a.closeInbox(lr, runID) {
+				a.finish(botID, chatID, runID, "error")
+				return
+			}
+			continue
 		}
 		if u := res.usage; u.InputTokens > 0 || u.OutputTokens > 0 || u.CacheReadTokens > 0 || u.CacheWriteTokens > 0 {
 			a.emitUsage(botID, chatID, runID, u, window)
@@ -823,8 +834,26 @@ func (a *App) stopped(ctx context.Context, botID, chatID, runID string) bool {
 	return true
 }
 
+// finish ends a run. Its inbox closes first, on every path: a message sent
+// from here on starts a new run instead of waiting in an inbox nobody reads.
+// One that was taken but not read (the run was stopped or failed with it
+// waiting) stays in the thread, and the next run reads it as history.
+//
+// The first final status wins: a Stop Bot writes interrupted (cancelRuns)
+// before the run's goroutine gets here with stopped, and the done event says
+// what the row says.
 func (a *App) finish(botID, chatID, runID, st string) {
-	a.DB.Model(&db.Run{}).Where("id = ?", runID).Update("status", st)
+	if lr := a.trackedRun(runID); lr != nil {
+		lr.injecting.Lock()
+		lr.closed = true
+		lr.injecting.Unlock()
+	}
+	if a.DB.Model(&db.Run{}).Where("id = ? AND status = ?", runID, "running").Update("status", st).RowsAffected == 0 {
+		var r db.Run
+		if a.DB.Select("status").Where("id = ?", runID).Limit(1).Find(&r); r.Status != "" {
+			st = r.Status
+		}
+	}
 	a.untrackRun(runID)
 	a.dropNotices(runID)
 	a.Emit(botID, chatID, runID, "done", st, "")
