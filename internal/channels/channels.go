@@ -9,6 +9,7 @@ package channels
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"strings"
 	"sync"
@@ -190,6 +191,25 @@ type Host interface {
 	// keeps its session in SQL (WhatsApp). It carries the password: never log it.
 	DatabaseURL() string
 }
+
+// Permanent marks a Start error that starting again will not fix (a rejected
+// token, a session opened elsewhere, a ban), so the host does not retry it.
+func Permanent(err error) error {
+	if err == nil {
+		return nil
+	}
+	return permanentError{err}
+}
+
+// IsPermanent reports whether err, or any error it wraps, is Permanent.
+func IsPermanent(err error) bool {
+	var p permanentError
+	return errors.As(err, &p)
+}
+
+type permanentError struct{ error }
+
+func (p permanentError) Unwrap() error { return p.error }
 
 // Adapter is one built-in transport.
 type Adapter interface {

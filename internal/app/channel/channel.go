@@ -54,13 +54,13 @@ type Service struct {
 	ws     *workspace.Service
 	voice  *voice.Service
 
-	// mu guards cancel (the running adapter workers) and states (their
+	// mu guards workers (the running adapter workers) and states (their
 	// dynamic state). chatMu serializes find-or-create of a channel
 	// conversation.
-	mu     sync.Mutex
-	cancel map[string]context.CancelFunc
-	states map[string]channels.State
-	chatMu sync.Mutex
+	mu      sync.Mutex
+	workers map[string]*worker
+	states  map[string]channels.State
+	chatMu  sync.Mutex
 
 	lanes  lanes
 	typing typists
@@ -68,12 +68,18 @@ type Service struct {
 
 func New(gdb *gorm.DB, cfg func() config.Config, e run.Engine, h Host, mask func(botID string) *masker.Masker, ws *workspace.Service, v *voice.Service) *Service {
 	return &Service{db: gdb, cfg: cfg, engine: e, host: h, mask: mask, ws: ws, voice: v,
-		cancel: map[string]context.CancelFunc{}, states: map[string]channels.State{},
+		workers: map[string]*worker{}, states: map[string]channels.State{},
 		lanes: lanes{busy: map[string][]func(){}}, typing: typists{every: typingEvery, max: typingMax, live: map[string]*typist{}}}
 }
 
 // adapterHost is what an adapter sees: channels.Host, backed by the Service.
-type adapterHost struct{ s *Service }
+// w is the worker it was handed to (nil outside a worker: an action, a
+// removal); once that worker is stopped or replaced, what it publishes may
+// still persist durable values but no longer sets the channel's status.
+type adapterHost struct {
+	s *Service
+	w *worker
+}
 
 func (h adapterHost) GetSecret(botID, name string) (string, error) {
 	var sec db.Secret
@@ -89,6 +95,10 @@ func (h adapterHost) DeliverInbound(ctx context.Context, ch *db.Channel, in chan
 }
 
 func (h adapterHost) PublishState(channelID string, st channels.State) {
+	if h.w != nil && !h.s.current(channelID, h.w) {
+		h.s.publishValues(channelID, st.Values)
+		return
+	}
 	h.s.publishChannelState(channelID, st)
 }
 
@@ -263,60 +273,145 @@ func (s *Service) Resume(botID string) {
 	}
 }
 
+// worker is one running adapter Start. done closes once Start has returned,
+// so the next worker of the same channel starts only after the old one let go
+// of whatever it held (a client in the adapter's map, a platform session).
+type worker struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+	done   chan struct{}
+}
+
+// Start retries: an adapter whose Start fails (the network, the platform
+// being down) is started again after RetryDelay(attempt), up to StartRetries
+// times, unless the error is channels.Permanent. Each start is live-only, as
+// always: nothing missed in between is fetched.
+var (
+	StartRetries = 8
+	RetryDelay   = func(attempt int) time.Duration {
+		d := 30 * time.Second << attempt
+		if d > 15*time.Minute || d <= 0 {
+			d = 15 * time.Minute
+		}
+		return d
+	}
+	// handover is how long a new worker waits for the old one to return.
+	handover = 30 * time.Second
+)
+
 // startChannel (re)starts an adapter worker. It is safe to call when already
-// running: the old worker is cancelled first.
+// running: the old worker is cancelled first, and the new one starts once the
+// old one has returned. Concurrent calls leave exactly one worker.
 func (s *Service) startChannel(ch *db.Channel) {
-	s.stopChannel(ch.ID)
 	if !ch.Enabled {
+		s.stopChannel(ch.ID)
 		s.setChannelStatus(ch.ID, "stopped", "")
 		return
 	}
 	ad, ok := channels.Lookup(ch.Adapter)
 	if !ok {
+		s.stopChannel(ch.ID)
 		s.setChannelStatus(ch.ID, "error", "adapter not found")
 		return
 	}
 	cfg := s.channelConfig(ch)
+	c := *ch
 	ctx, cancel := context.WithCancel(context.Background())
+	w := &worker{ctx: ctx, cancel: cancel, done: make(chan struct{})}
 	s.mu.Lock()
-	s.cancel[ch.ID] = cancel
+	old := s.workers[ch.ID]
+	s.workers[ch.ID] = w
+	delete(s.states, ch.ID)
 	s.mu.Unlock()
+	if old != nil {
+		old.cancel()
+	}
 	s.setChannelStatus(ch.ID, "starting", "")
 	go func() {
-		if _, err := ad.Validate(ctx, ch, cfg); err != nil {
-			s.setChannelStatus(ch.ID, "error", err.Error())
-			return
+		defer close(w.done)
+		// Wait even when this one is replaced in the meantime: its done is
+		// what the next worker waits on, so it must not close before the
+		// worker it replaced has returned.
+		if old != nil {
+			select {
+			case <-old.done:
+			case <-time.After(handover):
+				log.Printf("channel %s (%s): the old worker did not stop in %s", c.ID, c.Adapter, handover)
+			}
 		}
-		err := ad.Start(ctx, ch, cfg, adapterHost{s})
 		if ctx.Err() != nil {
 			return
 		}
-		if err != nil {
-			s.setChannelStatus(ch.ID, "error", err.Error())
-			log.Printf("channel %s (%s): %v", ch.ID, ch.Adapter, err)
+		s.runWorker(w, &c, ad, cfg)
+	}()
+}
+
+// runWorker runs one worker's adapter until it is stopped, retrying a failed
+// start with a backoff.
+func (s *Service) runWorker(w *worker, ch *db.Channel, ad channels.Adapter, cfg channels.Config) {
+	ctx := w.ctx
+	// status writes only while this is still the channel's worker.
+	status := func(st, detail string) {
+		if ctx.Err() == nil && s.current(ch.ID, w) {
+			s.setChannelStatus(ch.ID, st, detail)
+		}
+	}
+	for attempt := 0; ; attempt++ {
+		if _, err := ad.Validate(ctx, ch, cfg); err != nil {
+			status("error", err.Error())
 			return
 		}
-		s.setChannelStatus(ch.ID, "stopped", "")
-	}()
+		err := ad.Start(ctx, ch, cfg, adapterHost{s, w})
+		if ctx.Err() != nil {
+			return
+		}
+		if err == nil {
+			status("stopped", "")
+			return
+		}
+		log.Printf("channel %s (%s): %v", ch.ID, ch.Adapter, err)
+		if channels.IsPermanent(err) || attempt >= StartRetries {
+			status("error", err.Error())
+			return
+		}
+		wait := RetryDelay(attempt)
+		status("error", fmt.Sprintf("%v (trying again in %s)", err, wait.Round(time.Second)))
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(wait):
+		}
+		status("starting", "")
+	}
+}
+
+// current reports whether w is still the channel's running worker.
+func (s *Service) current(id string, w *worker) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.workers[id] == w && w.ctx.Err() == nil
 }
 
 // StopAll stops every running adapter worker (Shutdown).
 func (s *Service) StopAll() {
 	s.mu.Lock()
-	for id, cancel := range s.cancel {
-		cancel()
-		delete(s.cancel, id)
+	for id, w := range s.workers {
+		w.cancel()
+		delete(s.workers, id)
 	}
 	s.mu.Unlock()
 }
 
+// stopChannel cancels the channel's worker and forgets its live state, so a
+// stopped channel does not go on showing how it last stood.
 func (s *Service) stopChannel(id string) {
 	s.mu.Lock()
-	cancel := s.cancel[id]
-	delete(s.cancel, id)
+	w := s.workers[id]
+	delete(s.workers, id)
+	delete(s.states, id)
 	s.mu.Unlock()
-	if cancel != nil {
-		cancel()
+	if w != nil {
+		w.cancel()
 	}
 }
 
@@ -356,12 +451,39 @@ func (s *Service) publishChannelState(channelID string, st channels.State) {
 		updates["status_detail"] = st.Message
 	case channels.StateQR, channels.StateAuth:
 		updates["status"] = "pending_auth"
+		updates["status_detail"] = ""
 	case channels.StateInfo, channels.StateSelect:
 		updates["status"] = "connected"
 		updates["status_detail"] = ""
 	}
 	if len(updates) > 0 {
 		s.db.Model(&db.Channel{}).Where("id = ?", channelID).Updates(updates)
+	}
+}
+
+// publishValues persists only the durable values of a state (a stopped
+// worker's last word: a paired JID, peer hashes), leaving the status and the
+// live state to the worker that replaced it.
+func (s *Service) publishValues(channelID string, values map[string]string) {
+	if len(values) == 0 {
+		return
+	}
+	var ch db.Channel
+	if s.db.First(&ch, "id = ?", channelID).Error != nil {
+		return
+	}
+	var st channels.State
+	if strings.TrimSpace(ch.StateJSON) != "" {
+		_ = json.Unmarshal([]byte(ch.StateJSON), &st)
+	}
+	if st.Values == nil {
+		st.Values = map[string]string{}
+	}
+	for k, v := range values {
+		st.Values[k] = v
+	}
+	if b, err := json.Marshal(st); err == nil {
+		s.db.Model(&db.Channel{}).Where("id = ?", channelID).Update("state_json", string(b))
 	}
 }
 
@@ -517,9 +639,19 @@ func (s *Service) protoChannel(ch *db.Channel) *v1.Channel {
 		Name: ch.Name, Enabled: ch.Enabled, Inbound: ch.Inbound, Prompt: ch.Prompt,
 		Config: nonSecretConfig(ch), SecretsSet: s.channelSecretsSet(ch),
 		Status: ch.Status, StatusDetail: ch.StatusDetail,
-		State:      protoChannelState(s.channelState(ch.ID)),
+		State:      protoChannelState(s.shownState(ch)),
 		ExternalId: ch.ExternalID, TargetTitle: ch.TargetTitle,
 	}
+}
+
+// shownState is the state the page shows: a stopped channel keeps its durable
+// values but no longer says how it last stood ("Connected as …").
+func (s *Service) shownState(ch *db.Channel) channels.State {
+	st := s.channelState(ch.ID)
+	if ch.Status == "stopped" {
+		return channels.State{Values: st.Values}
+	}
+	return st
 }
 
 func (s *Service) ListChannelAdapters(ctx context.Context, _ *connect.Request[v1.ListChannelAdaptersRequest]) (*connect.Response[v1.ListChannelAdaptersResponse], error) {
@@ -605,8 +737,17 @@ func (s *Service) UpdateChannel(ctx context.Context, req *connect.Request[v1.Upd
 	if err := s.saveChannelConfig(&ch, ad, req.Msg.GetConfig(), req.Msg.GetSecrets()); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	if err := s.db.Save(&ch).Error; err != nil {
+	// Only the columns this edits: the adapter writes state_json and the
+	// status while it runs (WhatsApp's paired JID is there), and a whole-row
+	// save would put back what was read above.
+	if err := s.db.Model(&db.Channel{}).Where("id = ?", ch.ID).Updates(map[string]any{
+		"name": ch.Name, "enabled": ch.Enabled, "inbound": ch.Inbound, "prompt": ch.Prompt,
+		"external_id": ch.ExternalID, "target_title": ch.TargetTitle, "config_json": ch.ConfigJSON,
+	}).Error; err != nil {
 		return nil, err
+	}
+	if err := s.db.First(&ch, "id = ?", ch.ID).Error; err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
 	s.startChannel(&ch)
 	return connect.NewResponse(s.protoChannel(&ch)), nil
@@ -665,7 +806,7 @@ func (s *Service) removeSession(ch *db.Channel) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	if err := rm.Remove(ctx, ch, adapterHost{s}); err != nil {
+	if err := rm.Remove(ctx, ch, adapterHost{s: s}); err != nil {
 		log.Printf("channel %s (%s): end session: %v", ch.ID, ch.Adapter, err)
 	}
 }
@@ -698,7 +839,9 @@ func (s *Service) ChannelAction(ctx context.Context, req *connect.Request[v1.Cha
 			ch.ExternalID = value
 		}
 		ch.TargetTitle = title
-		if err := s.db.Save(&ch).Error; err != nil {
+		if err := s.db.Model(&db.Channel{}).Where("id = ?", ch.ID).Updates(map[string]any{
+			"external_id": ch.ExternalID, "target_title": ch.TargetTitle,
+		}).Error; err != nil {
 			return nil, err
 		}
 		// Ask the adapter to republish its state so the peer access hash it

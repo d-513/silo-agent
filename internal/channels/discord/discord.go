@@ -140,7 +140,7 @@ func (a *Adapter) Start(ctx context.Context, ch *db.Channel, cfg channels.Config
 	c.limited = limited
 	a.putConn(ch.ID, c)
 	defer func() {
-		a.dropConn(ch.ID)
+		a.dropConn(ch.ID, c)
 		_ = c.sess.Close()
 	}()
 
@@ -183,7 +183,7 @@ func friendlyOpen(err error) error {
 	s := err.Error()
 	switch {
 	case strings.Contains(s, "4004"):
-		return errors.New("Discord rejected the bot token — copy a fresh one from the Developer Portal (Bot → Reset Token)")
+		return channels.Permanent(errors.New("Discord rejected the bot token — copy a fresh one from the Developer Portal (Bot → Reset Token)"))
 	case strings.Contains(s, "4014"):
 		return errors.New("Discord refused a requested intent — enable Message Content Intent under Bot in the Developer Portal")
 	}
@@ -624,9 +624,13 @@ func (a *Adapter) putConn(id string, c *conn) {
 	a.mu.Unlock()
 }
 
-func (a *Adapter) dropConn(id string) {
+// dropConn forgets c, only while it is still the channel's: a restarted
+// worker may already have put its own, which the old one must not remove.
+func (a *Adapter) dropConn(id string, c *conn) {
 	a.mu.Lock()
-	delete(a.conns, id)
+	if a.conns[id] == c {
+		delete(a.conns, id)
+	}
 	a.mu.Unlock()
 }
 

@@ -123,7 +123,7 @@ func (a *Adapter) Validate(_ context.Context, _ *db.Channel, cfg channels.Config
 func (a *Adapter) Start(ctx context.Context, ch *db.Channel, cfg channels.Config, host channels.Host) error {
 	appID, err := strconv.Atoi(strings.TrimSpace(cfg.Get("api_id")))
 	if err != nil || appID == 0 {
-		return fmt.Errorf("api_id must be a number")
+		return channels.Permanent(fmt.Errorf("api_id must be a number"))
 	}
 	dir := filepath.Join(host.DataDir(), "channels", ch.ID)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
@@ -138,7 +138,7 @@ func (a *Adapter) Start(ctx context.Context, ch *db.Channel, cfg channels.Config
 		UpdateHandler:  dispatcher,
 	})
 	a.putClient(ch.ID, client)
-	defer a.dropClient(ch.ID)
+	defer a.dropClient(ch.ID, client)
 
 	dispatcher.OnNewMessage(a.onMessage(ch, cfg, liveSince, host))
 
@@ -780,13 +780,18 @@ func (a *Adapter) putClient(id string, c *telegram.Client) {
 	a.mu.Unlock()
 }
 
-func (a *Adapter) dropClient(id string) {
+// dropClient forgets c and its channel's session state, only while c is still
+// the channel's client: a restarted worker may already have put its own.
+func (a *Adapter) dropClient(id string, c *telegram.Client) {
 	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.clients[id] != c {
+		return
+	}
 	delete(a.clients, id)
 	delete(a.selfs, id)
 	delete(a.seen, id)
 	delete(a.noHistory, id)
-	a.mu.Unlock()
 }
 
 func (a *Adapter) client(id string) *telegram.Client {

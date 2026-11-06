@@ -189,8 +189,11 @@ func (a *Adapter) Start(ctx context.Context, ch *db.Channel, cfg channels.Config
 	a.runs[ch.ID] = r
 	a.mu.Unlock()
 	defer func() {
+		// Only while it is still ours: a restarted worker may have put its own.
 		a.mu.Lock()
-		delete(a.runs, ch.ID)
+		if a.runs[ch.ID] == r {
+			delete(a.runs, ch.ID)
+		}
 		a.mu.Unlock()
 	}()
 
@@ -424,11 +427,11 @@ func (a *Adapter) handleEvent(ctx context.Context, ch *db.Channel, cfg channels.
 	case *events.LoggedOut:
 		c.fail(errLoggedOut)
 	case *events.StreamReplaced:
-		c.fail(errors.New("WhatsApp opened this session somewhere else — a linked device can only be online from one place"))
+		c.fail(channels.Permanent(errors.New("WhatsApp opened this session somewhere else — a linked device can only be online from one place")))
 	case *events.ClientOutdated:
-		c.fail(errors.New("WhatsApp no longer accepts this client version — update Silo"))
+		c.fail(channels.Permanent(errors.New("WhatsApp no longer accepts this client version — update Silo")))
 	case *events.TemporaryBan:
-		c.fail(errors.New(e.String()))
+		c.fail(channels.Permanent(errors.New(e.String())))
 	case *events.ConnectFailure:
 		if !e.Reason.IsLoggedOut() { // a LoggedOut event follows and says it better
 			c.fail(fmt.Errorf("WhatsApp refused the connection (%d %s)", int(e.Reason), e.Message))

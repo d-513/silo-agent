@@ -31,6 +31,9 @@ type FakeAdapter struct {
 	typed        []bool
 	host         channels.Host
 	ValidateFunc func(ctx context.Context, ch *db.Channel, cfg channels.Config) (channels.State, error)
+	// StartFunc, when set, runs after Start has recorded the host, in place
+	// of waiting for ctx.
+	StartFunc func(ctx context.Context, ch *db.Channel, host channels.Host) error
 }
 
 func NewFakeAdapter(slug string) *FakeAdapter {
@@ -52,10 +55,13 @@ func (f *FakeAdapter) Validate(ctx context.Context, ch *db.Channel, cfg channels
 	return channels.State{Kind: channels.StateInfo, Message: "ready"}, nil
 }
 
-func (f *FakeAdapter) Start(ctx context.Context, _ *db.Channel, _ channels.Config, host channels.Host) error {
+func (f *FakeAdapter) Start(ctx context.Context, ch *db.Channel, _ channels.Config, host channels.Host) error {
 	f.mu.Lock()
 	f.host = host
 	f.mu.Unlock()
+	if f.StartFunc != nil {
+		return f.StartFunc(ctx, ch, host)
+	}
 	<-ctx.Done()
 	return nil
 }

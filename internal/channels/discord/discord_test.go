@@ -645,3 +645,28 @@ func TestOtherActions(t *testing.T) {
 		t.Fatal("unknown action accepted")
 	}
 }
+
+// A restarted channel's old worker must not drop the new worker's session.
+func TestDropConnLeavesANewerConn(t *testing.T) {
+	a := New()
+	old, cur := &conn{}, &conn{}
+	a.putConn("ch", old)
+	a.putConn("ch", cur)
+	a.dropConn("ch", old)
+	if a.conn("ch") != cur {
+		t.Fatal("the old worker dropped the new session")
+	}
+	a.dropConn("ch", cur)
+	if a.conn("ch") != nil {
+		t.Fatal("the session outlived its worker")
+	}
+}
+
+func TestBadTokenIsPermanent(t *testing.T) {
+	if !channels.IsPermanent(friendlyOpen(errors.New("websocket: close 4004: Authentication failed."))) {
+		t.Fatal("a rejected token would be retried")
+	}
+	if channels.IsPermanent(friendlyOpen(errors.New("dial tcp: no route"))) {
+		t.Fatal("a network error would not be retried")
+	}
+}

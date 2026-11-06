@@ -134,3 +134,20 @@ func TestMediaOf(t *testing.T) {
 		t.Fatal("a download with no client passed")
 	}
 }
+
+// A restarted channel's old worker must not drop the new worker's client.
+func TestDropClientLeavesANewerClient(t *testing.T) {
+	a := &Adapter{clients: map[string]*telegram.Client{}, selfs: map[string]*tg.User{},
+		peers: map[string]map[string]peerRef{}, seen: map[string]map[int]struct{}{}, noHistory: map[string]bool{}}
+	old, cur := &telegram.Client{}, &telegram.Client{}
+	a.putClient("ch", old)
+	a.putClient("ch", cur)
+	a.dropClient("ch", old)
+	if a.client("ch") != cur {
+		t.Fatal("the old worker dropped the new client")
+	}
+	a.dropClient("ch", cur)
+	if a.client("ch") != nil {
+		t.Fatal("the client outlived its worker")
+	}
+}
