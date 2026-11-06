@@ -85,8 +85,7 @@ func (a *App) newCallChat(botID, userID string) (*db.Chat, error) {
 // between that run's turns, so it is refused with run.ErrBusy and the call
 // writes it once the run is over.
 func (a *App) RecordSpoken(botID, chatID, said, reply string, sp run.Spoken) error {
-	a.convMu.Lock()
-	defer a.convMu.Unlock()
+	defer a.lockConv(chatID)()
 	if a.LiveRunID(botID, chatID) != "" {
 		return run.ErrBusy
 	}

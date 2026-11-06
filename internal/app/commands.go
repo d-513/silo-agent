@@ -88,8 +88,7 @@ func (a *App) commandEvent(botID, chatID, kind, body string) {
 }
 
 func (a *App) cmdClear(ctx context.Context, c command.Call) (command.Result, error) {
-	a.convMu.Lock()
-	defer a.convMu.Unlock()
+	defer a.lockConv(c.ChatID)()
 	if a.LiveRunID(c.BotID, c.ChatID) != "" {
 		return command.Result{}, command.Refused("A reply is running. Stop it first (/stop), then /clear.")
 	}
@@ -129,8 +128,7 @@ func (a *App) cmdWipe(ctx context.Context, c command.Call) (command.Result, erro
 	if err := writableChat(ch); err != nil {
 		return command.Result{}, err
 	}
-	a.convMu.Lock()
-	defer a.convMu.Unlock()
+	defer a.lockConv(c.ChatID)()
 	events := a.orderedChatEvents(c.ChatID)
 	from := wipeStart(events, scope)
 	n := countMessages(events[from:])
@@ -149,8 +147,15 @@ func (a *App) cmdWipe(ctx context.Context, c command.Call) (command.Result, erro
 		}
 		return command.Result{Confirm: q, Value: fmt.Sprint(n)}, nil
 	}
-	a.StopChatLive(c.BotID, c.ChatID)
+	if !a.stopChatWait(c.BotID, c.ChatID) {
+		return command.Result{}, command.Refused(errStillStopping.Error())
+	}
 	a.stopSubagents(c.BotID, c.ChatID)
+	// Read again now the run is over: what it wrote on its way out (its
+	// "Stopped.", its done) goes with the rest.
+	events = a.orderedChatEvents(c.ChatID)
+	from = wipeStart(events, scope)
+	n = countMessages(events[from:])
 	if err := a.deleteChatEvents(events[from:]); err != nil {
 		return command.Result{}, err
 	}

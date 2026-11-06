@@ -37,8 +37,7 @@ func (a *App) scheduleWake(botID, leadChatID string) {
 // wakeLead starts a lead run with every finished, unseen subagent result. A
 // lead that is running inspects on its own; an automation log is never woken.
 func (a *App) wakeLead(botID, leadChatID string) {
-	a.convMu.Lock()
-	defer a.convMu.Unlock()
+	defer a.lockConv(leadChatID)()
 	if a.LiveRunID(botID, leadChatID) != "" {
 		return
 	}

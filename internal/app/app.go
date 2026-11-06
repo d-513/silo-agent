@@ -199,8 +199,9 @@ type App struct {
 	mask      map[string]*masker.Masker
 	lifecycle sync.Map
 
-	// convMu serializes the inject-or-start decision per conversation.
-	convMu sync.Mutex
+	// convs serializes the inject-or-start decision per conversation
+	// (lockConv): what one chat waits on never holds up another.
+	convs convLocks
 	// stopAutomations ends the scheduler loop on Shutdown.
 	stopAutomations chan struct{}
 	stopOnce        sync.Once
@@ -686,6 +687,44 @@ func (a *App) runExited(runID string) {
 	delete(a.runs, runID)
 	delete(a.ending, runID)
 	a.mu.Unlock()
+}
+
+// convLocks is a mutex per conversation, made on first use and dropped when
+// nobody holds or waits for it.
+type convLocks struct {
+	mu sync.Mutex
+	m  map[string]*convLock
+}
+
+type convLock struct {
+	mu sync.Mutex
+	n  int
+}
+
+// lockConv takes the conversation lock of chatID and returns its release.
+// Never hold two: a caller that needs another conversation releases first.
+func (a *App) lockConv(chatID string) (unlock func()) {
+	c := &a.convs
+	c.mu.Lock()
+	if c.m == nil {
+		c.m = map[string]*convLock{}
+	}
+	l := c.m[chatID]
+	if l == nil {
+		l = &convLock{}
+		c.m[chatID] = l
+	}
+	l.n++
+	c.mu.Unlock()
+	l.mu.Lock()
+	return func() {
+		l.mu.Unlock()
+		c.mu.Lock()
+		if l.n--; l.n == 0 {
+			delete(c.m, chatID)
+		}
+		c.mu.Unlock()
+	}
 }
 
 // trackedRun is a run whose goroutine has not exited, live or ending.

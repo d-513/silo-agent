@@ -174,3 +174,25 @@ func TestStoppedApprovalCannotBeAnswered(t *testing.T) {
 		t.Fatalf("run status %q", got)
 	}
 }
+
+// A /wipe confirmed while a reply runs stops it first and then deletes what
+// it wrote on its way out too.
+func TestWipeTakesTheStoppedRunsLastWords(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_rs_wipe", dummy.Turn{Delay: 5 * time.Second, Text: "too late"})
+	h := apptest.New(t)
+	bot := h.CreateBot("WipeLive")
+	chat := h.FirstChat(bot.GetId())
+	runID, _ := h.Send(bot.GetId(), chat, "Test_rs_wipe")
+	time.Sleep(200 * time.Millisecond)
+	if _, err := h.Client.Send(h.Ctx(), connect.NewRequest(&v1.SendRequest{BotId: bot.GetId(), ChatId: chat, Text: "/wipe all", Confirmed: true})); err != nil {
+		t.Fatal(err)
+	}
+	if left := h.Events(runID); len(left) != 0 {
+		var kinds []string
+		for _, ev := range left {
+			kinds = append(kinds, ev.Kind+":"+ev.Body)
+		}
+		t.Fatalf("the stopped run's events survive the wipe: %v", kinds)
+	}
+}

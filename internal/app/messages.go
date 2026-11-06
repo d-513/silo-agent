@@ -162,7 +162,15 @@ func (a *App) publishReset(botID, chatID string) {
 
 // StopChatLive stops any live run for the chat and waits for its goroutine to
 // exit, so history truncation is not raced by a final write.
-func (a *App) StopChatLive(botID, chatID string) {
+func (a *App) StopChatLive(botID, chatID string) { a.stopChatWait(botID, chatID) }
+
+// errStillStopping refuses a truncation whose chat's run did not exit in time:
+// its last writes would land after the cut.
+var errStillStopping = errors.New("the reply is still stopping; try again in a moment")
+
+// stopChatWait is StopChatLive, reporting whether every run of the chat has
+// exited (false: one is still unwinding after the wait).
+func (a *App) stopChatWait(botID, chatID string) bool {
 	// A run already stopped or past its last turn is still writing its last
 	// events: wait for those too, or they land after the truncation.
 	var wait []*liveRun
@@ -176,7 +184,7 @@ func (a *App) StopChatLive(botID, chatID string) {
 	}
 	a.mu.Unlock()
 	if len(wait) == 0 {
-		return
+		return true
 	}
 	a.stopChat(botID, chatID)
 	deadline := time.After(5 * time.Second)
@@ -184,9 +192,10 @@ func (a *App) StopChatLive(botID, chatID string) {
 		select {
 		case <-lr.done:
 		case <-deadline:
-			return
+			return false
 		}
 	}
+	return true
 }
 
 // EditMessage truncates the chat at the last user message and re-sends the
@@ -208,12 +217,13 @@ func (a *App) EditMessage(ctx context.Context, req *connect.Request[v1.EditMessa
 	if text == "" && len(ex.Files) == 0 && len(ex.Quotes) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("text required"))
 	}
-	a.convMu.Lock()
-	defer a.convMu.Unlock()
+	defer a.lockConv(ch.ID)()
 	if last := a.lastUserEventID(ch.ID); last == "" || last != req.Msg.GetEventId() {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("only the last user message can be edited"))
 	}
-	a.StopChatLive(b.ID, ch.ID)
+	if !a.stopChatWait(b.ID, ch.ID) {
+		return nil, connect.NewError(connect.CodeUnavailable, errStillStopping)
+	}
 	found, err := a.truncateChatFrom(ch.ID, req.Msg.GetEventId())
 	if err != nil {
 		return nil, err
@@ -240,12 +250,13 @@ func (a *App) DeleteMessage(ctx context.Context, req *connect.Request[v1.DeleteM
 	if err != nil {
 		return nil, err
 	}
-	a.convMu.Lock()
-	defer a.convMu.Unlock()
+	defer a.lockConv(ch.ID)()
 	if last := a.lastUserEventID(ch.ID); last == "" || last != req.Msg.GetEventId() {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("only the last user message can be deleted"))
 	}
-	a.StopChatLive(b.ID, ch.ID)
+	if !a.stopChatWait(b.ID, ch.ID) {
+		return nil, connect.NewError(connect.CodeUnavailable, errStillStopping)
+	}
 	found, err := a.truncateChatFrom(ch.ID, req.Msg.GetEventId())
 	if err != nil {
 		return nil, err
@@ -316,8 +327,7 @@ func (a *App) compactChat(botID, chatID string) (string, error) {
 		// compact automatically inside their runs.
 		return "", connect.NewError(connect.CodeFailedPrecondition, errors.New("channel conversations compact automatically"))
 	}
-	a.convMu.Lock()
-	defer a.convMu.Unlock()
+	defer a.lockConv(ch.ID)()
 	if a.LiveRunID(botID, ch.ID) != "" {
 		return "", connect.NewError(connect.CodeFailedPrecondition, errors.New("a reply is running; wait for it or stop it first"))
 	}

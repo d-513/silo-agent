@@ -13,8 +13,6 @@ import (
 // main chat between the check and the write would read a history without
 // what was written and replay one with it.
 func (a *App) Place(p run.Placement) (run.Placed, error) {
-	a.convMu.Lock()
-	defer a.convMu.Unlock()
 	// Whose main chat: the person who pressed; for the Bot's own doing,
 	// the one person on it. With several, the Bot writes in nobody's main
 	// chat unasked: it opens a chat of its own, or waits on the Dashboard.
@@ -31,6 +29,9 @@ func (a *App) Place(p run.Placement) (run.Placed, error) {
 			return run.Placed{}, err
 		}
 		main = m
+		// The main chat's lock: a chat of its own is new, so nobody else
+		// can be starting a run in it.
+		defer a.lockConv(main.ID)()
 	}
 	out := run.Placed{Chat: main, Main: main != nil && !p.Own && a.LiveRunID(p.BotID, main.ID) == "" && (!p.Proactive || a.Proactive(p.BotID))}
 	if !out.Main {

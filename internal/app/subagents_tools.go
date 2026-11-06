@@ -212,9 +212,9 @@ func (a *App) spawnAgent(ctx context.Context, bot *db.Bot, leadChatID, runID, na
 	if err := a.DB.Create(&sa).Error; err != nil {
 		return "", err
 	}
-	a.convMu.Lock()
+	unlock := a.lockConv(c.ID)
 	_, err := a.StartRun(run.Request{BotID: bot.ID, ChatID: c.ID, Text: subagentBrief(goal, ctxText), From: run.FromLead, Origin: &run.Origin{Subagent: &sa}})
-	a.convMu.Unlock()
+	unlock()
 	if err != nil {
 		return "", err
 	}
@@ -225,8 +225,7 @@ func (a *App) spawnAgent(ctx context.Context, bot *db.Bot, leadChatID, runID, na
 // messageSubagent injects text into a live subagent run or resumes a finished
 // one. It reports whether it resumed.
 func (a *App) messageSubagent(sa *db.Subagent, text string) (bool, error) {
-	a.convMu.Lock()
-	defer a.convMu.Unlock()
+	defer a.lockConv(sa.ChatID)()
 	if runID := a.LiveRunID(sa.BotID, sa.ChatID); runID != "" {
 		if a.inject(sa.BotID, sa.ChatID, runID, text, run.Extra{}, run.FromLead) {
 			return false, nil

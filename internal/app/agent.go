@@ -97,8 +97,7 @@ func (a *App) StartRun(req run.Request) (string, error) {
 // StartIfIdle is StartRun for callers that must not steer or stack on a live
 // run: it holds the conversation lock across the check and the start.
 func (a *App) StartIfIdle(req run.Request) (string, error) {
-	a.convMu.Lock()
-	defer a.convMu.Unlock()
+	defer a.lockConv(req.ChatID)()
 	if a.LiveRunID(req.BotID, req.ChatID) != "" {
 		return "", run.ErrBusy
 	}
@@ -865,12 +864,11 @@ func (a *App) finish(botID, chatID, runID, st string) {
 // StartOrInject serializes the decision to either steer a live run or start a
 // new one. This is the single entry point for chats and channels.
 func (a *App) StartOrInject(botID, chatID, text string, ex run.Extra, origin *run.Origin) (string, error) {
-	a.convMu.Lock()
-	defer a.convMu.Unlock()
+	defer a.lockConv(chatID)()
 	return a.startOrInjectLocked(botID, chatID, text, ex, origin)
 }
 
-// startOrInjectLocked is startOrInject with convMu already held, so callers can
+// startOrInjectLocked is startOrInject with the conversation lock held, so callers can
 // truncate history and start the replacement run atomically.
 func (a *App) startOrInjectLocked(botID, chatID, text string, ex run.Extra, origin *run.Origin) (string, error) {
 	if runID := a.LiveRunID(botID, chatID); runID != "" {
