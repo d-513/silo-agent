@@ -94,14 +94,16 @@ func (s *Service) signIn(w http.ResponseWriter, r *http.Request, u *db.User, met
 	return err
 }
 
-// held is ResourceExhausted while account at addr has to wait before another
-// guess, else nil.
-func (s *Service) held(account, addr string) error {
-	w := s.limit.Wait(account, addr)
+// begin lets one guess by account at addr through, counted as it passes (so a
+// burst cannot all pass before the first fails), or is ResourceExhausted while
+// it has to wait. The caller settles the attempt with Failed or Succeeded and
+// defers Done, which takes back one that never got to the guess.
+func (s *Service) begin(account, addr string) (*auth.Attempt, error) {
+	a, w := s.limit.Begin(account, addr)
 	if w <= 0 {
-		return nil
+		return a, nil
 	}
-	return connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("too many attempts; try again in %s", waitWords(w)))
+	return nil, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("too many attempts; try again in %s", waitWords(w)))
 }
 
 func waitWords(d time.Duration) string {

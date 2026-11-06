@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
@@ -114,33 +115,51 @@ func (s *Service) JoinSpace(ctx context.Context, req *connect.Request[v1.JoinSpa
 	}
 	out := &v1.JoinSpaceResponse{}
 	u := access.User(ctx)
-	if u == nil {
-		if !s.cfg().Spaces.InviteSignup {
-			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("sign in to join; ask the instance admin for an account"))
-		}
-		nu, err := s.host.SignUp(ctx, req.Msg.GetEmail(), req.Msg.GetPassword())
-		if err != nil {
-			return nil, err
-		}
-		u = nu
-		out.Email, out.Admin = nu.Email, nu.Admin
+	signup := u == nil
+	if signup && !s.cfg().Spaces.InviteSignup {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("sign in to join; ask the instance admin for an account"))
 	}
 	var sp db.Space
 	s.db.Where("id = ?", inv.SpaceID).Limit(1).Find(&sp)
-	if role := access.SpaceRole(s.db, sp.ID, u.ID); role != "" {
-		// Already in: the link stays for whoever it was meant for.
-		out.Space = s.view(&sp, role, u.ID)
-		return connect.NewResponse(out), nil
+	if !signup {
+		if role := access.SpaceRole(s.db, sp.ID, u.ID); role != "" {
+			// Already in: the link stays for whoever it was meant for.
+			out.Space = s.view(&sp, role, u.ID)
+			return connect.NewResponse(out), nil
+		}
 	}
-	res := s.db.Model(&db.SpaceInvite{}).Where("id = ? AND used_at IS NULL", inv.ID).Updates(map[string]any{"used_at": time.Now(), "used_by": u.ID})
-	if res.Error != nil {
-		return nil, res.Error
-	}
-	if res.RowsAffected != 1 {
-		return nil, errLinkGone
-	}
-	if err := s.db.Create(&db.SpaceMember{SpaceID: sp.ID, UserID: u.ID, Role: inv.Role, InvitedBy: inv.CreatedBy, CreatedAt: time.Now()}).Error; err != nil {
+	// The link is claimed first, and the account (for a visitor) and the
+	// membership are made in the same transaction: two joins at once make one
+	// account and one member, and a failure leaves the link unused.
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		now := time.Now()
+		res := tx.Model(&db.SpaceInvite{}).Where("id = ? AND used_at IS NULL AND expires_at > ?", inv.ID, now).Update("used_at", now)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected != 1 {
+			return errLinkGone
+		}
+		if signup {
+			nu, err := s.host.NewUser(tx, req.Msg.GetEmail(), req.Msg.GetPassword())
+			if err != nil {
+				return err
+			}
+			u = nu
+		}
+		if err := tx.Model(&db.SpaceInvite{}).Where("id = ?", inv.ID).Update("used_by", u.ID).Error; err != nil {
+			return err
+		}
+		return tx.Create(&db.SpaceMember{SpaceID: sp.ID, UserID: u.ID, Role: inv.Role, InvitedBy: inv.CreatedBy, CreatedAt: now}).Error
+	})
+	if err != nil {
 		return nil, err
+	}
+	if signup {
+		if err := s.host.SignInNew(ctx, u); err != nil {
+			return nil, err
+		}
+		out.Email, out.Admin = u.Email, u.Admin
 	}
 	access.Activity(s.db, sp.ID, u.ID, access.Joined, u.Email, "", inv.Role)
 	out.Space = s.view(&sp, inv.Role, u.ID)

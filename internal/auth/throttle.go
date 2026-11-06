@@ -49,10 +49,105 @@ func NewLimiter() *Limiter {
 
 // Wait is how long this account at this address must wait before another try;
 // zero means go ahead. account may be empty when there is none to name.
+//
+// Wait and Fail are two steps, so guesses made at once all pass Wait before
+// any Fail counts; a sign-in uses Begin, which counts the try as it lets it
+// through.
 func (l *Limiter) Wait(account, addr string) time.Duration {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	return l.wait(account, addr, l.now())
+}
+
+// Attempt is one try Begin let through, counted as a failure until it is
+// settled: Failed keeps the count, Succeeded clears the pair as OK does, and
+// Done takes back a try settled neither way (it never got to the guess).
+type Attempt struct {
+	l             *Limiter
+	account, addr string
+	at            time.Time
+	until         time.Time // the pair's wait before this try counted
+	settled       bool
+}
+
+// Begin lets a try through and counts it in the same step, or says how long
+// to wait. Of many tries at once only as many pass as the limits allow.
+func (l *Limiter) Begin(account, addr string) (*Attempt, time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	now := l.now()
+	if w := l.wait(account, addr, now); w > 0 {
+		return nil, w
+	}
+	a := &Attempt{l: l, account: account, addr: addr, at: now}
+	if p := l.pairs[pairKey(account, addr)]; p != nil {
+		a.until = p.until
+	}
+	l.fail(account, addr, now)
+	return a, 0
+}
+
+// Failed settles the try as a wrong one: it stays counted.
+func (a *Attempt) Failed() {
+	a.l.mu.Lock()
+	a.settled = true
+	a.l.mu.Unlock()
+}
+
+// Succeeded settles the try as a right one: it is taken back and the
+// account's count at this address starts over.
+func (a *Attempt) Succeeded() {
+	a.l.mu.Lock()
+	defer a.l.mu.Unlock()
+	if a.settled {
+		return
+	}
+	a.settled = true
+	a.l.unfail(a)
+	delete(a.l.pairs, pairKey(a.account, a.addr))
+}
+
+// Done takes back a try that was settled neither way; after Failed or
+// Succeeded it does nothing, so it can be deferred.
+func (a *Attempt) Done() {
+	if a == nil {
+		return
+	}
+	a.l.mu.Lock()
+	defer a.l.mu.Unlock()
+	if a.settled {
+		return
+	}
+	a.settled = true
+	a.l.unfail(a)
+}
+
+// unfail takes back the failure Begin counted for a. The caller holds mu.
+func (l *Limiter) unfail(a *Attempt) {
+	l.addrs[addrKey(a.addr)] = without(l.addrs[addrKey(a.addr)], a.at)
+	if a.account == "" {
+		return
+	}
+	l.accounts[a.account] = without(l.accounts[a.account], a.at)
+	if p := l.pairs[pairKey(a.account, a.addr)]; p != nil && p.fails > 0 {
+		p.fails--
+		if p.fails <= pairFree {
+			p.until = a.until
+		}
+	}
+}
+
+// without drops one entry equal to t.
+func without(times []time.Time, t time.Time) []time.Time {
+	for i := len(times) - 1; i >= 0; i-- {
+		if times[i].Equal(t) {
+			return append(times[:i:i], times[i+1:]...)
+		}
+	}
+	return times
+}
+
+func (l *Limiter) wait(account, addr string, now time.Time) time.Duration {
 	var wait time.Duration
 	if p := l.pairs[pairKey(account, addr)]; p != nil && account != "" {
 		wait = max(wait, p.until.Sub(now))
@@ -68,7 +163,10 @@ func (l *Limiter) Wait(account, addr string) time.Duration {
 func (l *Limiter) Fail(account, addr string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	now := l.now()
+	l.fail(account, addr, l.now())
+}
+
+func (l *Limiter) fail(account, addr string, now time.Time) {
 	if now.Sub(l.pruned) >= pruneEvery {
 		l.pruned = now
 		l.prune(now)

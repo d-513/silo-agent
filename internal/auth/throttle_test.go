@@ -145,3 +145,48 @@ func TestLimiterPrunes(t *testing.T) {
 		t.Fatalf("%d stale entries kept", n)
 	}
 }
+
+// Tries made at once are counted as they pass, so a burst cannot all get
+// through before the first of them fails.
+func TestLimiterBeginCountsATryAsItPasses(t *testing.T) {
+	l, _ := newTestLimiter()
+	var passed []*Attempt
+	for range 50 {
+		if a, w := l.Begin("a@b.c", "1.1.1.1"); w == 0 {
+			passed = append(passed, a)
+		}
+	}
+	if len(passed) != pairFree+1 {
+		t.Fatalf("%d tries passed at once, want %d", len(passed), pairFree+1)
+	}
+	for _, a := range passed {
+		a.Failed()
+		a.Done() // settled: changes nothing
+	}
+	if w := l.Wait("a@b.c", "1.1.1.1"); w != 30*time.Second {
+		t.Fatalf("wait %v after the burst", w)
+	}
+}
+
+// A try taken back (it never got to the guess) or a right one leaves no count.
+func TestLimiterBeginTakesBackAnUnsettledTry(t *testing.T) {
+	l, _ := newTestLimiter()
+	for range 30 {
+		a, w := l.Begin("a@b.c", "1.1.1.1")
+		if w != 0 {
+			t.Fatalf("held after tries that were taken back: %v", w)
+		}
+		a.Done()
+	}
+	for range 4 {
+		l.Fail("a@b.c", "1.1.1.1")
+	}
+	a, _ := l.Begin("a@b.c", "1.1.1.1")
+	a.Succeeded()
+	if p := l.pairs[pairKey("a@b.c", "1.1.1.1")]; p != nil {
+		t.Fatalf("a right try left the pair at %d", p.fails)
+	}
+	if n := len(l.addrs[addrKey("1.1.1.1")]); n != 4 {
+		t.Fatalf("the address holds %d failures, want 4", n)
+	}
+}

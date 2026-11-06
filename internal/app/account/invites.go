@@ -168,9 +168,11 @@ func (s *Service) AcceptInvite(ctx context.Context, req *connect.Request[v1.Acce
 // in principle, so misses count against the address like wrong passwords.
 func (s *Service) openInvite(ctx context.Context, token string) (*db.Invite, error) {
 	ip := s.clientIP(access.Request(ctx))
-	if err := s.held("", ip); err != nil {
+	try, err := s.begin("", ip)
+	if err != nil {
 		return nil, err
 	}
+	defer try.Done() // a link that works is no guess
 	var inv db.Invite
 	if token = strings.TrimSpace(token); token != "" {
 		if err := s.db.Where("id = ? AND used_at IS NULL AND expires_at > ?", ids.Hash(token), time.Now()).Limit(1).Find(&inv).Error; err != nil {
@@ -178,7 +180,7 @@ func (s *Service) openInvite(ctx context.Context, token string) (*db.Invite, err
 		}
 	}
 	if inv.ID == "" {
-		s.limit.Fail("", ip)
+		try.Failed()
 		return nil, errInviteGone
 	}
 	return &inv, nil
@@ -201,10 +203,11 @@ func validEmail(email string) bool {
 	return strings.Contains(domain, ".") && !strings.HasSuffix(domain, ".")
 }
 
-// SignUp makes an account with a password and signs it in on this request:
-// for a Workspace invite link while the operator allows that
-// (spaces.invite_signup). The caller has checked the link.
-func (s *Service) SignUp(ctx context.Context, email, password string) (*db.User, error) {
+// NewUser makes an account with a password in tx: for a Workspace invite link
+// while the operator allows that (spaces.invite_signup). The caller claims the
+// link in the same transaction, so a link used twice at once makes one
+// account, and signs the account in (SignInNew) once it is committed.
+func (s *Service) NewUser(tx *gorm.DB, email, password string) (*db.User, error) {
 	email = auth.NormalizeEmail(email)
 	if !validEmail(email) {
 		return nil, invalid("enter an email address")
@@ -212,7 +215,7 @@ func (s *Service) SignUp(ctx context.Context, email, password string) (*db.User,
 	if err := auth.ValidPassword(password); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	if u, err := auth.FindUser(s.db, email); err != nil {
+	if u, err := auth.FindUser(tx, email); err != nil {
 		return nil, err
 	} else if u != nil {
 		return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("a user with this email already exists: sign in, then open the link again"))
@@ -222,11 +225,13 @@ func (s *Service) SignUp(ctx context.Context, email, password string) (*db.User,
 		return nil, err
 	}
 	u := db.User{ID: ids.New(), Email: email, PasswordHash: hash, CreatedAt: time.Now()}
-	if err := s.db.Create(&u).Error; err != nil {
-		return nil, err
-	}
-	if err := s.signIn(access.ResponseWriter(ctx), access.Request(ctx), &u, MethodInvite); err != nil {
+	if err := tx.Create(&u).Error; err != nil {
 		return nil, err
 	}
 	return &u, nil
+}
+
+// SignInNew signs an account NewUser made in on this request.
+func (s *Service) SignInNew(ctx context.Context, u *db.User) error {
+	return s.signIn(access.ResponseWriter(ctx), access.Request(ctx), u, MethodInvite)
 }

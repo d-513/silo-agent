@@ -36,9 +36,11 @@ func (s *Service) SignIn(ctx context.Context, req *connect.Request[v1.SignInRequ
 	}
 	r := access.Request(ctx)
 	ip := s.clientIP(r)
-	if err := s.held(email, ip); err != nil {
+	try, err := s.begin(email, ip)
+	if err != nil {
 		return nil, err
 	}
+	defer try.Done()
 	var count int64
 	if err := s.db.Model(&db.User{}).Count(&count).Error; err != nil {
 		return nil, err
@@ -51,7 +53,7 @@ func (s *Service) SignIn(ctx context.Context, req *connect.Request[v1.SignInRequ
 		return nil, err
 	}
 	wrong := func() error {
-		s.limit.Fail(email, ip)
+		try.Failed()
 		return connect.NewError(connect.CodeUnauthenticated, errCredentials)
 	}
 	// The hash is checked even with no user, so a miss takes as long as a hit.
@@ -71,11 +73,11 @@ func (s *Service) SignIn(ctx context.Context, req *connect.Request[v1.SignInRequ
 			return connect.NewResponse(&v1.SignInResponse{NeedsCode: true}), nil
 		}
 		if !s.spendCode(u, code) {
-			s.limit.Fail(email, ip)
+			try.Failed()
 			return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("that code is not right"))
 		}
 	}
-	s.limit.OK(email, ip)
+	try.Succeeded()
 	if err := s.signIn(access.ResponseWriter(ctx), r, u, MethodPassword); err != nil {
 		return nil, err
 	}
@@ -107,15 +109,16 @@ func (s *Service) ChangePassword(ctx context.Context, req *connect.Request[v1.Ch
 	u := access.User(ctx)
 	if u.PasswordHash != "" {
 		ip := s.clientIP(access.Request(ctx))
-		if err := s.held(u.Email, ip); err != nil {
+		try, err := s.begin(u.Email, ip)
+		if err != nil {
 			return nil, err
 		}
 		// Never Unauthenticated: that would read as the session having ended.
 		if !auth.CheckPassword(u.PasswordHash, req.Msg.GetCurrent()) {
-			s.limit.Fail(u.Email, ip)
+			try.Failed()
 			return nil, invalid("the current password is not right")
 		}
-		s.limit.OK(u.Email, ip)
+		try.Succeeded()
 	}
 	keep := ""
 	if cur := access.Session(ctx); cur != nil {

@@ -25,9 +25,10 @@ type Host interface {
 	// AccessEnded ends what a person holds open on a Bot (streams, sockets)
 	// once they are off it.
 	AccessEnded(botID, userID string)
-	// SignUp makes an account with a password and signs it in on this
-	// request.
-	SignUp(ctx context.Context, email, password string) (*db.User, error)
+	// NewUser makes an account with a password in tx; SignInNew signs it in
+	// on this request once tx is committed.
+	NewUser(tx *gorm.DB, email, password string) (*db.User, error)
+	SignInNew(ctx context.Context, u *db.User) error
 }
 
 // Lending is a domain whose resources can carry a person's identity:

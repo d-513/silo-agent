@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 
+	"gorm.io/gorm"
+
 	"silo.agent/internal/app/access"
 
 	"silo.agent/internal/db"
@@ -20,8 +22,12 @@ func (h spaceHost) DropBot(ctx context.Context, botID string) {
 
 func (h spaceHost) AccessEnded(botID, userID string) { h.a.Gone.End(botID, userID) }
 
-func (h spaceHost) SignUp(ctx context.Context, email, password string) (*db.User, error) {
-	return h.a.Accounts.SignUp(ctx, email, password)
+func (h spaceHost) NewUser(tx *gorm.DB, email, password string) (*db.User, error) {
+	return h.a.Accounts.NewUser(tx, email, password)
+}
+
+func (h spaceHost) SignInNew(ctx context.Context, u *db.User) error {
+	return h.a.Accounts.SignInNew(ctx, u)
 }
 
 // chatAuthor is who writes in a chat: "" for the Bot's own.

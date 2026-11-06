@@ -32,14 +32,15 @@ func (s *Service) StartTOTP(ctx context.Context, req *connect.Request[v1.StartTO
 		return nil, refused("two-factor is already on")
 	}
 	ip := s.clientIP(access.Request(ctx))
-	if err := s.held(u.Email, ip); err != nil {
+	try, err := s.begin(u.Email, ip)
+	if err != nil {
 		return nil, err
 	}
 	if !auth.CheckPassword(u.PasswordHash, req.Msg.GetPassword()) {
-		s.limit.Fail(u.Email, ip)
+		try.Failed()
 		return nil, invalid("the password is not right")
 	}
-	s.limit.OK(u.Email, ip)
+	try.Succeeded()
 	secret, err := auth.NewTOTPSecret()
 	if err != nil {
 		return nil, err
@@ -66,17 +67,18 @@ func (s *Service) ConfirmTOTP(ctx context.Context, req *connect.Request[v1.Confi
 		return nil, refused("start two-factor setup first")
 	}
 	ip := s.clientIP(access.Request(ctx))
-	if err := s.held(u.Email, ip); err != nil {
+	try, err := s.begin(u.Email, ip)
+	if err != nil {
 		return nil, err
 	}
 	step, ok := auth.CheckTOTP(u.TOTPPending, req.Msg.GetCode(), time.Now(), 0)
 	if !ok {
-		s.limit.Fail(u.Email, ip)
+		try.Failed()
 		return nil, invalid("that code is not right; check the time on your phone and try the next one")
 	}
-	s.limit.OK(u.Email, ip)
+	try.Succeeded()
 	var codes []string
-	err := s.db.Transaction(func(tx *gorm.DB) error {
+	err = s.db.Transaction(func(tx *gorm.DB) error {
 		res := tx.Model(&db.User{}).Where("id = ? AND totp_pending = ?", u.ID, u.TOTPPending).
 			Updates(map[string]any{"totp_secret": u.TOTPPending, "totp_pending": "", "totp_step": step})
 		if res.Error != nil {
@@ -146,14 +148,15 @@ func (s *Service) codesResponse(userID string, codes []string) (*connect.Respons
 // proveCode is spendCode for a signed-in user, throttled like a sign-in.
 func (s *Service) proveCode(ctx context.Context, u *db.User, code string) error {
 	ip := s.clientIP(access.Request(ctx))
-	if err := s.held(u.Email, ip); err != nil {
+	try, err := s.begin(u.Email, ip)
+	if err != nil {
 		return err
 	}
 	if !s.spendCode(u, code) {
-		s.limit.Fail(u.Email, ip)
+		try.Failed()
 		return invalid("that code is not right")
 	}
-	s.limit.OK(u.Email, ip)
+	try.Succeeded()
 	return nil
 }
 

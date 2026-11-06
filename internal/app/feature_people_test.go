@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -128,6 +129,52 @@ func TestInviteSignupFollowsTheSetting(t *testing.T) {
 	// Signed in now, and in the Workspace.
 	if _, err := v2.GetSpace(h2.Ctx(), connect.NewRequest(&v1.GetSpaceRequest{Id: sp2})); err != nil {
 		t.Fatalf("the new account is not in the workspace: %v", err)
+	}
+}
+
+// One link opened by two visitors at once makes one account and one member:
+// the link is claimed before an account is made, in the same transaction.
+func TestInviteSignupRaceMakesOneAccount(t *testing.T) {
+	h := apptest.New(t, apptest.WithYAML(apptest.DefaultYAML(t.TempDir())+"\nspaces:\n  invite_signup: true\n"))
+	sp := homeSpace(t, h)
+	tok := invite(t, h.Client, sp, access.RoleMember)
+	const n = 6
+	errs := make(chan error, n)
+	for i := range n {
+		v, _ := h.Browser()
+		go func() {
+			_, err := v.JoinSpace(h.Ctx(), connect.NewRequest(&v1.JoinSpaceRequest{Token: tok, Email: fmt.Sprintf("racer%d@test.local", i), Password: "a long password"}))
+			errs <- err
+		}()
+	}
+	ok := 0
+	for range n {
+		if err := <-errs; err == nil {
+			ok++
+		} else if code(err) != connect.CodeFailedPrecondition {
+			t.Fatalf("a losing join: %v", err)
+		}
+	}
+	var accounts, members int64
+	h.DB.Model(&db.User{}).Where("email LIKE ?", "racer%").Count(&accounts)
+	h.DB.Model(&db.SpaceMember{}).Where("space_id = ?", sp).Count(&members)
+	if ok != 1 || accounts != 1 || members != 2 {
+		t.Fatalf("%d joins, %d accounts, %d members; want 1, 1, 2", ok, accounts, members)
+	}
+}
+
+// A join that fails after the claim leaves the link for the next try.
+func TestInviteSignupFailureKeepsTheLink(t *testing.T) {
+	h := apptest.New(t, apptest.WithYAML(apptest.DefaultYAML(t.TempDir())+"\nspaces:\n  invite_signup: true\n"))
+	sp := homeSpace(t, h)
+	tok := invite(t, h.Client, sp, access.RoleMember)
+	v, _ := h.Browser()
+	// The harness user's email is taken: the account cannot be made.
+	if _, err := v.JoinSpace(h.Ctx(), connect.NewRequest(&v1.JoinSpaceRequest{Token: tok, Email: h.Email, Password: "a long password"})); code(err) != connect.CodeAlreadyExists {
+		t.Fatalf("join with a taken email: %v", err)
+	}
+	if info, _ := v.GetSpaceInvite(h.Ctx(), connect.NewRequest(&v1.GetSpaceInviteRequest{Token: tok})); info.Msg.GetState() != "ok" {
+		t.Fatalf("a failed join spent the link: %q", info.Msg.GetState())
 	}
 }
 
