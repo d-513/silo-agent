@@ -2,6 +2,7 @@ package search
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"sort"
@@ -316,11 +317,20 @@ func (m *meta) ask(ctx context.Context, s source, q Query, wait time.Duration) a
 			return answer{src: s, err: ctx.Err()}
 		}
 	}
+	// Past a backoff only one search probes the site; the others treat it
+	// as still resting, and the turn goes back.
+	if !m.health.enter(s.name) {
+		if b := m.buckets[s.name]; b != nil {
+			b.giveBack()
+		}
+		return answer{src: s, err: errResting}
+	}
 	sctx, cancel := context.WithTimeout(ctx, m.sourceTimeout)
 	defer cancel()
 	hits, err := s.fetch(sctx, q)
 	switch {
 	case ctx.Err() != nil:
+		m.health.release(s.name)
 		if err == nil {
 			err = ctx.Err()
 		}
@@ -335,6 +345,9 @@ func (m *meta) ask(ctx context.Context, s source, q Query, wait time.Duration) a
 	}
 	return answer{src: s, hits: hits, err: err}
 }
+
+// errResting is a source skipped because another search is probing it.
+var errResting = errors.New("resting after a failure while another search tries it")
 
 // cleanQuery trims a query and drops a language or country that is not a
 // plain code, so nothing a model made up reaches a URL or a cookie.

@@ -621,3 +621,45 @@ func TestCanonical(t *testing.T) {
 		t.Fatalf("clip gave %d runes", len([]rune(got)))
 	}
 }
+
+// Past its backoff a source is probed by one search; the others skip it until
+// the probe answers, and a probe that got no verdict or was lost frees it.
+func TestBreakerLetsOneProbeThrough(t *testing.T) {
+	c := newClock()
+	b := newBreaker(c.now)
+	if !b.enter("x") {
+		t.Fatal("a healthy source is refused")
+	}
+	b.fail("x", 0)
+	if b.enter("x") {
+		t.Fatal("entered inside the backoff")
+	}
+	c.add(backoffStart)
+	if b.open("x") || !b.enter("x") {
+		t.Fatal("no probe after the backoff")
+	}
+	if !b.open("x") || b.enter("x") {
+		t.Fatal("a second search probed alongside the first")
+	}
+	b.release("x") // the search ended before the probe answered
+	if !b.enter("x") {
+		t.Fatal("a released probe kept the source shut")
+	}
+	c.add(probeStale)
+	if !b.enter("x") {
+		t.Fatal("a lost probe kept the source shut")
+	}
+	b.ok("x")
+	if b.open("x") || !b.enter("x") || !b.enter("x") {
+		t.Fatal("an answered probe left the source shut")
+	}
+	// A failed probe starts the next, longer backoff.
+	b.fail("x", 0)
+	c.add(backoffStart)
+	b.enter("x")
+	b.fail("x", 0)
+	c.add(backoffStart)
+	if !b.open("x") {
+		t.Fatal("a failed probe did not back off longer")
+	}
+}

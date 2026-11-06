@@ -26,13 +26,14 @@ var ddgPages = newBreaker(time.Now)
 // request against a limit already hit. The lite page is there for when the
 // html page's markup or host is the problem.
 func duckduckgo(ctx context.Context, q Query) ([]Hit, error) {
-	if !ddgPages.open("html") {
+	if ddgPages.enter("html") {
 		hits, err := ddgHTML(ctx, q)
 		if err == nil {
 			ddgPages.ok("html")
 			return hits, nil
 		}
 		if _, limited := rateLimited(err); limited || ctx.Err() != nil {
+			ddgPages.release("html")
 			return nil, err
 		}
 		ddgPages.fail("html", 0)

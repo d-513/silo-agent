@@ -13,11 +13,16 @@ const (
 	backoffStart   = 30 * time.Second
 	backoffLimited = 2 * time.Minute
 	backoffMax     = 30 * time.Minute
+	// probeStale is when a probe that never reported is given up on, so a
+	// lost one does not keep the source shut.
+	probeStale = time.Minute
 )
 
 // breaker is the health of every source: one that failed is skipped until its
-// backoff has passed, so a blocked engine costs a search nothing. The first
-// search after the backoff is the probe; an answer resets it.
+// backoff has passed, so a blocked engine costs a search nothing. After the
+// backoff one search is the probe (enter); the others go on skipping it until
+// the probe answers, so a burst does not all hit a site that just blocked us.
+// An answer resets it.
 type breaker struct {
 	mu    sync.Mutex
 	now   func() time.Time
@@ -27,18 +32,54 @@ type breaker struct {
 type health struct {
 	fails int
 	until time.Time
+	// probing is when the probe in flight started; zero when none is.
+	probing time.Time
+}
+
+func (h *health) probeLive(now time.Time) bool {
+	return !h.probing.IsZero() && now.Sub(h.probing) < probeStale
 }
 
 func newBreaker(now func() time.Time) *breaker {
 	return &breaker{now: now, state: map[string]*health{}}
 }
 
-// open reports whether name is inside its backoff and must be skipped.
+// open reports whether name must be skipped: inside its backoff, or past it
+// with a probe in flight.
 func (b *breaker) open(name string) bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	h := b.state[name]
-	return h != nil && b.now().Before(h.until)
+	now := b.now()
+	return h != nil && (now.Before(h.until) || h.probeLive(now))
+}
+
+// enter is asking name now: true for a healthy source, or for the one search
+// that becomes the probe of a source past its backoff. The probe ends with
+// ok, fail or release.
+func (b *breaker) enter(name string) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	h := b.state[name]
+	if h == nil {
+		return true
+	}
+	now := b.now()
+	if now.Before(h.until) || h.probeLive(now) {
+		return false
+	}
+	h.probing = now
+	return true
+}
+
+// release ends a probe that got no verdict (the search ended first), so the
+// next search may probe.
+func (b *breaker) release(name string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if h := b.state[name]; h != nil {
+		h.probing = time.Time{}
+	}
 }
 
 // fail records a failure. atLeast is the shortest the source must be left
@@ -52,6 +93,7 @@ func (b *breaker) fail(name string, atLeast time.Duration) {
 		b.state[name] = h
 	}
 	h.fails++
+	h.probing = time.Time{}
 	wait := backoffMax
 	if h.fails <= 7 {
 		wait = min(backoffStart<<(h.fails-1), backoffMax)
