@@ -239,3 +239,32 @@ func TestSplitAtMarker(t *testing.T) {
 		}
 	}
 }
+
+// A kernel handed out is not evicted before its cell starts: making room for
+// another session takes an idle one or none.
+func TestKernelHandedOutIsNotEvicted(t *testing.T) {
+	w := kernelWorker(t)
+	w.kernels.max = 1
+	k := w.kernels.get(w, "a")
+	if k == nil {
+		t.Fatal("no kernel")
+	}
+	if other := w.kernels.get(w, "b"); other != nil {
+		w.kernels.release(other)
+		t.Fatal("a kernel was evicted while handed out")
+	}
+	select {
+	case <-k.exited:
+		t.Fatal("the handed-out kernel was closed")
+	default:
+	}
+	if got := k.run(context.Background(), &w.kernels, "a", "run1", "print('still here')", nil); got != freshSession+"\nstill here\n" {
+		t.Fatalf("cell %q", got)
+	}
+	w.kernels.release(k)
+	if other := w.kernels.get(w, "b"); other == nil {
+		t.Fatal("a released kernel did not make room")
+	} else {
+		w.kernels.release(other)
+	}
+}

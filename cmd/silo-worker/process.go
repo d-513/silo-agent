@@ -47,6 +47,7 @@ func (w *worker) python(ctx context.Context, runID, session, code string, chunk 
 	}
 	if session != "" {
 		if k := w.kernels.get(w, session); k != nil {
+			defer w.kernels.release(k)
 			return k.run(ctx, &w.kernels, session, runID, code, chunk), nil
 		}
 	}

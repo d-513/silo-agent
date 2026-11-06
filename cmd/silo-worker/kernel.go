@@ -58,8 +58,11 @@ type kernel struct {
 	// mu makes cells take turns.
 	mu    sync.Mutex
 	fresh bool
-	// used is guarded by kernels.mu.
+	// used and held are guarded by kernels.mu. held counts the callers get
+	// handed it to that have not released it: such a kernel is never evicted
+	// or reaped, even before its cell has started.
 	used time.Time
+	held int
 }
 
 // kernels is the worker's set of sessions. The zero value is ready.
@@ -82,9 +85,10 @@ func (ks *kernels) limits() (int, time.Duration) {
 	return limit, grace
 }
 
-// get returns the session's interpreter, starting one when it has none. A nil
-// kernel means there is no room (every session is mid-cell) or Python would
-// not start; the caller runs the code one-shot.
+// get returns the session's interpreter, starting one when it has none, held
+// for the caller until release. A nil kernel means there is no room (every
+// session is in use) or Python would not start; the caller runs the code
+// one-shot.
 func (ks *kernels) get(w *worker, session string) *kernel {
 	ks.reaper.Do(func() {
 		go func() {
@@ -104,6 +108,7 @@ func (ks *kernels) get(w *worker, session string) *kernel {
 			delete(ks.m, session)
 		default:
 			k.used = time.Now()
+			k.held++
 			return k
 		}
 	}
@@ -111,7 +116,7 @@ func (ks *kernels) get(w *worker, session string) *kernel {
 	for len(ks.m) >= limit {
 		oldest := ""
 		for name, k := range ks.m {
-			if k.busy.Load() {
+			if k.busy.Load() || k.held > 0 {
 				continue
 			}
 			if oldest == "" || k.used.Before(ks.m[oldest].used) {
@@ -129,8 +134,17 @@ func (ks *kernels) get(w *worker, session string) *kernel {
 		return nil
 	}
 	k.used = time.Now()
+	k.held++
 	ks.m[session] = k
 	return k
+}
+
+// release gives back a kernel get handed out.
+func (ks *kernels) release(k *kernel) {
+	ks.mu.Lock()
+	k.held--
+	k.used = time.Now()
+	ks.mu.Unlock()
 }
 
 // drop forgets k (a session whose interpreter died or was killed).
@@ -148,7 +162,7 @@ func (ks *kernels) reap(now time.Time) {
 	ks.mu.Lock()
 	defer ks.mu.Unlock()
 	for name, k := range ks.m {
-		if !k.busy.Load() && now.Sub(k.used) > kernelIdle {
+		if !k.busy.Load() && k.held == 0 && now.Sub(k.used) > kernelIdle {
 			k.close()
 			delete(ks.m, name)
 		}
