@@ -87,15 +87,26 @@ const heartbeatV1 = "Heartbeat. No human sent this; it is your periodic check-in
 
 // SetHeartbeatSchedule puts the Heartbeat on a schedule (empty: it never
 // fires) and switches it on. It writes those columns alone, so a prompt edit
-// or a firing that lands meanwhile stays.
-func (s *Service) SetHeartbeatSchedule(botID, sched string) error {
+// or a firing that lands meanwhile stays. with, when set, runs in the same
+// transaction after the schedule is written, and its error takes the schedule
+// back: the caller's own write and the schedule land together or not at all.
+func (s *Service) SetHeartbeatSchedule(botID, sched string, with func(tx *gorm.DB) error) error {
 	au := s.Pinned(botID, automationHeartbeat)
 	if au == nil {
 		return errors.New("the Heartbeat is missing")
 	}
 	on := true
-	_, err := s.saveAutomation(botID, au, automationPatch{schedule: &sched, enabled: &on}, "")
-	return err
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		in := *s
+		in.db = tx
+		if _, err := in.saveAutomation(botID, au, automationPatch{schedule: &sched, enabled: &on}, ""); err != nil {
+			return err
+		}
+		if with != nil {
+			return with(tx)
+		}
+		return nil
+	})
 }
 
 // Heartbeat is the Bot's Heartbeat schedule and switch; ok is false when it

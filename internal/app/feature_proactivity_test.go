@@ -1,12 +1,14 @@
 package app_test
 
 import (
+	"errors"
 	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/tool"
@@ -310,5 +312,36 @@ func TestPinnedKindsAreIndexed(t *testing.T) {
 		if !strings.Contains(def, "'"+k+"'") {
 			t.Errorf("pinned kind %q is not in the index: %s", k, def)
 		}
+	}
+}
+
+// A level is one choice: when the column cannot be written, the Heartbeat's
+// schedule does not move either (it would read as a hand-set, custom one).
+func TestProactivitySetIsAllOrNothing(t *testing.T) {
+	dummy.Reset()
+	h := apptest.New(t)
+	id := h.CreateBot("Dial").GetId()
+	const name = "test:fail_proactivity"
+	if err := h.DB.Callback().Update().Before("gorm:update").Register(name, func(tx *gorm.DB) {
+		if m, ok := tx.Statement.Dest.(map[string]any); ok && tx.Statement.Table == "bots" {
+			if _, ok := m["proactivity"]; ok {
+				tx.AddError(errors.New("the database went away"))
+			}
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { h.DB.Callback().Update().Remove(name) })
+
+	if _, _, err := h.App.Proactivity.Set(id, "quiet"); err == nil {
+		t.Fatal("Set reported success with the column unwritten")
+	}
+	var b db.Bot
+	h.DB.First(&b, "id = ?", id)
+	if hb := heartbeat(t, h, id); b.Proactivity != "off" || hb.Schedule != "" || hb.NextRunAt != nil {
+		t.Fatalf("half a level: proactivity %q, Heartbeat %q next %v", b.Proactivity, hb.Schedule, hb.NextRunAt)
+	}
+	if h.App.Proactivity.Custom(id, "off") {
+		t.Fatal("the Heartbeat reads as custom after a failed Set")
 	}
 }

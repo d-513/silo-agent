@@ -54,18 +54,18 @@ func Normalize(level string) (string, error) {
 	return l, nil
 }
 
-// Set moves a Bot to a level: the Heartbeat first, then the column, so a
-// failed schedule write leaves the Bot where it was.
+// Set moves a Bot to a level: the Heartbeat's schedule and the column in one
+// transaction, so a failed write leaves the Bot where it was (half a level
+// would read as a hand-set Heartbeat: Custom).
 func (s *Service) Set(botID, level string) (string, string, error) {
 	l, err := Normalize(level)
 	if err != nil {
 		return "", "", err
 	}
 	sched := schedules[l]
-	if err := s.auto.SetHeartbeatSchedule(botID, sched); err != nil {
-		return "", "", err
-	}
-	if err := s.db.Model(&db.Bot{}).Where("id = ?", botID).Update("proactivity", l).Error; err != nil {
+	if err := s.auto.SetHeartbeatSchedule(botID, sched, func(tx *gorm.DB) error {
+		return tx.Model(&db.Bot{}).Where("id = ?", botID).Update("proactivity", l).Error
+	}); err != nil {
 		return "", "", err
 	}
 	return l, sched, nil
