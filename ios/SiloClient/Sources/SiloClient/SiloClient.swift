@@ -14,6 +14,9 @@ public enum SiloError: LocalizedError, Sendable, Equatable {
     case unauthenticated
     case invalidArgument(String)
     case unavailable(String)
+    /// The server refused because of where things stand (FailedPrecondition): an approval already
+    /// answered, a run already going.
+    case precondition(String)
     case server(String)
 
     public var errorDescription: String? {
@@ -24,17 +27,24 @@ public enum SiloError: LocalizedError, Sendable, Equatable {
             return message
         case .unavailable(let message):
             return message
+        case .precondition(let message):
+            return message
         case .server(let message):
             return message
         }
     }
 
     static func wrap(_ error: ConnectError) -> SiloError {
-        let message = error.message ?? "\(error.code)"
-        switch error.code {
+        wrap(code: error.code, message: error.message ?? "\(error.code)")
+    }
+
+    static func wrap(code: Code, message: String) -> SiloError {
+        switch code {
         case .unauthenticated:
             return .unauthenticated
-        case .invalidArgument, .failedPrecondition, .permissionDenied, .notFound:
+        case .failedPrecondition:
+            return .precondition(message)
+        case .invalidArgument, .permissionDenied, .notFound:
             return .invalidArgument(message)
         case .unavailable, .deadlineExceeded:
             return .unavailable("Cannot reach the Control Plane. \(message)")
@@ -219,7 +229,10 @@ public final class SiloClient: Sendable {
                         if code == .ok || code == .canceled {
                             continuation.yield(.finished(nil))
                         } else {
-                            continuation.yield(.finished(.server(error?.localizedDescription ?? "\(code)")))
+                            // Keep the code: a signed-out session or a chat that is gone must not
+                            // read as a dropped connection to reconnect to.
+                            let message = (error as? ConnectError)?.message ?? error?.localizedDescription ?? "\(code)"
+                            continuation.yield(.finished(.wrap(code: code, message: message)))
                         }
                         continuation.finish()
                         return

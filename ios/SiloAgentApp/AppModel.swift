@@ -86,6 +86,10 @@ final class AppModel {
 
     // Approvals (the Bot's "Needs you" queue, oldest first)
     private(set) var approvals: [Silo_V1_Approval] = []
+    // Answered here: kept off the list until the server stops listing them, and a poll that set
+    // out before an answer is not let back in.
+    private var decided = Set<String>()
+    private var approvalsAsked = 0
 
     // Selection
     var selectedBotID: String? {
@@ -111,6 +115,8 @@ final class AppModel {
     private var pollTask: Task<Void, Never>?
     private var loadedBotID: String?
     private var streamingChatID: String?
+    // A restore belongs to the server it started on; changing server or signing in retires it.
+    private var restoreGeneration = 0
 
     init() {
         let stored = UserDefaults.standard.string(forKey: "serverURL").flatMap(serverAddress) ?? ""
@@ -174,13 +180,15 @@ final class AppModel {
             return
         }
         restoring = true
-        defer { if serverURL == host { restoring = false } }
+        restoreGeneration += 1
+        let mine = restoreGeneration
+        defer { if serverURL == host, restoreGeneration == mine { restoring = false } }
         var delay = 1.0
-        // Ends when the person picks another server while this one is unreachable.
-        while !Task.isCancelled && serverURL == host {
+        // Ends when the person picks another server while this one is unreachable, or signs in.
+        while !Task.isCancelled && serverURL == host && restoreGeneration == mine {
             do {
                 let me = try await client.me()
-                guard serverURL == host else { return }
+                guard serverURL == host, restoreGeneration == mine else { return }
                 user = me
                 restoreError = nil
                 await refreshBots()
@@ -191,6 +199,7 @@ final class AppModel {
             } catch {
                 // Only a real "not signed in" shows the sign-in page; an unreachable Control Plane
                 // retries with backoff instead of looking like a sign-out.
+                guard restoreGeneration == mine else { return }
                 if isUnauthenticated(error) {
                     user = nil
                     restoreError = nil
@@ -230,6 +239,9 @@ final class AppModel {
                 needsCode = true
                 return
             }
+            restoreGeneration += 1
+            restoring = false
+            restoreError = nil
             user = signedIn
             password = ""
             code = ""
@@ -260,12 +272,27 @@ final class AppModel {
         CallModel.shared.hangUp()
         stopStream()
         stopPolling()
+        loading?.cancel()
+        loading = nil
+        SiloSceneDelegate.pending = nil
         user = nil
         bots = []
         botsError = nil
         chats = []
         events = []
         sending = false
+        approvals = []
+        decided = []
+        approvalsAsked += 1
+        subagents = []
+        board = []
+        attachments = []
+        said = nil
+        usage = nil
+        commands = []
+        resetPaging()
+        needsCode = false
+        code = ""
         selectedBotID = nil
         selectedChatID = nil
         path = []
@@ -340,11 +367,14 @@ final class AppModel {
 
     private func loadBot(_ id: String) async {
         do {
-            chats = try await client.listChats(botID: id)
+            let list = try await client.listChats(botID: id)
+            // Another Bot was picked meanwhile: these chats are not its.
+            guard id == loadedBotID, id == selectedBotID else { return }
+            chats = list
         } catch {
             if isUnauthenticated(error) { await signOut() } else { errorMessage = describe(error) }
         }
-        guard id == selectedBotID else { return }
+        guard id == loadedBotID, id == selectedBotID else { return }
         // The last chat used here, else the main chat, as the web opens a Bot on it.
         let last = UserDefaults.standard.string(forKey: Self.lastChatKey(id))
         if let last, chats.contains(where: { $0.id == last }) {
@@ -676,10 +706,14 @@ final class AppModel {
 
     func refreshApprovals() async {
         guard let botID = selectedBotID else { return }
+        approvalsAsked += 1
+        let mine = approvalsAsked
         do {
             let list = try await client.listApprovals(botID: botID)
-            guard botID == selectedBotID else { return }
-            approvals = list
+            // A newer ask, or an answer given meanwhile, knows better than this one.
+            guard botID == selectedBotID, mine == approvalsAsked else { return }
+            decided.formIntersection(list.map(\.id))
+            approvals = list.filter { !decided.contains($0.id) }
         } catch {
             if isUnauthenticated(error) { await signOut() }
         }
@@ -687,19 +721,33 @@ final class AppModel {
 
     /// `decision`: `allow_once`, `always`, `deny`, or `auto` (set the rule to Auto, allow this one).
     func decide(_ approval: Silo_V1_Approval, _ decision: String) async {
+        // Off the list at once, and a poll already on its way cannot put it back.
+        decided.insert(approval.id)
+        approvalsAsked += 1
+        approvals.removeAll { $0.id == approval.id }
         do {
+            // The answer first: a rule changed for an answer that failed would stay changed.
+            try await answer(approval.id, decision == "auto" ? "allow_once" : decision)
             if decision == "auto" {
                 try await client.setRule(botID: approval.botID, connector: approval.connector, action: approval.action, decision: "auto")
-                try await client.decideApproval(id: approval.id, decision: "allow_once")
-            } else {
-                try await client.decideApproval(id: approval.id, decision: decision)
             }
-            approvals.removeAll { $0.id == approval.id }
         } catch {
             errorMessage = describe(error)
         }
         await refreshApprovals()
         await refreshBots()
+    }
+
+    // An approval someone answered first (here, on the web, a notification) is settled, not failed.
+    private func answer(_ id: String, _ decision: String) async throws {
+        do {
+            try await client.decideApproval(id: id, decision: decision)
+        } catch SiloError.precondition {
+            return
+        } catch {
+            decided.remove(id)
+            throw error
+        }
     }
 
     // MARK: - Chats and runs
@@ -754,10 +802,12 @@ final class AppModel {
         errorMessage = nil
         said = nil
         if !command { sending = true }
+        let chatID = selectedChatID
+        let files = Set(attachments.map(\.path))
         do {
-            let fresh = selectedChatID == nil
+            let fresh = chatID == nil
             // With no chat the server makes one and starts the run in one call.
-            let sent = try await client.send(botID: botID, chatID: selectedChatID ?? "", text: message,
+            let sent = try await client.send(botID: botID, chatID: chatID ?? "", text: message,
                                              attachments: command ? [] : attachments, newChat: fresh,
                                              model: fresh ? draftModel : "", thinking: fresh ? draftThinking : "",
                                              confirmed: confirmed)
@@ -765,18 +815,22 @@ final class AppModel {
                 await afterCommand(sent, typed: message)
                 return true
             }
+            // Only what went: anything attached since stays for the next message.
+            if botID == selectedBotID { attachments.removeAll { files.contains($0.path) } }
             if fresh {
                 guard botID == selectedBotID, selectedChatID == nil else { return true }
                 await refreshChats()
                 selectChat(sent.chatID)
+            } else if botID != selectedBotID || selectedChatID != chatID {
+                // Another chat is open now: what is sending there is not this.
+                return true
             }
-            sending = true
-            attachments = []
+            ran(sent.runID)
             await refreshChats()
             await refreshBots()
             return true
         } catch {
-            sending = false
+            if botID == selectedBotID, selectedChatID == chatID { sending = false }
             if isUnauthenticated(error) {
                 await signOut()
                 return true
@@ -811,10 +865,17 @@ final class AppModel {
             showChat(response.chatID)
             return
         }
-        if !response.runID.isEmpty { sending = true }
+        if !response.runID.isEmpty { ran(response.runID) }
         if response.command == "wipe", let id = selectedChatID { replay(id) }
         let text = commandSaid(response)
         if !text.isEmpty { said = Said(text: text) }
+    }
+
+    // A run was started: it is sending, unless the stream already brought its end, which can beat
+    // the answer to `send`.
+    private func ran(_ runID: String) {
+        let over = !runID.isEmpty && events.contains { $0.runID == runID && $0.kind == "done" }
+        sending = over ? chatBusy(events) : true
     }
 
     /// Re-sends a command that asked first.
@@ -905,8 +966,9 @@ final class AppModel {
     }
 
     func refreshChats() async {
-        guard let botID = selectedBotID else { return }
-        chats = (try? await client.listChats(botID: botID)) ?? chats
+        guard let botID = selectedBotID, let list = try? await client.listChats(botID: botID),
+              botID == selectedBotID, botID == loadedBotID else { return }
+        chats = list
     }
 
     // MARK: - Stream
@@ -918,12 +980,14 @@ final class AppModel {
         streamTask = Task { [weak self] in
             var after = ""
             var seen = Set<String>()
+            var delay = 0.8
             while !Task.isCancelled {
                 guard let self else { return }
                 streamLoop: for await item in self.client.streamRun(botID: botID, chatID: chatID, afterEventID: after) {
                     if Task.isCancelled { return }
                     switch item {
                     case .event(let event):
+                        delay = 0.8
                         if event.kind == "reset" {
                             // History was truncated by an edit/delete; replay from scratch.
                             self.events = []
@@ -960,14 +1024,28 @@ final class AppModel {
                             await self.refreshBots()
                         }
                     case .finished(let error):
-                        if let error, self.isUnauthenticated(error) {
+                        guard let error else { break }
+                        switch error {
+                        case .unauthenticated:
                             await self.signOut()
                             return
+                        case .invalidArgument, .precondition:
+                            // Gone or not this person's (NotFound, PermissionDenied): asking again
+                            // will not change that.
+                            guard self.streamingChatID == chatID else { return }
+                            // Opening the chat again tries again.
+                            self.streamingChatID = nil
+                            self.sending = false
+                            self.errorMessage = error.errorDescription
+                            return
+                        default:
+                            break
                         }
                     }
                 }
                 guard !Task.isCancelled else { return }
-                try? await Task.sleep(for: .milliseconds(800))
+                try? await Task.sleep(for: .seconds(delay))
+                delay = min(delay * 2, 15)
             }
         }
     }
@@ -1035,6 +1113,9 @@ final class AppModel {
         signInError = nil
         restoreError = nil
         restoring = false
+        restoreGeneration += 1
+        // A link that came in for the last server is not for the next one.
+        SiloSceneDelegate.pending = nil
         cancelCode()
     }
 
