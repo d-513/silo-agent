@@ -295,6 +295,10 @@ type driveSession struct {
 	// mount. A status for any other is not the sidecar's to give: the CP
 	// left that drive out and its row says why.
 	desired map[string]bool
+	// gone is set when the session is taken off the hub (Stop Bot, a new
+	// session): a report still in flight from it is no longer the
+	// sidecar's to give, or it would undo the stopped state.
+	gone bool
 	// restart are drives to stop and mount again (a new sign-in) with the
 	// next set.
 	restart map[string]bool
@@ -335,11 +339,17 @@ func (s *Service) render(sess *driveSession) *v1.DriveApply {
 	return a
 }
 
-// asked reports whether the sidecar was asked to mount the drive.
-func (s *driveSession) asked(driveID string) bool {
+// report runs write for a drive the sidecar was asked to mount, while the
+// session is still the live one. It holds the session's lock across the
+// write, so taking the session off the hub waits for a write in flight and
+// refuses every later one.
+func (s *driveSession) report(driveID string, write func()) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.desired[driveID]
+	if s.gone || !s.desired[driveID] {
+		return
+	}
+	write()
 }
 
 func (s *driveSession) push(m *v1.DriveDown) bool {
@@ -389,6 +399,9 @@ func (h *driveHub) remove(s *driveSession) {
 		delete(h.live, s.botID)
 	}
 	h.mu.Unlock()
+	s.mu.Lock()
+	s.gone = true
+	s.mu.Unlock()
 	s.close()
 }
 
@@ -485,10 +498,12 @@ func (s *Service) driveUp(sess *driveSession, up *v1.DriveUp) {
 		// Only a drive it was asked to mount is the sidecar's to report on:
 		// stopping one the CP left out must not wipe the reason it was left
 		// out ("Sign in to …").
-		if !sidecarStates[st.GetState()] || !sess.asked(st.GetId()) || s.granted(sess.botID, st.GetId()) == nil {
+		if !sidecarStates[st.GetState()] || s.granted(sess.botID, st.GetId()) == nil {
 			return
 		}
-		s.setMountState(sess.botID, st.GetId(), st.GetState(), st.GetDetail())
+		sess.report(st.GetId(), func() {
+			s.setMountState(sess.botID, st.GetId(), st.GetState(), st.GetDetail())
+		})
 	case *v1.DriveUp_Changes:
 		d := s.granted(sess.botID, b.Changes.GetId())
 		if d == nil {
