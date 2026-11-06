@@ -1,5 +1,5 @@
 import { Code, ConnectError } from "@connectrpc/connect";
-import { botPollMs, putRow, retryable, subagentPollMs } from "./queryPolicy.ts";
+import { botPollMs, putRow, retryable, streamRetryMs, subagentPollMs } from "./queryPolicy.ts";
 import { eq } from "./testing.ts";
 
 // Retry: only a call that never reached a working CP is worth repeating.
@@ -29,3 +29,12 @@ eq(putRow([a], { id: "z", name: "Z" }), [a], "an unknown row is not added");
 eq(putRow(undefined, a), undefined, "no list yet");
 
 console.log("queryPolicy ok");
+
+// A run stream: stops when the chat is gone, backs off on everything else.
+eq(streamRetryMs(new ConnectError("", Code.NotFound), 800), false, "a deleted chat stops the stream");
+eq(streamRetryMs(new ConnectError("", Code.PermissionDenied), 800), false, "a chat no longer ours stops the stream");
+eq(streamRetryMs(new ConnectError("", Code.Unauthenticated), 800), false, "signed out stops the stream");
+eq(streamRetryMs(new ConnectError("", Code.Unavailable), 800), 1600, "a CP that is down backs off");
+eq(streamRetryMs(new TypeError("Failed to fetch"), 8000), 8000, "down: at most 8 s");
+eq(streamRetryMs(new ConnectError("boom", Code.Internal), 800), 1600, "any other failure backs off too");
+eq(streamRetryMs(new ConnectError("boom", Code.Internal), 16000), 30000, "other failures: at most 30 s");

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ui } from "./api";
 import type { RunEvent } from "./gen/silo/v1/ui_pb";
 import { isTransient } from "./errors";
+import { STREAM_RETRY_MS, streamRetryMs } from "./queryPolicy";
 import { type Ev, quotedFrom } from "./fold";
 import { quoteFromProto } from "./quote/model";
 
@@ -68,6 +69,11 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
   const [loadingEarlier, setLoadingEarlier] = useState(false);
   const first = useRef<string | undefined>(undefined);
   first.current = events[0]?.id;
+  // gen moves whenever the thread starts over (another chat, a reset), so a
+  // page of earlier events asked for before that is dropped.
+  const gen = useRef(0);
+  const earlierBusy = useRef(false);
+  const pushed = useRef(false);
   const on = useRef(handlers);
   on.current = handlers;
 
@@ -82,6 +88,7 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
       return;
     }
     let dead = false;
+    gen.current++;
     let ac = new AbortController();
     let after = "";
     const seen = new Set<string>();
@@ -90,20 +97,17 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
     setEarlier(false);
     setPrepended(0);
     const push = (ev: Ev) => {
-      setEvents((xs) => {
-        const next = [...xs, ev];
-        setSending(chatBusy(next));
-        return next;
-      });
+      setEvents((xs) => [...xs, ev]);
+      pushed.current = true;
     };
     (async () => {
       // Reconnect quickly after a clean end, back off while the CP is down.
-      let backoff = 800;
+      let backoff = STREAM_RETRY_MS;
       while (!dead) {
         ac = new AbortController();
         try {
           for await (const ev of ui.streamRun({ botId, chatId, afterEventId: after }, { signal: ac.signal })) {
-            backoff = 800;
+            backoff = STREAM_RETRY_MS;
             if (ev.id) {
               if (seen.has(ev.id)) continue;
               seen.add(ev.id);
@@ -133,6 +137,7 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
             if (ev.kind === "reset") {
               // History was truncated by an edit/delete elsewhere; drop the
               // cached events and replay from scratch.
+              gen.current++;
               setEvents([]);
               setSending(false);
               setEarlier(false);
@@ -148,8 +153,16 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
             if (!dead) push(toEv(ev));
           }
         } catch (e) {
-          if (!dead) setSending(false);
-          if (isTransient(e)) backoff = Math.min(backoff * 2, 8000);
+          // A dropped stream is not a finished run: the reconnect replays what
+          // was missed, done included. A chat that is gone (deleted, or no
+          // longer ours) is not asked again.
+          if (dead) return;
+          const next = streamRetryMs(e, backoff);
+          if (next === false) {
+            setSending(false);
+            return;
+          }
+          backoff = next;
         }
         if (dead) return;
         await new Promise((r) => setTimeout(r, backoff));
@@ -161,6 +174,14 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
     };
   }, [botId, chatId, nonce]);
 
+  // The run is busy as the events say, worked out after they are set (never
+  // inside their updater). pushed says a streamed event should recompute it.
+  useEffect(() => {
+    if (!pushed.current) return;
+    pushed.current = false;
+    setSending(chatBusy(events));
+  }, [events]);
+
   // markSent flags the next user event as this tab's own (it glides in) and
   // shows the run as busy before the first event arrives.
   const markSent = useCallback(() => {
@@ -169,6 +190,7 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
   }, []);
 
   const resync = useCallback(() => {
+    gen.current++;
     setEvents([]);
     setSending(false);
     setNonce((n) => n + 1);
@@ -177,21 +199,27 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
   // loadEarlier puts the page before the oldest loaded event in front.
   const loadEarlier = useCallback(async () => {
     const before = first.current;
-    if (!botId || !chatId || !before || loadingEarlier) return;
+    if (!botId || !chatId || !before || earlierBusy.current) return;
+    const mine = gen.current;
+    earlierBusy.current = true;
     setLoadingEarlier(true);
     try {
       const page = await ui.listChatEvents({ botId, chatId, beforeEventId: before });
+      // Another chat, a reset, or another page put in front meanwhile: this
+      // page no longer sits before the thread.
+      if (gen.current !== mine || first.current !== before) return;
       const older = page.events.map(toEv);
       setEvents((xs) => (xs[0]?.id === before ? [...older, ...xs] : xs));
       setPrepended((n) => n + older.length);
       setEarlier(page.more);
     } catch (e) {
       // The anchor went (a wipe or an edit elsewhere): start over.
-      if (!isTransient(e)) resync();
+      if (gen.current === mine && !isTransient(e)) resync();
     } finally {
+      earlierBusy.current = false;
       setLoadingEarlier(false);
     }
-  }, [botId, chatId, loadingEarlier, resync]);
+  }, [botId, chatId, resync]);
 
   return { events, sending, setSending, usage, fresh, markSent, resync, earlier, prepended, loadEarlier, loadingEarlier };
 }

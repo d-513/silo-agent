@@ -1,4 +1,4 @@
-import { isTransient } from "./errors.ts";
+import { isGone, isSignedOut, isTransient } from "./errors.ts";
 
 // queryPolicy.ts is the part of the query layer with no React and no generated
 // code in it: when to retry, how fast to poll. It is unit tested with node.
@@ -26,4 +26,19 @@ export function subagentPollMs(agents: { running: boolean }[], lead: boolean): n
 /** The list with `row` in place of the one sharing its id; unknown ids are not added. */
 export function putRow<T extends { id: string }>(list: T[] | undefined, row: T): T[] | undefined {
   return list?.map((x) => (x.id === row.id ? row : x));
+}
+
+/** How soon a run stream reconnects after a clean end. */
+export const STREAM_RETRY_MS = 800;
+
+/**
+ * The wait before a run stream reconnects after it failed with e, or false
+ * to stop: the chat is gone or not ours (or the session ended), and asking
+ * again will not change that. A CP that is down backs off to 8 s; any other
+ * failure backs off further, so a broken stream is not asked every 800 ms.
+ */
+export function streamRetryMs(e: unknown, last: number): number | false {
+  if (isGone(e) || isSignedOut(e)) return false;
+  if (isTransient(e)) return Math.min(last * 2, 8000);
+  return Math.min(last * 2, 30000);
 }
