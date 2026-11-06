@@ -1,4 +1,4 @@
-import { closeThinking, lastThinking } from "./find.ts";
+import { closeThinking } from "./find.ts";
 import { reportAgents, type Block, type Ev } from "./types.ts";
 
 // Handlers for what is said: the user's turn, the model's thinking and reply,
@@ -77,18 +77,26 @@ export const thinkingChunk: Handler = (out, e, key) => {
     last.text += e.body;
     last.streaming = true;
   } else {
-    out.push({ key, type: "thinking", text: e.body, streaming: true, startAt: e.at });
+    out.push({ key, type: "thinking", text: e.body, streaming: true, startAt: e.at, pending: true });
   }
 };
 
+// The turn's whole reasoning, once it is over. It settles the blocks that
+// turn's chunks made: one block takes the full text; several (reasoning broken
+// up by the reply) already hold its parts, so none takes all of it. A turn
+// with no chunks is a block of its own, never an earlier turn's.
 export const thinking: Handler = (out, e, key) => {
-  const t = lastThinking(out);
-  if (t) {
-    t.text = e.body || t.text;
+  const mine = out.filter((b) => b.type === "thinking" && b.pending);
+  if (mine.length === 0) {
+    out.push({ key, type: "thinking", text: e.body, streaming: false });
+    return;
+  }
+  for (const t of mine) {
+    if (t.type !== "thinking") continue;
+    if (mine.length === 1) t.text = e.body || t.text;
     if (t.streaming && t.startAt && e.at) t.ms = e.at - t.startAt;
     t.streaming = false;
-  } else {
-    out.push({ key, type: "thinking", text: e.body, streaming: false });
+    delete t.pending;
   }
 };
 

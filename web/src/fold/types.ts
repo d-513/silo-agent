@@ -131,7 +131,8 @@ export type Block =
   | { key: string; type: "user"; id?: string; runId?: string; text: string; attachments?: Attachment[]; quotes?: Quote[]; createdAt?: string; from?: string; author?: string; spoken?: boolean }
   // `bounds` are source offsets where each streamed delta began.
   | { key: string; type: "assistant"; text: string; streaming?: boolean; bounds?: number[] }
-  | { key: string; type: "thinking"; text: string; streaming?: boolean; startAt?: number; ms?: number }
+  // pending: made of a turn's chunks, before that turn's thinking event settles it.
+  | { key: string; type: "thinking"; text: string; streaming?: boolean; startAt?: number; ms?: number; pending?: boolean }
   | ToolBlock
   | ReceiptBlock
   | { key: string; type: "error"; text: string }

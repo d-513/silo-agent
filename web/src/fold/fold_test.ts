@@ -207,3 +207,41 @@ if (marked.length !== 2) throw new Error(`a filtered event made a block of its o
   if (groups[0].offers[0].status !== "done") throw new Error("an answer did not reach its offer");
 }
 console.log("fold offers ok");
+
+// done closes every reply still streaming in the run, not only the last
+// block: a reply with tool rows after it must not stay streaming (that would
+// hide Working… for good).
+{
+  const R = { runId: "r1" };
+  const got = foldEvents([
+    { ...ev("user", "go"), ...R },
+    { ...ev("chunk", "Let me look."), ...R },
+    { ...ev("tool", "", "read"), ...R },
+    { ...ev("tool_result", "ok", "read"), ...R },
+    { ...ev("done"), ...R },
+  ]);
+  const replies = got.filter((b) => b.type === "assistant");
+  if (replies.length !== 1 || replies[0].type !== "assistant" || replies[0].streaming) throw new Error(`a reply before tool rows still streams: ${JSON.stringify(replies)}`);
+}
+
+// The turn's thinking event settles the blocks its chunks made. Reasoning the
+// reply broke in two keeps its two parts (the event carries the whole turn's
+// reasoning, which is not the second part's); a turn with no chunks never
+// rewrites an earlier turn's block.
+{
+  const got = foldEvents([
+    ev("thinking_chunk", "first "),
+    ev("chunk", "hm"),
+    ev("thinking_chunk", "second"),
+    ev("thinking", "first second"),
+  ]);
+  const th = got.filter((b) => b.type === "thinking");
+  if (th.length !== 2 || th[0].type !== "thinking" || th[1].type !== "thinking") throw new Error(`thinking blocks ${th.length}`);
+  if (th[0].text !== "first " || th[1].text !== "second") throw new Error(`a part took the whole turn: ${JSON.stringify(th)}`);
+  if (th.some((b) => b.type === "thinking" && (b.streaming || b.pending))) throw new Error("thinking not settled");
+
+  const turns = foldEvents([ev("thinking_chunk", "one"), ev("thinking", "one"), ev("assistant", "a"), ev("thinking", "two")]);
+  const tt = turns.filter((b) => b.type === "thinking");
+  if (tt.length !== 2 || tt[0].type !== "thinking" || tt[0].text !== "one") throw new Error(`an earlier turn's thinking was rewritten: ${JSON.stringify(tt)}`);
+}
+console.log("fold done/thinking ok");

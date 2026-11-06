@@ -50,11 +50,17 @@ export const done: Handler = (out, e, key) => {
     }
   }
   closeThinking(out, e.at);
-  const last = out[out.length - 1];
-  if (last?.type === "assistant" && last.streaming && e.runId) {
-    last.streaming = false;
-    last.bounds = undefined;
+  // Every reply still streaming is over, not only a last one: a reply the
+  // tool rows came after would stay "streaming" for good and hide Working….
+  if (e.runId) {
+    for (const b of out) {
+      if (b.type !== "assistant" || !b.streaming) continue;
+      b.streaming = false;
+      b.bounds = undefined;
+    }
   }
+  // Reasoning a cut turn never settled is settled now.
+  for (const b of out) if (b.type === "thinking") delete b.pending;
   if (e.body === "stopped") out.push({ key, type: "receipt", decision: "stopped", title: t("this run"), target: "", runId: e.runId });
 };
 
