@@ -1,5 +1,5 @@
 import { ChevronRight, Download, File, FileArchive, FileAudio, FileCode, FileImage, FileSpreadsheet, FileText, FileType, FileVideo, Folder, Trash2, X } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Btn } from "./Btn";
 import { downloadFile, FilePreview } from "./FilePreview";
 import { extOf, isArchive, kindOf } from "./fileKind";
@@ -58,6 +58,7 @@ export function FileBrowser({
   const [file, setFile] = useState<FsFile | null>(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const opening = useRef(0);
 
   async function loadDir(path: string) {
     const ents = await source.list(path);
@@ -100,18 +101,22 @@ export function FileBrowser({
   }, [source.rootLabel, refreshKey]);
 
   async function openFile(path: string) {
+    // Only the newest open lands: an older read that answers late must not
+    // show its file, or end the newer one's spinner.
+    const mine = ++opening.current;
     setBusy(true);
     setErr("");
     setSel(path);
     onSelect?.(path, false);
     try {
       const r = await source.read(path);
-      setFile(r);
+      if (opening.current === mine) setFile(r);
     } catch (ex) {
+      if (opening.current !== mine) return;
       setErr(fail(ex));
       setFile(null);
     } finally {
-      setBusy(false);
+      if (opening.current === mine) setBusy(false);
     }
   }
 

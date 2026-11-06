@@ -1,4 +1,4 @@
-import { useCallback, useState, type MouseEventHandler, type RefObject } from "react";
+import { useCallback, useRef, useState, type MouseEventHandler, type RefObject } from "react";
 import { t } from "./i18n.ts";
 
 // The state of a live link to a Bot's machine (the Desktop hatch and the Console).
@@ -9,8 +9,15 @@ export type LinkPhase = "off" | "connecting" | "connected" | "lost";
 export function useLinkPhase() {
   const [phase, setPhase] = useState<LinkPhase>("off");
   const [attempt, setAttempt] = useState(0);
+  // Failures since the link was last up: what the next wait counts from. A
+  // ref, not the counter: resetting the counter would re-run the connect.
+  const fails = useRef(0);
   const nextAttempt = useCallback(() => setAttempt((n) => n + 1), []);
-  return { phase, setPhase, attempt, nextAttempt };
+  const retryIn = useCallback(() => retryDelay(fails.current++), []);
+  const linked = useCallback(() => {
+    fails.current = 0;
+  }, []);
+  return { phase, setPhase, attempt, nextAttempt, retryIn, linked };
 }
 
 // retryDelay is how long a lost link waits before dialing again: 2s, 4s, 8s, then 15s.

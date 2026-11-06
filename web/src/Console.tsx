@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
-import { LinkSurface, retryDelay, useLinkPhase } from "./machineLink";
+import { LinkSurface, useLinkPhase } from "./machineLink";
 import { useTheme, type Theme } from "./theme";
 import { palette } from "./tokens";
 import { t } from "./i18n.ts";
@@ -25,7 +25,7 @@ export function ConsoleTerm({ botId, live, visible }: { botId: string; live: boo
   const ref = useRef<HTMLDivElement>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const termRef = useRef<Terminal | null>(null);
-  const { phase, setPhase, attempt, nextAttempt } = useLinkPhase();
+  const { phase, setPhase, attempt, nextAttempt, retryIn, linked } = useLinkPhase();
   const theme = useTheme();
   const themeRef = useRef(theme);
   themeRef.current = theme;
@@ -43,7 +43,7 @@ export function ConsoleTerm({ botId, live, visible }: { botId: string; live: boo
     let cancelled = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
     const schedule = () => {
-      if (!cancelled) retry = setTimeout(nextAttempt, retryDelay(attempt));
+      if (!cancelled) retry = setTimeout(nextAttempt, retryIn());
     };
     setPhase("connecting");
     const termInst = new Terminal({
@@ -68,6 +68,7 @@ export function ConsoleTerm({ botId, live, visible }: { botId: string; live: boo
     };
     sock.onopen = () => {
       if (cancelled) return;
+      linked();
       setPhase("connected");
       sendSize();
       termInst.focus();
@@ -105,7 +106,7 @@ export function ConsoleTerm({ botId, live, visible }: { botId: string; live: boo
       termRef.current = null;
       el.replaceChildren();
     };
-  }, [botId, live, attempt, setPhase, nextAttempt]);
+  }, [botId, live, attempt, setPhase, nextAttempt, retryIn, linked]);
 
   useEffect(() => {
     if (!visible) return;

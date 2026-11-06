@@ -80,7 +80,8 @@ export function SignIn() {
       setBusy(false);
     }
   }
-  const shown = err || signInError(search.error);
+  // The ?error= of a failed single sign-on is about that try, not the code step.
+  const shown = err || (needsCode ? "" : signInError(search.error));
   return (
     <AuthCard title={needsCode ? t("Two-factor code") : t("Sign in")}>
       {needsCode ? (

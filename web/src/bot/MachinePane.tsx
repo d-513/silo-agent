@@ -7,7 +7,7 @@ import { fail } from "../errors";
 import type { Bot } from "../gen/silo/v1/ui_pb";
 import { Lamp } from "../Lamp";
 import { machineLook } from "../statusLook";
-import { LinkSurface, retryDelay, useLinkPhase } from "../machineLink";
+import { LinkSurface, useLinkPhase } from "../machineLink";
 import { NeedMachine } from "../NeedMachine";
 import { setBot } from "../query";
 import { Tip, TipAction, TipTitle } from "../Tip";
@@ -15,7 +15,7 @@ import { t } from "../i18n.ts";
 
 function Hatch({ botId, live, visible }: { botId: string; live: boolean; visible: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
-  const { phase, setPhase, attempt, nextAttempt } = useLinkPhase();
+  const { phase, setPhase, attempt, nextAttempt, retryIn, linked } = useLinkPhase();
   useEffect(() => {
     if (!live) {
       setPhase("off");
@@ -28,7 +28,7 @@ function Hatch({ botId, live, visible }: { botId: string; live: boolean; visible
     let retry: ReturnType<typeof setTimeout> | undefined;
     let hang: ReturnType<typeof setTimeout> | undefined;
     const schedule = () => {
-      if (!cancelled) retry = setTimeout(nextAttempt, retryDelay(attempt));
+      if (!cancelled) retry = setTimeout(nextAttempt, retryIn());
     };
     setPhase("connecting");
     const start = window.setTimeout(() => {
@@ -45,6 +45,7 @@ function Hatch({ botId, live, visible }: { botId: string; live: boolean; visible
         next.addEventListener("connect", () => {
           if (cancelled) return;
           clearTimeout(hang);
+          linked();
           setPhase("connected");
         });
         next.addEventListener("disconnect", () => {
@@ -86,7 +87,7 @@ function Hatch({ botId, live, visible }: { botId: string; live: boolean; visible
       }
       el.replaceChildren();
     };
-  }, [botId, live, attempt, setPhase, nextAttempt]);
+  }, [botId, live, attempt, setPhase, nextAttempt, retryIn, linked]);
   useEffect(() => {
     if (visible) window.dispatchEvent(new Event("resize"));
   }, [visible]);

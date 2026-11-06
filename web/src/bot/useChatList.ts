@@ -87,6 +87,9 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
     title: editTitle,
     setTitle: setEditTitle,
     begin: (c) => {
+      // An Escape whose input went without a blur must not swallow this
+      // rename's commit on blur.
+      renameCancel.current = false;
       setEditingChat(c.id);
       setEditTitle(c.title || "");
     },

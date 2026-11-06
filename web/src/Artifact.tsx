@@ -389,23 +389,35 @@ export function SharePanel({ botId, artifactId, n, hatch }: { botId: string; art
   const [share, setShare] = useState<Share | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  // No link can be made here: no content host, or the list did not load.
+  const [blocked, setBlocked] = useState(false);
   const del = useArmed();
   useEffect(() => {
     let dead = false;
     setShare(undefined);
+    setErr("");
+    setBlocked(false);
     ui.listArtifactShares({ botId, artifactId })
       .then((r) => {
         if (dead) return;
         const s = r.shares.find((x) => x.version === n);
         setShare(s ? { id: s.id, url: s.url, version: s.version } : null);
-        if (!r.available) setErr(t("Public links need a content host: the operator sets content.host."));
+        if (!r.available) {
+          setBlocked(true);
+          setErr(t("Public links need a content host: the operator sets content.host."));
+        }
       })
-      .catch((e) => !dead && setErr(fail(e)));
+      .catch((e) => {
+        if (dead) return;
+        setBlocked(true);
+        setErr(fail(e));
+      });
     return () => {
       dead = true;
     };
   }, [botId, artifactId, n]);
   const make = () => {
+    if (busy) return;
     setBusy(true);
     setErr("");
     ui.shareArtifact({ botId, artifactId, version: n })
@@ -424,7 +436,8 @@ export function SharePanel({ botId, artifactId, n, hatch }: { botId: string; art
   return (
     <div className={`border-t px-3 py-2.5 text-small ${hatch ? "border-on-hatch/10" : "border-line bg-canvas"} ${tone}`}>
       {share === undefined && !err ? <div className="skeleton h-6 rounded-xs" /> : null}
-      {share === null && !err ? (
+      {/* A failed Create link stays offered, to try again. */}
+      {share === null && !blocked ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className={`min-w-0 flex-1 ${hatch ? "text-on-hatch/70" : "text-ink-2"}`}>{t("Anyone with the link can open version {{n}}, even while the Bot is stopped.", { n })}</span>
           <button type="button" className={btnClass("primary", "", "sm")} disabled={busy} onClick={make}>

@@ -1,7 +1,7 @@
 import { useQuery } from "@connectrpc/connect-query";
 import { useParams } from "@tanstack/react-router";
 import { Pencil, Plug, Trash2, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ui } from "../api";
 import { Btn, btnClass } from "../Btn";
 import { useBots } from "../bots";
@@ -10,6 +10,7 @@ import { fail } from "../errors";
 import { ArmedButton } from "../Feedback";
 import { UI, type Connector } from "../gen/silo/v1/ui_pb";
 import { t } from "../i18n.ts";
+import { ErrorWell } from "../Field";
 import { Modal } from "../Modal";
 import { widePage } from "../PageHead";
 import { reload } from "../query";
@@ -78,9 +79,24 @@ export function SpaceConnectors() {
     }
   }
 
+  // One save at a time: a double press must not add the connection twice.
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  async function once(fn: () => Promise<unknown>) {
+    if (savingRef.current) return false;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      return await act(fn);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }
+
   async function add(e: React.FormEvent, draft: ConnectorDraft, sourceId: string) {
     e.preventDefault();
-    const ok = await act(() => ui.createBotConnector({ spaceId, botIds: picked, ...specOf(draft), sourceId }));
+    const ok = await once(() => ui.createBotConnector({ spaceId, botIds: picked, ...specOf(draft), sourceId }));
     if (!ok) return;
     setLibraryModal(null);
     setCustomDraft(emptyDraft());
@@ -91,7 +107,7 @@ export function SpaceConnectors() {
   async function saveEdit(e: React.FormEvent) {
     e.preventDefault();
     if (!edit) return;
-    if (await act(() => ui.updateConnector({ id: edit.id, ...specOf(editDraft) }))) setEdit(null);
+    if (await once(() => ui.updateConnector({ id: edit.id, ...specOf(editDraft) }))) setEdit(null);
   }
 
   const used = (c: Connector) => c.usedBy.map(nameOf).filter(Boolean);
@@ -105,7 +121,8 @@ export function SpaceConnectors() {
         </p>
       </div>
 
-      {err ? (
+      {/* A modal's own failure is said in the modal, not behind it. */}
+      {err && !libraryModal && !edit ? (
         <div className="mb-4 flex items-center justify-between rounded-sm bg-vermilion-pale px-3.5 py-2.5 text-small text-vermilion">
           <span>{err}</span>
           <button type="button" onClick={() => setErr("")} className="text-vermilion hover:opacity-80" aria-label={t("Close")}>
@@ -230,8 +247,9 @@ export function SpaceConnectors() {
           <form onSubmit={(e) => void add(e, libraryDraft, libraryModal.id)}>
             <ConnectorFields value={libraryDraft} onChange={setLibraryDraft} fromCatalog={true} catalogGuide={libraryModal.catalogGuide} />
             <BotsStep bots={managed} value={picked} onChange={setChosen} />
+            {actErr ? <ErrorWell className="mt-4">{actErr}</ErrorWell> : null}
             <div className="mt-6 flex items-center gap-2">
-              <Btn kind="primary" type="submit">
+              <Btn kind="primary" type="submit" disabled={saving}>
                 {t("Add to workspace")}
               </Btn>
               <Btn kind="ghost" type="button" onClick={() => setLibraryModal(null)}>
@@ -248,8 +266,9 @@ export function SpaceConnectors() {
           {used(edit).length ? <p className="mb-4 text-meta text-ink-2">{t("Changes apply to every Bot that uses it: {{bots}}.", { bots: used(edit).join(", ") })}</p> : <div className="mb-4" />}
           <form onSubmit={(e) => void saveEdit(e)}>
             <ConnectorFields value={editDraft} onChange={setEditDraft} existing />
+            {actErr ? <ErrorWell className="mt-4">{actErr}</ErrorWell> : null}
             <div className="mt-6 flex items-center gap-2">
-              <Btn kind="primary" type="submit">
+              <Btn kind="primary" type="submit" disabled={saving}>
                 {t("Save changes")}
               </Btn>
               <Btn kind="ghost" type="button" onClick={() => setEdit(null)}>
