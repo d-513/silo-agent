@@ -75,6 +75,8 @@ final class CallModel: NSObject {
         let server = host ?? SiloStore.load().server
         guard !server.isEmpty else { return }
         finishUp()
+        // Captured before any wait: a start or a hang-up meanwhile makes this one stale.
+        let mine = generation
         var first = CallSnapshot(chatID: chat)
         first.startedAt = Date()
         snap = first
@@ -86,6 +88,7 @@ final class CallModel: NSObject {
         // It would fight the call for the audio session.
         AppModel.shared.readAloud.stop()
         func refuse(_ reason: String) {
+            guard generation == mine else { return }
             first.state = .ended
             first.ended = .error
             first.error = reason
@@ -101,13 +104,13 @@ final class CallModel: NSObject {
             refuse("Microphone access is off. Turn it on in Settings.")
             return
         }
+        guard generation == mine else { return }
         var microphone = true
         #if targetEnvironment(simulator)
         // Voice I/O aborts the app in a simulator the Mac has not let near its microphone, and that
         // cannot be caught. The Bot is heard; set SILO_DEV_MIC to talk to it there.
         microphone = ProcessInfo.processInfo.environment["SILO_DEV_MIC"] != nil
         #endif
-        let mine = generation
         let session = CallSession(host: server, botID: who.id, chat: chat, microphone: microphone) { [weak self] snapshot in
             Task { @MainActor in
                 guard let self, self.generation == mine else { return }
@@ -118,9 +121,10 @@ final class CallModel: NSObject {
         watchAudio()
         startActivity(who)
         UIApplication.shared.isIdleTimerDisabled = true
-        ownAudio = !(await system.start(botID: who.id, botName: who.name))
-        // Hung up meanwhile.
+        let callKit = await system.start(botID: who.id, botName: who.name)
+        // Hung up or replaced meanwhile: the answer is not this call's to keep.
         guard self.session === session else { return }
+        ownAudio = !callKit
         if ownAudio {
             do {
                 try CallAudioSession.configure(microphone: microphone)
@@ -164,7 +168,18 @@ final class CallModel: NSObject {
 
     /// Ends the call, after handing over whatever you were still saying.
     func hangUp() {
-        session?.hangup()
+        guard let session else {
+            // Still asking for the microphone: nothing to hand over, the call just never starts.
+            if live, var last = snap {
+                generation += 1
+                last.state = .ended
+                last.ended = .hangup
+                snap = last
+                lingerThenGo()
+            }
+            return
+        }
+        session.hangup()
         system.hangUp()
     }
 
@@ -192,13 +207,7 @@ final class CallModel: NSObject {
     private func ended(_ last: CallSnapshot) {
         // Whoever ended it, CallKit has to hear: it is a no-op once it knows.
         system.ended(failed: last.ended == .error || last.ended == .lost)
-        if ownAudio { CallAudioSession.deactivate() }
-        stopProximity()
-        unwatchAudio()
-        UIApplication.shared.isIdleTimerDisabled = false
-        session = nil
-        audioUp = false
-        audioTaken = false
+        letGo()
         failure = last.error.isEmpty ? nil : last.error
         endActivity(last)
         lingerThenGo()
@@ -215,8 +224,22 @@ final class CallModel: NSObject {
         }
     }
 
+    // What a call took from the phone, given back.
+    private func letGo() {
+        if ownAudio { CallAudioSession.deactivate() }
+        stopProximity()
+        unwatchAudio()
+        UIApplication.shared.isIdleTimerDisabled = false
+        session = nil
+        ownAudio = false
+        audioUp = false
+        audioTaken = false
+    }
+
     private func finishUp() {
         generation += 1
+        // A call replaced before its end came back: that end is dropped now, so give back here.
+        if session != nil { letGo() }
         if let snap { endActivity(snap) }
         pushTask?.cancel()
         snap = nil
@@ -245,7 +268,8 @@ final class CallModel: NSObject {
     /// A press on the Island or the lock screen.
     func control(_ control: CallControl) {
         switch control {
-        case .mute: setMuted(!(snap?.muted ?? false))
+        // What you asked for: the snapshot is muted too while something else has the audio.
+        case .mute: setMuted(!youMuted)
         case .speaker: use(route == .speaker ? .earpiece : .speaker)
         case .end: hangUp()
         case .stopTalking: interrupt()
@@ -326,7 +350,8 @@ final class CallModel: NSObject {
     private func interrupted(_ type: AVAudioSession.InterruptionType?) {
         switch type {
         case .began:
-            guard !audioTaken else { return }
+            // CallKit lets go of the audio after a call ends too: no call, nothing to hold.
+            guard session != nil, !audioTaken else { return }
             audioTaken = true
             session?.audioHeld()
             session?.setMuted(true)
@@ -337,12 +362,18 @@ final class CallModel: NSObject {
         }
     }
 
+    // Coming back to the app is no proof the interruption is over: only an audio session that
+    // goes live again is. Until then the call stays held, and the next sign tries again.
     private func resume() {
-        guard audioTaken else { return }
+        guard audioTaken, let session else { return }
+        do {
+            try CallAudioSession.activate()
+        } catch {
+            return
+        }
         audioTaken = false
-        if ownAudio { try? CallAudioSession.activate() }
-        session?.audioActivated()
-        if !youMuted { session?.setMuted(false) }
+        session.audioActivated()
+        if !youMuted { session.setMuted(false) }
     }
 
     // MARK: to the ear and back
@@ -386,6 +417,9 @@ final class CallModel: NSObject {
     private func startActivity(_ who: Who) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled, let snap else { return }
         let attributes = CallActivityAttributes(botID: who.id, botName: who.name, crest: who.crest)
+        if let old = activity {
+            Task { await old.end(nil, dismissalPolicy: .immediate) }
+        }
         activity = try? Activity.request(attributes: attributes, content: .init(state: contentState(snap), staleDate: nil))
     }
 

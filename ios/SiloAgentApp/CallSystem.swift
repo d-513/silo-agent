@@ -53,7 +53,8 @@ final class CallSystem: NSObject {
             provider.reportCall(with: id, updated: update)
             return true
         } catch {
-            uuid = nil
+            // A start that came after this one owns the id by now.
+            if uuid == id { uuid = nil }
             return false
         }
         #endif
