@@ -7,35 +7,52 @@ import { Tip } from "./Tip";
 import { t } from "./i18n.ts";
 
 // Read aloud: a Bot's words in its own voice. One voice at a time on the
-// page: starting another stops this one.
-let playing: { audio: HTMLAudioElement; stop: () => void } | null = null;
+// page: starting another stops this one. The slot is taken when the voice is
+// asked for, not when it starts playing, so a reply still loading is the one
+// that stops (and never plays after another started).
+let playing: { owner: string; stop: () => void } | null = null;
 
 type State = "idle" | "loading" | "playing";
 
 /** Speaks text in a Bot's voice (or a voice being tried) and reports how it goes. */
 export async function speak(req: { botId: string; text: string; model?: string; voice?: string; speed?: number }, on: { state: (s: State) => void; error: (m: string) => void }, owner = req.text) {
   playing?.stop();
+  let stopped = false;
+  let audio: HTMLAudioElement | null = null;
+  const me = {
+    owner,
+    stop: () => {
+      if (stopped) return;
+      stopped = true;
+      if (audio) {
+        audio.pause();
+        audio.removeAttribute("src");
+      }
+      on.state("idle");
+      if (playing === me) playing = null;
+    },
+  };
+  playing = me;
   on.state("loading");
   try {
     const { url } = await ui.prepareSpeech({ botId: req.botId, text: req.text, model: req.model ?? "", voice: req.voice ?? "", speed: req.speed ?? 0 });
-    const audio = new Audio(url);
-    audio.dataset.owner = owner;
-    const stop = () => {
-      audio.pause();
-      audio.removeAttribute("src");
-      on.state("idle");
-      if (playing?.audio === audio) playing = null;
+    if (stopped) return;
+    const a = new Audio(url);
+    audio = a;
+    a.onplaying = () => {
+      if (!stopped) on.state("playing");
     };
-    playing = { audio, stop };
-    audio.onplaying = () => on.state("playing");
-    audio.onended = stop;
-    audio.onerror = () => {
-      stop();
+    a.onended = me.stop;
+    a.onerror = () => {
+      if (stopped) return;
+      me.stop();
       on.error(t("The voice did not answer. Try again in a moment."));
     };
-    await audio.play();
+    await a.play();
   } catch (e) {
-    on.state("idle");
+    // Stopped while loading or starting: that is not a failure.
+    if (stopped) return;
+    me.stop();
     on.error(fail(e));
   }
 }
@@ -50,7 +67,7 @@ export function ReadAloudButton({ botId, text, className }: { botId: string; tex
   const [err, setErr] = useState("");
 
   // A reply that leaves the screen stops talking.
-  useEffect(() => () => (playing?.audio.dataset.owner === text ? playing.stop() : undefined), [text]);
+  useEffect(() => () => (playing?.owner === text ? playing.stop() : undefined), [text]);
 
   function start() {
     setErr("");

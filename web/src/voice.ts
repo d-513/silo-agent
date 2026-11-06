@@ -92,6 +92,11 @@ export function useDictation(transcribe: (audio: Uint8Array, mime: string) => Pr
   const raf = useRef(0);
   const timer = useRef(0);
   const cancelled = useRef(false);
+  // asking is the microphone prompt being open: a second press then is
+  // nothing. gen moves on a cancel or leaving the page, so a prompt answered
+  // after either records nothing.
+  const asking = useRef(false);
+  const gen = useRef(0);
   const onTextRef = useRef(onText);
   const transcribeRef = useRef(transcribe);
   onTextRef.current = onText;
@@ -114,18 +119,27 @@ export function useDictation(transcribe: (audio: Uint8Array, mime: string) => Pr
 
   const cancel = useCallback(() => {
     cancelled.current = true;
+    gen.current++;
     stop();
   }, [stop]);
 
   const start = useCallback(async () => {
-    if (rec.current) return;
+    if (rec.current || asking.current) return;
     setError("");
     cancelled.current = false;
+    const mine = ++gen.current;
+    asking.current = true;
     let media: MediaStream;
     try {
       media = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
     } catch (err) {
-      setError(micError(err));
+      if (gen.current === mine) setError(micError(err));
+      return;
+    } finally {
+      asking.current = false;
+    }
+    if (gen.current !== mine) {
+      media.getTracks().forEach((tr) => tr.stop());
       return;
     }
     stream.current = media;
@@ -198,6 +212,7 @@ export function useDictation(transcribe: (audio: Uint8Array, mime: string) => Pr
   useEffect(
     () => () => {
       cancelled.current = true;
+      gen.current++;
       const r = rec.current;
       if (r && r.state !== "inactive") r.stop();
       release();

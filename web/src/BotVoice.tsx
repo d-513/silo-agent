@@ -45,6 +45,8 @@ export function BotVoice({ bot, onError }: { bot: Bot; onError: (s: string) => v
       });
       setBot(next);
     } catch (e) {
+      // The picker shows what is saved, not the choice that failed.
+      if (patch.speechModel !== undefined) setModel(bot.speechModel);
       onError(fail(e));
     } finally {
       setBusy(false);

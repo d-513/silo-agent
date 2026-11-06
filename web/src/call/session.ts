@@ -95,6 +95,9 @@ export class CallSession {
   private quiet = 0;
   // A turn the transcriber ended early; speech that goes on opens the next.
   private endedEarly = false;
+  // The error on screen is a server notice the call went on after, not why
+  // it ended: an ordinary end afterwards clears it.
+  private notice = false;
 
   constructor(
     private botId: string,
@@ -124,6 +127,12 @@ export class CallSession {
       this.fail(micError(e));
       return;
     }
+    // Ended (End, or leaving the Bot) while the microphone prompt was open:
+    // let the microphone go and open nothing.
+    if (this.ended()) {
+      for (const tr of this.stream.getTracks()) tr.stop();
+      return;
+    }
     this.ctx = new AudioContext();
     void this.audio.play().catch(() => {});
     void navigator.wakeLock?.request("screen").then((w) => (this.wake = w)).catch(() => {});
@@ -132,7 +141,11 @@ export class CallSession {
     this.ws = new WebSocket(`${proto}//${location.host}/voice/call?bot=${encodeURIComponent(this.botId)}&chat=${encodeURIComponent(chat)}`);
     this.ws.binaryType = "arraybuffer";
     this.ws.onmessage = (e) => {
-      if (typeof e.data === "string") void this.onMessage(JSON.parse(e.data) as ServerMsg);
+      // A message in the moment before an ended call's socket closes must not revive it.
+      if (typeof e.data === "string" && !this.ended())
+        void this.onMessage(JSON.parse(e.data) as ServerMsg).catch(() => {
+          // A peer connection that finish closed under an await throws; that is no failure.
+        });
     };
     this.ws.onclose = (e) => {
       if (this.snap.state === "ended") return;
@@ -151,7 +164,7 @@ export class CallSession {
     const stream = this.stream!;
     // The detector and its runtime load on the first call only.
     const { MicVAD } = await import("@ricky0123/vad-web");
-    this.vad = await MicVAD.new({
+    const vad = await MicVAD.new({
       model: "v5",
       baseAssetPath: "/vad/",
       onnxWASMBasePath: "/vad/",
@@ -200,7 +213,17 @@ export class CallSession {
         this.sendTurn(audio, redemptionMs);
       },
     });
-    if (this.snap.state !== "ended") void this.vad.start();
+    // Ended while the detector loaded: finish could not destroy it.
+    if (this.ended()) {
+      void vad.destroy();
+      return;
+    }
+    this.vad = vad;
+    void vad.start();
+  }
+
+  private ended() {
+    return this.snap.state === "ended";
   }
 
   // Every 32 ms frame of the microphone: the meter, hold-to-talk capture, and
@@ -277,6 +300,7 @@ export class CallSession {
         break;
       case "answer":
         await this.pc?.setRemoteDescription({ type: "answer", sdp: m.sdp });
+        if (this.ended()) break;
         this.remoteSet = true;
         for (const c of this.pending.splice(0)) await this.pc?.addIceCandidate(c).catch(() => {});
         break;
@@ -298,6 +322,7 @@ export class CallSession {
         this.set({ saying: m.text ?? "" });
         break;
       case "heard":
+        this.notice = false;
         this.set({ heard: m.text ?? "", hearing: "", error: "" });
         break;
       case "caption":
@@ -313,10 +338,15 @@ export class CallSession {
         }
         break;
       case "error":
+        // Not fatal: the call goes on.
+        this.notice = !!m.message;
         this.set({ error: m.message ?? "" });
         break;
       case "bye":
-        if (m.message) this.set({ error: m.message });
+        if (m.message) {
+          this.notice = false;
+          this.set({ error: m.message });
+        }
         this.finish((m.reason as EndReason) ?? "hangup");
         break;
     }
@@ -358,6 +388,7 @@ export class CallSession {
     };
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
+    if (this.ended()) return;
     this.send({ t: "offer", sdp: offer.sdp });
     // What the browser still holds when you start talking, so a pause resumes
     // where you actually stopped hearing.
@@ -411,15 +442,27 @@ export class CallSession {
 
   /** Hold to talk instead of the voice detector: for a noisy room, or a speaker that leaks. */
   setPtt(ptt: boolean) {
+    if (ptt === this.snap.ptt) return;
+    // Switching mode in the middle of a hold hands over what was said.
+    if (this.snap.holding) this.hold(false);
     this.barge.ended();
-    this.set({ ptt, holding: false });
+    // A turn the detector opened is not one hold to talk can end.
+    if (this.turnOpen) {
+      this.turnOpen = false;
+      this.send({ t: "cancel", n: this.turnN });
+    }
+    this.endedEarly = false;
+    this.set({ ptt, holding: false, state: this.snap.state === "hearing" ? this.fromServer() : this.snap.state });
     this.held = [];
   }
 
   /** The hold-to-talk press. */
   hold(down: boolean) {
-    if (!this.snap.ptt || this.snap.muted) return;
+    if (!this.snap.ptt || this.ended()) return;
+    // A release with no hold (a second keyup, the window losing focus) is nothing.
+    if (!down && !this.snap.holding) return;
     if (down) {
+      if (this.snap.muted || this.snap.holding) return;
       this.held = [];
       this.barge.sure();
       this.set({ holding: true, state: "hearing" });
@@ -451,13 +494,15 @@ export class CallSession {
   }
 
   private fail(error: string) {
+    this.notice = false;
     this.set({ error });
     this.finish("error");
   }
 
   private finish(reason: EndReason) {
     if (this.snap.state === "ended") return;
-    this.set({ state: "ended", ended: reason, level: 0 });
+    this.set({ state: "ended", ended: reason, level: 0, ...(this.notice ? { error: "" } : {}) });
+    this.notice = false;
     for (const id of this.timers) clearInterval(id);
     cancelAnimationFrame(this.raf);
     void this.vad?.destroy();
