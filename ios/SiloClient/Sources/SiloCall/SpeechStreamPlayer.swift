@@ -37,8 +37,10 @@ public final class SpeechStreamPlayer: @unchecked Sendable {
         observers.append(center.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil) { [weak self] _ in
             self?.stop()
         })
-        observers.append(center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: nil) { [weak self] _ in
-            self?.stop()
+        observers.append(center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: nil) { [weak self] note in
+            // Only the start of one: its end comes after the engine already stopped, or not at all.
+            let type = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt).flatMap(AVAudioSession.InterruptionType.init)
+            if type == .began { self?.stop() }
         })
     }
 

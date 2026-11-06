@@ -18,6 +18,8 @@ final class ReadAloud {
 
     private var player: SpeechStreamPlayer?
     private var task: Task<Void, Never>?
+    // Which reading a player's callback belongs to: a stopped one still says it finished, later.
+    private var reading = 0
 
     func toggle(_ text: String, client: SiloClient, botID: String) {
         if state != .idle, self.text == text {
@@ -32,6 +34,8 @@ final class ReadAloud {
         // A call has the audio.
         guard !CallModel.shared.live else { return }
         stop()
+        reading += 1
+        let mine = reading
         self.text = text
         state = .loading
         error = nil
@@ -44,10 +48,21 @@ final class ReadAloud {
                 try AVAudioSession.sharedInstance().setActive(true)
                 let session = URLSession(configuration: SiloSession.configuration())
                 let (bytes, response) = try await session.bytes(from: url)
+                try Task.checkCancellation()
                 guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw SiloError.server("The voice did not answer. Try again in a moment.") }
                 let player = SpeechStreamPlayer(mime: response.mimeType ?? "audio/mpeg")
-                player.onStart = { Task { @MainActor [weak self] in self?.state = .playing } }
-                player.onFinish = { Task { @MainActor [weak self] in self?.finished() } }
+                player.onStart = {
+                    Task { @MainActor [weak self] in
+                        guard let self, self.reading == mine else { return }
+                        self.state = .playing
+                    }
+                }
+                player.onFinish = {
+                    Task { @MainActor [weak self] in
+                        guard let self, self.reading == mine else { return }
+                        self.finished()
+                    }
+                }
                 self?.player = player
                 var chunk = Data()
                 for try await byte in bytes {
@@ -62,14 +77,16 @@ final class ReadAloud {
             } catch is CancellationError {
                 return
             } catch {
-                guard !Task.isCancelled else { return }
-                self?.error = (error as? SiloError)?.errorDescription ?? error.localizedDescription
-                self?.finished()
+                guard !Task.isCancelled, let self, self.reading == mine else { return }
+                self.error = (error as? SiloError)?.errorDescription ?? error.localizedDescription
+                self.finished()
             }
         }
     }
 
     func stop() {
+        // Whatever the stopped player says from here on is about a reading that is over.
+        reading += 1
         task?.cancel()
         task = nil
         player?.stop()
