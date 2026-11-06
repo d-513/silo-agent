@@ -117,6 +117,19 @@ func (s *Service) Sync() {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.srv != nil {
+		select {
+		case <-s.srv.Done():
+			// It stopped by itself: say why, and start it again below.
+			s.problem = "the listener stopped"
+			if err := s.srv.Err(); err != nil {
+				s.problem += ": " + err.Error()
+			}
+			log.Printf("mail: %s; starting it again", s.problem)
+			s.srv = nil
+		default:
+		}
+	}
 	if want == s.running && (want == "" || s.srv != nil) {
 		return
 	}

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/emersion/go-smtp"
 )
@@ -238,5 +239,32 @@ func TestListenFailsOnABusyPort(t *testing.T) {
 	s, _ := startServer(t, Config{})
 	if _, err := Listen(Config{Addr: s.Addr(), Domain: "bots.test"}, &fakeBox{}); err == nil {
 		t.Fatal("a second listener on the same port started")
+	}
+}
+
+// A listener that stops by itself says so, so its owner can start another;
+// one closed on purpose has no error.
+func TestServerSaysWhenItStopped(t *testing.T) {
+	s, _ := startServer(t, Config{})
+	select {
+	case <-s.Done():
+		t.Fatal("done while running")
+	default:
+	}
+	_ = s.ln.Close() // the socket goes away under it
+	select {
+	case <-s.Done():
+	case <-time.After(5 * time.Second):
+		t.Fatal("never said it stopped")
+	}
+	if s.Err() == nil {
+		t.Fatal("stopped by itself with no error")
+	}
+
+	closed, _ := startServer(t, Config{})
+	_ = closed.Close()
+	<-closed.Done()
+	if err := closed.Err(); err != nil {
+		t.Fatalf("closed on purpose: %v", err)
 	}
 }

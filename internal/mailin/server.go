@@ -88,6 +88,9 @@ type Server struct {
 	domain string
 	probes *window
 	rate   *window
+	// done closes when Serve has returned; err is why, nil after Close.
+	done chan struct{}
+	err  error
 }
 
 // Listen binds cfg.Addr and serves until Close. A port that cannot be bound
@@ -98,7 +101,7 @@ func Listen(cfg Config, h Handler) (*Server, error) {
 		return nil, err
 	}
 	ln = netutil.LimitListener(ln, maxConns)
-	s := &Server{ln: ln, h: h, domain: cfg.Domain, probes: newWindow(probeLimit, probeWindow), rate: newWindow(rateLimit, rateWindow)}
+	s := &Server{ln: ln, h: h, domain: cfg.Domain, probes: newWindow(probeLimit, probeWindow), rate: newWindow(rateLimit, rateWindow), done: make(chan struct{})}
 	srv := smtp.NewServer(smtp.BackendFunc(func(c *smtp.Conn) (smtp.Session, error) {
 		return &session{s: s, c: c}, nil
 	}))
@@ -114,18 +117,40 @@ func Listen(cfg Config, h Handler) (*Server, error) {
 	srv.ErrorLog = quietLog{}
 	s.srv = srv
 	go func() {
+		defer close(s.done)
 		if err := srv.Serve(ln); err != nil && !errors.Is(err, smtp.ErrServerClosed) {
 			log.Printf("mail: listener %s stopped: %v", ln.Addr(), err)
+			s.err = err
 		}
 	}()
 	return s, nil
 }
 
+// Done closes once the listener has stopped, by Close or on its own.
+func (s *Server) Done() <-chan struct{} { return s.done }
+
+// Err is why the listener stopped on its own; nil while it runs or after
+// Close. Read it after Done.
+func (s *Server) Err() error {
+	select {
+	case <-s.done:
+		return s.err
+	default:
+		return nil
+	}
+}
+
 // Addr is the bound address (the real port when Config.Addr asked for :0).
 func (s *Server) Addr() string { return s.ln.Addr().String() }
 
-// Close stops the listener and drops its connections.
-func (s *Server) Close() error { return s.srv.Close() }
+// Close stops the listener and drops its connections. It closes the socket
+// itself too: go-smtp closes only listeners Serve has registered, and Serve
+// may not have started yet.
+func (s *Server) Close() error {
+	err := s.srv.Close()
+	_ = s.ln.Close()
+	return err
+}
 
 // quietLog drops go-smtp's per-connection noise (scanners hang up mid-line
 // all day); real failures are logged where they happen.
