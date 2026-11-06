@@ -207,6 +207,8 @@ extension CallSession: CallBrainIO {
     #endif
 
     public func connectPeer(iceServers: [ICEServer]) {
+        // One peer per call: `remoteSet` and the held candidates belong to it.
+        guard peer == nil, !finished else { return }
         let config = RTCConfiguration()
         config.sdpSemantics = .unifiedPlan
         config.continualGatheringPolicy = .gatherContinually

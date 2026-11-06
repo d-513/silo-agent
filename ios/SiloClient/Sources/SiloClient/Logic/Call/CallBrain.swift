@@ -81,6 +81,10 @@ public final class CallBrain {
     private var quiet = 0
     /// A turn the transcriber ended early; speech that goes on opens the next.
     private var endedEarly = false
+    // One hello per call: a second would make a second peer.
+    private var greeted = false
+    // The error on screen is a passing notice (an `error` message), not why the call ended.
+    private var notice = false
 
     public init(chat: String, io: CallBrainIO) {
         snap = CallSnapshot(chatID: chat)
@@ -212,6 +216,8 @@ public final class CallBrain {
         guard snap.state != .ended else { return }
         switch m.t {
         case "hello":
+            guard !greeted else { return }
+            greeted = true
             live = m.stt == "live"
             set {
                 $0.callID = m.call_id ?? ""
@@ -245,6 +251,7 @@ public final class CallBrain {
             barge.said()
             set { $0.saying = m.text ?? "" }
         case "heard":
+            notice = false
             set {
                 $0.heard = m.text ?? ""
                 $0.hearing = ""
@@ -261,9 +268,13 @@ public final class CallBrain {
                 endedEarly = true
             }
         case "error":
+            notice = true
             set { $0.error = m.message ?? "" }
         case "bye":
-            if let message = m.message, !message.isEmpty { set { $0.error = message } }
+            if let message = m.message, !message.isEmpty {
+                notice = false
+                set { $0.error = message }
+            }
             finish(EndReason(rawValue: m.reason ?? "") ?? (m.reason == "network" ? .lost : .hangup))
         default:
             break
@@ -299,6 +310,10 @@ public final class CallBrain {
             turnOpen = false
             io?.sendText(["t": "cancel", "n": turnN])
         }
+        endedEarly = false
+        // A hold you muted is dropped like a turn the detector hands over: nothing is heard.
+        if snap.holding { set { $0.holding = false } }
+        held = []
         _ = gate.pause()
     }
 
@@ -310,6 +325,7 @@ public final class CallBrain {
             turnOpen = false
             io?.sendText(["t": "cancel", "n": turnN])
         }
+        endedEarly = false
         set {
             $0.ptt = ptt
             $0.holding = false
@@ -319,8 +335,10 @@ public final class CallBrain {
 
     /// The hold-to-talk press.
     public func hold(_ down: Bool) {
-        guard snap.ptt, !snap.muted else { return }
+        // Letting go always ends a hold, whatever changed while it was held.
+        if !down && !snap.holding { return }
         if down {
+            guard snap.ptt, !snap.muted, snap.state != .ended else { return }
             held = []
             barge.sure()
             set {
@@ -331,6 +349,10 @@ public final class CallBrain {
                 ring = []
                 openTurn()
             }
+            return
+        }
+        guard snap.state != .ended else {
+            held = []
             return
         }
         barge.ended()
@@ -356,6 +378,7 @@ public final class CallBrain {
 
     public func fail(_ error: String) {
         guard snap.state != .ended else { return }
+        notice = false
         set { $0.error = error }
         finish(.error)
     }
@@ -372,10 +395,13 @@ public final class CallBrain {
 
     public func finish(_ reason: EndReason) {
         guard snap.state != .ended else { return }
+        // A passing notice is not why a call that ended normally ended.
+        let stale = notice && reason != .error && reason != .lost
         set {
             $0.state = .ended
             $0.ended = reason
             $0.level = 0
+            if stale { $0.error = "" }
         }
         io?.finished(reason)
     }

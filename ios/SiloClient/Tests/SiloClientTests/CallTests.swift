@@ -107,11 +107,15 @@ private final class FakeIO: CallBrainIO {
     var binaries: [Data] = []
     var muted: [Bool] = []
     var ice: [ICEServer]?
+    var peers = 0
     var ended: EndReason?
     func sendText(_ object: [String: Any]) { texts.append(object) }
     func sendBinary(_ data: Data) { binaries.append(data) }
     func muteVoice(_ muted: Bool) { self.muted.append(muted) }
-    func connectPeer(iceServers: [ICEServer]) { ice = iceServers }
+    func connectPeer(iceServers: [ICEServer]) {
+        ice = iceServers
+        peers += 1
+    }
     func setAnswer(sdp: String) {}
     func addCandidate(_ candidate: ICECandidate) {}
     func changed(_ snapshot: CallSnapshot) {}
@@ -210,6 +214,65 @@ final class CallBrainTests: XCTestCase {
         speak(10)
         brain.hold(false)
         XCTAssertEqual(io.kinds, ["turn"])
+    }
+
+    func testMutingWhileHoldingEndsTheHold() {
+        hello()
+        brain.setPtt(true)
+        brain.hold(true)
+        speak(10)
+        brain.setMuted(true)
+        XCTAssertFalse(brain.snap.holding)
+        brain.hold(false)
+        XCTAssertEqual(io.kinds, [], "nothing said under a mute goes up")
+        brain.setMuted(false)
+        speak(10)
+        brain.hangup()
+        XCTAssertEqual(io.kinds, ["hangup"], "the old hold is not handed over")
+    }
+
+    func testLettingGoEndsAHoldEvenIfHoldToTalkWentOff() {
+        hello(stt: "live")
+        brain.setPtt(true)
+        brain.hold(true)
+        XCTAssertEqual(io.kinds, ["speech"])
+        brain.setPtt(false)
+        XCTAssertFalse(brain.snap.holding)
+        brain.hold(false)
+        XCTAssertEqual(io.kinds, ["speech", "cancel"])
+    }
+
+    func testHoldToTalkForgetsATurnEndedEarly() {
+        hello(stt: "live")
+        speak(10)
+        silence(3)
+        brain.receive(message(#"{"t":"eot","n":1}"#))
+        XCTAssertEqual(io.kinds, ["speech", "turn"])
+        brain.setPtt(true)
+        brain.setPtt(false)
+        speak(1)
+        XCTAssertEqual(io.kinds, ["speech", "turn"], "only the detector opens the next turn")
+    }
+
+    func testASecondHelloMakesNoSecondPeer() {
+        hello()
+        hello()
+        XCTAssertEqual(io.peers, 1)
+    }
+
+    func testANoticeDoesNotOutliveANormalEnd() {
+        hello()
+        brain.receive(message(#"{"t":"error","message":"Could not hear that."}"#))
+        XCTAssertEqual(brain.snap.error, "Could not hear that.")
+        brain.hangup()
+        XCTAssertEqual(brain.snap.error, "")
+    }
+
+    func testAByeKeepsItsWord() {
+        hello()
+        brain.receive(message(#"{"t":"error","message":"Could not hear that."}"#))
+        brain.receive(message(#"{"t":"bye","reason":"idle","message":"Hung up after a quiet while."}"#))
+        XCTAssertEqual(brain.snap.error, "Hung up after a quiet while.")
     }
 
     func testTurningOnHoldToTalkClosesAnOpenTurn() {
