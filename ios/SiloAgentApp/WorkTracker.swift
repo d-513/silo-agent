@@ -26,7 +26,7 @@ final class WorkTracker {
             finish()
             let attributes = WorkActivityAttributes(botID: bot.id, botName: bot.name, crest: bot.crest, chatID: row.leadChatID.isEmpty ? row.chatID : row.leadChatID)
             activity = try? Activity.request(attributes: attributes, content: next)
-            shownFor = bot.id
+            shownFor = activity == nil ? nil : bot.id
         }
     }
 
