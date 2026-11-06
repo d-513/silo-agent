@@ -34,6 +34,11 @@ export function isGone(e: unknown): boolean {
   return c === Code.NotFound || c === Code.PermissionDenied;
 }
 
+/** The thing moved on before this call (an approval someone already answered). */
+export function isPrecondition(e: unknown): boolean {
+  return code(e) === Code.FailedPrecondition;
+}
+
 /** A request aborted by the client (unmount, navigation, Stop). */
 export function isCanceled(e: unknown): boolean {
   return code(e) === Code.Canceled || (e instanceof DOMException && e.name === "AbortError");

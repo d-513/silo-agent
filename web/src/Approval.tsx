@@ -3,6 +3,8 @@ import { createContext, useContext, useRef, useState, type ReactNode } from "rea
 import { ui } from "./api";
 import { Btn } from "./Btn";
 import { Crest } from "./Crest";
+import { fail, isPrecondition } from "./errors";
+import { Spinner } from "./Feedback";
 import { Status } from "./Lamp";
 import { runLook, started } from "./statusLook";
 import type { Approval, Bot } from "./gen/silo/v1/ui_pb";
@@ -53,6 +55,52 @@ export function SlipPresence({ show, children }: { show: boolean; children: Reac
 }
 
 const LeavingCtx = createContext<(() => void) | null>(null);
+
+export type Decision = "allow_once" | "always" | "deny";
+type Pressed = Decision | "auto";
+
+// useDeciding is one answer at a time on a slip or card: every button waits
+// while it is sent (a double click, or Allow then Deny, sends one), and a
+// failure is said on the slip.
+function useDeciding(onDecide: (d: Decision) => Promise<void> | void, onAutoApprove?: () => Promise<void> | void) {
+  const [busy, setBusy] = useState<Pressed | null>(null);
+  const [err, setErr] = useState("");
+  const inFlight = useRef(false);
+  async function press(which: Pressed) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(which);
+    setErr("");
+    try {
+      await (which === "auto" ? onAutoApprove?.() : onDecide(which));
+    } catch (e) {
+      setErr(fail(e));
+    } finally {
+      inFlight.current = false;
+      setBusy(null);
+    }
+  }
+  // Props for one answer's button.
+  const btn = (which: Pressed) => ({
+    disabled: busy !== null,
+    "aria-busy": busy === which,
+    icon: busy === which ? <Spinner size={13} /> : undefined,
+    onClick: () => void press(which),
+  });
+  return { btn, err };
+}
+
+/**
+ * Sends an answer. One someone else gave first (the server refuses a second)
+ * is no failure: the approval is answered, and the next poll drops it.
+ */
+export async function answer(fn: () => Promise<unknown>): Promise<void> {
+  try {
+    await fn();
+  } catch (e) {
+    if (!isPrecondition(e)) throw e;
+  }
+}
 
 export function NeedYouSlip({
   bot,
@@ -140,10 +188,16 @@ export function ApprovalSlip({
 }: {
   bot: Bot;
   approval: Approval;
-  onDecide: (decision: "allow_once" | "always" | "deny") => void;
-  onAutoApprove?: () => void;
+  onDecide: (decision: Decision) => Promise<void> | void;
+  onAutoApprove?: () => Promise<void> | void;
 }) {
   const d = describeApproval(approval);
+  const { btn, err } = useDeciding(onDecide, onAutoApprove);
+  const failed = err ? (
+    <p role="alert" className="mb-1 text-meta leading-[18px] text-vermilion">
+      {err}
+    </p>
+  ) : null;
   // No run: a background process (a script that outlived its command, or one
   // started from the Console) asked; it waits, but no chat is paused.
   const waiting = approval.runId ? t("This run is paused until you choose.") : t("The process is waiting for your choice.");
@@ -153,10 +207,11 @@ export function ApprovalSlip({
   if (approval.onceOnly && !approval.auto) {
     return (
       <NeedYouSlip bot={bot} title={d.title} summary={d.summary} fields={d.fields} note={waiting} source={source}>
-        <Btn kind="primary" className="!h-10 w-full justify-center" onClick={() => onDecide("allow_once")}>
+        {failed}
+        <Btn kind="primary" className="!h-10 w-full justify-center" {...btn("allow_once")}>
           {t("Allow once")}
         </Btn>
-        <Btn kind="deny" className="!h-10 w-full justify-center" onClick={() => onDecide("deny")}>
+        <Btn kind="deny" className="!h-10 w-full justify-center" {...btn("deny")}>
           {t("Deny")}
         </Btn>
       </NeedYouSlip>
@@ -167,10 +222,11 @@ export function ApprovalSlip({
   if (approval.auto) {
     return (
       <NeedYouSlip bot={bot} title={d.title} summary={d.summary} fields={d.fields} note={waiting} source={source}>
-        <Btn kind="primary" className="!h-10 w-full justify-center" onClick={() => onDecide("allow_once")}>
+        {failed}
+        <Btn kind="primary" className="!h-10 w-full justify-center" {...btn("allow_once")}>
           {t("Allow")}
         </Btn>
-        <Btn kind="deny" className="!h-10 w-full justify-center" onClick={() => onDecide("deny")}>
+        <Btn kind="deny" className="!h-10 w-full justify-center" {...btn("deny")}>
           {t("Deny")}
         </Btn>
         <p className="mt-1 text-center text-meta leading-[18px] text-ink-3">
@@ -184,10 +240,11 @@ export function ApprovalSlip({
   }
   return (
     <NeedYouSlip bot={bot} title={d.title} summary={d.summary} fields={d.fields} note={waiting} source={source}>
-      <Btn kind="primary" className="!h-10 w-full justify-center" onClick={() => onDecide("allow_once")}>
+        {failed}
+      <Btn kind="primary" className="!h-10 w-full justify-center" {...btn("allow_once")}>
         {t("Allow once")}
       </Btn>
-      <Btn kind="secondary" className="!h-10 w-full justify-center" onClick={() => onDecide("always")}>
+      <Btn kind="secondary" className="!h-10 w-full justify-center" {...btn("always")}>
         {t("Always allow this action")}
       </Btn>
       {onAutoApprove && (
@@ -195,12 +252,12 @@ export function ApprovalSlip({
           kind="secondary"
           className="!h-10 w-full justify-center"
           title={t("Set this action to Auto and let the approval model decide from now on. This run is allowed once.")}
-          onClick={onAutoApprove}
+          {...btn("auto")}
         >
           {t("Auto-approve this action")}
         </Btn>
       )}
-      <Btn kind="deny" className="!h-10 w-full justify-center" onClick={() => onDecide("deny")}>
+      <Btn kind="deny" className="!h-10 w-full justify-center" {...btn("deny")}>
         {t("Deny")}
       </Btn>
     </NeedYouSlip>
@@ -215,10 +272,11 @@ export function ApprovalCard({
   onAutoApprove,
 }: {
   approval: Approval;
-  onDecide: (decision: "allow_once" | "always" | "deny") => void;
-  onAutoApprove?: () => void;
+  onDecide: (decision: Decision) => Promise<void> | void;
+  onAutoApprove?: () => Promise<void> | void;
 }) {
   const d = describeApproval(approval);
+  const { btn, err } = useDeciding(onDecide, onAutoApprove);
   const waiting = approval.runId ? t("This run is paused until you choose.") : t("The process is waiting for your choice.");
   return (
     <article className="rise relative flex flex-col justify-between overflow-hidden rounded-card bg-surface py-4 pr-4 pl-5 shadow-card">
@@ -243,11 +301,11 @@ export function ApprovalCard({
       </div>
       <div className="mt-4">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Btn kind="primary" size="sm" onClick={() => onDecide("allow_once")}>
+          <Btn kind="primary" size="sm" {...btn("allow_once")}>
             {approval.auto ? t("Allow") : t("Allow once")}
           </Btn>
           {!approval.auto && !approval.onceOnly ? (
-            <Btn kind="secondary" size="sm" onClick={() => onDecide("always")}>
+            <Btn kind="secondary" size="sm" {...btn("always")}>
               {t("Always allow this action")}
             </Btn>
           ) : null}
@@ -256,16 +314,21 @@ export function ApprovalCard({
               kind="secondary"
               size="sm"
               title={t("Set this action to Auto and let the approval model decide from now on. This run is allowed once.")}
-              onClick={onAutoApprove}
+              {...btn("auto")}
             >
               {t("Auto-approve this action")}
             </Btn>
           ) : null}
-          <Btn kind="deny" size="sm" onClick={() => onDecide("deny")}>
+          <Btn kind="deny" size="sm" {...btn("deny")}>
             {t("Deny")}
           </Btn>
           <span className="ml-auto text-label text-ink-3">{waiting}</span>
         </div>
+        {err ? (
+          <p role="alert" className="mt-2 text-label text-vermilion">
+            {err}
+          </p>
+        ) : null}
       </div>
     </article>
   );

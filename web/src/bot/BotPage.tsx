@@ -379,7 +379,7 @@ export function BotPage() {
             onError={setActErr}
           />
           <MachineRail bot={bot} open={pane} onPick={pickPane} onStart={start} onStop={stop} />
-          <BotSlip bot={bot} pending={tab === "dashboard" ? [] : pending} onError={setActErr} />
+          <BotSlip bot={bot} pending={tab === "dashboard" ? [] : pending} />
           {inspect ? (
             <Suspense fallback={null}>
               <ArtifactOverlay botId={id} artifact={inspect} onSave={onSaveSkill} onClose={() => setInspect(null)} />

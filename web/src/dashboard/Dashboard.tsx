@@ -2,7 +2,7 @@ import { Check, Move, RotateCw } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
 import { type DragEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ApprovalCard, approveSetAuto } from "../Approval";
+import { ApprovalCard, answer, approveSetAuto } from "../Approval";
 import { ui } from "../api";
 import { AskSlip } from "../ask/AskCard";
 import { Btn } from "../Btn";
@@ -127,13 +127,13 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
   }
 
   async function decideApproval(ap: Approval, decision: "allow_once" | "always" | "deny") {
-    await guard(() => ui.decideApproval({ id: ap.id, decision }));
+    await answer(() => ui.decideApproval({ id: ap.id, decision }));
     void recheck(UI.method.listApprovals, input);
     reloadBot(bot.id);
   }
 
   async function autoApprove(ap: Approval) {
-    await guard(() => approveSetAuto(bot.id, ap));
+    await answer(() => approveSetAuto(bot.id, ap));
     void recheck(UI.method.listApprovals, input);
     reloadBot(bot.id);
   }
@@ -314,7 +314,7 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
       {approvals.length || data.cards.length ? (
         <section aria-label={t("Needs you")} className={`mb-2.5 grid gap-2.5 ${cols > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
           {approvals.map((ap) => (
-            <ApprovalCard key={ap.id} approval={ap} onDecide={(d) => void decideApproval(ap, d)} onAutoApprove={() => void autoApprove(ap)} />
+            <ApprovalCard key={ap.id} approval={ap} onDecide={(d) => decideApproval(ap, d)} onAutoApprove={() => autoApprove(ap)} />
           ))}
           {data.cards.map((c) => (
             <AskSlip key={c.id} botId={bot.id} card={c} onSubmit={submitAsk} onDismiss={dismissAsk} />
