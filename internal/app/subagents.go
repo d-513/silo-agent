@@ -164,8 +164,8 @@ func (a *App) afterRun(botID, chatID, runID, st string) {
 
 func (a *App) subagentFinished(sa *db.Subagent, runID, st string) {
 	defer a.pingLead(sa.BotID, sa.ParentChatID, "subagents")
-	if st == "stopped" && sa.Status != "running" && sa.Reported {
-		return // quieted by a stop the lead already knows about
+	if sa.Status != "running" {
+		return // settled already: quieted by a stop the lead knows about
 	}
 	if live := a.LiveRunID(sa.BotID, sa.ChatID); live != "" && live != runID {
 		return // resumed while this run was unwinding: the new run reports
@@ -176,9 +176,13 @@ func (a *App) subagentFinished(sa *db.Subagent, runID, st string) {
 	}
 	now := time.Now()
 	result := textx.TruncateUTF8(a.runResult(runID), subagentResultMax)
-	a.DB.Model(&db.Subagent{}).Where("id = ?", sa.ID).Updates(map[string]any{
+	// Only while still running: a quiet stop that lands while this run
+	// unwinds wins, and the lead is not woken by what it stopped.
+	if a.DB.Model(&db.Subagent{}).Where("id = ? AND status = ?", sa.ID, "running").Updates(map[string]any{
 		"status": status, "result": result, "reported": false, "finished_at": &now,
-	})
+	}).RowsAffected == 0 {
+		return
+	}
 	if lr := a.liveRunFor(sa.BotID, sa.ParentChatID); lr != nil {
 		lr.signal("subagent " + sa.Name + " finished (" + status + ")")
 	}

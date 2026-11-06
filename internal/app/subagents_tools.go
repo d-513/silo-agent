@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"silo.agent/internal/app/chats"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/toolarg"
 	"silo.agent/internal/db"
@@ -210,12 +211,21 @@ func (a *App) spawnAgent(ctx context.Context, bot *db.Bot, leadChatID, runID, na
 	}
 	sa.ChatID = c.ID
 	if err := a.DB.Create(&sa).Error; err != nil {
+		chats.Drop(a.DB, c.ID)
+		// Another spawn took the name between the check and here
+		// (subagents_name).
+		if a.DB.Where("parent_chat_id = ? AND lower(name) = lower(?)", leadChatID, name).Limit(1).Find(&clash); clash.ID != "" {
+			return "", fmt.Errorf("a subagent named %q already exists here — message_agent it, or pick another name", clash.Name)
+		}
 		return "", err
 	}
 	unlock := a.lockConv(c.ID)
 	_, err := a.StartRun(run.Request{BotID: bot.ID, ChatID: c.ID, Text: subagentBrief(goal, ctxText), From: run.FromLead, Origin: &run.Origin{Subagent: &sa}})
 	unlock()
 	if err != nil {
+		// Nothing ran: the subagent was never there.
+		chats.Drop(a.DB, c.ID)
+		a.DB.Delete(&db.Subagent{}, "id = ?", sa.ID)
 		return "", err
 	}
 	a.pingLead(bot.ID, leadChatID, "subagents")
@@ -235,9 +245,12 @@ func (a *App) messageSubagent(sa *db.Subagent, text string) (bool, error) {
 	if runID := a.LiveRunID(sa.BotID, sa.ChatID); runID != "" {
 		return false, fmt.Errorf("%s has too many unread messages; wait for it to catch up", sa.Name)
 	}
+	prev := map[string]any{"status": sa.Status, "reported": sa.Reported, "finished_at": sa.FinishedAt}
 	a.DB.Model(&db.Subagent{}).Where("id = ?", sa.ID).Updates(map[string]any{"status": "running", "reported": true, "finished_at": nil})
 	sa.Status, sa.Reported, sa.FinishedAt = "running", true, nil
 	if _, err := a.StartRun(run.Request{BotID: sa.BotID, ChatID: sa.ChatID, Text: text, From: run.FromLead, Origin: &run.Origin{Subagent: sa}}); err != nil {
+		// Not resumed: it stays as it was, not running forever.
+		a.DB.Model(&db.Subagent{}).Where("id = ?", sa.ID).Updates(prev)
 		return false, err
 	}
 	a.pingLead(sa.BotID, sa.ParentChatID, "subagents")

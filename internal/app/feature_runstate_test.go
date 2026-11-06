@@ -196,3 +196,36 @@ func TestWipeTakesTheStoppedRunsLastWords(t *testing.T) {
 		t.Fatalf("the stopped run's events survive the wipe: %v", kinds)
 	}
 }
+
+// A subagent whose run cannot start (its owner was disabled meanwhile) is not
+// left behind as running forever.
+func TestSubagentThatCannotStartIsNotLeftRunning(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_rs_spawn",
+		dummy.Turn{Delay: 400 * time.Millisecond, ToolCalls: []llm.ToolCall{{ID: "c1", Name: "spawn_agent", Arguments: `{"name":"scout","goal":"look around"}`}}},
+		dummy.Turn{Text: "end"},
+	)
+	h := apptest.New(t)
+	bot := h.CreateBot("Spawner")
+	chat := h.FirstChat(bot.GetId())
+	runID, _ := h.Send(bot.GetId(), chat, "Test_rs_spawn")
+	time.Sleep(100 * time.Millisecond)
+	owner := h.AdminUser()
+	h.DB.Model(&db.User{}).Where("id = ?", owner.ID).Update("disabled", true)
+	defer h.DB.Model(&db.User{}).Where("id = ?", owner.ID).Update("disabled", false)
+	evs := h.WaitRun(runID)
+	var res string
+	for _, ev := range evs {
+		if ev.Kind == "tool_result" && ev.Tool == "spawn_agent" {
+			res = ev.Body
+		}
+	}
+	if !strings.Contains(res, "error") {
+		t.Fatalf("spawn_agent answered %q", res)
+	}
+	var n int64
+	h.DB.Model(&db.Subagent{}).Where("parent_chat_id = ?", chat).Count(&n)
+	if n != 0 {
+		t.Fatalf("%d subagents left behind", n)
+	}
+}

@@ -1,7 +1,9 @@
 package db_test
 
 import (
+	"fmt"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -98,5 +100,32 @@ func TestMigrateHashesOldSessionIDs(t *testing.T) {
 	gdb.First(&g2, "id = ?", "g2")
 	if g1.SessionID != ids.Hash("raw-cookie") || g2.SessionID != ids.Hash("new-cookie") {
 		t.Fatalf("grants point at %q and %q", g1.SessionID, g2.SessionID)
+	}
+}
+
+// Subagents a racing spawn named alike in one lead chat, from before the
+// index, keep both logs: the later one is renamed so the index can be made.
+func TestMigrateRenamesClashingSubagents(t *testing.T) {
+	gdb := dbtest.New(t)
+	if err := gdb.Exec("DROP INDEX subagents_name").Error; err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	for i, name := range []string{"scout", "Scout", "other"} {
+		sa := db.Subagent{ID: fmt.Sprint("sa", i), ParentChatID: "lead", Name: name, Status: "done", CreatedAt: now.Add(time.Duration(i) * time.Second)}
+		if err := gdb.Create(&sa).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := db.Migrate(gdb); err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	gdb.Model(&db.Subagent{}).Order("created_at").Pluck("name", &names)
+	if strings.Join(names, ",") != "scout,Scout-2,other" {
+		t.Fatalf("names %v", names)
+	}
+	if err := gdb.Create(&db.Subagent{ID: "sa9", ParentChatID: "lead", Name: "SCOUT"}).Error; err == nil {
+		t.Fatal("a second scout in one lead chat was stored")
 	}
 }

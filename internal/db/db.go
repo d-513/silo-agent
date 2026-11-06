@@ -1120,6 +1120,9 @@ func Migrate(gdb *gorm.DB) error {
 	if err := repinIndex(gdb); err != nil {
 		return err
 	}
+	if err := renameClashingSubagents(gdb); err != nil {
+		return err
+	}
 	for _, stmt := range []string{
 		// One Heartbeat and one Dashboard per Bot: the insert that pins them
 		// relies on this to lose a race instead of making a second.
@@ -1129,6 +1132,9 @@ func Migrate(gdb *gorm.DB) error {
 		"DROP INDEX IF EXISTS chats_main",
 		"CREATE UNIQUE INDEX IF NOT EXISTS chats_main_person ON chats (bot_id, user_id) WHERE main",
 		// One owner per Workspace: a transfer demotes the old one first.
+		// A subagent's name is how its lead addresses it: one per lead chat,
+		// any case. spawn_agent relies on it to lose a race.
+		"CREATE UNIQUE INDEX IF NOT EXISTS subagents_name ON subagents (parent_chat_id, lower(name))",
 		"CREATE UNIQUE INDEX IF NOT EXISTS space_owner ON space_members (space_id) WHERE role = 'owner'",
 		"CREATE INDEX IF NOT EXISTS memories_embedding_hnsw ON memories USING hnsw (embedding vector_cosine_ops)",
 		// 'simple' keeps the keyword half language-neutral: names, part
@@ -1145,6 +1151,15 @@ func Migrate(gdb *gorm.DB) error {
 		}
 	}
 	return nil
+}
+
+// renameClashingSubagents gives the later of two subagents a racing
+// spawn_agent named alike in one lead chat a suffix, so subagents_name can be
+// made. Nothing is deleted: both logs stay.
+func renameClashingSubagents(gdb *gorm.DB) error {
+	return gdb.Exec(`UPDATE subagents s SET name = s.name || '-' || r.n
+		FROM (SELECT id, row_number() OVER (PARTITION BY parent_chat_id, lower(name) ORDER BY created_at, id) AS n FROM subagents) r
+		WHERE r.id = s.id AND r.n > 1`).Error
 }
 
 // dedupePinnedAutomations removes the extra Heartbeats and Dashboards that a
