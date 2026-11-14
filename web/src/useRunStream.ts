@@ -73,7 +73,9 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
   // page of earlier events asked for before that is dropped.
   const gen = useRef(0);
   const earlierBusy = useRef(false);
-  const pushed = useRef(false);
+  // streamed counts the events the stream pushed. It is state, set in the
+  // same batch as the event, so it always commits with the events it counts.
+  const [streamed, setStreamed] = useState(0);
   const on = useRef(handlers);
   on.current = handlers;
 
@@ -98,7 +100,7 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
     setPrepended(0);
     const push = (ev: Ev) => {
       setEvents((xs) => [...xs, ev]);
-      pushed.current = true;
+      setStreamed((n) => n + 1);
     };
     (async () => {
       // Reconnect quickly after a clean end, back off while the CP is down.
@@ -175,12 +177,16 @@ export function useRunStream(botId: string | undefined, chatId: string | undefin
   }, [botId, chatId, nonce]);
 
   // The run is busy as the events say, worked out after they are set (never
-  // inside their updater). pushed says a streamed event should recompute it.
+  // inside their updater), and only when the stream pushed one: a page of
+  // earlier events must not clear a send still waiting for its first event.
+  // A ref flag cannot say that: an event pushed between a commit and its
+  // effect would be spent on the older events, and the done after it would
+  // never be counted.
+  const latest = useRef(events);
+  latest.current = events;
   useEffect(() => {
-    if (!pushed.current) return;
-    pushed.current = false;
-    setSending(chatBusy(events));
-  }, [events]);
+    if (streamed) setSending(chatBusy(latest.current));
+  }, [streamed]);
 
   // markSent flags the next user event as this tab's own (it glides in) and
   // shows the run as busy before the first event arrives.

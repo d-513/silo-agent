@@ -1,26 +1,27 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { vadAssets } from "./vite-vad";
+import { vadAssets } from "./vite-vad.ts";
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), vadAssets()],
-  optimizeDeps: { exclude: ["@novnc/novnc"], esbuildOptions: { target: "es2022" } },
+  optimizeDeps: { exclude: ["@novnc/novnc"], rolldownOptions: { transform: { target: "es2022" } } },
   build: {
     target: "es2022",
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         // The libraries that change least get their own files, so an app
         // release leaves them in the browser's cache.
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return;
-          if (/[\\/]node_modules[\\/](react|react-dom|scheduler|@tanstack)[\\/]/.test(id)) return "vendor-react";
-          if (/[\\/]node_modules[\\/](@bufbuild|@connectrpc)[\\/]/.test(id)) return "vendor-rpc";
+        codeSplitting: {
+          groups: [
+            { name: "vendor-react", test: /[\\/]node_modules[\\/](react|react-dom|scheduler|@tanstack)[\\/]/ },
+            { name: "vendor-rpc", test: /[\\/]node_modules[\\/](@bufbuild|@connectrpc)[\\/]/ },
+          ],
         },
       },
     },
   },
-  esbuild: { target: "es2022" },
+  oxc: { target: "es2022" },
   server: {
     port: 5173,
     strictPort: true,

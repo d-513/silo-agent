@@ -35,7 +35,7 @@ void i18n.init({
 
 /** The message in the display language. `{{name}}` takes a value; `count` picks the plural form. */
 export function t(key: string, values?: Record<string, unknown>): string {
-  return i18n.t(key, values) as string;
+  return i18n.t(key, values ?? {}) as string;
 }
 
 /** Marks a message that is translated later, where it is shown: `t(row.label)`. */

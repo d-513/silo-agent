@@ -13,8 +13,7 @@
     "noUnusedParameters": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] }
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src"],
   "exclude": ["src/**/*_test.ts"]
