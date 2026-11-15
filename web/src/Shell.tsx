@@ -3,24 +3,25 @@ import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { AccountPage } from "./account/AccountPage";
-import { ui } from "./api";
 import { useAuth } from "./auth";
 import { useBots } from "./bots";
 import { Crest } from "./Crest";
-import { isSignedOut } from "./errors";
 import { Lamp } from "./Lamp";
 import { botLook, crestState } from "./statusLook";
 import { preloadMarkdown } from "./mdPlugins";
 import { OfflineBanner } from "./Offline";
+import { type Page, signOut } from "./nav/chrome";
+import { Sidebar } from "./nav/Sidebar";
+import { byLastMessage } from "./nav/botOrder";
 import { canBuild, useCurrentSpace } from "./space/spaces";
-import { SpaceTile } from "./space/SpaceTile";
+import { SpaceSwitch } from "./space/SpaceTile";
 import { flipTheme, setTheme, useTheme } from "./theme";
 import { t } from "./i18n.ts";
 import { useDismiss } from "./useMenu";
 import { useWide } from "./useWide";
 
 // Rail items: 40px hit areas. The active one is a lifted surface well with a
-// 3px cobalt bar on the leading edge (bottom edge in the narrow top bar).
+// 3px cobalt bar on its bottom edge.
 function railHit(active: boolean, extra = "") {
   return `relative flex h-10 w-10 shrink-0 items-center justify-center rounded-control transition-[background-color,color,box-shadow] duration-[160ms] ease-quiet ${
     active ? "bg-surface text-ink shadow-card" : "text-ink-2 hover:bg-pressed hover:text-ink"
@@ -29,49 +30,14 @@ function railHit(active: boolean, extra = "") {
 
 function railBar(on: boolean) {
   if (!on) return null;
-  return (
-    <span
-      aria-hidden
-      className="absolute rounded-full bg-cobalt max-wide:inset-x-2.5 max-wide:-bottom-1 max-wide:h-[3px] wide:inset-y-2.5 wide:-left-3 wide:w-[3px]"
-    />
-  );
-}
-
-// The theme toggle is one rail item whose glyph morphs like Send into Stop:
-// the moon turns out as the sun turns in. It shows where a press leads.
-function ThemeToggle() {
-  const theme = useTheme();
-  const dark = theme === "dark";
-  const label = dark ? t("Switch to light mode") : t("Switch to dark mode");
-  const glyph = "col-start-1 row-start-1 transition-[transform,opacity] duration-[320ms] ease-settle motion-reduce:transition-opacity";
-  const away = "scale-[.6] opacity-0";
-  return (
-    <button type="button" title={label} aria-label={label} className={railHit(false)} onClick={() => setTheme(flipTheme(theme))}>
-      <span className="grid place-items-center">
-        <Moon size={18} className={`${glyph} ${dark ? `rotate-90 ${away}` : ""}`} />
-        <Sun size={18} className={`${glyph} ${dark ? "" : `-rotate-90 ${away}`}`} />
-      </span>
-    </button>
-  );
-}
-
-export type Page = "bots" | "admin" | "account" | "workspace";
-
-async function signOut(setSession: (s: null) => void) {
-  try {
-    await ui.signOut({});
-  } catch (e) {
-    // Already signed out is the goal; anything else keeps the session.
-    if (!isSignedOut(e)) return;
-  }
-  setSession(null);
+  return <span aria-hidden className="absolute inset-x-2.5 -bottom-1 h-[3px] rounded-full bg-cobalt" />;
 }
 
 const menuRow =
   "flex h-11 w-full items-center gap-3 rounded-sm px-2.5 text-left text-body text-ink transition-colors duration-[160ms] hover:bg-well";
 
-// AccountMenu is the narrow rail's one button for what the wide rail lists at
-// its foot (Admin, the theme, Account, Sign out): four icons there would leave
+// AccountMenu is the top bar's one button for what the wide sidebar lists at
+// its foot (Account, Admin, the theme, Sign out): four icons there would leave
 // no room for the Bots.
 function AccountMenu({ page }: { page: Page }) {
   const { admin, email, setSession } = useAuth();
@@ -159,41 +125,33 @@ function AccountMenu({ page }: { page: Page }) {
   );
 }
 
-// Rail is the console's way between Workspaces and Bots: a column on a wide
-// screen, a top bar on a narrow one (and the head of a Bot's drawer there).
+// Rail is the narrow layout's way between Workspaces and Bots: a top bar, and
+// the head of a Bot's drawer. From 960 up the Sidebar stands in its place.
 export function Rail({ page, activeBotId, className = "" }: { page: Page; activeBotId?: string; className?: string }) {
-  const { admin, email, setSession } = useAuth();
-  const wide = useWide();
   const { bots } = useBots();
   const { space, spaces } = useCurrentSpace();
   const loc = useLocation();
   const newBotPath = space ? `/w/${space.id}/new` : "";
-  const initial = (email.trim()[0] ?? "?").toUpperCase();
-  // The rail holds the Bots of the Workspace the console is in.
-  const here = (bots ?? []).filter((b) => b.spaceId === space?.id);
+  // The rail holds the Bots of the Workspace the console is in, in the
+  // sidebar's order.
+  const here = byLastMessage((bots ?? []).filter((b) => b.spaceId === space?.id));
   return (
-    <aside className={`flex shrink-0 bg-well ${className} max-wide:h-[calc(3rem+env(safe-area-inset-top))] max-wide:w-full max-wide:flex-row max-wide:items-center max-wide:gap-1 max-wide:pt-[env(safe-area-inset-top)] max-wide:shadow-[inset_0_-1px_0_var(--color-line)] wide:w-16 wide:flex-col wide:items-center`}>
-      <SpaceTile space={space} spaces={spaces} />
-      <nav className="flex min-h-0 min-w-0 flex-1 items-center gap-1 max-wide:flex-row wide:mt-5 wide:flex-col">
+    <aside className={`flex h-[calc(3rem+env(safe-area-inset-top))] w-full shrink-0 flex-row items-center gap-1 bg-well pt-[env(safe-area-inset-top)] shadow-[inset_0_-1px_0_var(--color-line)] ${className}`}>
+      <SpaceSwitch space={space} spaces={spaces} />
+      <nav className="flex min-h-0 min-w-0 flex-1 flex-row items-center gap-1">
         {space ? (
-          <Link to="/w/$spaceId" params={{ spaceId: space.id }} title={t("Workspace")} className={railHit(page === "workspace")}>
+          <Link to="/w/$spaceId" params={{ spaceId: space.id }} title={t("Workspace settings")} className={railHit(page === "workspace")}>
             {railBar(page === "workspace")}
             <Boxes size={20} />
           </Link>
         ) : null}
-        <span aria-hidden className="shrink-0 bg-line max-wide:mx-1 max-wide:h-6 max-wide:w-px wide:my-1.5 wide:h-px wide:w-6" />
-        <div className="silo-scroll-x flex min-h-0 min-w-0 flex-1 gap-1 max-wide:flex-row max-wide:items-center max-wide:py-1 wide:flex-col wide:items-center wide:overflow-x-hidden wide:overflow-y-auto wide:px-3 wide:py-0.5">
+        <span aria-hidden className="mx-1 h-6 w-px shrink-0 bg-line" />
+        <div className="silo-scroll-x flex min-h-0 min-w-0 flex-1 flex-row items-center gap-1 py-1">
           {here.map((b) => {
             const on = b.id === activeBotId;
             const look = botLook(b);
             return (
-              <Link
-                key={b.id}
-                to="/bots/$botId/run"
-                params={{ botId: b.id }}
-                title={`${b.name} · ${look.word}`}
-                className={railHit(on, "blink")}
-              >
+              <Link key={b.id} to="/bots/$botId/run" params={{ botId: b.id }} title={`${b.name} · ${look.word}`} className={railHit(on, "blink")}>
                 {railBar(on)}
                 <span className="relative flex h-7 w-7">
                   <Crest index={b.crest} size={28} state={crestState(b)} name={b.name} />
@@ -210,35 +168,18 @@ export function Rail({ page, activeBotId, className = "" }: { page: Page; active
           ) : null}
         </div>
       </nav>
-      {wide ? (
-        <div className="mb-4 flex flex-col items-center gap-1">
-          {admin && (
-            <Link to="/admin/settings" title={t("Admin")} className={railHit(page === "admin")}>
-              {railBar(page === "admin")}
-              <Wrench size={20} />
-            </Link>
-          )}
-          <ThemeToggle />
-          <Link to="/account" title={email ? `${t("Account")} · ${email}` : t("Account")} className={railHit(page === "account")}>
-            {railBar(page === "account")}
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-label font-semibold text-on-ink">{initial}</span>
-          </Link>
-          <button type="button" title={t("Sign out")} className={railHit(false)} onClick={() => void signOut(setSession)}>
-            <LogOut size={18} />
-          </button>
-        </div>
-      ) : (
-        <div className="flex shrink-0 items-center pr-2 pl-1">
-          <AccountMenu page={page} />
-        </div>
-      )}
+      <div className="flex shrink-0 items-center pr-2 pl-1">
+        <AccountMenu page={page} />
+      </div>
     </aside>
   );
 }
 
-// Shell is every signed-in page: the rail, and the page beside it.
+// Shell is every signed-in page: the sidebar (a top bar when narrow), and the
+// page beside it.
 export function Shell() {
   const { pathname } = useLocation();
+  const wide = useWide();
   const activeBotId = pathname.match(/^\/bots\/([^/]+)/)?.[1];
   const page: Page = pathname.startsWith("/admin")
     ? "admin"
@@ -251,9 +192,13 @@ export function Shell() {
   useEffect(() => preloadMarkdown(), []);
   return (
     <div className="flex h-dvh overflow-hidden max-wide:flex-col">
-      {/* On a narrow screen a Bot page carries its own top bar, whose drawer
-          holds this rail: two bars would leave the chat too little room. */}
-      <Rail page={page} activeBotId={activeBotId} className={activeBotId ? "max-wide:hidden" : ""} />
+      {wide ? (
+        <Sidebar page={page} activeBotId={activeBotId} />
+      ) : activeBotId ? null : (
+        // On a narrow screen a Bot page carries its own top bar, whose drawer
+        // holds this rail: two bars would leave the chat too little room.
+        <Rail page={page} />
+      )}
       {/* A Bot page fills the height and scrolls inside its own panes. */}
       <main className={`min-w-0 flex-1 ${activeBotId ? "min-h-0 overflow-hidden" : "overflow-auto"}`}>
         <Outlet />

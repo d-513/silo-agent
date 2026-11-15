@@ -146,6 +146,7 @@ var RPCs = map[string]RPCNeed{
 	"CreateChat":               BotUse,
 	"RenameChat":               ChatWrite,
 	"DeleteChat":               ChatRead,
+	"SetChatHidden":            ChatWrite,
 	"SetChatModel":             ChatWrite,
 	"SetChatThinking":          ChatWrite,
 	"ListModels":               BotUse,

@@ -40,7 +40,7 @@ import { SignIn } from "./SignIn";
 import { JoinPage } from "./space/JoinPage";
 import { SpaceInvitePage, SpacePeople, SpaceRemovePage } from "./space/People";
 import { NewSpacePage, SpaceRedirect, SpaceSettingsPage } from "./space/SpacePages";
-import { SpaceLayout } from "./space/Workspace";
+import { SpaceIndex, SpaceLayout } from "./space/Workspace";
 
 // router.tsx is every URL the app answers, in one tree. A page is a route here
 // or it does not exist: nothing parses a path by hand, and every Link and
@@ -49,11 +49,11 @@ import { SpaceLayout } from "./space/Workspace";
 //   /signin
 //   /invite/$token                 an admin's invite or password-reset link (signed out)
 //   /join/$token                   a Workspace's invite link
-//   _authed                        the rail; signed out goes to /signin
+//   _authed                        the sidebar; signed out goes to /signin
 //     /  /new  /skills             to the current Workspace's first Bot, New Bot, Skills
 //     /w/new                       a new Workspace
 //     /w/$spaceId/new              New Bot in a Workspace
-//     /w/$spaceId                  the Workspace page and its tabs:
+//     /w/$spaceId                  the Workspace's settings (opens its first tab):
 //       connectors  skills  drives[/new[/$template]|/$driveId]  people[/invite|/$userId]  rules  activity  settings
 //     /account
 //     /admin                       admins only: one tab per page
@@ -61,8 +61,8 @@ import { SpaceLayout } from "./space/Workspace";
 //       settings/models[/$page]    the model map, and its pages: providers text decision embedding voice
 //       users[/invite|/$userId]
 //       connectors[/new|/$id]  skills  drives  audit  debug
-//     /bots/$botId                 BotPage: sidebar, machine rail, what survives a page change
-//       _chat                      the chat and the pages beside it
+//     /bots/$botId                 BotPage: the tab bar, the right rail, what survives a page change
+//       _chat                      the conversations (the tabs) and the pages beside them (the rail)
 //         run[/new|/$chatId[/agent/$agentId]]  dashboard  automations[/new|/$id]  artifacts  memories  knowledge  feed
 //       channels[/new[/$adapter]|/$channelId[/setup]]
 //       _settings                  Settings and its tabs
@@ -132,7 +132,7 @@ const newSpace = createRoute({ getParentRoute: () => authed, path: "w/new", comp
 const spaceNewBot = createRoute({ getParentRoute: () => authed, path: "w/$spaceId/new", component: NewBotPage });
 const skills = createRoute({ getParentRoute: () => authed, path: "skills", component: () => <SpaceRedirect to="skills" /> });
 const space = createRoute({ getParentRoute: () => authed, path: "w/$spaceId", component: SpaceLayout });
-const spaceIndex = createRoute({ getParentRoute: () => space, path: "/", component: lazyRouteComponent(() => import("./space/Overview"), "SpaceOverview") });
+const spaceIndex = createRoute({ getParentRoute: () => space, path: "/", component: SpaceIndex });
 const spaceConnectors = createRoute({ getParentRoute: () => space, path: "connectors", component: lazyRouteComponent(() => import("./connectors/SpaceConnectors"), "SpaceConnectors") });
 const spaceSkills = createRoute({ getParentRoute: () => space, path: "skills", component: lazyRouteComponent(() => import("./Skills"), "SpaceSkills") });
 const spaceDrives = createRoute({ getParentRoute: () => space, path: "drives", component: Outlet });

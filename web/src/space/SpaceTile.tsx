@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
+import { ChevronsUpDown, Plus } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import type { Space } from "../gen/silo/v1/ui_pb";
@@ -33,9 +33,10 @@ export function roleWord(role: string): string {
   return "";
 }
 
-// SpaceTile heads the rail: the current Workspace's letters, which open the
-// switcher. The Silo word stays under it on a wide screen.
-export function SpaceTile({ space, spaces }: { space: Space | undefined; spaces: Space[] | null }) {
+// SpaceSwitch is the current Workspace, and the menu that changes it. In the
+// wide sidebar (`row`) it is the Workspace's tile and full name on one press
+// target, with the menu under it; in the narrow top bar it is the tile alone.
+export function SpaceSwitch({ space, spaces, row = false }: { space: Space | undefined; spaces: Space[] | null; row?: boolean }) {
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -48,11 +49,7 @@ export function SpaceTile({ space, spaces }: { space: Space | undefined; spaces:
   useEffect(() => {
     if (!open) return;
     const r = triggerRef.current?.getBoundingClientRect();
-    if (r) {
-      // Beside the rail on a wide screen, under the top bar on a narrow one.
-      const wide = window.innerWidth >= 960;
-      setBox(wide ? { left: r.right + 10, top: r.top } : { left: Math.max(8, r.left), top: r.bottom + 6 });
-    }
+    if (r) setBox({ left: Math.max(8, r.left), top: r.bottom + 6, ...(row ? { width: Math.max(260, r.width) } : {}) });
     setActive(Math.max(0, list.findIndex((s) => s.id === space?.id)));
     menuRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -83,20 +80,36 @@ export function SpaceTile({ space, spaces }: { space: Space | undefined; spaces:
 
   const label = space ? t("Workspace: {{name}}", { name: space.name }) : t("Workspaces");
   return (
-    <div className="flex shrink-0 items-center gap-2 px-3 text-ink max-wide:h-12 wide:flex-col wide:gap-1 wide:px-2 wide:pt-4">
-      <button
-        ref={triggerRef}
-        type="button"
-        title={label}
-        aria-label={label}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-        className="rounded-sm transition-transform duration-[160ms] ease-quiet hover:-translate-y-px active:scale-[.94] active:duration-[70ms] aria-expanded:translate-y-0"
-      >
-        {space ? <SpaceMark space={space} /> : <span className="skeleton block h-8 w-8 rounded-sm" />}
-      </button>
-      <span className="font-semibold max-wide:hidden wide:text-micro wide:leading-4">{"Silo"}</span>
+    <>
+      {row ? (
+        <button
+          ref={triggerRef}
+          type="button"
+          title={t("Switch workspace")}
+          aria-label={label}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="flex h-10 min-w-0 flex-1 items-center gap-2.5 rounded-control pr-2 pl-2 text-left transition-[background-color] duration-[160ms] ease-quiet hover:bg-pressed aria-expanded:bg-pressed"
+        >
+          {space ? <SpaceMark space={space} size={24} /> : <span className="skeleton block h-6 w-6 shrink-0 rounded-sm" />}
+          <span className="min-w-0 flex-1 truncate text-row font-medium text-ink">{space?.name ?? "\u00a0"}</span>
+          <ChevronsUpDown size={14} className="shrink-0 text-ink-3" />
+        </button>
+      ) : (
+        <button
+          ref={triggerRef}
+          type="button"
+          title={label}
+          aria-label={label}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="mx-3 shrink-0 rounded-sm transition-transform duration-[160ms] ease-quiet active:scale-[.94] active:duration-[70ms]"
+        >
+          {space ? <SpaceMark space={space} /> : <span className="skeleton block h-8 w-8 rounded-sm" />}
+        </button>
+      )}
       {open
         ? createPortal(
             <div
@@ -148,6 +161,6 @@ export function SpaceTile({ space, spaces }: { space: Space | undefined; spaces:
             document.body,
           )
         : null}
-    </div>
+    </>
   );
 }

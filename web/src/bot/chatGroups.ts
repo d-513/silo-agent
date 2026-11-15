@@ -58,10 +58,10 @@ export function groupKeyOf(updatedAt: string, now = new Date()): string {
   return Number.isFinite(ms) ? bucket(new Date(ms), now).key : "earlier";
 }
 
-// The recent groups start open; the month groups start folded, so a long
-// history is a short list until the reader goes looking.
+// The recent groups start open; the month groups and the closed chats start
+// folded, so a long history is a short list until the reader goes looking.
 export function defaultOpen(key: string): boolean {
-  return !key.startsWith("m:") && key !== "earlier";
+  return !key.startsWith("m:") && key !== "earlier" && key !== "closed";
 }
 
 export function isOpen(key: string, picked: Readonly<Record<string, boolean>>): boolean {

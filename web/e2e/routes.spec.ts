@@ -23,8 +23,8 @@ test.beforeEach(({ page }) => {
 });
 test.afterEach(() => expect(thrown).toEqual([]));
 
-// Whatever is lit carries data-tab-on: a sidebar row and a section tab by
-// their label, a machine rail button by its title.
+// Whatever is lit carries data-tab-on: a conversation tab and a section tab
+// by their label, a right-rail item (a page or a machine pane) by its title.
 const lit = (page: Page, name: string) => page.locator(`[data-tab-on][title="${name}"], [data-tab-on]:has-text("${name}")`).first();
 
 const pages: [path: string, lit: string[]][] = [
@@ -33,7 +33,7 @@ const pages: [path: string, lit: string[]][] = [
   ["console", ["Console"]],
   ["files", ["Files"]],
   ["changes", ["Changes"]],
-  // Channels lights its sidebar row; Settings its row and the open tab.
+  // Channels lights its rail item; Settings its rail item and the open tab.
   ["channels", ["Channels"]],
   ["settings", ["Settings", "General"]],
   ["people", ["Settings", "People"]],
@@ -41,7 +41,7 @@ const pages: [path: string, lit: string[]][] = [
   ["secrets", ["Settings", "Secrets"]],
   ["tunnels", ["Settings", "Tunnels & Links"]],
   ["container", ["Settings", "Containers"]],
-  // The pages beside the chat light their own row.
+  // The pages beside the conversations light their own rail item.
   ["automations", ["Automations"]],
   ["artifacts", ["Artifacts"]],
   ["memories", ["Memories"]],
@@ -121,11 +121,14 @@ test("every route loads, stays put, and lights its place", async ({ page }) => {
 
     await page.goto("/admin/connectors/new");
     await expect(page).toHaveURL(/\/admin\/connectors\/new$/);
-    // The Workspace page: /skills lands on its Skills tab, and every tab of
-    // it is a route of its own that lights its tab.
+    // The Workspace's settings: /skills lands on its Skills tab, the bare
+    // address on its first tab, and every tab is a route of its own that
+    // lights its tab.
     await page.goto("/skills");
     await expect(page).toHaveURL(/\/w\/[^/]+\/skills$/);
     const workspace = new URL(page.url()).pathname.replace(/\/skills$/, "");
+    await page.goto(workspace);
+    await expect(page).toHaveURL(new RegExp(`${workspace}/connectors$`));
     for (const [tab, label] of [
       ["connectors", "Connectors"],
       ["skills", "Skills"],
@@ -180,7 +183,8 @@ test("sign-in carries on to a tunnel handoff", async ({ page }) => {
   expect(new URL((await handoff).url()).searchParams.get("name")).toBe("nope");
 });
 
-// Moving around by clicking: tabs, the chats list, and back to the open chat.
+// Moving around by clicking: the conversation tabs, the right rail, the
+// sidebar, and back to the open chat.
 test("tabs and chats navigate by click", async ({ page }) => {
   await page.goto("/new");
   await signIn(page);
@@ -191,13 +195,13 @@ test("tabs and chats navigate by click", async ({ page }) => {
   const first = page.url();
   const bot = first.match(/\/bots\/[^/]+/)![0];
   try {
-    await page.getByRole("button", { name: "New side chat" }).first().click();
+    await page.getByRole("button", { name: "New chat", exact: true }).first().click();
     // New chat is an empty page: no chat exists until a message is sent.
     await expect(page).toHaveURL(/\/run\/new$/);
     await expect(page.getByPlaceholder(/Ask /)).toBeEnabled();
     const second = page.url();
 
-    // Settings, one of its tabs, and back: the chats stay in the sidebar.
+    // Settings, one of its tabs, and back: the tabs stay over every page.
     await page.getByRole("link", { name: "Settings", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${bot}/settings$`));
     await page.getByRole("link", { name: "Rules" }).click();
@@ -205,8 +209,15 @@ test("tabs and chats navigate by click", async ({ page }) => {
     await expect(lit(page, "Rules")).toBeVisible();
     await page.getByRole("link", { name: /^Main chat/ }).first().click();
     await expect(page).toHaveURL(first);
-    await page.getByRole("button", { name: "New side chat" }).first().click();
+    await page.getByRole("button", { name: "New chat", exact: true }).first().click();
     await expect(page).toHaveURL(second);
+    // The empty chat is a tab of its own; closing it goes back to the main chat.
+    await page.getByRole("button", { name: "Close tab" }).click();
+    await expect(page).toHaveURL(first);
+    await page.getByRole("link", { name: /^Dashboard/ }).first().click();
+    await expect(page).toHaveURL(new RegExp(`${bot}/dashboard$`));
+    await expect(lit(page, "Dashboard")).toBeVisible();
+    await page.goto(second);
 
     // A machine pane docks beside the chat without leaving it, and opens as
     // a page of its own.
@@ -220,7 +231,7 @@ test("tabs and chats navigate by click", async ({ page }) => {
     await page.getByRole("button", { name: "Close" }).click();
     await expect(lit(page, "Files")).toHaveCount(0);
 
-    // A page beside the chat lights its own row; a chat in the list opens it.
+    // A page beside the conversations lights its rail item.
     await page.getByRole("link", { name: "Memories" }).first().click();
     await expect(page).toHaveURL(new RegExp(`${bot}/memories$`));
     await expect(lit(page, "Memories")).toBeVisible();
@@ -238,20 +249,21 @@ test("tabs and chats navigate by click", async ({ page }) => {
     await page.getByRole("button", { name: /again/i }).click();
     await expect(page.getByText("No secrets on this Bot yet.")).toBeVisible();
 
-    // Renaming the Bot reaches the header and the rail at once.
+    // Renaming the Bot reaches its row in the sidebar at once.
     await page.goto(`${bot}/settings`);
     const renamed = `Renamed ${Date.now()}`;
     await page.locator("input").first().fill(renamed);
     await page.getByRole("button", { name: /^save/i }).first().click();
-    await expect(page.getByRole("heading", { name: renamed })).toBeAttached();
-    await expect(page.getByTitle(renamed)).toBeVisible();
+    const row = page.getByRole("navigation", { name: "Bots" }).getByRole("link", { name: new RegExp(renamed) });
+    await expect(row).toBeVisible();
     await page.goto(second);
 
-    // The rail goes home and back to the Bot.
-    await page.getByTitle("Bots", { exact: true }).click();
-    await expect(page).toHaveURL(/\/$/);
-    await page.goBack();
-    await expect(page).toHaveURL(second);
+    // The sidebar opens the Workspace's settings, and its row comes back to
+    // the Bot.
+    await page.getByRole("link", { name: "Workspace settings" }).click();
+    await expect(page).toHaveURL(/\/w\/[^/]+\/connectors$/);
+    await row.click();
+    await expect(page).toHaveURL(new RegExp(`${bot}/run/[^/]+$`));
   } finally {
     await page.goto(`${bot}/settings`);
     await page.getByRole("button", { name: /^delete$/i }).click();

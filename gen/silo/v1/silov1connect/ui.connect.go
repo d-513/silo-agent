@@ -243,6 +243,8 @@ const (
 	UIRenameChatProcedure = "/silo.v1.UI/RenameChat"
 	// UIDeleteChatProcedure is the fully-qualified name of the UI's DeleteChat RPC.
 	UIDeleteChatProcedure = "/silo.v1.UI/DeleteChat"
+	// UISetChatHiddenProcedure is the fully-qualified name of the UI's SetChatHidden RPC.
+	UISetChatHiddenProcedure = "/silo.v1.UI/SetChatHidden"
 	// UISetChatModelProcedure is the fully-qualified name of the UI's SetChatModel RPC.
 	UISetChatModelProcedure = "/silo.v1.UI/SetChatModel"
 	// UISetChatThinkingProcedure is the fully-qualified name of the UI's SetChatThinking RPC.
@@ -633,6 +635,8 @@ type UIClient interface {
 	CreateChat(context.Context, *connect.Request[v1.CreateChatRequest]) (*connect.Response[v1.Chat], error)
 	RenameChat(context.Context, *connect.Request[v1.RenameChatRequest]) (*connect.Response[v1.Chat], error)
 	DeleteChat(context.Context, *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error)
+	// SetChatHidden puts a chat away or brings it back; nothing is deleted.
+	SetChatHidden(context.Context, *connect.Request[v1.SetChatHiddenRequest]) (*connect.Response[v1.Chat], error)
 	SetChatModel(context.Context, *connect.Request[v1.SetChatModelRequest]) (*connect.Response[v1.Chat], error)
 	// SetChatThinking sets the chat's thinking level ("" is the model default).
 	SetChatThinking(context.Context, *connect.Request[v1.SetChatThinkingRequest]) (*connect.Response[v1.Chat], error)
@@ -1424,6 +1428,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("DeleteChat")),
 			connect.WithClientOptions(opts...),
 		),
+		setChatHidden: connect.NewClient[v1.SetChatHiddenRequest, v1.Chat](
+			httpClient,
+			baseURL+UISetChatHiddenProcedure,
+			connect.WithSchema(uIMethods.ByName("SetChatHidden")),
+			connect.WithClientOptions(opts...),
+		),
 		setChatModel: connect.NewClient[v1.SetChatModelRequest, v1.Chat](
 			httpClient,
 			baseURL+UISetChatModelProcedure,
@@ -2187,6 +2197,7 @@ type uIClient struct {
 	createChat               *connect.Client[v1.CreateChatRequest, v1.Chat]
 	renameChat               *connect.Client[v1.RenameChatRequest, v1.Chat]
 	deleteChat               *connect.Client[v1.DeleteChatRequest, v1.DeleteChatResponse]
+	setChatHidden            *connect.Client[v1.SetChatHiddenRequest, v1.Chat]
 	setChatModel             *connect.Client[v1.SetChatModelRequest, v1.Chat]
 	setChatThinking          *connect.Client[v1.SetChatThinkingRequest, v1.Chat]
 	listModels               *connect.Client[v1.ListModelsRequest, v1.ListModelsResponse]
@@ -2816,6 +2827,11 @@ func (c *uIClient) RenameChat(ctx context.Context, req *connect.Request[v1.Renam
 // DeleteChat calls silo.v1.UI.DeleteChat.
 func (c *uIClient) DeleteChat(ctx context.Context, req *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error) {
 	return c.deleteChat.CallUnary(ctx, req)
+}
+
+// SetChatHidden calls silo.v1.UI.SetChatHidden.
+func (c *uIClient) SetChatHidden(ctx context.Context, req *connect.Request[v1.SetChatHiddenRequest]) (*connect.Response[v1.Chat], error) {
+	return c.setChatHidden.CallUnary(ctx, req)
 }
 
 // SetChatModel calls silo.v1.UI.SetChatModel.
@@ -3532,6 +3548,8 @@ type UIHandler interface {
 	CreateChat(context.Context, *connect.Request[v1.CreateChatRequest]) (*connect.Response[v1.Chat], error)
 	RenameChat(context.Context, *connect.Request[v1.RenameChatRequest]) (*connect.Response[v1.Chat], error)
 	DeleteChat(context.Context, *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error)
+	// SetChatHidden puts a chat away or brings it back; nothing is deleted.
+	SetChatHidden(context.Context, *connect.Request[v1.SetChatHiddenRequest]) (*connect.Response[v1.Chat], error)
 	SetChatModel(context.Context, *connect.Request[v1.SetChatModelRequest]) (*connect.Response[v1.Chat], error)
 	// SetChatThinking sets the chat's thinking level ("" is the model default).
 	SetChatThinking(context.Context, *connect.Request[v1.SetChatThinkingRequest]) (*connect.Response[v1.Chat], error)
@@ -4317,6 +4335,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIDeleteChatProcedure,
 		svc.DeleteChat,
 		connect.WithSchema(uIMethods.ByName("DeleteChat")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetChatHiddenHandler := connect.NewUnaryHandler(
+		UISetChatHiddenProcedure,
+		svc.SetChatHidden,
+		connect.WithSchema(uIMethods.ByName("SetChatHidden")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uISetChatModelHandler := connect.NewUnaryHandler(
@@ -5183,6 +5207,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIRenameChatHandler.ServeHTTP(w, r)
 		case UIDeleteChatProcedure:
 			uIDeleteChatHandler.ServeHTTP(w, r)
+		case UISetChatHiddenProcedure:
+			uISetChatHiddenHandler.ServeHTTP(w, r)
 		case UISetChatModelProcedure:
 			uISetChatModelHandler.ServeHTTP(w, r)
 		case UISetChatThinkingProcedure:
@@ -5824,6 +5850,10 @@ func (UnimplementedUIHandler) RenameChat(context.Context, *connect.Request[v1.Re
 
 func (UnimplementedUIHandler) DeleteChat(context.Context, *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteChat is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetChatHidden(context.Context, *connect.Request[v1.SetChatHiddenRequest]) (*connect.Response[v1.Chat], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetChatHidden is not implemented"))
 }
 
 func (UnimplementedUIHandler) SetChatModel(context.Context, *connect.Request[v1.SetChatModelRequest]) (*connect.Response[v1.Chat], error) {

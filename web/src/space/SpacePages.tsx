@@ -23,7 +23,7 @@ import { SpaceMark } from "./SpaceTile";
 // SpaceRedirect is /, /new and /skills: the same page in the Workspace the
 // console is in (the one last opened here, else the first).
 // Home is the Workspace's first Bot you are on; with none, New Bot (or, for a
-// guest, the Workspace page).
+// guest, the Workspace's settings, which open on People for them).
 export function SpaceRedirect({ to }: { to: "home" | "new" | "skills" }) {
   const { space } = useCurrentSpace();
   const { bots } = useBots();

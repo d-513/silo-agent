@@ -9,7 +9,7 @@ import { patch, recheck } from "../query";
 import type { Tab } from "./tabs";
 
 // Renaming a chat in place: the title being typed, and the one commit/cancel
-// contract both chat lists (sidebar and narrow strip) share.
+// contract both chat lists (the tab bar and the narrow drawer) share.
 export type ChatRename = {
   editing: string;
   title: string;
@@ -31,7 +31,7 @@ export function putChat(botId: string, row: Chat) {
   patchChats(botId, (xs) => xs.map((c) => (c.id === row.id ? row : c)));
 }
 
-// useChatList loads a Bot's chats (the sidebar shows them on every page) and,
+// useChatList loads a Bot's chats (the tab bar shows them on every page) and,
 // while a chat-side page is open, its models; it opens the main chat when
 // none is picked, and owns create, rename and delete.
 export function useChatList(id: string | undefined, route: { tab: Tab; chatSide: boolean; chatId?: string; fresh?: boolean }, onError: (message: string) => void) {
@@ -82,6 +82,21 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
     if (cid === chatId) void nav(main ? chatLink(id, main) : newChatLink(id));
   }
 
+  // Closing a tab hides the chat (nothing is deleted); the arrow brings it
+  // back. The list shows it at once and takes the server's row when it comes.
+  async function hideChat(cid: string, hidden: boolean) {
+    if (!id) return;
+    const cur = chats.find((x) => x.id === cid);
+    if (!cur || cur.hidden === hidden) return;
+    putChat(id, { ...cur, hidden });
+    try {
+      putChat(id, await ui.setChatHidden({ botId: id, chatId: cid, hidden }));
+    } catch (e) {
+      putChat(id, cur);
+      onError(fail(e));
+    }
+  }
+
   const rename: ChatRename = {
     editing: editingChat,
     title: editTitle,
@@ -116,5 +131,6 @@ export function useChatList(id: string | undefined, route: { tab: Tab; chatSide:
     rename,
     newChat,
     deleteChat,
+    hideChat,
   };
 }

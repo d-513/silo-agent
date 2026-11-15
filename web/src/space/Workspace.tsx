@@ -1,15 +1,17 @@
-import { Link, Outlet, useLocation, useParams } from "@tanstack/react-router";
+import { Link, Navigate, Outlet, useLocation, useParams } from "@tanstack/react-router";
 import { Book, HardDrive, History, ListChecks, Plug, SlidersHorizontal, Users, type LucideIcon } from "lucide-react";
 import { TabStrip } from "../bot/SectionTabs";
 import { msg, t } from "../i18n.ts";
+import { PaneFallback } from "../PaneFallback";
 import { canAdmin, canBuild, useSpaces } from "./spaces";
 import { SpaceMark } from "./SpaceTile";
 
-// The Workspace page (/w/$spaceId): its overview of the Bots (the name in
-// the head), then everything that is the Workspace's, one tab each. What its Bots share (connectors, skills, drives) is kept here once
-// and given to the Bots that may use it; then its people, its guardrails,
-// what happened in it, and its own settings. A guest sees only People and
-// Settings.
+// The Workspace's settings (/w/$spaceId, the gear beside its name in the
+// sidebar): everything that is the Workspace's, one tab each. What its Bots
+// share (connectors, skills, drives) is kept here once and given to the Bots
+// that may use it; then its people, its guardrails, what happened in it, and
+// its own settings. A guest sees only People and Settings. The Bots
+// themselves are the sidebar's list, so there is no overview of them here.
 type Tab = "connectors" | "skills" | "drives" | "people" | "rules" | "activity" | "settings";
 type Need = "view" | "build" | "admin";
 const tabs: readonly { tab: Tab; to: `/w/$spaceId/${Tab}`; label: string; icon: LucideIcon; need: Need }[] = [
@@ -26,6 +28,17 @@ function allowed(need: Need, role: string) {
   return need === "view" || (need === "build" ? canBuild(role) : canAdmin(role));
 }
 
+/** /w/$spaceId itself: the first tab the caller may open. */
+export function SpaceIndex() {
+  const { spaceId } = useParams({ from: "/_authed/w/$spaceId" });
+  const { spaces } = useSpaces();
+  if (!spaces) return <PaneFallback />;
+  const space = spaces.find((s) => s.id === spaceId);
+  if (!space) return <Navigate to="/" replace />;
+  const first = tabs.find((x) => allowed(x.need, space.role)) ?? tabs[tabs.length - 1];
+  return <Navigate to={first.to} params={{ spaceId }} replace />;
+}
+
 export function SpaceLayout() {
   const { spaceId } = useParams({ from: "/_authed/w/$spaceId" });
   const { pathname } = useLocation();
@@ -33,21 +46,13 @@ export function SpaceLayout() {
   const space = spaces?.find((s) => s.id === spaceId);
   const role = space?.role ?? "";
   const open = tabs.find((x) => pathname.startsWith(`/w/${spaceId}/${x.tab}`))?.tab ?? "";
-  const overview = pathname.replace(/\/$/, "") === `/w/${spaceId}`;
   return (
     <section className="flex h-full min-h-0 min-w-0 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-4 px-2 shadow-[inset_0_-1px_0_var(--color-line)] wide:h-14 wide:px-5">
-        <Link
-          to="/w/$spaceId"
-          params={{ spaceId }}
-          activeOptions={{ exact: true }}
-          data-tab-on={overview || undefined}
-          title={t("Overview")}
-          className={`flex h-9 max-w-56 shrink-0 items-center gap-2.5 rounded-control px-1.5 transition-colors duration-[160ms] ease-quiet hover:bg-well ${overview ? "bg-well" : ""}`}
-        >
+        <h1 className="flex max-w-56 shrink-0 items-center gap-2.5 pl-1.5 wide:pl-0" title={space?.name}>
           <SpaceMark space={space} size={24} />
           <span className="hidden truncate text-card-title leading-5 text-ink wide:block">{space?.name ?? t("Workspace")}</span>
-        </Link>
+        </h1>
         <TabStrip tab={open}>
           {tabs
             .filter((x) => allowed(x.need, role))

@@ -12,10 +12,8 @@ const FilesPane = lazyNamed(() => import("../Files"), "FilesPane");
 const MailPane = lazyNamed(() => import("../Mail"), "MailPane");
 const ChangesPane = lazyNamed(() => import("../Changes"), "ChangesPane");
 
-// What the docked pane's share is a share of: the row without the sidebar
-// (248) and the machine rail (48).
-const chrome = 296;
-const widthOf = (share: number) => `calc((100% - ${chrome}px) * ${share})`;
+// The docked pane's share is a share of the row it splits with the page.
+const widthOf = (share: number) => `${share * 100}%`;
 
 const captions: Record<PaneKind, string> = {
   desktop: msg("Same browser the Bot uses. You can type and click."),
@@ -49,7 +47,7 @@ function Grip({ pane }: { pane: RefObject<HTMLElement | null> }) {
   const last = useRef(0);
   function move(e: PointerEvent) {
     const el = pane.current;
-    const room = (el?.parentElement?.getBoundingClientRect().width ?? 0) - chrome;
+    const room = el?.parentElement?.getBoundingClientRect().width ?? 0;
     if (!el || room <= 0) return;
     last.current = clampShare((el.getBoundingClientRect().right - e.clientX) / room);
     el.style.width = widthOf(last.current);
@@ -156,7 +154,7 @@ export function SidePane({
     <aside
       ref={ref}
       aria-label={kind ? t("Side pane") : undefined}
-      className={`relative min-h-0 min-w-0 flex-col ${kind ? "flex" : "hidden"} ${max ? "flex-1" : "max-w-[calc(100%-656px)] min-w-[320px] shrink-0"}`}
+      className={`relative min-h-0 min-w-0 flex-col ${kind ? "flex" : "hidden"} ${max ? "flex-1" : "max-w-[calc(100%-360px)] min-w-[320px] shrink-0"}`}
       style={max ? undefined : { width: widthOf(share) }}
     >
       {max ? null : <Grip pane={ref} />}

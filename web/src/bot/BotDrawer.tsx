@@ -121,8 +121,8 @@ export function BotTopBar({
       {tab === "run" && fresh && !chat ? null : (
         <button
           type="button"
-          title={t("New side chat")}
-          aria-label={t("New side chat")}
+          title={t("New chat")}
+          aria-label={t("New chat")}
           onClick={onNewChat}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-surface text-ink shadow-card transition-transform duration-[160ms] ease-quiet active:scale-[.94] motion-reduce:active:scale-100"
         >

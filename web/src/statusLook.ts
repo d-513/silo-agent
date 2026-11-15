@@ -85,6 +85,16 @@ export function botLook(bot: Pick<Bot, "status" | "activity" | "lastActiveAt">):
   }
 }
 
+/**
+ * What a Bot is up to right now, when that is worth saying in place of its
+ * last message: paused on someone, at work, on a call, starting. Nothing at
+ * rest.
+ */
+export function botNow(bot: Pick<Bot, "status" | "activity" | "lastActiveAt">): StatusLook | undefined {
+  const look = botLook(bot);
+  return look.lamp === "none" ? undefined : look;
+}
+
 // crestState is what a Bot's crest acts out, most pressing first: paused on
 // you, at work, being spoken to, a report nobody has read, a box that is off
 // or a run waiting on someone else, else at rest. `heard` is this page's own
@@ -96,16 +106,6 @@ export function crestState(bot: Pick<Bot, "status" | "machine" | "feedUnread">, 
   if (bot.feedUnread > 0) return "done";
   if (bot.status === "waiting" || bot.machine === "stopped") return "asleep";
   return "idle";
-}
-
-// A Bot's standing on the Workspace's overview. A question on the Dashboard is
-// not Needs you: nothing is paused on it, so it sorts after the approvals.
-export type Mood = "needs_you" | "asks" | "working" | "resting";
-
-export function botMood(b: Pick<Bot, "status" | "dashboardAsks">): Mood {
-  if (b.status === "needs_you") return "needs_you";
-  if (b.dashboardAsks > 0) return "asks";
-  return b.status === "online" || b.status === "stopped" ? "resting" : "working";
 }
 
 /** The box is on its way up: Start waits, and the Bot's row is polled fast. */

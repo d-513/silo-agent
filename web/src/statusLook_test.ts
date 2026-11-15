@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { eq } from "./testing.ts";
 import type { BotActivity } from "./gen/silo/v1/ui_pb";
-import { askPhase, botLook, crestState, botMood, channelLook, chatDoing, containerLook, containerMade, containerUp, driveSettling, finishedFailed, finishedLook, folderPhase, machineStarting, needsSignIn, offerPhase, pausedOnYou, powerWord, progress, reportMark, runLook } from "./statusLook.ts";
+import { askPhase, botLook, botNow, crestState, channelLook, chatDoing, containerLook, containerMade, containerUp, driveSettling, finishedFailed, finishedLook, folderPhase, machineStarting, needsSignIn, offerPhase, pausedOnYou, powerWord, progress, reportMark, runLook } from "./statusLook.ts";
 
 // A QR login waiting to be scanned is not "Connected" and not an error: it
 // needs the owner, and says what for.
@@ -22,6 +22,10 @@ eq(botLook(bot("stopped")).lamp, "none", "a stopped Bot rests too: a message sta
 eq(botLook(bot("online")).word, "Has not worked yet", "a new Bot says so");
 eq(botLook(bot("starting")).lamp, "starting", "starting");
 eq(botLook(bot("on_call")).lamp, "online", "a call is a live connection");
+
+// A Bot at rest has nothing to say for itself; one at work does.
+eq(botNow(bot("online")), undefined, "at rest there is no now");
+eq(botNow(bot("needs_you"))?.word, "Needs you", "paused on you is now");
 
 // What a run says, first match wins.
 eq(runLook(row({ task: "Compare flights", step: "exec_python" })).word, "Compare flights", "the task leads");
@@ -48,10 +52,6 @@ eq(chat([row({ chatId: "c", kind: "call", state: "on_call" }), row({ chatId: "c"
 eq(chat([row({ chatId: "c", kind: "call", state: "on_call" }), row({ chatId: "s", kind: "subagent", leadChatId: "c", state: "needs_you" })]), "needs_you", "a subagent's approval is its lead chat's");
 eq(chatDoing({ activity: [] }, undefined), undefined, "no chat open");
 
-eq(botMood({ status: "needs_you", dashboardAsks: 1 }), "needs_you", "an approval beats a question");
-eq(botMood({ status: "stopped", dashboardAsks: 1 }), "asks", "a question waits on a stopped Bot too");
-eq(botMood({ status: "waiting", dashboardAsks: 0 }), "working", "paused on someone is not resting");
-eq(botMood({ status: "stopped", dashboardAsks: 0 }), "resting", "idle and stopped both rest");
 eq(powerWord({ machine: "stopped" }), "Start Bot", "power");
 eq(containerLook("exited").word, "Not created", "a container that is neither");
 eq(finishedLook("done").word, "Done", "a subagent's end is worded");

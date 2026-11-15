@@ -126,7 +126,7 @@ export function NeedYouSlip({
       {/* A canvas wash over the thread, never a dark dim. */}
       <div
         aria-hidden
-        className={`pointer-events-none absolute inset-0 z-[9] bg-canvas/55 max-wide:fixed wide:left-[var(--wash-left,0px)] ${leaving ? "wash-out" : "wash-in"}`}
+        className={`pointer-events-none absolute inset-0 z-[9] bg-canvas/55 max-wide:fixed ${leaving ? "wash-out" : "wash-in"}`}
       />
       <aside
         role="dialog"

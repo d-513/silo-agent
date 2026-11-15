@@ -62,8 +62,6 @@ const en: Record<string, string> = {
   "On {{count}} Bots_other": "On {{count}} Bots",
   "in {{count}} Bots_one": "in {{count}} Bot",
   "in {{count}} Bots_other": "in {{count}} Bots",
-  "{{count}} people_one": "{{count}} person",
-  "{{count}} people_other": "{{count}} people",
   "{{count}} questions_one": "{{count}} question",
   "{{count}} questions_other": "{{count}} questions",
   "{{count}} need you_one": "{{count}} needs you",

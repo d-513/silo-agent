@@ -26,12 +26,12 @@ import { Initials } from "../space/People";
 import { sourceLabel } from "../sources";
 import { Tip, TipTitle } from "../Tip";
 
-// The wide layout's left column, on every page of a Bot: its name and state,
-// the home card (the main chat with its Call, and the Dashboard), the pages
-// beside the chat, the side chats folded into date groups under their own
-// New side chat, and Settings at the foot. In the narrow layout it
-// is the body of the Bot's drawer (`drawer`): one scroll for all of it, rows
-// tall enough for a thumb, and the machine's panes (`machine`) under the pages.
+// The body of a Bot's drawer in the narrow layout (the wide one has the tab
+// bar and the right rail instead): its name and state, the home card (the
+// main chat with its Call, and the Dashboard), the pages beside the chat, the
+// machine's panes (`machine`), the side chats folded into date groups under
+// their own New chat, with the closed ones last, and Settings at the foot.
+// One scroll for all of it, rows tall enough for a thumb.
 export function BotSidebar({
   id,
   bot,
@@ -45,7 +45,6 @@ export function BotSidebar({
   onDeleteChat,
   call,
   onCall,
-  drawer = false,
   machine,
 }: {
   id: string;
@@ -62,7 +61,6 @@ export function BotSidebar({
   // The Bot's call while calls are on; undefined hides Call.
   call?: Call;
   onCall: () => void;
-  drawer?: boolean;
   machine?: ReactNode;
 }) {
   // The main chat is pinned above the pages; the date groups are the side
@@ -70,10 +68,14 @@ export function BotSidebar({
   const main = chats.find((c) => c.main && c.mine);
   // Your own side chats by date; on a Bot several people use, its managers
   // also get the Team: everyone else's chats and the Bot's own, read-only.
+  // The chats you closed (the wide layout's tabs) fold away last.
   const groups = useMemo(() => {
-    const own = groupChats(chats.filter((c) => c.mine && !c.main));
+    const out = groupChats(chats.filter((c) => c.mine && !c.main && !c.hidden));
+    const closed = chats.filter((c) => c.mine && !c.main && c.hidden);
+    if (closed.length) out.push({ key: "closed", label: t("Closed chats"), chats: closed });
     const others = chats.filter((c) => !c.mine);
-    return others.length ? [...own, { key: "team", label: t("Team"), chats: others }] : own;
+    if (others.length) out.push({ key: "team", label: t("Team"), chats: others });
+    return out;
   }, [chats]);
   const picked = useGroupsPicked();
   const dashQ = useQuery(UI.method.listDashboard, { botId: id });
@@ -84,8 +86,8 @@ export function BotSidebar({
   // group by hand afterwards sticks: this runs only when the chat or its group
   // changes.
   // The main chat sits in no group.
-  const openAt = tab === "run" && chatId !== main?.id ? chats.find((c) => c.id === chatId)?.updatedAt : undefined;
-  const openKey = openAt === undefined ? "" : groupKeyOf(openAt);
+  const openChat = tab === "run" && chatId !== main?.id ? chats.find((c) => c.id === chatId) : undefined;
+  const openKey = !openChat ? "" : !openChat.mine ? "team" : openChat.hidden ? "closed" : groupKeyOf(openChat.updatedAt);
   useEffect(() => {
     if (openKey) setGroupOpen(openKey, true);
   }, [chatId, openKey]);
@@ -95,8 +97,8 @@ export function BotSidebar({
   // reply on its way before the next poll does.
   const doing = (cid: string | undefined) => chatDoing(bot, cid) ?? (sending && cid === chatId ? started : undefined);
   return (
-    <aside className={drawer ? "flex min-h-0 flex-1 flex-col bg-well" : "hidden w-[248px] shrink-0 flex-col bg-well wide:flex"}>
-      <Scroll drawer={drawer}>
+    <aside className="flex min-h-0 flex-1 flex-col bg-well">
+      <div className="min-h-0 flex-1 overflow-auto overscroll-contain">
         <BotHead bot={bot} />
         <div className="px-2 pb-3">
           <HomeCard
@@ -124,7 +126,7 @@ export function BotSidebar({
         </nav>
         {machine}
         <SideChatsHead onNewChat={onNewChat} />
-        <div className={drawer ? "px-2 pb-3" : "min-h-0 flex-1 overflow-auto px-2 pb-3"}>
+        <div className="px-2 pb-3">
           {groups.map((g) => (
             <ChatGroupSection key={g.key} group={g} open={isOpen(g.key, picked)}>
               {g.chats.map((c) => {
@@ -139,14 +141,13 @@ export function BotSidebar({
                     rename={rename}
                     onDelete={() => onDeleteChat(c.id)}
                     team={g.key === "team"}
-                    touch={drawer}
                   />
                 );
               })}
             </ChatGroupSection>
           ))}
         </div>
-      </Scroll>
+      </div>
       <nav className="shrink-0 p-2 shadow-[inset_0_1px_0_var(--color-line)]" aria-label={t("Bot")}>
         <SideLink
           to="/bots/$botId/settings"
@@ -159,12 +160,6 @@ export function BotSidebar({
       </nav>
     </aside>
   );
-}
-
-// Scroll is the drawer's one scroll; the wide column scrolls only its chats.
-function Scroll({ drawer, children }: { drawer: boolean; children: ReactNode }) {
-  if (!drawer) return <>{children}</>;
-  return <div className="min-h-0 flex-1 overflow-auto overscroll-contain">{children}</div>;
 }
 
 // BotHead heads the sidebar: the Bot's face, name and state. It is not a
@@ -324,12 +319,12 @@ function CallButton({ call, onCall }: { call: Call; onCall: () => void }) {
 function SideChatsHead({ onNewChat }: { onNewChat: () => void }) {
   return (
     <div className="mt-4 flex h-8 items-center gap-2 pr-2 pl-5 in-data-drawer:h-10">
-      <h2 className="min-w-0 flex-1 truncate text-meta font-medium text-ink-2">{t("Side chats")}</h2>
-      <Tip content={t("New side chat")}>
+      <h2 className="min-w-0 flex-1 truncate text-meta font-medium text-ink-2">{t("Chats")}</h2>
+      <Tip content={t("New chat")}>
         <button
           type="button"
           onClick={onNewChat}
-          aria-label={t("New side chat")}
+          aria-label={t("New chat")}
           className={`group/new flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-surface text-ink-2 shadow-card hover:text-ink ${pressClass}`}
         >
           <Plus size={14} strokeWidth={2.25} className="transition-transform duration-[280ms] ease-quiet group-hover/new:rotate-90 motion-reduce:transition-none" />
@@ -341,7 +336,7 @@ function SideChatsHead({ onNewChat }: { onNewChat: () => void }) {
 
 // People is the faces of a Bot several people use: up to three, then +N,
 // with everyone and their role in a Tip.
-function People({ people }: { people: Bot["people"] }) {
+export function People({ people }: { people: Bot["people"] }) {
   return (
     <Tip
       content={
@@ -446,8 +441,9 @@ function RowState({ doing }: { doing: Doing }) {
   );
 }
 
-// One side chat: a single quiet line (the main chat is in HomeCard, above). The open one is lifted by tone and marked
-// with the cobalt bar; rename and delete fade in over the end of the title.
+// One side chat: a single quiet line (the main chat is in HomeCard, above).
+// The open one is lifted by tone and marked with the cobalt bar, and shows
+// rename and delete over the end of its title: there is no hover here.
 function ChatRow({
   botId,
   chat,
@@ -456,7 +452,6 @@ function ChatRow({
   rename,
   onDelete,
   team = false,
-  touch = false,
 }: {
   botId: string;
   chat: Chat;
@@ -468,8 +463,6 @@ function ChatRow({
   // A row of the Team group: someone else's chat, or the Bot's own. It
   // reads only: no rename, no delete.
   team?: boolean;
-  // In the drawer: there is no hover, so the open row shows its actions.
-  touch?: boolean;
 }) {
   const editing = rename.editing === chat.id;
   const ms = Date.parse(chat.updatedAt);
@@ -493,7 +486,7 @@ function ChatRow({
             e.preventDefault();
             if (!team) rename.begin(chat);
           }}
-          className={`flex min-w-0 items-center gap-2 rounded-control pl-3 outline-offset-[-2px] ${touch ? "h-10" : "h-8"} ${touch && on && !team ? "pr-[76px]" : "pr-2"}`}
+          className={`flex h-10 min-w-0 items-center gap-2 rounded-control pl-3 outline-offset-[-2px] ${on && !team ? "pr-[76px]" : "pr-2"}`}
         >
           {team ? chat.author ? <Initials email={chat.author} size={18} /> : <BotGlyph size={14} className="shrink-0 text-ink-3" aria-label={t("The Bot's own")} /> : null}
           <span
@@ -508,21 +501,13 @@ function ChatRow({
       )}
       {!editing && !team && (
         <span
-          className={`absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-control bg-linear-to-l from-(--row) from-70% to-transparent pr-1 pl-6 transition-opacity duration-[160ms] ease-quiet ${
-            touch
-              ? on
-                ? ""
-                : "hidden"
-              : `pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-has-[:focus-visible]:pointer-events-auto group-has-[:focus-visible]:opacity-100 ${
-                  on ? "[@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100" : ""
-                }`
-          }`}
+          className={`absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-control bg-linear-to-l from-(--row) from-70% to-transparent pr-1 pl-6 ${on ? "" : "hidden"}`}
         >
           <button
             type="button"
             title={t("Rename chat")}
             aria-label={t("Rename chat")}
-            className={`flex items-center justify-center rounded-sm text-ink-2 transition-colors duration-[160ms] hover:bg-well hover:text-ink ${touch ? "h-9 w-8" : "h-7 w-7"}`}
+            className="flex h-9 w-8 items-center justify-center rounded-sm text-ink-2 transition-colors duration-[160ms] hover:bg-well hover:text-ink"
             onClick={(e) => {
               e.preventDefault();
               rename.begin(chat);
@@ -534,7 +519,7 @@ function ChatRow({
             type="button"
             title={t("Delete chat")}
             aria-label={t("Delete chat")}
-            className={`flex items-center justify-center rounded-sm text-ink-2 transition-colors duration-[160ms] hover:bg-vermilion-pale hover:text-vermilion ${touch ? "h-9 w-8" : "h-7 w-7"}`}
+            className="flex h-9 w-8 items-center justify-center rounded-sm text-ink-2 transition-colors duration-[160ms] hover:bg-vermilion-pale hover:text-vermilion"
             onClick={onDelete}
           >
             <Trash2 size={13} />

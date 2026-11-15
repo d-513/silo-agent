@@ -297,6 +297,9 @@ type Chat struct {
 	// MemorySeq is the memory collector's watermark: the highest run_events.seq
 	// it has already read. Only events after it reach the next collection.
 	MemorySeq int64 `gorm:"default:0"`
+	// Hidden: its author put it away. It keeps everything and still opens;
+	// it is only left out of the chats a client shows first.
+	Hidden    bool `gorm:"not null;default:false"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -1112,6 +1115,9 @@ func Migrate(gdb *gorm.DB) error {
 	if err := once(gdb, "stack-crests", restackCrests); err != nil {
 		return err
 	}
+	if err := once(gdb, "fold-old-chats", foldOldChats); err != nil {
+		return err
+	}
 	if !hadWatermark {
 		// Chats that predate the memory collector start at their newest event,
 		// so the first sweep reads only what is said from now on.
@@ -1224,6 +1230,15 @@ func once(gdb *gorm.DB, name string, change func(tx *gorm.DB) error) error {
 		}
 		return change(tx)
 	})
+}
+
+// foldOldChats hides the side chats nothing was said in for a week, once, when
+// chats became tabs: a long history would otherwise open as that many tabs.
+// They are all still there, one press away.
+func foldOldChats(tx *gorm.DB) error {
+	return tx.Exec(`UPDATE chats SET hidden = true WHERE NOT main AND updated_at < ?
+		AND COALESCE(channel_id, '') = '' AND COALESCE(automation_id, '') = '' AND COALESCE(subagent_id, '') = ''`,
+		time.Now().Add(-7*24*time.Hour)).Error
 }
 
 // restackCrests moves crests from the twelve hat fills (fill * 8 + hat) to the

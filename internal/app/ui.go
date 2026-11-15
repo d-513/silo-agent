@@ -76,6 +76,9 @@ func (a *App) viewBot(ctx context.Context, b *db.Bot) *v1.Bot {
 		p.Activity, needsYou = a.activity(b.ID, u.ID, p.Role == access.RoleManage)
 		p.Status = botStatus(p.Machine, p.Activity, needsYou)
 		p.FeedUnread = a.Feed.Unread(b.ID, u.ID)
+		if m := a.lastMessage(b.ID, u.ID, p.Role == access.RoleManage); m.Text != "" {
+			p.LastMessage, p.LastMessageAt, p.LastMessageMine = m.Text, m.At.UTC().Format(time.RFC3339), m.Mine
+		}
 		if people := access.People(a.DB, b.ID); len(people) > 1 {
 			for _, id := range people {
 				p.People = append(p.People, &v1.BotPerson{UserId: id, Email: access.Email(a.DB, id), Role: access.BotRole(a.DB, b.ID, id), You: id == u.ID})
@@ -104,7 +107,7 @@ func (a *App) ListBots(ctx context.Context, req *connect.Request[v1.ListBotsRequ
 	if err := q.Order("bots.created_at desc").Find(&bots).Error; err != nil {
 		return nil, err
 	}
-	out := &v1.ListBotsResponse{}
+	out := &v1.ListBotsResponse{CallEnabled: a.Voice.CallEnabled()}
 	ids := make([]string, len(bots))
 	for i := range bots {
 		ids[i] = bots[i].ID

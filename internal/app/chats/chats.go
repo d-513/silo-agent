@@ -26,7 +26,8 @@ func Proto(ctx context.Context, gdb *gorm.DB, c *db.Chat) *v1.Chat {
 	return &v1.Chat{
 		Id: c.ID, BotId: c.BotID, Title: c.Title, Model: c.Model, Thinking: c.Thinking,
 		UpdatedAt: c.UpdatedAt.Format(time.RFC3339), Main: c.Main,
-		Mine: c.UserID == access.User(ctx).ID, Author: access.Email(gdb, c.UserID),
+		Mine: c.UserID == access.User(ctx).ID, Author: access.Email(gdb, c.UserID), Hidden: c.Hidden,
+		CreatedAt: c.CreatedAt.Format(time.RFC3339),
 	}
 }
 

@@ -111,6 +111,27 @@ func (a *App) RenameChat(ctx context.Context, req *connect.Request[v1.RenameChat
 	return connect.NewResponse(chats.Proto(ctx, a.DB, c)), nil
 }
 
+// SetChatHidden puts a chat away or brings it back. Only that column is
+// written: its last activity stays what it was, and a run writing the row
+// meanwhile loses nothing.
+func (a *App) SetChatHidden(ctx context.Context, req *connect.Request[v1.SetChatHiddenRequest]) (*connect.Response[v1.Chat], error) {
+	c, err := a.chat(ctx, req.Msg.GetBotId(), req.Msg.GetChatId(), access.Write)
+	if err != nil {
+		return nil, err
+	}
+	if err := writableChat(c); err != nil {
+		return nil, err
+	}
+	if c.Main {
+		return nil, errMainChat
+	}
+	c.Hidden = req.Msg.GetHidden()
+	if err := a.DB.Model(&db.Chat{}).Where("id = ?", c.ID).UpdateColumn("hidden", c.Hidden).Error; err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(chats.Proto(ctx, a.DB, c)), nil
+}
+
 func (a *App) DeleteChat(ctx context.Context, req *connect.Request[v1.DeleteChatRequest]) (*connect.Response[v1.DeleteChatResponse], error) {
 	c, err := a.chat(ctx, req.Msg.GetBotId(), req.Msg.GetId(), access.Write)
 	if err != nil {

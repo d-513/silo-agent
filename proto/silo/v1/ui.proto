@@ -177,6 +177,8 @@ service UI {
   rpc CreateChat(CreateChatRequest) returns (Chat);
   rpc RenameChat(RenameChatRequest) returns (Chat);
   rpc DeleteChat(DeleteChatRequest) returns (DeleteChatResponse);
+  // SetChatHidden puts a chat away or brings it back; nothing is deleted.
+  rpc SetChatHidden(SetChatHiddenRequest) returns (Chat);
   rpc SetChatModel(SetChatModelRequest) returns (Chat);
   // SetChatThinking sets the chat's thinking level ("" is the model default).
   rpc SetChatThinking(SetChatThinkingRequest) returns (Chat);
@@ -628,6 +630,12 @@ message Bot {
   // Machine is its box, whatever the Bot is doing: stopped, starting or online.
   // Controls that need the box read this, never status.
   string machine = 33;
+  // The newest thing said in the conversations the viewer reads on this Bot
+  // (their own chats; for a manager also the Bot's own), as one short line,
+  // when it was said (RFC 3339) and whether the viewer wrote it. "" with none.
+  string last_message = 34;
+  string last_message_at = 35;
+  bool last_message_mine = 36;
 }
 
 // Space is a Workspace as the caller sees it.
@@ -1000,6 +1008,8 @@ message ListBotsResponse {
   repeated Bot bots = 1;
   // For a Workspace admin listing one Workspace: its Bots they are not on.
   repeated OtherBot others = 2;
+  // A call can work (ListModels.call_enabled), so the list can offer Call.
+  bool call_enabled = 3;
 }
 
 message CreateBotRequest {
@@ -1894,6 +1904,12 @@ message Chat {
   // a channel). mine: the caller is its author; anyone else reads it only.
   string author = 8;
   bool mine = 9;
+  // hidden: its author put it away. It keeps everything and opens as before;
+  // it is only left out of the chats shown first (SetChatHidden).
+  bool hidden = 10;
+  // When it was made (RFC 3339): the order its tab keeps, whatever moves it
+  // in the list by activity.
+  string created_at = 11;
 }
 
 message ModelOption {
@@ -2040,6 +2056,12 @@ message RenameChatRequest {
   string bot_id = 1;
   string id = 2;
   string title = 3;
+}
+
+message SetChatHiddenRequest {
+  string bot_id = 1;
+  string chat_id = 2;
+  bool hidden = 3;
 }
 
 message DeleteChatRequest {

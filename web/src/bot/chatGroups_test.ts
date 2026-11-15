@@ -48,7 +48,8 @@ eq(groupKeyOf("", now), "earlier", "no time");
 
 // Recent groups start open, months start folded, and a pick wins either way.
 eq(["today", "yesterday", "week", "month"].map(defaultOpen), [true, true, true, true], "recent groups are open");
-eq(["m:2026-09", "m:2025-12", "earlier"].map(defaultOpen), [false, false, false], "older groups are folded");
+eq(["m:2026-09", "m:2025-12", "earlier", "closed"].map(defaultOpen), [false, false, false, false], "older groups and the closed chats are folded");
+eq(defaultOpen("team"), true, "the Team's chats are open");
 eq(isOpen("today", {}), true, "default open");
 eq(isOpen("today", { today: false }), false, "folded by the reader");
 eq(isOpen("m:2026-09", { "m:2026-09": true }), true, "opened by the reader");
