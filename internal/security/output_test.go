@@ -17,7 +17,7 @@ func TestOutputNormalises(t *testing.T) {
 // what the Bot or its owner wrote is not.
 func TestDefaultOutput(t *testing.T) {
 	checked := [][2]string{
-		{Web, "search"}, {Mailbox, "read"}, {Mailbox, "list"}, {Chats, "read"}, {Bot, "transcribe"},
+		{Web, "search"}, {Web, "read"}, {Mailbox, "read"}, {Mailbox, "list"}, {Chats, "read"}, {Bot, "transcribe"},
 	}
 	for _, k := range checked {
 		if got, ok := DefaultOutput(k[0], k[1]); !ok || got != OutCheck {

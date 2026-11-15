@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 	"net/http"
 	"strings"
+	"sync"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
@@ -31,6 +32,9 @@ type Service struct {
 	voice  *voice.Service
 	// oidcRedirect is the OIDC callback address, as the request's origin sees it.
 	oidcRedirect func(*http.Request) string
+	// signed holds each sign-in provider's last answer to "is anyone signed
+	// in" (provider id -> signedInAt).
+	signed sync.Map
 }
 
 func New(gdb *gorm.DB, store *config.Store, cfg func() config.Config, m *models.Service, v *voice.Service, oidcRedirect func(*http.Request) string) *Service {
@@ -341,7 +345,7 @@ func (s *Service) settings(ctx context.Context) (*v1.Settings, error) {
 			Type:            f.Type,
 		})
 	}
-	out.Providers = providerProtos()
+	out.Providers = s.providerProtos(ctx)
 	out.Models = models.Protos(s.models.Allowed())
 	out.DecisionModels = models.Protos(s.models.Deciders())
 	for _, k := range llm.Kinds {
@@ -371,12 +375,16 @@ func (s *Service) settings(ctx context.Context) (*v1.Settings, error) {
 	return out, nil
 }
 
-func providerProtos() []*v1.Provider {
+func (s *Service) providerProtos(ctx context.Context) []*v1.Provider {
 	out := make([]*v1.Provider, 0, len(llm.Descriptors()))
 	for _, d := range llm.Descriptors() {
 		p := &v1.Provider{
 			Id: d.ID, Name: d.Name, Description: d.Description,
 			SupportsCache: d.SupportsCache, CacheTtls: d.CacheTTLs,
+			SignIn: d.SignIn, Warning: d.Warning,
+		}
+		if d.SignIn {
+			p.SignedIn = s.signedIn(ctx, d.ID)
 		}
 		for _, kind := range llm.Kinds {
 			if d.Serves(kind.ID) {

@@ -339,6 +339,14 @@ const (
 	UISetModelsProcedure = "/silo.v1.UI/SetModels"
 	// UIListProviderModelsProcedure is the fully-qualified name of the UI's ListProviderModels RPC.
 	UIListProviderModelsProcedure = "/silo.v1.UI/ListProviderModels"
+	// UIGetProviderAccountProcedure is the fully-qualified name of the UI's GetProviderAccount RPC.
+	UIGetProviderAccountProcedure = "/silo.v1.UI/GetProviderAccount"
+	// UIBeginProviderSignInProcedure is the fully-qualified name of the UI's BeginProviderSignIn RPC.
+	UIBeginProviderSignInProcedure = "/silo.v1.UI/BeginProviderSignIn"
+	// UIFinishProviderSignInProcedure is the fully-qualified name of the UI's FinishProviderSignIn RPC.
+	UIFinishProviderSignInProcedure = "/silo.v1.UI/FinishProviderSignIn"
+	// UISignOutProviderProcedure is the fully-qualified name of the UI's SignOutProvider RPC.
+	UISignOutProviderProcedure = "/silo.v1.UI/SignOutProvider"
 	// UISetConnectorVarsProcedure is the fully-qualified name of the UI's SetConnectorVars RPC.
 	UISetConnectorVarsProcedure = "/silo.v1.UI/SetConnectorVars"
 	// UISetAutoenableConnectorsProcedure is the fully-qualified name of the UI's
@@ -705,6 +713,11 @@ type UIClient interface {
 	PutSettings(context.Context, *connect.Request[v1.PutSettingsRequest]) (*connect.Response[v1.Settings], error)
 	SetModels(context.Context, *connect.Request[v1.SetModelsRequest]) (*connect.Response[v1.Settings], error)
 	ListProviderModels(context.Context, *connect.Request[v1.ListProviderModelsRequest]) (*connect.Response[v1.ListProviderModelsResponse], error)
+	// A provider the operator signs in to instead of pasting a key (admins only).
+	GetProviderAccount(context.Context, *connect.Request[v1.GetProviderAccountRequest]) (*connect.Response[v1.ProviderAccount], error)
+	BeginProviderSignIn(context.Context, *connect.Request[v1.BeginProviderSignInRequest]) (*connect.Response[v1.BeginProviderSignInResponse], error)
+	FinishProviderSignIn(context.Context, *connect.Request[v1.FinishProviderSignInRequest]) (*connect.Response[v1.ProviderAccount], error)
+	SignOutProvider(context.Context, *connect.Request[v1.SignOutProviderRequest]) (*connect.Response[v1.ProviderAccount], error)
 	SetConnectorVars(context.Context, *connect.Request[v1.SetConnectorVarsRequest]) (*connect.Response[v1.Settings], error)
 	SetAutoenableConnectors(context.Context, *connect.Request[v1.SetAutoenableConnectorsRequest]) (*connect.Response[v1.Settings], error)
 	// The audit timeline: tool calls and their decisions, tool results the output
@@ -1716,6 +1729,30 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("ListProviderModels")),
 			connect.WithClientOptions(opts...),
 		),
+		getProviderAccount: connect.NewClient[v1.GetProviderAccountRequest, v1.ProviderAccount](
+			httpClient,
+			baseURL+UIGetProviderAccountProcedure,
+			connect.WithSchema(uIMethods.ByName("GetProviderAccount")),
+			connect.WithClientOptions(opts...),
+		),
+		beginProviderSignIn: connect.NewClient[v1.BeginProviderSignInRequest, v1.BeginProviderSignInResponse](
+			httpClient,
+			baseURL+UIBeginProviderSignInProcedure,
+			connect.WithSchema(uIMethods.ByName("BeginProviderSignIn")),
+			connect.WithClientOptions(opts...),
+		),
+		finishProviderSignIn: connect.NewClient[v1.FinishProviderSignInRequest, v1.ProviderAccount](
+			httpClient,
+			baseURL+UIFinishProviderSignInProcedure,
+			connect.WithSchema(uIMethods.ByName("FinishProviderSignIn")),
+			connect.WithClientOptions(opts...),
+		),
+		signOutProvider: connect.NewClient[v1.SignOutProviderRequest, v1.ProviderAccount](
+			httpClient,
+			baseURL+UISignOutProviderProcedure,
+			connect.WithSchema(uIMethods.ByName("SignOutProvider")),
+			connect.WithClientOptions(opts...),
+		),
 		setConnectorVars: connect.NewClient[v1.SetConnectorVarsRequest, v1.Settings](
 			httpClient,
 			baseURL+UISetConnectorVarsProcedure,
@@ -2245,6 +2282,10 @@ type uIClient struct {
 	putSettings              *connect.Client[v1.PutSettingsRequest, v1.Settings]
 	setModels                *connect.Client[v1.SetModelsRequest, v1.Settings]
 	listProviderModels       *connect.Client[v1.ListProviderModelsRequest, v1.ListProviderModelsResponse]
+	getProviderAccount       *connect.Client[v1.GetProviderAccountRequest, v1.ProviderAccount]
+	beginProviderSignIn      *connect.Client[v1.BeginProviderSignInRequest, v1.BeginProviderSignInResponse]
+	finishProviderSignIn     *connect.Client[v1.FinishProviderSignInRequest, v1.ProviderAccount]
+	signOutProvider          *connect.Client[v1.SignOutProviderRequest, v1.ProviderAccount]
 	setConnectorVars         *connect.Client[v1.SetConnectorVarsRequest, v1.Settings]
 	setAutoenableConnectors  *connect.Client[v1.SetAutoenableConnectorsRequest, v1.Settings]
 	listAuditEvents          *connect.Client[v1.ListAuditEventsRequest, v1.ListAuditEventsResponse]
@@ -3069,6 +3110,26 @@ func (c *uIClient) ListProviderModels(ctx context.Context, req *connect.Request[
 	return c.listProviderModels.CallUnary(ctx, req)
 }
 
+// GetProviderAccount calls silo.v1.UI.GetProviderAccount.
+func (c *uIClient) GetProviderAccount(ctx context.Context, req *connect.Request[v1.GetProviderAccountRequest]) (*connect.Response[v1.ProviderAccount], error) {
+	return c.getProviderAccount.CallUnary(ctx, req)
+}
+
+// BeginProviderSignIn calls silo.v1.UI.BeginProviderSignIn.
+func (c *uIClient) BeginProviderSignIn(ctx context.Context, req *connect.Request[v1.BeginProviderSignInRequest]) (*connect.Response[v1.BeginProviderSignInResponse], error) {
+	return c.beginProviderSignIn.CallUnary(ctx, req)
+}
+
+// FinishProviderSignIn calls silo.v1.UI.FinishProviderSignIn.
+func (c *uIClient) FinishProviderSignIn(ctx context.Context, req *connect.Request[v1.FinishProviderSignInRequest]) (*connect.Response[v1.ProviderAccount], error) {
+	return c.finishProviderSignIn.CallUnary(ctx, req)
+}
+
+// SignOutProvider calls silo.v1.UI.SignOutProvider.
+func (c *uIClient) SignOutProvider(ctx context.Context, req *connect.Request[v1.SignOutProviderRequest]) (*connect.Response[v1.ProviderAccount], error) {
+	return c.signOutProvider.CallUnary(ctx, req)
+}
+
 // SetConnectorVars calls silo.v1.UI.SetConnectorVars.
 func (c *uIClient) SetConnectorVars(ctx context.Context, req *connect.Request[v1.SetConnectorVarsRequest]) (*connect.Response[v1.Settings], error) {
 	return c.setConnectorVars.CallUnary(ctx, req)
@@ -3618,6 +3679,11 @@ type UIHandler interface {
 	PutSettings(context.Context, *connect.Request[v1.PutSettingsRequest]) (*connect.Response[v1.Settings], error)
 	SetModels(context.Context, *connect.Request[v1.SetModelsRequest]) (*connect.Response[v1.Settings], error)
 	ListProviderModels(context.Context, *connect.Request[v1.ListProviderModelsRequest]) (*connect.Response[v1.ListProviderModelsResponse], error)
+	// A provider the operator signs in to instead of pasting a key (admins only).
+	GetProviderAccount(context.Context, *connect.Request[v1.GetProviderAccountRequest]) (*connect.Response[v1.ProviderAccount], error)
+	BeginProviderSignIn(context.Context, *connect.Request[v1.BeginProviderSignInRequest]) (*connect.Response[v1.BeginProviderSignInResponse], error)
+	FinishProviderSignIn(context.Context, *connect.Request[v1.FinishProviderSignInRequest]) (*connect.Response[v1.ProviderAccount], error)
+	SignOutProvider(context.Context, *connect.Request[v1.SignOutProviderRequest]) (*connect.Response[v1.ProviderAccount], error)
 	SetConnectorVars(context.Context, *connect.Request[v1.SetConnectorVarsRequest]) (*connect.Response[v1.Settings], error)
 	SetAutoenableConnectors(context.Context, *connect.Request[v1.SetAutoenableConnectorsRequest]) (*connect.Response[v1.Settings], error)
 	// The audit timeline: tool calls and their decisions, tool results the output
@@ -4625,6 +4691,30 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("ListProviderModels")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIGetProviderAccountHandler := connect.NewUnaryHandler(
+		UIGetProviderAccountProcedure,
+		svc.GetProviderAccount,
+		connect.WithSchema(uIMethods.ByName("GetProviderAccount")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIBeginProviderSignInHandler := connect.NewUnaryHandler(
+		UIBeginProviderSignInProcedure,
+		svc.BeginProviderSignIn,
+		connect.WithSchema(uIMethods.ByName("BeginProviderSignIn")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIFinishProviderSignInHandler := connect.NewUnaryHandler(
+		UIFinishProviderSignInProcedure,
+		svc.FinishProviderSignIn,
+		connect.WithSchema(uIMethods.ByName("FinishProviderSignIn")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISignOutProviderHandler := connect.NewUnaryHandler(
+		UISignOutProviderProcedure,
+		svc.SignOutProvider,
+		connect.WithSchema(uIMethods.ByName("SignOutProvider")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uISetConnectorVarsHandler := connect.NewUnaryHandler(
 		UISetConnectorVarsProcedure,
 		svc.SetConnectorVars,
@@ -5303,6 +5393,14 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uISetModelsHandler.ServeHTTP(w, r)
 		case UIListProviderModelsProcedure:
 			uIListProviderModelsHandler.ServeHTTP(w, r)
+		case UIGetProviderAccountProcedure:
+			uIGetProviderAccountHandler.ServeHTTP(w, r)
+		case UIBeginProviderSignInProcedure:
+			uIBeginProviderSignInHandler.ServeHTTP(w, r)
+		case UIFinishProviderSignInProcedure:
+			uIFinishProviderSignInHandler.ServeHTTP(w, r)
+		case UISignOutProviderProcedure:
+			uISignOutProviderHandler.ServeHTTP(w, r)
 		case UISetConnectorVarsProcedure:
 			uISetConnectorVarsHandler.ServeHTTP(w, r)
 		case UISetAutoenableConnectorsProcedure:
@@ -6042,6 +6140,22 @@ func (UnimplementedUIHandler) SetModels(context.Context, *connect.Request[v1.Set
 
 func (UnimplementedUIHandler) ListProviderModels(context.Context, *connect.Request[v1.ListProviderModelsRequest]) (*connect.Response[v1.ListProviderModelsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListProviderModels is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetProviderAccount(context.Context, *connect.Request[v1.GetProviderAccountRequest]) (*connect.Response[v1.ProviderAccount], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetProviderAccount is not implemented"))
+}
+
+func (UnimplementedUIHandler) BeginProviderSignIn(context.Context, *connect.Request[v1.BeginProviderSignInRequest]) (*connect.Response[v1.BeginProviderSignInResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.BeginProviderSignIn is not implemented"))
+}
+
+func (UnimplementedUIHandler) FinishProviderSignIn(context.Context, *connect.Request[v1.FinishProviderSignInRequest]) (*connect.Response[v1.ProviderAccount], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.FinishProviderSignIn is not implemented"))
+}
+
+func (UnimplementedUIHandler) SignOutProvider(context.Context, *connect.Request[v1.SignOutProviderRequest]) (*connect.Response[v1.ProviderAccount], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SignOutProvider is not implemented"))
 }
 
 func (UnimplementedUIHandler) SetConnectorVars(context.Context, *connect.Request[v1.SetConnectorVarsRequest]) (*connect.Response[v1.Settings], error) {

@@ -5,7 +5,7 @@ import { ConfigSource } from "../gen/silo/v1/ui_pb";
 import { AllowedModels } from "./AllowedModels";
 import { ProviderSettings } from "./ProviderSettings";
 import { ProviderMap } from "./ProviderMap";
-import { isReady, providerOf, providersInUse, resolveJobs } from "./providerJobs";
+import { accountsOf, isReady, providerOf, providersInUse, resolveJobs } from "./providerJobs";
 import { ModelsHead, RolePanel, type Role } from "./roles";
 import { isModelPage, type ModelPage } from "./sections";
 import { useSettingsForm } from "./useAdminSettings";
@@ -19,7 +19,7 @@ export function ModelMapPage() {
   const { providers, values, fields, decisionModels } = useSettingsForm();
   const navigate = useNavigate();
   const jobs = resolveJobs(values, decisionModels.map((m) => m.id));
-  const ready = (id: string) => isReady(id, fields, values, ConfigSource.ENV);
+  const ready = (id: string) => isReady(id, fields, values, ConfigSource.ENV, accountsOf(providers));
   const used = providersInUse(jobs);
   const missing = used.filter((p) => !ready(p)).length;
   const idle = jobs.filter((j) => !providerOf(j.model)).length;

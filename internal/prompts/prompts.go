@@ -2,8 +2,24 @@ package prompts
 
 import _ "embed"
 
+// System is the base system prompt every run gets: the machine, the rules,
+// the loop's own tools. It is the same bytes for every Bot.
+//
 //go:embed SYSTEM.md
 var System string
+
+// Lead follows System for every run but a subagent's: what only the agent
+// that answers the human does (automations, the Dashboard, the Feed and
+// questions, subagents, sections). A subagent has none of those tools.
+//
+//go:embed LEAD.md
+var Lead string
+
+// Network is the system-prompt section for a Bot whose machine is behind the
+// egress filter.
+//
+//go:embed NETWORK.md
+var Network string
 
 // Channel is appended to the system prompt when a run replies over a channel.
 //

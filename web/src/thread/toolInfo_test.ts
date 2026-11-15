@@ -10,6 +10,11 @@ eq(toolMeta("github__create_issue").app, "github", "the app is the connector");
 eq(toolAction("github__create_issue", "{}"), "create issue", "the action reads as words");
 eq([toolMeta("web_search").app, toolAction("web_search", '{"query":"go"}')], ["Web search", "go"], "built-ins are unchanged");
 eq(
+  [toolMeta("web_read").app, toolAction("web_read", '{"url":"https://go.dev/blog"}'), toolAction("web_read", '{"urls":["https://a.example","https://b.example"]}')],
+  ["Web page", "https://go.dev/blog", "https://a.example +1 more"],
+  "a read is named by its address",
+);
+eq(
   [toolAction("web_search", '{"queries":["go","rust","zig"]}'), toolAction("web_search", '{"queries":["go"]}'), toolAction("web_search", "{}")],
   ["go +2 more", "go", ""],
   "a batch of searches names the first and counts the rest",

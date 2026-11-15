@@ -11,6 +11,7 @@ func TestCatalogDefaults(t *testing.T) {
 		"skills.load":   Allow,
 		"artifact.emit": Allow,
 		"web.search":    Allow,
+		"web.read":      Allow,
 		"chats.read":    Allow,
 		"model.list":    Allow,
 		"model.switch":  Allow,

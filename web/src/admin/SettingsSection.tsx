@@ -10,7 +10,7 @@ import { OperatorRulesPanel } from "./OperatorRulesPanel";
 import { FieldGroup } from "./FieldGroup";
 import { NetworkSettings } from "./NetworkSettings";
 import { OidcSettings } from "./OidcSettings";
-import { ARTIFACTS_NOTE, AUTH_NOTE, BOOTSTRAP_NOTE, CHANGES_NOTE, CONTENT_NOTE, FILTER_NOTE, CONTAINERS_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MAIL_NOTE, MEMORY_NOTE, OUTBOUND_NOTE, RULES_NOTE, RUNS_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
+import { ARTIFACTS_NOTE, AUTH_NOTE, BOOTSTRAP_NOTE, CHANGES_NOTE, CONTENT_NOTE, FILTER_NOTE, CONTAINERS_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MAIL_NOTE, MEMORY_NOTE, OUTBOUND_NOTE, READER_NOTE, RULES_NOTE, RUNS_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
 import { isSection, type SectionId } from "./sections";
 import { useSettingsForm } from "./useAdminSettings";
 import { t } from "../i18n.ts";
@@ -91,12 +91,15 @@ function SearchSettings() {
   const engine = values["search.engine"] || engines[0]?.id || "";
   const rows = fields.filter((f) => f.key === "search.engine" || f.key.startsWith(`search.${engine}.`));
   return (
-    <FieldGroup
-      title={t("Search")}
-      note={t("The engine behind the Bot's web search (silo_runtime.web_search).")}
-      rows={rows}
-      hints={{ "search.engine": engines.find((e) => e.id === engine)?.description || undefined }}
-    />
+    <>
+      <FieldGroup
+        title={t("Search")}
+        note={t("The engine behind the Bot's web search (silo_runtime.web_search).")}
+        rows={rows}
+        hints={{ "search.engine": engines.find((e) => e.id === engine)?.description || undefined }}
+      />
+      <Group title={t("Reading pages")} note={t(READER_NOTE)} id="reader" />
+    </>
   );
 }
 

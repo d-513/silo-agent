@@ -129,6 +129,11 @@ func (w *worker) extract(ctx context.Context, p string, max int64, ocr bool) (st
 	if err != nil {
 		return "", err
 	}
+	return extractAt(ctx, full, max, ocr)
+}
+
+// extractAt is extract for a file anywhere on the box.
+func extractAt(ctx context.Context, full string, max int64, ocr bool) (string, error) {
 	st, err := os.Stat(full)
 	if err != nil {
 		return "", err

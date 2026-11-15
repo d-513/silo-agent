@@ -125,6 +125,8 @@ export function toolMeta(name: string): { app: string } {
       return { app: t("Artifact") };
     case "web_search":
       return { app: t("Web search") };
+    case "web_read":
+      return { app: t("Web page") };
     case "channel":
       return { app: t("Channels") };
     case "chats":
@@ -186,6 +188,8 @@ export function toolAction(name: string, raw: string): string {
       return `key ${asStr(a.name)}`.trim();
     case "web_search":
       return asStr(a.query) || searches(a.queries);
+    case "web_read":
+      return asStr(a.url) || searches(a.urls);
     case "skill":
       return asStr(a.name) || path;
     case "channel":

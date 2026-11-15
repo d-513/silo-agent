@@ -557,6 +557,12 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 	// memory is told so by the tool's result, and the next run reads the new
 	// prompt. Rebuilding it per turn would re-bill the whole conversation.
 	system := a.buildSystemBlocks(botID, origin)
+	// conversation names this history for a provider that keeps a session of
+	// its own: the chat, or the run when each run starts from nothing.
+	conversation := chatID
+	if origin != nil && origin.Automation != nil {
+		conversation = runID
+	}
 	for {
 		msgs = a.drainInbox(lr, msgs, false)
 		if a.stopped(ctx, botID, chatID, runID) {
@@ -625,7 +631,8 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 			Cache:    models.CachePolicy(settings, botID),
 			// Read each turn, like the model, so a change in the composer
 			// applies from the next model call.
-			Thinking: a.Models.ChatThinking(ctx, chatID, modelID),
+			Thinking:     a.Models.ChatThinking(ctx, chatID, modelID),
+			Conversation: conversation,
 		}
 		res, err := a.streamTurn(ctx, lr, botID, chatID, runID, client, turnReq)
 		// The estimate can be off: a provider that refuses the request as too
@@ -770,6 +777,14 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 		// A tool handed the conversation to the human: their answer starts
 		// the next run, unless a message is already waiting for this one.
 		if a.turnEnded(runID) && a.closeInbox(lr, runID) {
+			// A provider that keeps a session is still waiting on these
+			// results: it gets them, and no model is called.
+			if te, ok := client.(llm.TurnEnder); ok {
+				turnReq.Messages = msgs
+				if err := te.EndTurn(ctx, turnReq); err != nil {
+					log.Printf("run %s: end turn: %v", runID, err)
+				}
+			}
 			a.finish(botID, chatID, runID, "done")
 			return
 		}

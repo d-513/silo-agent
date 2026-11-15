@@ -2,6 +2,7 @@ package app
 
 import (
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -70,7 +71,7 @@ func TestBuiltinToolExposure(t *testing.T) {
 	want := map[string]string{
 		"chat": "agent_status delete exec_python grep message_agent patch present read skill sleep soul spawn_agent stop_agent switch_model terminal write",
 		"python": "channel chats chrome close_tunnel delete_automation feed forget list_automations list_dashboard list_mail list_models list_secrets list_tunnels put_widget read_mail remove_dashboard_card remove_widget search_docs " +
-			"set_proactivity set_timezone set_widget task_add task_done task_list task_reset transcribe upsert_dashboard_card web_search",
+			"set_proactivity set_timezone set_widget task_add task_done task_list task_reset transcribe upsert_dashboard_card web_read web_search",
 		"both": "artifact ask_owner click create_automation decide key look offer_setup open_tunnel recall remember scroll type update_automation",
 	}
 	for name, got := range map[string][]string{"chat": chat, "python": python, "both": both} {
@@ -91,7 +92,7 @@ func TestLeadOnlyTools(t *testing.T) {
 		}
 	}
 	sort.Strings(got)
-	want := "agent_status ask_owner channel create_automation delete_automation list_automations message_agent offer_setup set_proactivity set_timezone spawn_agent stop_agent switch_model task_reset update_automation"
+	want := "agent_status ask_owner channel create_automation delete_automation list_automations message_agent offer_setup set_proactivity set_timezone soul spawn_agent stop_agent switch_model task_reset update_automation"
 	if strings.Join(got, " ") != want {
 		t.Fatalf("lead-only tools: %s", strings.Join(got, " "))
 	}
@@ -120,6 +121,32 @@ func TestPythonResultIsAlwaysJSON(t *testing.T) {
 	} {
 		if got := pythonResult(in); got != want {
 			t.Errorf("pythonResult(%q) = %s, want %s", in, got, want)
+		}
+	}
+}
+
+// A subagent's prompt is the core alone: nothing in it tells a subagent to
+// use a tool its list leaves out, and the lead's part still follows the core
+// for everyone else.
+func TestSubagentPromptNamesNoLeadTool(t *testing.T) {
+	sub, lead := basePrompt(true), basePrompt(false)
+	if !strings.HasPrefix(lead, sub) || len(lead) == len(sub) {
+		t.Fatal("the lead's base prompt is the core followed by the lead part")
+	}
+	for _, d := range (&App{}).toolDefs() {
+		if !d.LeadOnly {
+			continue
+		}
+		for _, name := range []string{d.Name, d.PyName} {
+			// As a tool: in backticks, or called.
+			if name != "" && regexp.MustCompile("`"+name+"`|\\b"+name+`\(`).MatchString(sub) {
+				t.Errorf("the core prompt names %s, which a subagent does not have", name)
+			}
+		}
+	}
+	for _, h := range []string{"## Automations", "## Dashboard", "## Subagents", "<section_send />"} {
+		if strings.Contains(sub, h) || !strings.Contains(lead, h) {
+			t.Errorf("%q belongs to the lead part only", h)
 		}
 	}
 }

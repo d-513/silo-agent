@@ -66,6 +66,15 @@ func (c *observedClient) Complete(ctx context.Context, req Request) (Response, e
 	return res, err
 }
 
+// EndTurn passes a run's closing tool results on to a provider that keeps a
+// session; no model is called, so nothing is recorded.
+func (c *observedClient) EndTurn(ctx context.Context, req Request) error {
+	if te, ok := c.inner.(TurnEnder); ok {
+		return te.EndTurn(ctx, req)
+	}
+	return nil
+}
+
 func (c *observedClient) record(req Request, rec Record) Record {
 	rec.Provider = c.provider
 	rec.Model = req.Model

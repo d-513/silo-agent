@@ -54,6 +54,7 @@ import (
 	"silo.agent/internal/dockerx"
 	"silo.agent/internal/hub"
 	"silo.agent/internal/masker"
+	"silo.agent/internal/reader"
 	"silo.agent/internal/rpcx"
 )
 
@@ -186,6 +187,10 @@ type App struct {
 	// DriveHTTP reaches drive providers (OAuth token endpoints and account
 	// lookups); nil is http.DefaultClient. Tests point it at a fake provider.
 	DriveHTTP *http.Client
+
+	// reader is the page reader behind web_read, made on first use.
+	readerOnce sync.Once
+	reader     *reader.Reader
 
 	heldNotices
 	mu        sync.Mutex

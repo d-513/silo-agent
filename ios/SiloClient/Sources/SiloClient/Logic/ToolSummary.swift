@@ -77,6 +77,7 @@ public func toolAction(name: String, args raw: String) -> String {
     case "scroll": return a["dy"].map { "scroll \($0)" } ?? "scroll"
     case "type": return "type"
     case "web_search": return a["query"] ?? ""
+    case "web_read": return a["url"] ?? ""
     case "skill": return (a["name"]).flatMap { $0.isEmpty ? nil : $0 } ?? path
     case "channel": return (a["channel"]).flatMap { $0.isEmpty ? nil : $0 } ?? (a["to"] ?? "")
     case "list_models": return "list"
@@ -117,6 +118,7 @@ public func toolApp(_ name: String) -> String {
     case "skill": return "Skills"
     case "artifact": return "Artifact"
     case "web_search": return "Web search"
+    case "web_read": return "Web page"
     case "channel": return "Channels"
     case "chats": return "Chats"
     case "feed": return "Feed"
@@ -139,6 +141,7 @@ public func toolSymbol(_ name: String) -> String {
     case "read", "write", "patch", "delete", "grep", "present": return "doc.text"
     case "look", "click", "type", "key", "scroll": return "display"
     case "web_search": return "globe"
+    case "web_read": return "globe"
     case "soul": return "heart.text.square"
     case "skill": return "book.closed"
     case "artifact": return "shippingbox"

@@ -11,7 +11,8 @@ import { ConfigSource, UI, type Provider, type ProviderModel } from "../gen/silo
 import { SearchBox } from "../SearchBox";
 import { Tip, TipTitle } from "../Tip";
 import { FieldRow } from "./FieldRow";
-import { capOf, isReady, providersInUse, resolveJobs, type Cap } from "./providerJobs";
+import { accountsOf, capOf, isReady, providersInUse, resolveJobs, type Cap } from "./providerJobs";
+import { ProviderAccount, ProviderNotice } from "./ProviderAccount";
 import { ProviderMark, Status } from "./ProviderMap";
 import { ModelsHead } from "./roles";
 import { bareModel, filterModels, filterWord, fmtContext, kindOf, kindsIn, kindWord, removeTitle, type ModelKind } from "./providerModels";
@@ -27,7 +28,7 @@ export function ProviderSettings() {
   const [open, setOpen] = useState(asked ?? "");
   const jobs = resolveJobs(values, decisionModels.map((m) => m.id));
   const inUse = providersInUse(jobs);
-  const ready = (id: string) => isReady(id, fields, values, ConfigSource.ENV);
+  const ready = (id: string) => isReady(id, fields, values, ConfigSource.ENV, accountsOf(providers));
   // In use first (in the map's order), then the ones set up, then the rest.
   const rank = (p: Provider) => (inUse.includes(p.id) ? inUse.indexOf(p.id) : ready(p.id) ? 100 : 200);
   const sorted = [...providers].sort((a, b) => rank(a) - rank(b));
@@ -217,6 +218,12 @@ function ProviderDetail({ provider }: { provider: Provider }) {
         <p className="min-w-0 flex-1 text-small leading-5 text-ink-2">{provider.description}</p>
         {unsaved && !open ? <Tip content={t("Save your changes first. The list is asked with {{name}}'s saved settings.", { name: provider.name })}>{button}</Tip> : button}
       </div>
+      {provider.warning || provider.signIn ? (
+        <div className="grid gap-3 px-5 pt-3 pb-2">
+          {provider.warning ? <ProviderNotice text={provider.warning} /> : null}
+          {provider.signIn ? <ProviderAccount provider={provider} /> : null}
+        </div>
+      ) : null}
       <div className="divide-y divide-line-strong">
         {rows.map((f) => (
           <div key={f.key} className="px-5 py-3.5">

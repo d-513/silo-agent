@@ -75,6 +75,7 @@ func (a *App) promptProviders() []promptProvider {
 		a.channelSections,
 		a.driveSections,
 		a.knowledgeSections,
+		a.networkSections,
 		a.decideSections,
 		a.voiceSections,
 		a.tunnelSections,
@@ -238,23 +239,42 @@ func (b *systemPromptBuilder) Blocks() []llm.SystemBlock {
 	return out
 }
 
+// basePrompt is the first tier: the same bytes for every Bot. A subagent gets
+// the core alone; its tool list has none of what the lead part describes, and
+// that list already gives it a cache entry of its own.
+func basePrompt(subagent bool) string {
+	if subagent {
+		return strings.TrimSpace(prompts.System)
+	}
+	return strings.TrimSpace(prompts.System) + "\n\n" + strings.TrimSpace(prompts.Lead)
+}
+
+// networkSections explains the egress filter, only while the operator has it
+// on and the engine can run it. The same text for every Bot.
+func (a *App) networkSections(promptContext) []promptSection {
+	if a.Egress == nil || !a.Egress.Enabled() {
+		return nil
+	}
+	return []promptSection{{title: "Network", body: prompts.Network}}
+}
+
 // buildSystemBlocks loads the session and returns the ordered, cache-aware
 // system prompt. An optional origin makes the prompt aware of the channel a run
 // came from; that per-run note is placed last.
 func (a *App) buildSystemBlocks(botID string, origin ...*run.Origin) []llm.SystemBlock {
 	if a.DB == nil {
-		return []llm.SystemBlock{{Text: prompts.System}}
+		return []llm.SystemBlock{{Text: basePrompt(false)}}
 	}
 	var bot db.Bot
 	if err := a.DB.First(&bot, "id = ?", botID).Error; err != nil {
-		return []llm.SystemBlock{{Text: prompts.System}}
+		return []llm.SystemBlock{{Text: basePrompt(false)}}
 	}
 	var o *run.Origin
 	if len(origin) > 0 {
 		o = origin[0]
 	}
 	pc := a.promptContext(botID, &bot, o)
-	b := &systemPromptBuilder{base: prompts.System, bot: &bot}
+	b := &systemPromptBuilder{base: basePrompt(isSubagent(o)), bot: &bot}
 	for _, p := range a.promptProviders() {
 		for _, sec := range p(pc) {
 			if sec.trailing {

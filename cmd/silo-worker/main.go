@@ -256,6 +256,10 @@ func (w *worker) exec(ctx context.Context, cmd *v1.Cmd, chunk func(string)) (str
 		return w.walk(b.Walk.GetPath(), int(b.Walk.GetMaxFiles()))
 	case *v1.Cmd_Extract:
 		return w.extract(ctx, b.Extract.GetPath(), b.Extract.GetMaxBytes(), b.Extract.GetOcr())
+	case *v1.Cmd_Render:
+		return render(ctx, b.Render)
+	case *v1.Cmd_ReadDoc:
+		return readDoc(ctx, b.ReadDoc)
 	case *v1.Cmd_Checkpoint:
 		return w.checkpoint(ctx, b.Checkpoint)
 	case *v1.Cmd_Changes:

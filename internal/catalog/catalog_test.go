@@ -59,7 +59,7 @@ func TestLoad(t *testing.T) {
 }
 
 // Lightpanda is the shared web reader: attached to every new Bot, pointed at
-// the operator's LIGHTPANDA_URL, and prompted as the primary way to read pages.
+// the operator's LIGHTPANDA_URL, and prompted with its markdown call.
 func TestLightpandaPreset(t *testing.T) {
 	xs, err := Load()
 	if err != nil {
@@ -69,7 +69,7 @@ func TestLightpandaPreset(t *testing.T) {
 		if e.Key != "lightpanda" {
 			continue
 		}
-		if !e.AutoAttach || e.transportOf() != "http" || e.HTTPURL != "${LIGHTPANDA_URL}/mcp" {
+		if e.AutoAttach || e.transportOf() != "http" || e.HTTPURL != "${LIGHTPANDA_URL}/mcp" {
 			t.Fatalf("%+v", e)
 		}
 		if !strings.Contains(e.Prompt, "markdown") || e.DefaultMode != "allow" {

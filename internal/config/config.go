@@ -39,6 +39,12 @@ type Provider struct {
 	MaxTokens int    `koanf:"max_tokens"`
 	// Ignore is OpenRouter's upstream skip list; nil means the engine default.
 	Ignore *string `koanf:"ignore"`
+	// Binary, Dir and OAuthToken are the Claude provider's: the Claude Code
+	// program, where it keeps its sign-in and sessions, and a long-lived token
+	// used instead of the sign-in.
+	Binary     string `koanf:"binary"`
+	Dir        string `koanf:"dir"`
+	OAuthToken string `koanf:"oauth_token"`
 }
 
 // Settings renders a provider's config as the generic map the engine reads.
@@ -58,6 +64,15 @@ func (p Provider) Settings() llm.Settings {
 	}
 	if p.Ignore != nil {
 		out["ignore"] = *p.Ignore
+	}
+	if p.Binary != "" {
+		out["binary"] = p.Binary
+	}
+	if p.Dir != "" {
+		out["dir"] = p.Dir
+	}
+	if p.OAuthToken != "" {
+		out["oauth_token"] = p.OAuthToken
 	}
 	out["cache"] = "false"
 	if p.Cache {
@@ -312,7 +327,9 @@ type Config struct {
 	Artifacts  Artifacts           `koanf:"artifacts"`
 	Mail       Mail                `koanf:"mail"`
 	Outbound   Outbound            `koanf:"outbound"`
-	Tools      Tools               `koanf:"tools"`
+	// Reader configures the page reader (web_read).
+	Reader Reader `koanf:"reader"`
+	Tools  Tools  `koanf:"tools"`
 	// AutoenableConnectors names library connectors (by identifier) that every
 	// new Bot gets, on top of the ones flagged in the library itself.
 	AutoenableConnectors []string `koanf:"autoenable_connectors"`
@@ -500,10 +517,16 @@ func (c Config) DriveImage() string {
 
 // ProviderSettings returns the engine settings for a provider id.
 func (c Config) ProviderSettings(id string) llm.Settings {
+	out := llm.Settings{}
 	if p, ok := c.Providers[id]; ok {
-		return p.Settings()
+		out = p.Settings()
 	}
-	return llm.Settings{}
+	// Claude Code keeps its sign-in and sessions beside the rest of Silo's
+	// data unless the operator names another place.
+	if id == llm.Claude && out.Get("dir") == "" {
+		out["dir"] = filepath.Join(c.DataDir, "claude")
+	}
+	return out
 }
 
 // TitleModel returns the configured title model, falling back to the main
@@ -636,6 +659,10 @@ var fieldDefs = []fieldMeta{
 	{Key: "runs.max_duration"},
 	{Key: "debug", Type: "bool"},
 	{Key: "search.engine"},
+	{Key: "reader.render", Type: "bool"},
+	{Key: "reader.block_private", Type: "bool"},
+	{Key: "reader.allow"},
+	{Key: "reader.github_token", Secret: true},
 	{Key: "http_addr", Restart: true},
 	{Key: "public_url"},
 	{Key: "cp_url"},

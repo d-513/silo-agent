@@ -104,8 +104,17 @@ export function providersInUse(jobs: Job[]): string[] {
 
 type Field = { key: string; value: string; source: number };
 
-/** Whether a provider has what it needs to be asked: a key (a local server: its address). */
-export function isReady(providerID: string, fields: Field[], values: Record<string, string>, envSource: number): boolean {
+/** Which sign-in providers have an account to work with: what a key is to the others. */
+export function accountsOf(providers: { id: string; signIn: boolean; signedIn: boolean }[]): Record<string, boolean> {
+  return Object.fromEntries(providers.filter((p) => p.signIn).map((p) => [p.id, p.signedIn]));
+}
+
+/**
+ * Whether a provider has what it needs to be asked: a key (a local server: its
+ * address), or for one the operator signs in to (accountsOf), an account.
+ */
+export function isReady(providerID: string, fields: Field[], values: Record<string, string>, envSource: number, accounts: Record<string, boolean> = {}): boolean {
+  if (providerID in accounts) return accounts[providerID];
   const has = (k: string) => {
     const key = `providers.${providerID}.${k}`;
     const f = fields.find((x) => x.key === key);

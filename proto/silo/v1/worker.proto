@@ -50,6 +50,8 @@ message Cmd {
     ArtifactPinCmd artifact_pin = 31;
     ArtifactReadCmd artifact_read = 32;
     ArtifactForgetCmd artifact_forget = 33;
+    RenderCmd render = 34;
+    ReadDocCmd read_doc = 35;
   }
 }
 
@@ -142,6 +144,29 @@ message ExtractCmd {
   int64 max_bytes = 2;
   // Read scanned PDF pages and image files with tesseract. Off, a scan is
   // reported (detail says OCR is off) instead of read.
+  bool ocr = 3;
+}
+
+// RenderCmd loads one page in the box's headless browser (Lightpanda), lets
+// its scripts run and returns the document as it then stands, as JSON
+// {url, status, html}. Each render is a process of its own: nothing a page
+// did is there for the next one.
+message RenderCmd {
+  string url = 1;
+  // Refuse requests to internal addresses, after DNS (the operator's
+  // reader.block_private).
+  bool block_private = 2;
+  // The language to ask in, a BCP 47 tag ("" is en-US).
+  string locale = 3;
+}
+
+// ReadDocCmd reads the text of a document the Control Plane fetched (a PDF, a
+// word-processor file) with the box's own tools, as ExtractCmd does for a file
+// in the workspace, and answers the same JSON. The file is not kept.
+message ReadDocCmd {
+  // name is only what the file is called: its extension picks the tool.
+  string name = 1;
+  bytes data = 2;
   bool ocr = 3;
 }
 

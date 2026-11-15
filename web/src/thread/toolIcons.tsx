@@ -63,6 +63,7 @@ const toolIcons: Record<string, LucideIcon> = {
   skill: BookOpen,
   artifact: Package,
   web_search: Globe,
+  web_read: Globe,
   channel: Send,
   chats: MessagesSquare,
   list_models: Cpu,

@@ -128,3 +128,14 @@ func (s hostSet) match(host string) (string, bool) {
 		h = h[i+1:]
 	}
 }
+
+// Covers reports whether host is covered by one of the patterns, as the
+// gateway's lists would match it. The control plane uses it for the pages it
+// reads itself, which never pass the gateway.
+func Covers(patterns []string, host string) bool {
+	if len(patterns) == 0 {
+		return false
+	}
+	_, ok := newHostSet(patterns).match(host)
+	return ok
+}

@@ -102,6 +102,10 @@ type Request struct {
 	// the one that answers first, not the cheapest: a voice call's talker
 	// waits on its first token.
 	Latency bool
+	// Conversation names the conversation this request continues, for a
+	// provider that keeps a session of its own (Claude). Requests of one
+	// conversation carry the same value; empty is a call on its own.
+	Conversation string
 }
 
 // EventKind identifies a streamed event.
@@ -164,6 +168,15 @@ type Stream interface {
 type Client interface {
 	Stream(ctx context.Context, req Request) (Stream, error)
 	Complete(ctx context.Context, req Request) (Response, error)
+}
+
+// TurnEnder is the optional interface of a provider that keeps a session and
+// is left waiting on tool results when a run ends right after its tools,
+// without another model turn (a tool handed the conversation to the human).
+// req is the request that turn was made with, its Messages now ending in the
+// results.
+type TurnEnder interface {
+	EndTurn(ctx context.Context, req Request) error
 }
 
 // EmbedDims is the vector width stored in Postgres (memories.embedding).
@@ -260,6 +273,12 @@ type Descriptor struct {
 	// transcription as you speak, a voice that stays connected. Which models
 	// do is SpeechCaps; this is what the provider map shows.
 	Live []string
+	// SignIn marks a provider the operator signs in to (its client is an
+	// Account); KeyOptional goes with it.
+	SignIn bool
+	// Warning is what the operator must know before using the provider,
+	// shown above its settings.
+	Warning string
 }
 
 // Serves reports whether the provider has models of a kind.
@@ -297,6 +316,7 @@ const (
 	OpenRouter = "openrouter"
 	OpenAI     = "openai"
 	Anthropic  = "anthropic"
+	Claude     = "claude"
 	Local      = "local"
 	TypeSafe   = "typesafe"
 	Groq       = "groq"
@@ -373,6 +393,22 @@ var builtinProviders = []registered{
 			},
 		},
 		new: newAnthropic,
+	},
+	{
+		desc: Descriptor{
+			ID:          Claude,
+			Name:        "Claude Agent",
+			Description: "Claude on a Claude subscription, through the official Claude Code program on this server. It runs with Silo's prompt and only Silo's tools; you sign in instead of pasting a key.",
+			KeyOptional: true,
+			SignIn:      true,
+			Warning:     claudeWarning,
+			Settings: []SettingDef{
+				{Key: "binary", Label: "Claude Code program", Description: "Path of the claude binary. Empty: claude on the server's PATH."},
+				{Key: "dir", Label: "Directory", Description: "Where the sign-in and Claude Code's sessions are kept. Empty: claude under Silo's data directory."},
+				{Key: "oauth_token", Label: "Long-lived token", Description: "A token from claude setup-token (a year). Create one below, or paste one made elsewhere. Set, it is used instead of the sign-in.", Secret: true},
+			},
+		},
+		new: newClaude,
 	},
 	{
 		desc: Descriptor{

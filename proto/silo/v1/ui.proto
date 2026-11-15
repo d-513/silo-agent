@@ -255,6 +255,11 @@ service UI {
   rpc PutSettings(PutSettingsRequest) returns (Settings);
   rpc SetModels(SetModelsRequest) returns (Settings);
   rpc ListProviderModels(ListProviderModelsRequest) returns (ListProviderModelsResponse);
+  // A provider the operator signs in to instead of pasting a key (admins only).
+  rpc GetProviderAccount(GetProviderAccountRequest) returns (ProviderAccount);
+  rpc BeginProviderSignIn(BeginProviderSignInRequest) returns (BeginProviderSignInResponse);
+  rpc FinishProviderSignIn(FinishProviderSignInRequest) returns (ProviderAccount);
+  rpc SignOutProvider(SignOutProviderRequest) returns (ProviderAccount);
   rpc SetConnectorVars(SetConnectorVarsRequest) returns (Settings);
   rpc SetAutoenableConnectors(SetAutoenableConnectorsRequest) returns (Settings);
 
@@ -2666,6 +2671,14 @@ message Provider {
   // live_kinds are the kinds some of its models serve live (transcription
   // as you speak, a voice that stays connected for a call).
   repeated string live_kinds = 8;
+  // sign_in marks a provider the operator signs in to (GetProviderAccount)
+  // instead of giving it a key.
+  bool sign_in = 9;
+  // warning is what the operator must know before using the provider.
+  string warning = 10;
+  // signed_in says a sign-in provider has an account to work with (a
+  // sign-in or a saved token): what a key is to the others.
+  bool signed_in = 11;
 }
 
 message ProviderField {
@@ -2710,6 +2723,53 @@ message ProviderModel {
 
 message ListProviderModelsResponse {
   repeated ProviderModel models = 1;
+}
+
+message GetProviderAccountRequest {
+  string provider = 1;
+}
+
+// ProviderAccount is who a sign-in provider is signed in as.
+message ProviderAccount {
+  bool signed_in = 1;
+  // method is how, in the provider's own word ("claude.ai", "oauth_token").
+  string method = 2;
+  string email = 3;
+  // plan is the subscription the account is on, when the provider says.
+  string plan = 4;
+  // expires_at is when the sign-in runs out (Unix seconds); 0 when unknown.
+  int64 expires_at = 5;
+  // problem is why the status could not be read, in words for the operator.
+  string problem = 6;
+  // methods are the ways to sign in, the usual one first.
+  repeated ProviderSignInMethod methods = 7;
+}
+
+message ProviderSignInMethod {
+  string id = 1;
+  string label = 2;
+  string description = 3;
+}
+
+// BeginProviderSignIn starts a sign-in and answers the page to open; the code
+// that page shows goes to FinishProviderSignIn.
+message BeginProviderSignInRequest {
+  string provider = 1;
+  // method is a ProviderSignInMethod id; empty is the first.
+  string method = 2;
+}
+
+message BeginProviderSignInResponse {
+  string url = 1;
+}
+
+message FinishProviderSignInRequest {
+  string provider = 1;
+  string code = 2;
+}
+
+message SignOutProviderRequest {
+  string provider = 1;
 }
 
 // ConnectorVar is one operator-defined connector variable. These are plain

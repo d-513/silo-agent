@@ -2,6 +2,11 @@
 # rather than Debian's old nodejs package.
 FROM node:24-bookworm-slim AS node
 
+# Lightpanda is the headless browser the page reader renders script-built pages
+# with (cmd/silo-worker/render.go). It has no releases, only nightlies, so it is
+# pinned by digest: move the digest on purpose and re-run the render checks.
+FROM docker.io/lightpanda/browser@sha256:2d29d32d5ae76771096e2e9ecf46d30947ea58f9966cd2235cf4526657a029d2 AS lightpanda
+
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 python3-pip python-is-python3 \
@@ -46,6 +51,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends libnss3-tools \
 # Its own layer, like git.
 RUN apt-get update && apt-get install -y --no-install-recommends proxychains4 netcat-openbsd openssh-client \
     && rm -rf /var/lib/apt/lists/*
+# ffmpeg cuts and re-encodes audio: a podcast or a recording is longer than one
+# transcription call takes. Its own layer.
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+# Lightpanda (AGPL-3.0), unmodified and run as a program of its own; the notice
+# says where its source is. Telemetry is off for the worker's renders and for a
+# Bot that runs it by hand.
+COPY --from=lightpanda /bin/lightpanda /usr/local/bin/lightpanda
+RUN mkdir -p /usr/share/doc/lightpanda \
+    && printf '%s\n' 'Lightpanda browser, unmodified nightly build from docker.io/lightpanda/browser.' \
+       'Copyright Lightpanda (Selecy SAS). Licensed under the GNU Affero General Public License v3.0.' \
+       'Source code: https://github.com/lightpanda-io/browser (the version is printed by `lightpanda version`).' \
+       > /usr/share/doc/lightpanda/NOTICE
+ENV LIGHTPANDA_DISABLE_TELEMETRY=true
 # Node.js + npm + pnpm for web projects and JS tooling. Its own layer, so a Node
 # bump does not rebuild the big apt layer above.
 COPY --from=node /usr/local/bin/node /usr/local/bin/node

@@ -28,6 +28,15 @@ bootstrap:
   email: admin@local
   password: change-me
 
+# The page reader (silo_runtime.web_read). It refuses internal addresses by
+# default; open the ones your Bots should read, or turn the block off.
+# Env: SILO_READER__BLOCK_PRIVATE, SILO_READER__ALLOW, SILO_READER__GITHUB_TOKEN
+# reader:
+#   block_private: true
+#   allow: 10.0.5.0/24           # internal addresses that stay readable
+#   render: true                 # render script-built pages in the Bot's machine
+#   github_token: ghp_...        # lifts GitHub's 60 requests/hour
+
 # Keep connections Silo makes on a user's word (connector URLs, Email and
 # Calendar accounts, skill downloads) off this machine and your network
 # (docs/CONFIGURATION.md § Outbound connections).
@@ -75,6 +84,13 @@ providers:
   # local:
   #   base_url: http://localai:8080/v1
   #   realtime: openai          # transcribes live over the Realtime API (speaches for Speaches)
+  # Claude on a Claude subscription, through the Claude Code program on this
+  # server (Admin → Settings → Models → Providers → Claude Agent: Sign in).
+  # For your own use only: not for several people, not for unattended Bots.
+  # claude:
+  #   binary: ""            # path of the claude binary; empty: claude on PATH
+  #   dir: ""               # sign-in and sessions; empty: <data_dir>/claude
+  #   oauth_token: ""       # a token from `claude setup-token`, instead of the sign-in
 
 # Voice: Read aloud and calls (Admin → Settings → Voice). A model marked Live
 # streams; any other is asked one request at a time.

@@ -65,6 +65,10 @@ export const LABELS: Record<string, string> = {
   "egress.pass": msg("Hosts without inspection"),
   "egress.feeds": msg("Threat lists"),
   "egress.dns": msg("DNS servers"),
+  "reader.render": msg("Render pages that need scripts"),
+  "reader.block_private": msg("Block private addresses"),
+  "reader.allow": msg("Exceptions"),
+  "reader.github_token": msg("GitHub token"),
   "outbound.block_private": msg("Block private addresses"),
   "outbound.allow": msg("Exceptions"),
   "auth.password": msg("Password sign-in"),
@@ -119,6 +123,14 @@ export const HINTS: Record<string, string> = {
     msg("The resolvers the gateway looks names up with, comma-separated IPs, each optionally with a port (1.1.1.1, 9.9.9.9, 10.0.0.53:5353). Empty uses the system's, as this server's own resolv.conf names them."),
   "egress.feeds":
     msg("Threat lists the gateway downloads and keeps current on its own. Four are built in, none needing a key: abuse.ch's URLhaus and Spamhaus DROP, Emerging Threats' compromised IPs, and Hagezi's threat-intelligence domains. A host on one is blocked and recorded on the Bot's timeline."),
+  "reader.render":
+    msg("A page that is empty until its scripts run is loaded in the headless browser (Lightpanda) on the Bot's own machine, never on this server. Off, such a page is reported as needing a browser."),
+  "reader.block_private":
+    msg("Refuses loopback, private (10.x, 172.16-31.x, 192.168.x), link-local and other internal addresses, and names or redirects that lead to one, for the pages this server fetches because a Bot named their address. Leave it on unless your Bots should read sites on your own network."),
+  "reader.allow":
+    msg("Internal addresses the page reader may still reach, comma-separated: an IP or a CIDR, optionally with one port (10.0.4.20, 10.0.5.0/24, 127.0.0.1:8080). Names are not taken."),
+  "reader.github_token":
+    msg("GitHub repositories, issues and files are read through GitHub's API, which allows 60 requests an hour without a token. Any token lifts that to 5,000; it needs no permissions for public repositories."),
   "outbound.allow":
     msg("Internal addresses that stay reachable, comma-separated: an IP or a CIDR, optionally with one port (10.0.4.20, 10.0.5.0/24, 127.0.0.1:9223). Names are not taken."),
   "auth.password": msg("Off, people sign in with OIDC only. It only takes effect while OIDC is configured, so it cannot lock everyone out."),
@@ -203,6 +215,9 @@ export const MAIL_NOTE =
 export const NETWORK_NOTE =
   msg("Every Bot's machine has its own network with this gateway as its only way out, so a Bot cannot reach another Bot or your network. The gateway sees the host and the bytes, never the content of a connection it lets through. Each Bot's owner may tighten these lists from that Bot's Rules page, and may ask for a host to be allowed; nothing an owner does can loosen what is set here.");
 
+export const READER_NOTE =
+  msg("silo_runtime.web_read fetches a page from this server and returns its text. The address comes from a Bot, which may be repeating what a web page told it, so internal addresses are refused unless you open them here. Hosts on the network filter's block list are refused too.");
+
 export const OUTBOUND_NOTE =
   msg("Silo makes these connections itself, so without this a user can point a connector at 127.0.0.1 or at a machine on your network and read what answers. Turn it on when people you do not fully trust have accounts. A library connector you pointed at an internal address (the Lightpanda preset) keeps working for as long as a Bot's copy still points where yours does. This does not cover the models, search or sign-in providers you set up here, and it does not limit what a Bot's own machine can reach.");
 
@@ -233,6 +248,7 @@ export function groupOf(key: string) {
   if (key.startsWith("drives.") || key === "docker_host" || key === "bot_image" || key === "mcp_stdio_image") return "containers";
   if (key.startsWith("providers.")) return "providers";
   if (key.startsWith("search.")) return "search";
+  if (key.startsWith("reader.")) return "reader";
   if (key.startsWith("bootstrap.")) return "bootstrap";
   if (key.startsWith("egress.")) return "network";
   if (key.startsWith("outbound.")) return "outbound";

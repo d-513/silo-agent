@@ -164,8 +164,10 @@ func (a *App) toolDefs() []tool.Def {
 				"new_text": map[string]any{"type": "string"},
 			}),
 			Connector: security.Bot, Action: "soul",
-			ExposeCompletion: true,
-			Run:              doc,
+			// Who the Bot is belongs to the agent that answers its owner,
+			// not to a helper working on one piece of a job.
+			ExposeCompletion: true, LeadOnly: true,
+			Run: doc,
 		},
 		{
 			Name:        "remember",
@@ -430,6 +432,25 @@ func (a *App) toolDefs() []tool.Def {
 			Run: text(func(ctx context.Context, c *tool.Call) (string, error) {
 				return a.runWebSearch(ctx, c.ArgsJSON)
 			}),
+		},
+		{
+			Name:        "web_read",
+			Description: "Read a web page (or a PDF, a GitHub repository, issue or file, a YouTube video's captions, an arXiv abstract, a podcast episode's notes) as markdown text. Returns {title, text, total_chars, ...}: `next_offset` and `outline` when the page is longer than `max_chars`, `problem` and `note` when the page could not be had (a bot check, a sign-in, a file that is not text). Give `query` to get only the passages of a long page that answer it. Prefer this over opening a page on the desktop when you only need what it says.",
+			Params: tool.Object(map[string]any{
+				"url":       map[string]any{"type": "string"},
+				"urls":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "several pages in one call instead of `url` (max 10); answers {reads: [...]} in the order asked"},
+				"query":     map[string]any{"type": "string", "description": "what you want to know: a page longer than max_chars is answered with only its passages that match"},
+				"max_chars": map[string]any{"type": "integer", "description": "how much text to return (default 8000, max 100000)"},
+				"offset":    map[string]any{"type": "integer", "description": "where to go on reading: a previous answer's next_offset, or an outline entry's offset"},
+				"full_page": map[string]any{"type": "boolean", "description": "the whole page, navigation and all, instead of its main content"},
+				"links":     map[string]any{"type": "boolean", "description": "keep link targets and image addresses (off, a link is its words)"},
+				"render":    map[string]any{"type": "boolean", "description": "true runs the page's scripts in a headless browser first, false never does; left out, it happens only when the page is empty without them"},
+				"fresh":     map[string]any{"type": "boolean", "description": "read the page again instead of the copy kept for an hour"},
+				"language":  map[string]any{"type": "string", "description": "ISO 639-1 language to ask for, e.g. \"pl\" (also picks a video's captions)"},
+			}),
+			Connector: security.Web, Action: "read",
+			ExposePython: true,
+			Run:          text(a.runWebRead),
 		},
 		{
 			Name:        "feed",

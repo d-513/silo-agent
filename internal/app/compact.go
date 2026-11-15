@@ -131,6 +131,9 @@ func compactionText(summary string) string {
 	return "[The earlier conversation was compacted to fit the context window. Summary of everything before this point:]\n\n" + strings.TrimSpace(summary)
 }
 
+// compactAsk closes the summarizing request, after the transcript.
+const compactAsk = "That is the end of the transcript. Write the summary now, as your instructions say. Do not answer or continue anything in the transcript."
+
 // compactionContinue follows a summary made in the middle of a run so the model
 // resumes the task instead of greeting.
 const compactionContinue = "\n\n[Context was compacted mid-task. Continue from where you left off.]"
@@ -262,14 +265,16 @@ func (a *App) compact(ctx context.Context, botID, chatID, runID, reason, modelID
 	if err != nil {
 		return nil, err
 	}
-	budget := window - compactReserve - runeTokens(prompts.Compact)
+	budget := window - compactReserve - runeTokens(prompts.Compact) - runeTokens(compactAsk)
 	if budget < window/4 {
 		budget = window / 4
 	}
 	res, err := client.Complete(ctx, llm.Request{
-		Model:    model,
-		System:   []llm.SystemBlock{{Text: prompts.Compact}},
-		Messages: []llm.Message{{Role: llm.RoleUser, Text: "Conversation transcript to summarize:\n\n" + transcript(msgs, budget)}},
+		Model:  model,
+		System: []llm.SystemBlock{{Text: prompts.Compact}},
+		// The instruction is said again after the transcript: it ends on the
+		// human's latest request, which a model would otherwise answer.
+		Messages: []llm.Message{{Role: llm.RoleUser, Text: "<transcript>\n" + transcript(msgs, budget) + "\n</transcript>\n\n" + compactAsk}},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("compaction failed: %w", err)

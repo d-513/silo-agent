@@ -34,6 +34,8 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("mail.addr", DefaultMailAddr)
 	_ = k.Set("mail.max_size_mb", DefaultMailSizeMB)
 	_ = k.Set("search.engine", search.DefaultEngine)
+	_ = k.Set("reader.block_private", true)
+	_ = k.Set("reader.render", true)
 	_ = k.Set("model", DefaultModel)
 	_ = k.Set("embedding_model", DefaultEmbeddingModel)
 	_ = k.Set("transcribe_model", DefaultTranscribeModel)
@@ -394,6 +396,9 @@ func validateYAML(raw []byte) error {
 		return err
 	}
 	if err := validateOutbound(k); err != nil {
+		return err
+	}
+	if err := validateReader(k); err != nil {
 		return err
 	}
 	if cv := k.Get("connector_vars"); cv != nil {

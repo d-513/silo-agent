@@ -170,19 +170,10 @@ func TestAutoAttachCopiedOnce(t *testing.T) {
 	if len(docs) != 1 || !strings.HasPrefix(docs[0].GetConnector().GetName(), "AutoDocs") {
 		t.Fatalf("auto attach %+v", xs.Msg.GetConnectors())
 	}
-	// The seeded Lightpanda preset is auto-attached too, URL left as the variable.
-	lightpanda := false
-	for _, x := range xs.Msg.GetConnectors() {
-		if x.GetConnector().GetName() == "Lightpanda" && x.GetConnector().GetHttpUrl() == "${LIGHTPANDA_URL}/mcp" {
-			lightpanda = true
-			// The chat maps a `call` event's `<slug>.<action>` back to this row's mark.
-			if s := x.GetConnector().GetSlug(); s != "lightpanda" {
-				t.Fatalf("lightpanda slug %q", s)
-			}
-		}
-	}
-	if !lightpanda {
-		t.Fatalf("lightpanda not auto-attached: %+v", xs.Msg.GetConnectors())
+	// Nothing the catalog seeds is attached by itself: pages are read by
+	// web_read, and the Lightpanda preset is the operator's to switch on.
+	if n := len(xs.Msg.GetConnectors()); n != 1 {
+		t.Fatalf("a new Bot got %d connectors, want only the one flagged: %+v", n, xs.Msg.GetConnectors())
 	}
 	if _, err := h.Client.DetachConnector(h.Ctx(), connect.NewRequest(&v1.DetachConnectorRequest{
 		BotId: bot.GetId(), Id: docs[0].GetId(),
@@ -273,25 +264,26 @@ func TestLibraryIdentifier(t *testing.T) {
 // gets them exactly like the ones whose own toggle is on.
 func TestAutoenableConnectors(t *testing.T) {
 	dir := t.TempDir()
-	// Any case, one that is also auto_attach, a repeat, and one that is not there.
-	y := apptest.DefaultYAML(dir) + "autoenable_connectors:\n  - Enabled.Docs\n  - lightpanda\n  - enabled_docs\n  - not_in_library\n"
+	// Any case, a seeded preset, one that is also auto_attach, a repeat, and
+	// one that is not there.
+	y := apptest.DefaultYAML(dir) + "autoenable_connectors:\n  - Enabled.Docs\n  - lightpanda\n  - both_docs\n  - enabled_docs\n  - not_in_library\n"
 	h := apptest.New(t, apptest.WithDataDir(dir), apptest.WithYAML(y))
-	mk := func(name string) *v1.Connector {
+	mk := func(name string, auto bool) *v1.Connector {
 		res, err := h.Client.CreateConnector(h.Ctx(), connect.NewRequest(&v1.CreateConnectorRequest{
-			Name: name, Transport: "http", HttpUrl: "http://127.0.0.1:1",
+			Name: name, Transport: "http", HttpUrl: "http://127.0.0.1:1", AutoAttach: auto,
 		}))
 		if err != nil {
 			t.Fatal(err)
 		}
 		return res.Msg
 	}
-	named, plain := mk("Enabled Docs"), mk("Plain Docs")
+	named, plain, both := mk("Enabled Docs", false), mk("Plain Docs", false), mk("Both Docs", true)
 	if !named.GetAutoenabled() || named.GetAutoAttach() || plain.GetAutoenabled() {
 		t.Fatalf("autoenabled flags: named %+v plain %+v", named, plain)
 	}
 	lib, _ := h.Client.ListConnectors(h.Ctx(), connect.NewRequest(&v1.ListConnectorsRequest{}))
 	for _, c := range lib.Msg.GetConnectors() {
-		if want := c.GetIdentifier() == "enabled_docs" || c.GetIdentifier() == "lightpanda"; c.GetAutoenabled() != want {
+		if want := c.GetIdentifier() == "enabled_docs" || c.GetIdentifier() == "lightpanda" || c.GetIdentifier() == "both_docs"; c.GetAutoenabled() != want {
 			t.Fatalf("%s autoenabled = %v", c.GetIdentifier(), c.GetAutoenabled())
 		}
 	}
@@ -304,14 +296,23 @@ func TestAutoenableConnectors(t *testing.T) {
 	if n := len(copiesOf(xs.Msg.GetConnectors(), plain.GetId())); n != 0 {
 		t.Fatalf("a preset nobody named was attached %d times", n)
 	}
+	if n := len(copiesOf(xs.Msg.GetConnectors(), both.GetId())); n != 1 {
+		t.Fatalf("a preset that is named and auto_attach: want one copy, got %d", n)
+	}
+	// The seeded Lightpanda preset is off until the operator names it; then
+	// its URL is left as the variable.
 	lightpanda := 0
 	for _, x := range xs.Msg.GetConnectors() {
-		if strings.HasPrefix(x.GetConnector().GetName(), "Lightpanda") {
+		if x.GetConnector().GetName() == "Lightpanda" && x.GetConnector().GetHttpUrl() == "${LIGHTPANDA_URL}/mcp" {
 			lightpanda++
+			// The chat maps a `call` event's `<slug>.<action>` back to this row's mark.
+			if s := x.GetConnector().GetSlug(); s != "lightpanda" {
+				t.Fatalf("lightpanda slug %q", s)
+			}
 		}
 	}
 	if lightpanda != 1 {
-		t.Fatalf("lightpanda is named and auto_attach: want one copy, got %d", lightpanda)
+		t.Fatalf("lightpanda was named: want one copy, got %d", lightpanda)
 	}
 }
 

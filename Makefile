@@ -7,6 +7,8 @@ export CGO_ENABLED ?= 1
 export DOCKER_HOST ?= unix:///run/user/1000/podman/podman.sock
 
 GO          ?= go
+# The npm package that carries Claude Code for this machine (claude-bin).
+CLAUDE_PLATFORM ?= $(shell uname -s | tr A-Z a-z)-$(shell uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')
 PNPM        ?= pnpm
 PODMAN      ?= podman
 COMPOSE     ?= $(PODMAN) compose
@@ -43,7 +45,7 @@ WATCH_OPTS  := \
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install deps web-install brand build build-cp build-worker \
+.PHONY: help claude-bin install deps web-install brand build build-cp build-worker \
 	build-bridge build-drive build-egress build-all images bot-image stdio-image drive-image egress-image run run-control \
 	run-frontend watch-control dev attach test test-fast test-containers \
 	test-integration e2e fmt vet tidy proto rebuild \
@@ -160,6 +162,12 @@ tidy: ## Tidy go.mod / go.sum
 
 proto: ## Regenerate protobuf stubs (Go + TS)
 	buf generate
+
+claude-bin: ## Download the official Claude Code binary to tmp/claude-bin (the Claude Agent provider, for development)
+	rm -rf tmp/claude-bin && mkdir -p tmp/claude-bin
+	cd tmp/claude-bin && npm pack --silent @anthropic-ai/claude-agent-sdk-$(CLAUDE_PLATFORM) && tar xzf *.tgz && rm -f *.tgz
+	tmp/claude-bin/package/claude --version
+	@echo "Set providers.claude.binary: tmp/claude-bin/package/claude in silo.yaml"
 
 ## --- database ------------------------------------------------------------
 

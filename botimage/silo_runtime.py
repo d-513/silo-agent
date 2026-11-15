@@ -3,7 +3,7 @@
 Chromium: chrome_page() is Playwright on the headed desktop browser.
 It asks the Control Plane first (desktop.chrome, refused while the owner has
 paused the desktop); the worker opens silo-chromium if CDP :9222 is down.
-Web: web_search(query) runs on the Control Plane.
+Web: web_search(query) and web_read(url) run on the Control Plane.
 Artifacts: artifact(path) shows a skill directory or a file as a card in the
 thread. It is not the same as present — present only displays a file inline.
 """
@@ -196,6 +196,87 @@ def web_search_many(
         return {}
     out = call("web", "search", {"queries": queries, **_search_args(max_results, language, country)})
     return {s.pop("query"): s for s in out.get("searches", [])}
+
+
+def _read_args(query, max_chars, full_page, links, render, fresh, language) -> dict:
+    args: dict = {}
+    if query:
+        args["query"] = query
+    if max_chars is not None:
+        args["max_chars"] = max_chars
+    if full_page:
+        args["full_page"] = True
+    if links:
+        args["links"] = True
+    if render is not None:
+        args["render"] = bool(render)
+    if fresh:
+        args["fresh"] = True
+    if language is not None:
+        args["language"] = language
+    return args
+
+
+def web_read(
+    url: str,
+    query: str | None = None,
+    max_chars: int | None = None,
+    offset: int | None = None,
+    full_page: bool = False,
+    links: bool = False,
+    render: bool | None = None,
+    fresh: bool = False,
+    language: str | None = None,
+) -> dict:
+    """Read a web page as markdown text.
+
+    Returns {url, title, text, total_chars, kind, via, ...}. Also reads a PDF
+    or a document at an address, a GitHub repository (with its README), issue,
+    pull request or file, a YouTube video (description and captions), an arXiv
+    abstract and a podcast episode's notes.
+
+    `text` is at most `max_chars` characters (default 8000). When the page is
+    longer the result has `next_offset` (pass it as `offset` to read on) and
+    `outline`, the page's headings with the offset of each, so you can jump to
+    the section you need instead of reading through. With `query` a long page
+    is answered with only the passages that match it, each under its headings.
+
+    `problem` means the page was not had: "blocked" (a bot check),
+    "login_wall", "needs_render", "unsupported" (not text) or "http_error";
+    `note` says what to do instead. Do not retry a blocked page.
+
+    `links=True` keeps link targets; `full_page=True` keeps navigation and
+    footers; `render=True` runs the page's scripts first (it happens by itself
+    when a page is empty without them); `fresh=True` skips the copy kept for
+    an hour; `language` ("pl") asks for that language.
+    """
+    args = {"url": url, **_read_args(query, max_chars, full_page, links, render, fresh, language)}
+    if offset:
+        args["offset"] = offset
+    return call("web", "read", args)
+
+
+def web_read_many(
+    urls: list[str],
+    query: str | None = None,
+    max_chars: int | None = None,
+    full_page: bool = False,
+    links: bool = False,
+    render: bool | None = None,
+    fresh: bool = False,
+    language: str | None = None,
+) -> dict:
+    """Read several pages at once (at most 10) and return {url: page}.
+
+    Each page is what `web_read` returns for that address; one that failed
+    has `problem` "error" and the reason in `note`. Use this instead of a
+    thread pool: it is one call and the pages are read side by side.
+    """
+    urls = [u for u in urls if u and u.strip()]
+    if not urls:
+        return {}
+    out = call("web", "read", {"urls": urls, **_read_args(query, max_chars, full_page, links, render, fresh, language)})
+    return dict(zip(urls, out.get("reads", [])))
 
 
 def transcribe(path: str, language: str | None = None) -> dict:

@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file silo/v1/worker.proto.
  */
 export const file_silo_v1_worker: GenFile = /*@__PURE__*/
-  fileDesc("ChRzaWxvL3YxL3dvcmtlci5wcm90bxIHc2lsby52MSLLCgoDQ21kEgoKAmlkGAEgASgJEg4KBnJ1bl9pZBgJIAEoCRIoCgh0ZXJtaW5hbBgCIAEoCzIULnNpbG8udjEuVGVybWluYWxDbWRIABItCgtleGVjX3B5dGhvbhgDIAEoCzIWLnNpbG8udjEuRXhlY1B5dGhvbkNtZEgAEikKCWZpbGVfcmVhZBgEIAEoCzIULnNpbG8udjEuRmlsZVJlYWRDbWRIABIrCgpmaWxlX3dyaXRlGAUgASgLMhUuc2lsby52MS5GaWxlV3JpdGVDbWRIABIrCgpmaWxlX3BhdGNoGAYgASgLMhUuc2lsby52MS5GaWxlUGF0Y2hDbWRIABIgCgRncmVwGAcgASgLMhAuc2lsby52MS5HcmVwQ21kSAASJAoGY2FuY2VsGAggASgLMhIuc2lsby52MS5DYW5jZWxDbWRIABInCghkaXJfbGlzdBgKIAEoCzITLnNpbG8udjEuRGlyTGlzdENtZEgAEi0KC2Jyb3dzZV9maWxlGAsgASgLMhYuc2lsby52MS5Ccm93c2VGaWxlQ21kSAASIgoFbWtkaXIYDCABKAsyES5zaWxvLnYxLk1rZGlyQ21kSAASJAoGcmVtb3ZlGA0gASgLMhIuc2lsby52MS5SZW1vdmVDbWRIABInCghwdXRfZmlsZRgOIAEoCzITLnNpbG8udjEuUHV0RmlsZUNtZEgAEisKCnN5bmNfdG9vbHMYDyABKAsyFS5zaWxvLnYxLlN5bmNUb29sc0NtZEgAEjEKDWVuc3VyZV9jaHJvbWUYECABKAsyGC5zaWxvLnYxLkVuc3VyZUNocm9tZUNtZEgAEiAKBGxvb2sYESABKAsyEC5zaWxvLnYxLkxvb2tDbWRIABIiCgVjbGljaxgSIAEoCzIRLnNpbG8udjEuQ2xpY2tDbWRIABIgCgR0eXBlGBMgASgLMhAuc2lsby52MS5UeXBlQ21kSAASHgoDa2V5GBQgASgLMg8uc2lsby52MS5LZXlDbWRIABIkCgZzY3JvbGwYFSABKAsyEi5zaWxvLnYxLlNjcm9sbENtZEgAEi0KC3N5bmNfc2tpbGxzGBYgASgLMhYuc2lsby52MS5TeW5jU2tpbGxzQ21kSAASIAoEd2FsaxgXIAEoCzIQLnNpbG8udjEuV2Fsa0NtZEgAEiYKB2V4dHJhY3QYGCABKAsyEy5zaWxvLnYxLkV4dHJhY3RDbWRIABItCgtvcGVuX3R1bm5lbBgZIAEoCzIWLnNpbG8udjEuT3BlblR1bm5lbENtZEgAEiwKCmNoZWNrcG9pbnQYGiABKAsyFi5zaWxvLnYxLkNoZWNrcG9pbnRDbWRIABImCgdjaGFuZ2VzGBsgASgLMhMuc2lsby52MS5DaGFuZ2VzQ21kSAASLwoMY2hhbmdlX2ZpbGVzGBwgASgLMhcuc2lsby52MS5DaGFuZ2VGaWxlc0NtZEgAEi8KDGNoYW5nZV9wYXRjaBgdIAEoCzIXLnNpbG8udjEuQ2hhbmdlUGF0Y2hDbWRIABImCgdyZXN0b3JlGB4gASgLMhMuc2lsby52MS5SZXN0b3JlQ21kSAASLwoMYXJ0aWZhY3RfcGluGB8gASgLMhcuc2lsby52MS5BcnRpZmFjdFBpbkNtZEgAEjEKDWFydGlmYWN0X3JlYWQYICABKAsyGC5zaWxvLnYxLkFydGlmYWN0UmVhZENtZEgAEjUKD2FydGlmYWN0X2ZvcmdldBghIAEoCzIaLnNpbG8udjEuQXJ0aWZhY3RGb3JnZXRDbWRIAEIGCgRib2R5IlwKCFRvb2xTdHViEhEKCWNvbm5lY3RvchgBIAEoCRIOCgZhY3Rpb24YAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSGAoQYXJnc19zY2hlbWFfanNvbhgEIAEoCSIwCgxTeW5jVG9vbHNDbWQSIAoFc3R1YnMYASADKAsyES5zaWxvLnYxLlRvb2xTdHViIk8KB1Rvb2xSZXESEQoJY29ubmVjdG9yGAEgASgJEg4KBmFjdGlvbhgCIAEoCRIRCglhcmdzX2pzb24YAyABKAkSDgoGcnVuX2lkGAQgASgJIi0KB1Rvb2xSZXMSEwoLcmVzdWx0X2pzb24YASABKAkSDQoFZXJyb3IYAiABKAkiHgoLVGVybWluYWxDbWQSDwoHY29tbWFuZBgBIAEoCSIuCg1FeGVjUHl0aG9uQ21kEgwKBGNvZGUYASABKAkSDwoHc2Vzc2lvbhgCIAEoCSI6CgtGaWxlUmVhZENtZBIMCgRwYXRoGAEgASgJEg4KBm9mZnNldBgCIAEoBRINCgVsaW1pdBgDIAEo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cm9yGAUgASgLMhEuc2lsby52MS5DbWRFcnJvckgAQgYKBGJvZHkiCwoJSGVhcnRiZWF0IhsKC091dHB1dENodW5rEgwKBHRleHQYASABKAkiKAoHQ21kRG9uZRIOCgZyZXN1bHQYASABKAkSDQoFaW1hZ2UYAiABKAkiGwoIQ21kRXJyb3ISDwoHbWVzc2FnZRgBIAEoCSIpCglTZWNyZXRSZXESDAoEbmFtZRgBIAEoCRIOCgZydW5faWQYAiABKAkiKQoJU2VjcmV0UmVzEg0KBXZhbHVlGAEgASgJEg0KBWVycm9yGAIgASgJIhUKBUZyYW1lEgwKBGRhdGEYASABKAwiNQoJQ29uc29sZUlPEgwKBGRhdGEYASABKAwSDAoEcm93cxgCIAEoBRIMCgRjb2xzGAMgASgFMr0CCglCb3RXb3JrZXISLwoIQ29tbWFuZHMSES5zaWxvLnYxLkNtZEV2ZW50Ggwuc2lsby52MS5DbWQoATABEjMKCUdldFNlY3JldBISLnNpbG8udjEuU2VjcmV0UmVxGhIuc2lsby52MS5TZWNyZXRSZXMSLgoIQ2FsbFRvb2wSEC5zaWxvLnYxLlRvb2xSZXEaEC5zaWxvLnYxLlRvb2xSZXMSKQoDVk5DEg4uc2lsby52MS5GcmFtZRoOLnNpbG8udjEuRnJhbWUoATABEjUKB0NvbnNvbGUSEi5zaWxvLnYxLkNvbnNvbGVJTxoSLnNpbG8udjEuQ29uc29sZUlPKAEwARI4CgZUdW5uZWwSFC5zaWxvLnYxLlR1bm5lbEZyYW1lGhQuc2lsby52MS5UdW5uZWxGcmFtZSgBMAFCH1odc2lsby5hZ2VudC9nZW4vc2lsby92MTtzaWxvdjFiBnByb3RvMw");
+  fileDesc("ChRzaWxvL3YxL3dvcmtlci5wcm90bxIHc2lsby52MSKaCwoDQ21kEgoKAmlkGAEgASgJEg4KBnJ1bl9pZBgJIAEoCRIoCgh0ZXJtaW5hbBgCIAEoCzIULnNpbG8udjEuVGVybWluYWxDbWRIABItCgtleGVjX3B5dGhvbhgDIAEoCzIWLnNpbG8udjEuRXhlY1B5dGhvbkNtZEgAEikKCWZpbGVfcmVhZBgEIAEoCzIULnNpbG8udjEuRmlsZVJlYWRDbWRIABIrCgpmaWxlX3dyaXRlGAUgASgLMhUuc2lsby52MS5GaWxlV3JpdGVDbWRIABIrCgpmaWxlX3BhdGNoGAYgASgLMhUuc2lsby52MS5GaWxlUGF0Y2hDbWRIABIgCgRncmVwGAcgASgLMhAuc2lsby52MS5HcmVwQ21kSAASJAoGY2FuY2VsGAggASgLMhIuc2lsby52MS5DYW5jZWxDbWRIABInCghkaXJfbGlzdBgKIAEoCzITLnNpbG8udjEuRGlyTGlzdENtZEgAEi0KC2Jyb3dzZV9maWxlGAsgASgLMhYuc2lsby52MS5Ccm93c2VGaWxlQ21kSAASIgoFbWtkaXIYDCABKAsyES5zaWxvLnYxLk1rZGlyQ21kSAASJAoGcmVtb3ZlGA0gASgLMhIuc2lsby52MS5SZW1vdmVDbWRIABInCghwdXRfZmlsZRgOIAEoCzITLnNpbG8udjEuUHV0RmlsZUNtZEgAEisKCnN5bmNfdG9vbHMYDyABKAsyFS5zaWxvLnYxLlN5bmNUb29sc0NtZEgAEjEKDWVuc3VyZV9jaHJvbWUYECABKAsyGC5zaWxvLnYxLkVuc3VyZUNocm9tZUNtZEgAEiAKBGxvb2sYESABKAsyEC5zaWxvLnYxLkxvb2tDbWRIABIiCgVjbGljaxgSIAEoCzIRLnNpbG8udjEuQ2xpY2tDbWRIABIgCgR0eXBlGBMgASgLMhAuc2lsby52MS5UeXBlQ21kSAASHgoDa2V5GBQgASgLMg8uc2lsby52MS5LZXlDbWRIABIkCgZzY3JvbGwYFSABKAsyEi5zaWxvLnYxLlNjcm9sbENtZEgAEi0KC3N5bmNfc2tpbGxzGBYgASgLMhYuc2lsby52MS5TeW5jU2tpbGxzQ21kSAASIAoEd2FsaxgXIAEoCzIQLnNpbG8udjEuV2Fsa0NtZEgAEiYKB2V4dHJhY3QYGCABKAsyEy5zaWxvLnYxLkV4dHJhY3RDbWRIABItCgtvcGVuX3R1bm5lbBgZIAEoCzIWLnNpbG8udjEuT3BlblR1bm5lbENtZEgAEiwKCmNoZWNrcG9pbnQYGiABKAsyFi5zaWxvLnYxLkNoZWNrcG9pbnRDbWRIABImCgdjaGFuZ2VzGBsgASgLMhMuc2lsby52MS5DaGFuZ2VzQ21kSAASLwoMY2hhbmdlX2ZpbGVzGBwgASgLMhcuc2lsby52MS5DaGFuZ2VGaWxlc0NtZEgAEi8KDGNoYW5nZV9wYXRjaBgdIAEoCzIXLnNpbG8udjEuQ2hhbmdlUGF0Y2hDbWRIABImCgdyZXN0b3JlGB4gASgLMhMuc2lsby52MS5SZXN0b3JlQ21kSAASLwoMYXJ0aWZhY3RfcGluGB8gASgLMhcuc2lsby52MS5BcnRpZmFjdFBpbkNtZEgAEjEKDWFydGlmYWN0X3JlYWQYICABKAsyGC5zaWxvLnYxLkFydGlmYWN0UmVhZENtZEgAEjUKD2FydGlmYWN0X2ZvcmdldBghIAEoCzIaLnNpbG8udjEuQXJ0aWZhY3RGb3JnZXRDbWRIABIkCgZyZW5kZXIYIiABKAsyEi5zaWxvLnYxLlJlbmRlckNtZEgAEicKCHJlYWRfZG9jGCMgASgLMhMuc2lsby52MS5SZWFkRG9jQ21kSABCBgoEYm9keSJcCghUb29sU3R1YhIRCgljb25uZWN0b3IYASABKAkSDgoGYWN0aW9uGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEhgKEGFyZ3Nfc2NoZW1hX2pzb24YBCABKAkiMAoMU3luY1Rvb2xzQ21kEiAKBXN0dWJzGAEgAygLMhEuc2lsby52MS5Ub29sU3R1YiJPCgdUb29sUmVxEhEKCWNvbm5lY3RvchgBIAEoCRIOCgZhY3Rpb24YAiABKAkSEQoJYXJnc19qc29uGAMgASgJEg4KBnJ1bl9pZBgEIAEoCSItCgdUb29sUmVzEhMKC3Jlc3VsdF9qc29uGAEgASgJEg0KBWVycm9yGAIgASgJIh4KC1Rlcm1pbmFsQ21kEg8KB2NvbW1hbmQYASABKAkiLgoNRXhlY1B5dGhvbkNtZBIMCgRjb2RlGAEg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KAwiMgoNU3luY1NraWxsc0NtZBIhCgVmaWxlcxgBIAMoCzISLnNpbG8udjEuU2tpbGxGaWxlIrQBCghDbWRFdmVudBIKCgJpZBgBIAEoCRInCgloZWFydGJlYXQYAiABKAsyEi5zaWxvLnYxLkhlYXJ0YmVhdEgAEiUKBWNodW5rGAMgASgLMhQuc2lsby52MS5PdXRwdXRDaHVua0gAEiAKBGRvbmUYBCABKAsyEC5zaWxvLnYxLkNtZERvbmVIABIiCgVlcnJvchgFIAEoCzIRLnNpbG8udjEuQ21kRXJyb3JIAEIGCgRib2R5IgsKCUhlYXJ0YmVhdCIbCgtPdXRwdXRDaHVuaxIMCgR0ZXh0GAEgASgJIigKB0NtZERvbmUSDgoGcmVzdWx0GAEgASgJEg0KBWltYWdlGAIgASgJIhsKCENtZEVycm9yEg8KB21lc3NhZ2UYASABKAkiKQoJU2VjcmV0UmVxEgwKBG5hbWUYASABKAkSDgoGcnVuX2lkGAIgASgJIikKCVNlY3JldFJlcxINCgV2YWx1ZRgBIAEoCRINCgVlcnJvchgCIAEoCSIVCgVGcmFtZRIMCgRkYXRhGAEgASgMIjUKCUNvbnNvbGVJTxIMCgRkYXRhGAEgASgMEgwKBHJvd3MYAiABKAUSDAoEY29scxgDIAEoBTK9AgoJQm90V29ya2VyEi8KCENvbW1hbmRzEhEuc2lsby52MS5DbWRFdmVudBoMLnNpbG8udjEuQ21kKAEwARIzCglHZXRTZWNyZXQSEi5zaWxvLnYxLlNlY3JldFJlcRoSLnNpbG8udjEuU2VjcmV0UmVzEi4KCENhbGxUb29sEhAuc2lsby52MS5Ub29sUmVxGhAuc2lsby52MS5Ub29sUmVzEikKA1ZOQxIOLnNpbG8udjEuRnJhbWUaDi5zaWxvLnYxLkZyYW1lKAEwARI1CgdDb25zb2xlEhIuc2lsby52MS5Db25zb2xlSU8aEi5zaWxvLnYxLkNvbnNvbGVJTygBMAESOAoGVHVubmVsEhQuc2lsby52MS5UdW5uZWxGcmFtZRoULnNpbG8udjEuVHVubmVsRnJhbWUoATABQh9aHXNpbG8uYWdlbnQvZ2VuL3NpbG8vdjE7c2lsb3YxYgZwcm90bzM");
 
 /**
  * @generated from message silo.v1.Cmd
@@ -215,6 +215,18 @@ export type Cmd = Message<"silo.v1.Cmd"> & {
      */
     value: ArtifactForgetCmd;
     case: "artifactForget";
+  } | {
+    /**
+     * @generated from field: silo.v1.RenderCmd render = 34;
+     */
+    value: RenderCmd;
+    case: "render";
+  } | {
+    /**
+     * @generated from field: silo.v1.ReadDocCmd read_doc = 35;
+     */
+    value: ReadDocCmd;
+    case: "readDoc";
   } | { case: undefined; value?: undefined };
 };
 
@@ -599,6 +611,76 @@ export const ExtractCmdSchema: GenMessage<ExtractCmd> = /*@__PURE__*/
   messageDesc(file_silo_v1_worker, 15);
 
 /**
+ * RenderCmd loads one page in the box's headless browser (Lightpanda), lets
+ * its scripts run and returns the document as it then stands, as JSON
+ * {url, status, html}. Each render is a process of its own: nothing a page
+ * did is there for the next one.
+ *
+ * @generated from message silo.v1.RenderCmd
+ */
+export type RenderCmd = Message<"silo.v1.RenderCmd"> & {
+  /**
+   * @generated from field: string url = 1;
+   */
+  url: string;
+
+  /**
+   * Refuse requests to internal addresses, after DNS (the operator's
+   * reader.block_private).
+   *
+   * @generated from field: bool block_private = 2;
+   */
+  blockPrivate: boolean;
+
+  /**
+   * The language to ask in, a BCP 47 tag ("" is en-US).
+   *
+   * @generated from field: string locale = 3;
+   */
+  locale: string;
+};
+
+/**
+ * Describes the message silo.v1.RenderCmd.
+ * Use `create(RenderCmdSchema)` to create a new message.
+ */
+export const RenderCmdSchema: GenMessage<RenderCmd> = /*@__PURE__*/
+  messageDesc(file_silo_v1_worker, 16);
+
+/**
+ * ReadDocCmd reads the text of a document the Control Plane fetched (a PDF, a
+ * word-processor file) with the box's own tools, as ExtractCmd does for a file
+ * in the workspace, and answers the same JSON. The file is not kept.
+ *
+ * @generated from message silo.v1.ReadDocCmd
+ */
+export type ReadDocCmd = Message<"silo.v1.ReadDocCmd"> & {
+  /**
+   * name is only what the file is called: its extension picks the tool.
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: bytes data = 2;
+   */
+  data: Uint8Array;
+
+  /**
+   * @generated from field: bool ocr = 3;
+   */
+  ocr: boolean;
+};
+
+/**
+ * Describes the message silo.v1.ReadDocCmd.
+ * Use `create(ReadDocCmdSchema)` to create a new message.
+ */
+export const ReadDocCmdSchema: GenMessage<ReadDocCmd> = /*@__PURE__*/
+  messageDesc(file_silo_v1_worker, 17);
+
+/**
  * HistoryLimits bound what the workspace history keeps. Zero fields take the
  * worker's defaults.
  *
@@ -637,7 +719,7 @@ export type HistoryLimits = Message<"silo.v1.HistoryLimits"> & {
  * Use `create(HistoryLimitsSchema)` to create a new message.
  */
 export const HistoryLimitsSchema: GenMessage<HistoryLimits> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 16);
+  messageDesc(file_silo_v1_worker, 18);
 
 /**
  * CheckpointCmd snapshots the workspace into the Bot's history store (a shadow
@@ -667,7 +749,7 @@ export type CheckpointCmd = Message<"silo.v1.CheckpointCmd"> & {
  * Use `create(CheckpointCmdSchema)` to create a new message.
  */
 export const CheckpointCmdSchema: GenMessage<CheckpointCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 17);
+  messageDesc(file_silo_v1_worker, 19);
 
 /**
  * ChangesCmd lists the change sets between consecutive checkpoints, newest
@@ -693,7 +775,7 @@ export type ChangesCmd = Message<"silo.v1.ChangesCmd"> & {
  * Use `create(ChangesCmdSchema)` to create a new message.
  */
 export const ChangesCmdSchema: GenMessage<ChangesCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 18);
+  messageDesc(file_silo_v1_worker, 20);
 
 /**
  * ChangeFilesCmd lists the files that differ between two history objects
@@ -725,7 +807,7 @@ export type ChangeFilesCmd = Message<"silo.v1.ChangeFilesCmd"> & {
  * Use `create(ChangeFilesCmdSchema)` to create a new message.
  */
 export const ChangeFilesCmdSchema: GenMessage<ChangeFilesCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 19);
+  messageDesc(file_silo_v1_worker, 21);
 
 /**
  * ChangePatchCmd returns one file's unified diff between two history objects.
@@ -768,7 +850,7 @@ export type ChangePatchCmd = Message<"silo.v1.ChangePatchCmd"> & {
  * Use `create(ChangePatchCmdSchema)` to create a new message.
  */
 export const ChangePatchCmdSchema: GenMessage<ChangePatchCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 20);
+  messageDesc(file_silo_v1_worker, 22);
 
 /**
  * RestoreCmd puts workspace files back as they were at a history object. What
@@ -822,7 +904,7 @@ export type RestoreCmd = Message<"silo.v1.RestoreCmd"> & {
  * Use `create(RestoreCmdSchema)` to create a new message.
  */
 export const RestoreCmdSchema: GenMessage<RestoreCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 21);
+  messageDesc(file_silo_v1_worker, 23);
 
 /**
  * ArtifactPinCmd copies a workspace file or folder into the Bot's artifact
@@ -889,7 +971,7 @@ export type ArtifactPinCmd = Message<"silo.v1.ArtifactPinCmd"> & {
  * Use `create(ArtifactPinCmdSchema)` to create a new message.
  */
 export const ArtifactPinCmdSchema: GenMessage<ArtifactPinCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 22);
+  messageDesc(file_silo_v1_worker, 24);
 
 /**
  * ArtifactReadCmd reads one blob of the artifact store by its sha256. The
@@ -910,7 +992,7 @@ export type ArtifactReadCmd = Message<"silo.v1.ArtifactReadCmd"> & {
  * Use `create(ArtifactReadCmdSchema)` to create a new message.
  */
 export const ArtifactReadCmdSchema: GenMessage<ArtifactReadCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 23);
+  messageDesc(file_silo_v1_worker, 25);
 
 /**
  * ArtifactForgetCmd removes pins; blobs no remaining pin uses go with them.
@@ -929,7 +1011,7 @@ export type ArtifactForgetCmd = Message<"silo.v1.ArtifactForgetCmd"> & {
  * Use `create(ArtifactForgetCmdSchema)` to create a new message.
  */
 export const ArtifactForgetCmdSchema: GenMessage<ArtifactForgetCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 24);
+  messageDesc(file_silo_v1_worker, 26);
 
 /**
  * OpenTunnelCmd asks the worker to dial 127.0.0.1:port inside the Bot and open
@@ -955,7 +1037,7 @@ export type OpenTunnelCmd = Message<"silo.v1.OpenTunnelCmd"> & {
  * Use `create(OpenTunnelCmdSchema)` to create a new message.
  */
 export const OpenTunnelCmdSchema: GenMessage<OpenTunnelCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 25);
+  messageDesc(file_silo_v1_worker, 27);
 
 /**
  * TunnelFrame is one chunk of a proxied connection. The worker's first frame
@@ -986,7 +1068,7 @@ export type TunnelFrame = Message<"silo.v1.TunnelFrame"> & {
  * Use `create(TunnelFrameSchema)` to create a new message.
  */
 export const TunnelFrameSchema: GenMessage<TunnelFrame> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 26);
+  messageDesc(file_silo_v1_worker, 28);
 
 /**
  * @generated from message silo.v1.MkdirCmd
@@ -1003,7 +1085,7 @@ export type MkdirCmd = Message<"silo.v1.MkdirCmd"> & {
  * Use `create(MkdirCmdSchema)` to create a new message.
  */
 export const MkdirCmdSchema: GenMessage<MkdirCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 27);
+  messageDesc(file_silo_v1_worker, 29);
 
 /**
  * @generated from message silo.v1.RemoveCmd
@@ -1020,7 +1102,7 @@ export type RemoveCmd = Message<"silo.v1.RemoveCmd"> & {
  * Use `create(RemoveCmdSchema)` to create a new message.
  */
 export const RemoveCmdSchema: GenMessage<RemoveCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 28);
+  messageDesc(file_silo_v1_worker, 30);
 
 /**
  * @generated from message silo.v1.PutFileCmd
@@ -1042,7 +1124,7 @@ export type PutFileCmd = Message<"silo.v1.PutFileCmd"> & {
  * Use `create(PutFileCmdSchema)` to create a new message.
  */
 export const PutFileCmdSchema: GenMessage<PutFileCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 29);
+  messageDesc(file_silo_v1_worker, 31);
 
 /**
  * @generated from message silo.v1.EnsureChromeCmd
@@ -1055,7 +1137,7 @@ export type EnsureChromeCmd = Message<"silo.v1.EnsureChromeCmd"> & {
  * Use `create(EnsureChromeCmdSchema)` to create a new message.
  */
 export const EnsureChromeCmdSchema: GenMessage<EnsureChromeCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 30);
+  messageDesc(file_silo_v1_worker, 32);
 
 /**
  * @generated from message silo.v1.LookCmd
@@ -1068,7 +1150,7 @@ export type LookCmd = Message<"silo.v1.LookCmd"> & {
  * Use `create(LookCmdSchema)` to create a new message.
  */
 export const LookCmdSchema: GenMessage<LookCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 31);
+  messageDesc(file_silo_v1_worker, 33);
 
 /**
  * @generated from message silo.v1.ClickCmd
@@ -1095,7 +1177,7 @@ export type ClickCmd = Message<"silo.v1.ClickCmd"> & {
  * Use `create(ClickCmdSchema)` to create a new message.
  */
 export const ClickCmdSchema: GenMessage<ClickCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 32);
+  messageDesc(file_silo_v1_worker, 34);
 
 /**
  * @generated from message silo.v1.TypeCmd
@@ -1112,7 +1194,7 @@ export type TypeCmd = Message<"silo.v1.TypeCmd"> & {
  * Use `create(TypeCmdSchema)` to create a new message.
  */
 export const TypeCmdSchema: GenMessage<TypeCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 33);
+  messageDesc(file_silo_v1_worker, 35);
 
 /**
  * @generated from message silo.v1.KeyCmd
@@ -1129,7 +1211,7 @@ export type KeyCmd = Message<"silo.v1.KeyCmd"> & {
  * Use `create(KeyCmdSchema)` to create a new message.
  */
 export const KeyCmdSchema: GenMessage<KeyCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 34);
+  messageDesc(file_silo_v1_worker, 36);
 
 /**
  * @generated from message silo.v1.ScrollCmd
@@ -1156,7 +1238,7 @@ export type ScrollCmd = Message<"silo.v1.ScrollCmd"> & {
  * Use `create(ScrollCmdSchema)` to create a new message.
  */
 export const ScrollCmdSchema: GenMessage<ScrollCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 35);
+  messageDesc(file_silo_v1_worker, 37);
 
 /**
  * @generated from message silo.v1.SkillFile
@@ -1178,7 +1260,7 @@ export type SkillFile = Message<"silo.v1.SkillFile"> & {
  * Use `create(SkillFileSchema)` to create a new message.
  */
 export const SkillFileSchema: GenMessage<SkillFile> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 36);
+  messageDesc(file_silo_v1_worker, 38);
 
 /**
  * @generated from message silo.v1.SyncSkillsCmd
@@ -1195,7 +1277,7 @@ export type SyncSkillsCmd = Message<"silo.v1.SyncSkillsCmd"> & {
  * Use `create(SyncSkillsCmdSchema)` to create a new message.
  */
 export const SyncSkillsCmdSchema: GenMessage<SyncSkillsCmd> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 37);
+  messageDesc(file_silo_v1_worker, 39);
 
 /**
  * @generated from message silo.v1.CmdEvent
@@ -1241,7 +1323,7 @@ export type CmdEvent = Message<"silo.v1.CmdEvent"> & {
  * Use `create(CmdEventSchema)` to create a new message.
  */
 export const CmdEventSchema: GenMessage<CmdEvent> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 38);
+  messageDesc(file_silo_v1_worker, 40);
 
 /**
  * @generated from message silo.v1.Heartbeat
@@ -1254,7 +1336,7 @@ export type Heartbeat = Message<"silo.v1.Heartbeat"> & {
  * Use `create(HeartbeatSchema)` to create a new message.
  */
 export const HeartbeatSchema: GenMessage<Heartbeat> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 39);
+  messageDesc(file_silo_v1_worker, 41);
 
 /**
  * @generated from message silo.v1.OutputChunk
@@ -1271,7 +1353,7 @@ export type OutputChunk = Message<"silo.v1.OutputChunk"> & {
  * Use `create(OutputChunkSchema)` to create a new message.
  */
 export const OutputChunkSchema: GenMessage<OutputChunk> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 40);
+  messageDesc(file_silo_v1_worker, 42);
 
 /**
  * @generated from message silo.v1.CmdDone
@@ -1296,7 +1378,7 @@ export type CmdDone = Message<"silo.v1.CmdDone"> & {
  * Use `create(CmdDoneSchema)` to create a new message.
  */
 export const CmdDoneSchema: GenMessage<CmdDone> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 41);
+  messageDesc(file_silo_v1_worker, 43);
 
 /**
  * @generated from message silo.v1.CmdError
@@ -1313,7 +1395,7 @@ export type CmdError = Message<"silo.v1.CmdError"> & {
  * Use `create(CmdErrorSchema)` to create a new message.
  */
 export const CmdErrorSchema: GenMessage<CmdError> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 42);
+  messageDesc(file_silo_v1_worker, 44);
 
 /**
  * @generated from message silo.v1.SecretReq
@@ -1335,7 +1417,7 @@ export type SecretReq = Message<"silo.v1.SecretReq"> & {
  * Use `create(SecretReqSchema)` to create a new message.
  */
 export const SecretReqSchema: GenMessage<SecretReq> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 43);
+  messageDesc(file_silo_v1_worker, 45);
 
 /**
  * @generated from message silo.v1.SecretRes
@@ -1357,7 +1439,7 @@ export type SecretRes = Message<"silo.v1.SecretRes"> & {
  * Use `create(SecretResSchema)` to create a new message.
  */
 export const SecretResSchema: GenMessage<SecretRes> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 44);
+  messageDesc(file_silo_v1_worker, 46);
 
 /**
  * @generated from message silo.v1.Frame
@@ -1374,7 +1456,7 @@ export type Frame = Message<"silo.v1.Frame"> & {
  * Use `create(FrameSchema)` to create a new message.
  */
 export const FrameSchema: GenMessage<Frame> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 45);
+  messageDesc(file_silo_v1_worker, 47);
 
 /**
  * @generated from message silo.v1.ConsoleIO
@@ -1401,7 +1483,7 @@ export type ConsoleIO = Message<"silo.v1.ConsoleIO"> & {
  * Use `create(ConsoleIOSchema)` to create a new message.
  */
 export const ConsoleIOSchema: GenMessage<ConsoleIO> = /*@__PURE__*/
-  messageDesc(file_silo_v1_worker, 46);
+  messageDesc(file_silo_v1_worker, 48);
 
 /**
  * @generated from service silo.v1.BotWorker

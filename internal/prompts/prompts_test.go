@@ -50,10 +50,32 @@ func TestSystemPromptNamesTheJavaScriptToolchain(t *testing.T) {
 // Behind the network filter only 80 and 443 connect directly; the box's
 // start.sh points proxychains4, ssh and $SILO_SOCKS_PROXY at the SOCKS5 door.
 // The model only finds that door if the prompt names it and the switch.
-func TestSystemPromptNamesTheSOCKSDoor(t *testing.T) {
-	for _, want := range []string{"SILO_SOCKS_PROXY", "proxychains4", "Other protocols"} {
-		if !strings.Contains(System, want) {
-			t.Fatalf("SYSTEM.md does not mention %s", want)
+func TestNetworkPromptNamesTheSOCKSDoor(t *testing.T) {
+	for _, want := range []string{"SILO_SOCKS_PROXY", "proxychains4", "Other protocols", "X-Silo-Filter"} {
+		if !strings.Contains(Network, want) {
+			t.Fatalf("NETWORK.md does not mention %s", want)
+		}
+	}
+}
+
+// A run that answers the human is taught sections, questions and subagents by
+// the lead part; the core every run gets, a subagent's included, is not.
+func TestLeadPromptHoldsWhatOnlyALeadDoes(t *testing.T) {
+	for _, want := range []string{"<section_send />", "ask_owner", "spawn_agent", "put_widget", "create_automation"} {
+		if !strings.Contains(Lead, want) {
+			t.Errorf("LEAD.md does not mention %s", want)
+		}
+		if strings.Contains(System, want) {
+			t.Errorf("SYSTEM.md mentions %s, which belongs in LEAD.md", want)
+		}
+	}
+}
+
+// The compaction prompt asks for what the next turn cannot do without.
+func TestCompactPromptAsksForWhatMustSurvive(t *testing.T) {
+	for _, want := range []string{"Standing instructions", "Did not work", "denied", "still alive", "verbatim"} {
+		if !strings.Contains(Compact, want) {
+			t.Errorf("COMPACT.md does not ask for %q", want)
 		}
 	}
 }

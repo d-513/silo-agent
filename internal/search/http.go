@@ -78,35 +78,41 @@ var chromeOrder = []string{
 
 // browser keeps no cookies: a query's region cookies must not reach the next
 // query.
-var browser = req.C().
-	SetTLSFingerprint(utls.HelloChrome_133).
-	SetHTTP2SettingsFrame(
-		http2.Setting{ID: http2.SettingHeaderTableSize, Val: 65536},
-		http2.Setting{ID: http2.SettingEnablePush, Val: 0},
-		http2.Setting{ID: http2.SettingInitialWindowSize, Val: 6291456},
-		http2.Setting{ID: http2.SettingMaxHeaderListSize, Val: 262144},
-	).
-	SetHTTP2ConnectionFlow(15663105).
-	SetHTTP2HeaderPriority(http2.PriorityParam{StreamDep: 0, Exclusive: true, Weight: 255}).
-	SetCommonPseudoHeaderOder(":method", ":authority", ":scheme", ":path").
-	SetCommonHeaderOrder(chromeOrder...).
-	SetCommonHeaders(map[string]string{
-		"sec-ch-ua":                 chromeBrands,
-		"sec-ch-ua-mobile":          "?0",
-		"sec-ch-ua-platform":        `"macOS"`,
-		"upgrade-insecure-requests": "1",
-		"user-agent":                chromeUA,
-		"accept":                    chromeAccept,
-		"sec-fetch-mode":            "navigate",
-		"sec-fetch-user":            "?1",
-		"sec-fetch-dest":            "document",
-		"accept-encoding":           chromeEncoded,
-		"priority":                  "u=0, i",
-	}).
-	EnableAutoDecompress().
-	SetCookieJar(nil).
-	SetTimeout(sourceTimeout).
-	DisableAutoReadResponse()
+var browser = Chrome().SetTimeout(sourceTimeout)
+
+// Chrome is a new client that looks like that browser in every layer; the
+// caller adds its own timeout, dialer and the headers of the navigation
+// (accept-language, sec-fetch-site). The page reader uses it too.
+func Chrome() *req.Client {
+	return req.C().
+		SetTLSFingerprint(utls.HelloChrome_133).
+		SetHTTP2SettingsFrame(
+			http2.Setting{ID: http2.SettingHeaderTableSize, Val: 65536},
+			http2.Setting{ID: http2.SettingEnablePush, Val: 0},
+			http2.Setting{ID: http2.SettingInitialWindowSize, Val: 6291456},
+			http2.Setting{ID: http2.SettingMaxHeaderListSize, Val: 262144},
+		).
+		SetHTTP2ConnectionFlow(15663105).
+		SetHTTP2HeaderPriority(http2.PriorityParam{StreamDep: 0, Exclusive: true, Weight: 255}).
+		SetCommonPseudoHeaderOder(":method", ":authority", ":scheme", ":path").
+		SetCommonHeaderOrder(chromeOrder...).
+		SetCommonHeaders(map[string]string{
+			"sec-ch-ua":                 chromeBrands,
+			"sec-ch-ua-mobile":          "?0",
+			"sec-ch-ua-platform":        `"macOS"`,
+			"upgrade-insecure-requests": "1",
+			"user-agent":                chromeUA,
+			"accept":                    chromeAccept,
+			"sec-fetch-mode":            "navigate",
+			"sec-fetch-user":            "?1",
+			"sec-fetch-dest":            "document",
+			"accept-encoding":           chromeEncoded,
+			"priority":                  "u=0, i",
+		}).
+		EnableAutoDecompress().
+		SetCookieJar(nil).
+		DisableAutoReadResponse()
+}
 
 // plain asks public APIs, under an honest name.
 var plain = req.C().

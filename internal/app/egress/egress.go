@@ -590,6 +590,25 @@ func (s *Service) botLists(botID string) *v1.EgressHostLists {
 	return out
 }
 
+// Blocked reports whether host is one the Bot may not reach: on the
+// operator's block list or the Bot's own. The gateway holds boxes to these
+// lists; the control plane asks for the pages it reads on a Bot's word, which
+// never pass the gateway. The threat feeds are the gateway's alone.
+func (s *Service) Blocked(botID, host string) bool {
+	if s == nil {
+		return false
+	}
+	if egress.Covers(s.cfg().Egress.Block, host) {
+		return true
+	}
+	if botID == "" {
+		return false
+	}
+	var patterns []string
+	s.db.Model(&db.EgressPattern{}).Where("bot_id = ? AND kind = ?", botID, "block").Pluck("pattern", &patterns)
+	return egress.Covers(patterns, host)
+}
+
 // secretHosts reads a secret's stored JSON host list, or nil.
 func secretHosts(raw string) []string {
 	if strings.TrimSpace(raw) == "" {

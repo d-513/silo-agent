@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { capOf, effective, isReady, markOf, modelOf, providerOf, providersInUse, resolveJobs } from "./providerJobs.ts";
+import { accountsOf, capOf, effective, isReady, markOf, modelOf, providerOf, providersInUse, resolveJobs } from "./providerJobs.ts";
 
 test("a job follows its setting's fallbacks", () => {
   const jobs = resolveJobs({ model: "openrouter/openai/gpt-5.6-luna", model_title: "", model_approval: "", transcribe_model: "openrouter/openai/whisper-1", "voice.transcribe_model": "", "voice.speech_model": "elevenlabs/eleven_flash_v2_5", model_voice: "groq/openai/gpt-oss-120b", embedding_model: "openrouter/openai/text-embedding-3-small" }, ["typesafe/jev-latest"]);
@@ -39,6 +39,12 @@ test("ready means a key, or a local server's address", () => {
   assert.equal(isReady("deepgram", fields, { "providers.deepgram.api_key": "k" }, 2), true);
   assert.equal(isReady("groq", fields, {}, 2), true, "a key from the environment");
   assert.equal(isReady("local", fields, {}, 2), true);
+  // A provider the operator signs in to is ready by its account, key or no key.
+  const accounts = accountsOf([{ id: "claude", signIn: true, signedIn: false }, { id: "groq", signIn: false, signedIn: false }]);
+  assert.deepEqual(accounts, { claude: false });
+  assert.equal(isReady("claude", fields, { "providers.claude.api_key": "k" }, 2, accounts), false);
+  assert.equal(isReady("claude", fields, {}, 2, { claude: true }), true);
+  assert.equal(isReady("groq", fields, {}, 2, accounts), true);
 });
 
 test("capOf counts allowed models and reads a local server's realtime setting", () => {
