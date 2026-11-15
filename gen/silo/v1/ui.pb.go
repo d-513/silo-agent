@@ -2132,6 +2132,9 @@ type Bot struct {
 	LastMessage     string `protobuf:"bytes,34,opt,name=last_message,json=lastMessage,proto3" json:"last_message,omitempty"`
 	LastMessageAt   string `protobuf:"bytes,35,opt,name=last_message_at,json=lastMessageAt,proto3" json:"last_message_at,omitempty"`
 	LastMessageMine bool   `protobuf:"varint,36,opt,name=last_message_mine,json=lastMessageMine,proto3" json:"last_message_mine,omitempty"`
+	// DashboardUrgent counts the open asks the Bot marked urgent: while there
+	// is one, status is needs_you for everyone on the Bot.
+	DashboardUrgent int32 `protobuf:"varint,37,opt,name=dashboard_urgent,json=dashboardUrgent,proto3" json:"dashboard_urgent,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -2409,6 +2412,13 @@ func (x *Bot) GetLastMessageMine() bool {
 		return x.LastMessageMine
 	}
 	return false
+}
+
+func (x *Bot) GetDashboardUrgent() int32 {
+	if x != nil {
+		return x.DashboardUrgent
+	}
+	return 0
 }
 
 // Space is a Workspace as the caller sees it.
@@ -9458,13 +9468,16 @@ type DashboardCard struct {
 	// Primary submit button label (e.g. "Send", "Run cleanup").
 	SubmitLabel string `protobuf:"bytes,8,opt,name=submit_label,json=submitLabel,proto3" json:"submit_label,omitempty"`
 	// "open", "submitted", or "dismissed".
-	Status        string `protobuf:"bytes,11,opt,name=status,proto3" json:"status,omitempty"`
-	SourceKind    string `protobuf:"bytes,12,opt,name=source_kind,json=sourceKind,proto3" json:"source_kind,omitempty"`
-	SourceName    string `protobuf:"bytes,13,opt,name=source_name,json=sourceName,proto3" json:"source_name,omitempty"`
-	ChatId        string `protobuf:"bytes,14,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
-	CreatedAt     string `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     string `protobuf:"bytes,16,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	Read          bool   `protobuf:"varint,17,opt,name=read,proto3" json:"read,omitempty"`
+	Status     string `protobuf:"bytes,11,opt,name=status,proto3" json:"status,omitempty"`
+	SourceKind string `protobuf:"bytes,12,opt,name=source_kind,json=sourceKind,proto3" json:"source_kind,omitempty"`
+	SourceName string `protobuf:"bytes,13,opt,name=source_name,json=sourceName,proto3" json:"source_name,omitempty"`
+	ChatId     string `protobuf:"bytes,14,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
+	CreatedAt  string `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt  string `protobuf:"bytes,16,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Read       bool   `protobuf:"varint,17,opt,name=read,proto3" json:"read,omitempty"`
+	// Urgent is the Bot saying this cannot wait: while it is open the Bot's
+	// status reads needs_you.
+	Urgent        bool `protobuf:"varint,18,opt,name=urgent,proto3" json:"urgent,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9600,6 +9613,13 @@ func (x *DashboardCard) GetUpdatedAt() string {
 func (x *DashboardCard) GetRead() bool {
 	if x != nil {
 		return x.Read
+	}
+	return false
+}
+
+func (x *DashboardCard) GetUrgent() bool {
+	if x != nil {
+		return x.Urgent
 	}
 	return false
 }
@@ -28852,7 +28872,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x10CheckOIDCRequest\"b\n" +
 	"\x11CheckOIDCResponse\x12\x16\n" +
 	"\x06issuer\x18\x01 \x01(\tR\x06issuer\x125\n" +
-	"\x16authorization_endpoint\x18\x02 \x01(\tR\x15authorizationEndpoint\"\x82\t\n" +
+	"\x16authorization_endpoint\x18\x02 \x01(\tR\x15authorizationEndpoint\"\xad\t\n" +
 	"\x03Bot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -28890,7 +28910,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\amachine\x18! \x01(\tR\amachine\x12!\n" +
 	"\flast_message\x18\" \x01(\tR\vlastMessage\x12&\n" +
 	"\x0flast_message_at\x18# \x01(\tR\rlastMessageAt\x12*\n" +
-	"\x11last_message_mine\x18$ \x01(\bR\x0flastMessageMineJ\x04\b\t\x10\n" +
+	"\x11last_message_mine\x18$ \x01(\bR\x0flastMessageMine\x12)\n" +
+	"\x10dashboard_urgent\x18% \x01(\x05R\x0fdashboardUrgentJ\x04\b\t\x10\n" +
 	"\"\x9e\x01\n" +
 	"\x05Space\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -29404,7 +29425,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x19\n" +
 	"\bnew_chat\x18\x03 \x01(\bR\anewChat\":\n" +
 	"\x15QuoteFeedPostResponse\x12!\n" +
-	"\x04chat\x18\x01 \x01(\v2\r.silo.v1.ChatR\x04chat\"\xa9\x03\n" +
+	"\x04chat\x18\x01 \x01(\v2\r.silo.v1.ChatR\x04chat\"\xc1\x03\n" +
 	"\rDashboardCard\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06bot_id\x18\x02 \x01(\tR\x05botId\x12\x10\n" +
@@ -29425,7 +29446,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"created_at\x18\x0f \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
 	"updated_at\x18\x10 \x01(\tR\tupdatedAt\x12\x12\n" +
-	"\x04read\x18\x11 \x01(\bR\x04readJ\x04\b\t\x10\n" +
+	"\x04read\x18\x11 \x01(\bR\x04read\x12\x16\n" +
+	"\x06urgent\x18\x12 \x01(\bR\x06urgentJ\x04\b\t\x10\n" +
 	"J\x04\b\n" +
 	"\x10\v\"\xb8\x02\n" +
 	"\n" +

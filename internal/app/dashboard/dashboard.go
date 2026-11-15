@@ -99,6 +99,14 @@ func (s *Service) Open(botID string) int32 {
 	return int32(n)
 }
 
+// Urgent counts the open asks the Bot marked urgent: with one waiting the
+// Bot reads as Needs you for everyone on it, since any of them may answer.
+func (s *Service) Urgent(botID string) int32 {
+	var n int64
+	s.db.Model(&db.DashboardCard{}).Where("bot_id = ? AND status = 'open' AND urgent", botID).Count(&n)
+	return int32(n)
+}
+
 // ListDashboard is the whole page: asks, unread Feed posts, widgets in their
 // places, and the Dashboard automation's state for the meta line.
 func (s *Service) ListDashboard(ctx context.Context, req *connect.Request[v1.ListDashboardRequest]) (*connect.Response[v1.ListDashboardResponse], error) {

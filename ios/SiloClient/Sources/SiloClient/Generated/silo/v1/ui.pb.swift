@@ -878,6 +878,31 @@ public nonisolated struct Silo_V1_Bot: @unchecked Sendable {
     set {_uniqueStorage()._machine = newValue}
   }
 
+  /// The newest thing said in the conversations the viewer reads on this Bot
+  /// (their own chats; for a manager also the Bot's own), as one short line,
+  /// when it was said (RFC 3339) and whether the viewer wrote it. "" with none.
+  public var lastMessage: String {
+    get {_storage._lastMessage}
+    set {_uniqueStorage()._lastMessage = newValue}
+  }
+
+  public var lastMessageAt: String {
+    get {_storage._lastMessageAt}
+    set {_uniqueStorage()._lastMessageAt = newValue}
+  }
+
+  public var lastMessageMine: Bool {
+    get {_storage._lastMessageMine}
+    set {_uniqueStorage()._lastMessageMine = newValue}
+  }
+
+  /// DashboardUrgent counts the open asks the Bot marked urgent: while there
+  /// is one, status is needs_you for everyone on the Bot.
+  public var dashboardUrgent: Int32 {
+    get {_storage._dashboardUrgent}
+    set {_uniqueStorage()._dashboardUrgent = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1808,6 +1833,9 @@ public nonisolated struct Silo_V1_ListBotsResponse: Sendable {
 
   /// For a Workspace admin listing one Workspace: its Bots they are not on.
   public var others: [Silo_V1_OtherBot] = []
+
+  /// A call can work (ListModels.call_enabled), so the list can offer Call.
+  public var callEnabled: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3025,6 +3053,10 @@ public nonisolated struct Silo_V1_DashboardCard: Sendable {
 
   public var read: Bool = false
 
+  /// Urgent is the Bot saying this cannot wait: while it is open the Bot's
+  /// status reads needs_you.
+  public var urgent: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -4054,6 +4086,14 @@ public nonisolated struct Silo_V1_Chat: Sendable {
 
   public var mine: Bool = false
 
+  /// hidden: its author put it away. It keeps everything and opens as before;
+  /// it is only left out of the chats shown first (SetChatHidden).
+  public var hidden: Bool = false
+
+  /// When it was made (RFC 3339): the order its tab keeps, whatever moves it
+  /// in the list by activity.
+  public var createdAt: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -4382,6 +4422,22 @@ public nonisolated struct Silo_V1_RenameChatRequest: Sendable {
   public var id: String = String()
 
   public var title: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_SetChatHiddenRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var botID: String = String()
+
+  public var chatID: String = String()
+
+  public var hidden: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -10450,7 +10506,7 @@ nonisolated extension Silo_V1_CheckOIDCResponse: SwiftProtobuf.Message, SwiftPro
 
 nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Bot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}status\0\u{3}last_task\0\u{1}crest\0\u{3}worker_connected\0\u{1}description\0\u{1}soul\0\u{4}\u{2}auto_approve\0\u{1}model\0\u{3}feed_unread\0\u{3}mail_address\0\u{3}time_zone\0\u{3}time_zone_pinned\0\u{1}language\0\u{3}output_policy\0\u{3}audit_unseen\0\u{3}dashboard_asks\0\u{3}desktop_paused\0\u{1}proactivity\0\u{3}heartbeat_custom\0\u{1}activity\0\u{3}space_id\0\u{1}role\0\u{1}people\0\u{3}last_active_at\0\u{3}next_run_name\0\u{3}next_run_at\0\u{3}speech_model\0\u{1}voice\0\u{3}speech_speed\0\u{1}machine\0\u{c}\u{9}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}status\0\u{3}last_task\0\u{1}crest\0\u{3}worker_connected\0\u{1}description\0\u{1}soul\0\u{4}\u{2}auto_approve\0\u{1}model\0\u{3}feed_unread\0\u{3}mail_address\0\u{3}time_zone\0\u{3}time_zone_pinned\0\u{1}language\0\u{3}output_policy\0\u{3}audit_unseen\0\u{3}dashboard_asks\0\u{3}desktop_paused\0\u{1}proactivity\0\u{3}heartbeat_custom\0\u{1}activity\0\u{3}space_id\0\u{1}role\0\u{1}people\0\u{3}last_active_at\0\u{3}next_run_name\0\u{3}next_run_at\0\u{3}speech_model\0\u{1}voice\0\u{3}speech_speed\0\u{1}machine\0\u{3}last_message\0\u{3}last_message_at\0\u{3}last_message_mine\0\u{3}dashboard_urgent\0\u{c}\u{9}\u{1}")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -10485,6 +10541,10 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
     var _voice: String = String()
     var _speechSpeed: Double = 0
     var _machine: String = String()
+    var _lastMessage: String = String()
+    var _lastMessageAt: String = String()
+    var _lastMessageMine: Bool = false
+    var _dashboardUrgent: Int32 = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -10527,6 +10587,10 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
       _voice = source._voice
       _speechSpeed = source._speechSpeed
       _machine = source._machine
+      _lastMessage = source._lastMessage
+      _lastMessageAt = source._lastMessageAt
+      _lastMessageMine = source._lastMessageMine
+      _dashboardUrgent = source._dashboardUrgent
     }
   }
 
@@ -10577,6 +10641,10 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
         case 31: try { try decoder.decodeSingularStringField(value: &_storage._voice) }()
         case 32: try { try decoder.decodeSingularDoubleField(value: &_storage._speechSpeed) }()
         case 33: try { try decoder.decodeSingularStringField(value: &_storage._machine) }()
+        case 34: try { try decoder.decodeSingularStringField(value: &_storage._lastMessage) }()
+        case 35: try { try decoder.decodeSingularStringField(value: &_storage._lastMessageAt) }()
+        case 36: try { try decoder.decodeSingularBoolField(value: &_storage._lastMessageMine) }()
+        case 37: try { try decoder.decodeSingularInt32Field(value: &_storage._dashboardUrgent) }()
         default: break
         }
       }
@@ -10681,6 +10749,18 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
       if !_storage._machine.isEmpty {
         try visitor.visitSingularStringField(value: _storage._machine, fieldNumber: 33)
       }
+      if !_storage._lastMessage.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._lastMessage, fieldNumber: 34)
+      }
+      if !_storage._lastMessageAt.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._lastMessageAt, fieldNumber: 35)
+      }
+      if _storage._lastMessageMine != false {
+        try visitor.visitSingularBoolField(value: _storage._lastMessageMine, fieldNumber: 36)
+      }
+      if _storage._dashboardUrgent != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._dashboardUrgent, fieldNumber: 37)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -10722,6 +10802,10 @@ nonisolated extension Silo_V1_Bot: SwiftProtobuf.Message, SwiftProtobuf._Message
         if _storage._voice != rhs_storage._voice {return false}
         if _storage._speechSpeed != rhs_storage._speechSpeed {return false}
         if _storage._machine != rhs_storage._machine {return false}
+        if _storage._lastMessage != rhs_storage._lastMessage {return false}
+        if _storage._lastMessageAt != rhs_storage._lastMessageAt {return false}
+        if _storage._lastMessageMine != rhs_storage._lastMessageMine {return false}
+        if _storage._dashboardUrgent != rhs_storage._dashboardUrgent {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -12754,7 +12838,7 @@ nonisolated extension Silo_V1_ListBotsRequest: SwiftProtobuf.Message, SwiftProto
 
 nonisolated extension Silo_V1_ListBotsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ListBotsResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}bots\0\u{1}others\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}bots\0\u{1}others\0\u{3}call_enabled\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -12764,6 +12848,7 @@ nonisolated extension Silo_V1_ListBotsResponse: SwiftProtobuf.Message, SwiftProt
       switch fieldNumber {
       case 1: try { try decoder.decodeRepeatedMessageField(value: &self.bots) }()
       case 2: try { try decoder.decodeRepeatedMessageField(value: &self.others) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.callEnabled) }()
       default: break
       }
     }
@@ -12776,12 +12861,16 @@ nonisolated extension Silo_V1_ListBotsResponse: SwiftProtobuf.Message, SwiftProt
     if !self.others.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.others, fieldNumber: 2)
     }
+    if self.callEnabled != false {
+      try visitor.visitSingularBoolField(value: self.callEnabled, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Silo_V1_ListBotsResponse, rhs: Silo_V1_ListBotsResponse) -> Bool {
     if lhs.bots != rhs.bots {return false}
     if lhs.others != rhs.others {return false}
+    if lhs.callEnabled != rhs.callEnabled {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -15253,7 +15342,7 @@ nonisolated extension Silo_V1_QuoteFeedPostResponse: SwiftProtobuf.Message, Swif
 
 nonisolated extension Silo_V1_DashboardCard: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DashboardCard"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}bot_id\0\u{1}key\0\u{1}title\0\u{1}summary\0\u{1}priority\0\u{3}blocks_json\0\u{3}submit_label\0\u{2}\u{3}status\0\u{3}source_kind\0\u{3}source_name\0\u{3}chat_id\0\u{3}created_at\0\u{3}updated_at\0\u{1}read\0\u{c}\u{9}\u{1}\u{c}\u{a}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}bot_id\0\u{1}key\0\u{1}title\0\u{1}summary\0\u{1}priority\0\u{3}blocks_json\0\u{3}submit_label\0\u{2}\u{3}status\0\u{3}source_kind\0\u{3}source_name\0\u{3}chat_id\0\u{3}created_at\0\u{3}updated_at\0\u{1}read\0\u{1}urgent\0\u{c}\u{9}\u{1}\u{c}\u{a}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -15276,6 +15365,7 @@ nonisolated extension Silo_V1_DashboardCard: SwiftProtobuf.Message, SwiftProtobu
       case 15: try { try decoder.decodeSingularStringField(value: &self.createdAt) }()
       case 16: try { try decoder.decodeSingularStringField(value: &self.updatedAt) }()
       case 17: try { try decoder.decodeSingularBoolField(value: &self.read) }()
+      case 18: try { try decoder.decodeSingularBoolField(value: &self.urgent) }()
       default: break
       }
     }
@@ -15327,6 +15417,9 @@ nonisolated extension Silo_V1_DashboardCard: SwiftProtobuf.Message, SwiftProtobu
     if self.read != false {
       try visitor.visitSingularBoolField(value: self.read, fieldNumber: 17)
     }
+    if self.urgent != false {
+      try visitor.visitSingularBoolField(value: self.urgent, fieldNumber: 18)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -15346,6 +15439,7 @@ nonisolated extension Silo_V1_DashboardCard: SwiftProtobuf.Message, SwiftProtobu
     if lhs.createdAt != rhs.createdAt {return false}
     if lhs.updatedAt != rhs.updatedAt {return false}
     if lhs.read != rhs.read {return false}
+    if lhs.urgent != rhs.urgent {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -17447,7 +17541,7 @@ nonisolated extension Silo_V1_RunAutomationResponse: SwiftProtobuf.Message, Swif
 
 nonisolated extension Silo_V1_Chat: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Chat"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}bot_id\0\u{1}title\0\u{3}updated_at\0\u{1}model\0\u{1}thinking\0\u{1}main\0\u{1}author\0\u{1}mine\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}bot_id\0\u{1}title\0\u{3}updated_at\0\u{1}model\0\u{1}thinking\0\u{1}main\0\u{1}author\0\u{1}mine\0\u{1}hidden\0\u{3}created_at\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -17464,6 +17558,8 @@ nonisolated extension Silo_V1_Chat: SwiftProtobuf.Message, SwiftProtobuf._Messag
       case 7: try { try decoder.decodeSingularBoolField(value: &self.main) }()
       case 8: try { try decoder.decodeSingularStringField(value: &self.author) }()
       case 9: try { try decoder.decodeSingularBoolField(value: &self.mine) }()
+      case 10: try { try decoder.decodeSingularBoolField(value: &self.hidden) }()
+      case 11: try { try decoder.decodeSingularStringField(value: &self.createdAt) }()
       default: break
       }
     }
@@ -17497,6 +17593,12 @@ nonisolated extension Silo_V1_Chat: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if self.mine != false {
       try visitor.visitSingularBoolField(value: self.mine, fieldNumber: 9)
     }
+    if self.hidden != false {
+      try visitor.visitSingularBoolField(value: self.hidden, fieldNumber: 10)
+    }
+    if !self.createdAt.isEmpty {
+      try visitor.visitSingularStringField(value: self.createdAt, fieldNumber: 11)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -17510,6 +17612,8 @@ nonisolated extension Silo_V1_Chat: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.main != rhs.main {return false}
     if lhs.author != rhs.author {return false}
     if lhs.mine != rhs.mine {return false}
+    if lhs.hidden != rhs.hidden {return false}
+    if lhs.createdAt != rhs.createdAt {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -18245,6 +18349,46 @@ nonisolated extension Silo_V1_RenameChatRequest: SwiftProtobuf.Message, SwiftPro
     if lhs.botID != rhs.botID {return false}
     if lhs.id != rhs.id {return false}
     if lhs.title != rhs.title {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_SetChatHiddenRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SetChatHiddenRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}bot_id\0\u{3}chat_id\0\u{1}hidden\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.botID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.chatID) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.hidden) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.botID.isEmpty {
+      try visitor.visitSingularStringField(value: self.botID, fieldNumber: 1)
+    }
+    if !self.chatID.isEmpty {
+      try visitor.visitSingularStringField(value: self.chatID, fieldNumber: 2)
+    }
+    if self.hidden != false {
+      try visitor.visitSingularBoolField(value: self.hidden, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_SetChatHiddenRequest, rhs: Silo_V1_SetChatHiddenRequest) -> Bool {
+    if lhs.botID != rhs.botID {return false}
+    if lhs.chatID != rhs.chatID {return false}
+    if lhs.hidden != rhs.hidden {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

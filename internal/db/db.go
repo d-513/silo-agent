@@ -743,12 +743,15 @@ type FeedPost struct {
 // owner to decide, with display blocks and form controls and a submit button
 // that opens a chat. Key is an optional per-Bot slug for updates in place.
 type DashboardCard struct {
-	ID          string `gorm:"primaryKey"`
-	BotID       string `gorm:"index"`
-	Key         string `gorm:"index"`
-	Title       string
-	Summary     string
-	Priority    int    `gorm:"not null;default:2"`
+	ID       string `gorm:"primaryKey"`
+	BotID    string `gorm:"index"`
+	Key      string `gorm:"index"`
+	Title    string
+	Summary  string
+	Priority int `gorm:"not null;default:2"`
+	// Urgent is the Bot saying this cannot wait: an open one makes the Bot
+	// read as Needs you.
+	Urgent      bool   `gorm:"not null;default:false"`
 	BlocksJSON  string `gorm:"not null;default:'[]'"`
 	SubmitLabel string `gorm:"not null;default:''"`
 	Status      string `gorm:"index;not null;default:'open'"`

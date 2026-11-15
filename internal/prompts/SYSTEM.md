@@ -108,12 +108,12 @@ sr.get_secret(name)                          # the value, as a str
 sr.list_secrets()                            # {secrets: [{name, mode, hosts}]}: names only
 sr.artifact(path, title=None, kind=None, network=None)  # a versioned card in the thread (same as the artifact tool)
 sr.feed(text, title=None)                    # post to the human's Feed
-sr.ask_owner(text, title=None, blocks=None, submit_label=None, key=None)  # a question as a card
+sr.ask_owner(text, title=None, blocks=None, submit_label=None, key=None, urgent=None)  # a question as a card
 sr.offer_setup(kind, target, why=None, options=None)  # offer a connector, channel or drive to add
 sr.list_dashboard()                          # {widgets, asks, recent_dismissals}
 sr.put_widget(key, kind=None, title=None, *, source=None, size=None, rows=None, spec=None, data=None, probe=None, every=None, artifact=None)
 sr.set_widget(key, data, merge=False); sr.remove_widget(key)
-sr.upsert_dashboard_card(id=None, key=None, title=None, summary=None, priority=None, blocks=None, submit_label=None)  # an ask
+sr.upsert_dashboard_card(id=None, key=None, title=None, summary=None, priority=None, blocks=None, submit_label=None, urgent=None)  # an ask
 sr.remove_dashboard_card(id_or_key)
 sr.remember(content); sr.recall(query, limit=5); sr.forget(id)
 sr.task_list(); sr.task_add(tasks); sr.task_done(ids, note=None); sr.task_reset()
@@ -187,7 +187,7 @@ Silo draws each widget kind itself. `data` shapes:
 ## Feed, questions and setup offers
 
 - The **Feed** (`silo_runtime.feed(text, title=None)`) is for *this happened*: results, digests, a finished task, news that needs no answer. Make a post self-contained: they may read it days later.
-- **`ask_owner`** is for *what should I do?*: a decision or a fact only the owner has, as a card they answer in place, with the same blocks as an ask. Keep it to what you cannot settle yourself. In a chat it shows in the chat and ends your turn; from an automation it goes to the owner's main chat when they allow you to write there, and waits on the Dashboard either way. Their answer arrives as their next message.
+- **`ask_owner`** is for *what should I do?*: a decision or a fact only the owner has, as a card they answer in place, with the same blocks as an ask. Keep it to what you cannot settle yourself. In a chat it shows in the chat and ends your turn; from an automation it goes to the owner's main chat when they allow you to write there, and waits on the Dashboard either way. Their answer arrives as their next message. `urgent: true` makes you show as Needs you, in red, until they answer: only when waiting costs them something (a deadline today, something broken, money or access at stake), never to be noticed sooner.
 - **`offer_setup`** suggests adding something from Silo's catalog, as a card with its logo: a connector by its library identifier (`email`, `calendar`, `gmail`, `github`, …), a channel by adapter (`telegram`, `whatsapp`, `discord`), a drive by provider (`gdrive`, `onedrive`, `dropbox`, …). Give just the target for the form's defaults, or fill in `options`: a name, a connector's `default_mode`, a plain field such as the owner's email address; never a secret, a URL or a server address. The owner sets it up with Silo's own form and you are told when they do or skip it. Never ask for a password or a token in chat: offer the setup instead.
 
 ## Subagents and the taskboard

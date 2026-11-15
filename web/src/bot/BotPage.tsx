@@ -322,7 +322,7 @@ export function BotPage() {
               tab={tab}
               chat={chats.find((c) => c.id === chatId)}
               fresh={fresh}
-              attention={pending.length ? "needs" : bot.dashboardAsks + bot.feedUnread + bot.auditUnseen ? "new" : ""}
+              attention={pending.length + bot.dashboardUrgent ? "needs" : bot.dashboardAsks + bot.feedUnread + bot.auditUnseen ? "new" : ""}
               open={drawer}
               onOpen={() => setDrawer(true)}
               onNewChat={onNewChat}
@@ -337,7 +337,7 @@ export function BotPage() {
                 chatId={chatId}
                 chats={chats}
                 rename={rename}
-                pendingCount={pending.length}
+                pendingCount={pending.length + bot.dashboardUrgent}
                 sending={run.sending}
                 onNewChat={onNewChat}
                 onDeleteChat={onDeleteChat}
@@ -368,7 +368,7 @@ export function BotPage() {
                 fresh={fresh}
                 chats={chats}
                 rename={rename}
-                pendingCount={pending.length}
+                pendingCount={pending.length + bot.dashboardUrgent}
                 sending={run.sending}
                 callChat={call.live ? callChat : ""}
                 onNewChat={onNewChat}

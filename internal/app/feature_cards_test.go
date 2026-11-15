@@ -398,3 +398,55 @@ func TestFailedSubmitReopensTheCardAsItWas(t *testing.T) {
 		t.Fatalf("after a failed submit the card is %q, read %v", got.Status, got.ReadAt)
 	}
 }
+
+// An ordinary question leaves the Bot's status alone; one the Bot marked
+// urgent reads as Needs you until it is answered, and stands first among the
+// asks.
+func TestUrgentAskNeedsYou(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_urg1",
+		memCall("ask_owner", `{"text":"Which colour?"}`),
+		memCall("ask_owner", `{"text":"The domain lapses tonight. Renew it?","urgent":true}`),
+		dummy.Turn{Text: "ok"},
+	)
+	h := apptest.New(t)
+	id := h.CreateBot("Urgent").GetId()
+	main := h.FirstChat(id)
+	status := func() string {
+		t.Helper()
+		got, err := h.Client.GetBot(h.Ctx(), connect.NewRequest(&v1.GetBotRequest{Id: id}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got.Msg.GetStatus()
+	}
+	run, _ := h.Send(id, main, "Test_urg1_Input")
+	h.WaitRun(run)
+	if s := status(); s == "needs_you" {
+		t.Fatal("an ordinary question made the Bot Needs you")
+	}
+	run, _ = h.Send(id, main, "and the domain?")
+	h.WaitRun(run)
+	if s := status(); s != "needs_you" {
+		t.Fatalf("status %q with an urgent question open, want needs_you", s)
+	}
+	if got, _ := h.Client.GetBot(h.Ctx(), connect.NewRequest(&v1.GetBotRequest{Id: id})); got.Msg.GetDashboardUrgent() != 1 || got.Msg.GetDashboardAsks() != 2 {
+		t.Fatalf("the Bot row counts %d urgent of %d asks, want 1 of 2", got.Msg.GetDashboardUrgent(), got.Msg.GetDashboardAsks())
+	}
+	list, err := h.Client.ListDashboard(h.Ctx(), connect.NewRequest(&v1.ListDashboardRequest{BotId: id}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cards := list.Msg.GetCards()
+	if len(cards) != 2 || !cards[0].GetUrgent() || cards[1].GetUrgent() {
+		t.Fatalf("cards %+v, want the urgent one first", cards)
+	}
+	sub, err := h.Client.SubmitDashboardCard(h.Ctx(), connect.NewRequest(&v1.SubmitDashboardCardRequest{BotId: id, Id: cards[0].GetId()}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.WaitRun(sub.Msg.GetRunId())
+	if s := status(); s == "needs_you" {
+		t.Fatal("the Bot still Needs you after its urgent question was answered")
+	}
+}

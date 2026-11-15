@@ -336,16 +336,18 @@ def ask_owner(
     blocks: list[dict] | None = None,
     submit_label: str | None = None,
     key: str | None = None,
+    urgent: bool | None = None,
 ) -> dict:
     """Ask the owner something only they can answer, as a card they answer in place.
 
     In a chat it shows there; from an automation or a channel it goes to the
     main chat (when the owner allows it) and waits on the Dashboard either way.
     `blocks` are display blocks and form controls (each with a `name`). Their
-    answer comes back as their next message.
+    answer comes back as their next message. `urgent=True` only when waiting
+    costs them something: you then show as Needs you until they answer.
     """
     args: dict = {"text": text}
-    for k, v in (("title", title), ("blocks", blocks), ("submit_label", submit_label), ("key", key)):
+    for k, v in (("title", title), ("blocks", blocks), ("submit_label", submit_label), ("key", key), ("urgent", urgent)):
         if v is not None:
             args[k] = v
     return call("bot", "ask_owner", args)
@@ -359,6 +361,7 @@ def upsert_dashboard_card(
     priority: int | None = None,
     blocks: list[dict] | None = None,
     submit_label: str | None = None,
+    urgent: bool | None = None,
 ) -> dict:
     """Create or update an ask on the Dashboard: something the owner must decide.
 
@@ -366,12 +369,14 @@ def upsert_dashboard_card(
     `blocks` are display blocks (markdown, kv, metrics, diff) and form controls
     (switch, select, segmented, checkboxes, input, textarea), each with a
     `name` for controls. Submit (`submit_label`, default "Send") opens a chat
-    with you holding the chosen values.
+    with you holding the chosen values. `urgent=True` only when waiting costs
+    the owner something: you then show as Needs you until they answer.
     """
     args: dict = {}
     for k, v in (
         ("id", id), ("key", key), ("title", title), ("summary", summary),
         ("priority", priority), ("blocks", blocks), ("submit_label", submit_label),
+        ("urgent", urgent),
     ):
         if v is not None:
             args[k] = v

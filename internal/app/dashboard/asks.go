@@ -38,6 +38,7 @@ type askInput struct {
 	ID, Key, Title string
 	Summary        *string
 	Priority       *int
+	Urgent         *bool
 	SubmitLabel    *string
 	// Blocks is a list of block objects or that list as JSON text.
 	Blocks any
@@ -53,6 +54,9 @@ func askArgs(args map[string]any) askInput {
 	}
 	if v, ok := args["submit_label"].(string); ok {
 		in.SubmitLabel = &v
+	}
+	if v, ok := args["urgent"].(bool); ok {
+		in.Urgent = &v
 	}
 	return in
 }
@@ -106,6 +110,10 @@ func (s *Service) upsertAsk(botID, chatID, runID string, in askInput) (c *db.Das
 			changed = true
 		}
 	}
+	if in.Urgent != nil && c.Urgent != *in.Urgent {
+		c.Urgent = *in.Urgent
+		changed = true
+	}
 	if in.SubmitLabel != nil {
 		lbl := textx.ClipRunes(strings.TrimSpace(*in.SubmitLabel), 48)
 		if lbl == "" {
@@ -139,7 +147,7 @@ func (s *Service) upsertAsk(botID, chatID, runID string, in askInput) (c *db.Das
 	// Only what the Bot sets, and only while the card is open: the owner may
 	// answer it at the same moment, and that answer stands.
 	res := s.db.Model(&db.DashboardCard{}).Where("id = ? AND status = 'open'", c.ID).Updates(map[string]any{
-		"key": c.Key, "title": c.Title, "summary": c.Summary, "priority": c.Priority, "submit_label": c.SubmitLabel,
+		"key": c.Key, "title": c.Title, "summary": c.Summary, "priority": c.Priority, "urgent": c.Urgent, "submit_label": c.SubmitLabel,
 		"blocks_json": c.BlocksJSON, "read_at": nil, "updated_at": now,
 	})
 	if res.Error != nil {
@@ -154,7 +162,7 @@ func (s *Service) upsertAsk(botID, chatID, runID string, in askInput) (c *db.Das
 // openAsks are the asks waiting for the owner, most pressing first.
 func (s *Service) openAsks(botID string) []db.DashboardCard {
 	var out []db.DashboardCard
-	s.db.Where("bot_id = ? AND status = 'open'", botID).Order("priority asc, updated_at desc").Find(&out)
+	s.db.Where("bot_id = ? AND status = 'open'", botID).Order("urgent desc, priority asc, updated_at desc").Find(&out)
 	return out
 }
 
@@ -206,7 +214,7 @@ func protoCard(c *db.DashboardCard) *v1.DashboardCard {
 	}
 	return &v1.DashboardCard{
 		Id: c.ID, BotId: c.BotID, Key: c.Key, Title: c.Title, Summary: c.Summary,
-		Priority: int32(c.Priority), BlocksJson: blocks, SubmitLabel: submit, Status: c.Status,
+		Priority: int32(c.Priority), Urgent: c.Urgent, BlocksJson: blocks, SubmitLabel: submit, Status: c.Status,
 		SourceKind: c.SourceKind, SourceName: c.SourceName, ChatId: c.ChatID,
 		CreatedAt: c.CreatedAt.Format(time.RFC3339), UpdatedAt: c.UpdatedAt.Format(time.RFC3339), Read: c.ReadAt != nil,
 	}

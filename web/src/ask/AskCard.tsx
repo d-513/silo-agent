@@ -17,7 +17,8 @@ import { defaultFormValues, isDisplay, normalizeOptions, parseBlocks, type Dashb
 import { askPhase } from "../statusLook";
 
 // An ask is a decision the Bot needs from the owner. It is a question, not an
-// alarm: no vermilion (that is for a paused run). The upper half is the Bot
+// alarm: no vermilion (that is for a paused run), except on one the Bot marked
+// urgent, which also makes the Bot read as Needs you until it is answered. The upper half is the Bot
 // speaking (the question in its serif, then its context); the lower half is a
 // well, the owner's reply tray, with the controls and one submit that answers
 // with the chosen values. "Not now" puts it away; on the Dashboard, "Don't
@@ -350,9 +351,9 @@ export function AskSlip({
               {phase === "answered" ? t("Answered") : t("Put away")}
             </span>
           ) : (
-            <span className="flex shrink-0 items-center gap-1.5 font-medium text-cobalt">
+            <span className={`flex shrink-0 items-center gap-1.5 font-medium ${card.urgent ? "text-vermilion" : "text-cobalt"}`}>
               <MessageCircleQuestionMark size={14} />
-              {t("Question for you")}
+              {card.urgent ? t("Urgent question for you") : t("Question for you")}
             </span>
           )}
           {asked ? <span className="shrink-0 text-ink-3">· {t("Asked while you were away")}</span> : null}

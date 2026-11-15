@@ -386,6 +386,10 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `deleteChat`(request: Silo_V1_DeleteChatRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DeleteChatResponse>
 
+    /// SetChatHidden puts a chat away or brings it back; nothing is deleted.
+    @available(iOS 13, *)
+    func `setChatHidden`(request: Silo_V1_SetChatHiddenRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Chat>
+
     @available(iOS 13, *)
     func `setChatModel`(request: Silo_V1_SetChatModelRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Chat>
 
@@ -1288,6 +1292,11 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `setChatHidden`(request: Silo_V1_SetChatHiddenRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Chat> {
+        return await self.client.unary(path: "/silo.v1.UI/SetChatHidden", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `setChatModel`(request: Silo_V1_SetChatModelRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Chat> {
         return await self.client.unary(path: "/silo.v1.UI/SetChatModel", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -1938,6 +1947,7 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let createChat = Connect.MethodSpec(name: "CreateChat", service: "silo.v1.UI", type: .unary)
             public static let renameChat = Connect.MethodSpec(name: "RenameChat", service: "silo.v1.UI", type: .unary)
             public static let deleteChat = Connect.MethodSpec(name: "DeleteChat", service: "silo.v1.UI", type: .unary)
+            public static let setChatHidden = Connect.MethodSpec(name: "SetChatHidden", service: "silo.v1.UI", type: .unary)
             public static let setChatModel = Connect.MethodSpec(name: "SetChatModel", service: "silo.v1.UI", type: .unary)
             public static let setChatThinking = Connect.MethodSpec(name: "SetChatThinking", service: "silo.v1.UI", type: .unary)
             public static let listModels = Connect.MethodSpec(name: "ListModels", service: "silo.v1.UI", type: .unary)

@@ -50,7 +50,8 @@ func machineState(connected, running bool) string {
 }
 
 // botStatus is the one word for a Bot as a viewer sees it, the most pressing
-// first: what they must answer beats work, and work beats the box.
+// first: what they must answer (an approval that is theirs, a question the
+// Bot marked urgent) beats work, and work beats the box.
 func botStatus(machine string, rows []*v1.BotActivity, needsYou bool) string {
 	if needsYou {
 		return stateNeedsYou

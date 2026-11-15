@@ -1144,8 +1144,8 @@ private struct AskRow: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 6) {
-                    Image(systemName: "questionmark.bubble").font(.system(size: 13)).foregroundStyle(Theme.cobalt)
-                    Text("Question for you").font(.silo(12, .medium)).foregroundStyle(Theme.cobalt).lineLimit(1).layoutPriority(1)
+                    Image(systemName: "questionmark.bubble").font(.system(size: 13)).foregroundStyle(card.urgent ? Theme.vermilion : Theme.cobalt)
+                    Text(card.urgent ? "Urgent question for you" : "Question for you").font(.silo(12, .medium)).foregroundStyle(card.urgent ? Theme.vermilion : Theme.cobalt).lineLimit(1).layoutPriority(1)
                     if !card.sourceName.isEmpty {
                         Text("· \(card.sourceName)").font(.silo(12)).foregroundStyle(Theme.ink3).lineLimit(1)
                     }

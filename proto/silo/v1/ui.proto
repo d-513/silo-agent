@@ -636,6 +636,9 @@ message Bot {
   string last_message = 34;
   string last_message_at = 35;
   bool last_message_mine = 36;
+  // DashboardUrgent counts the open asks the Bot marked urgent: while there
+  // is one, status is needs_you for everyone on the Bot.
+  int32 dashboard_urgent = 37;
 }
 
 // Space is a Workspace as the caller sees it.
@@ -1504,6 +1507,9 @@ message DashboardCard {
   string created_at = 15;
   string updated_at = 16;
   bool read = 17;
+  // Urgent is the Bot saying this cannot wait: while it is open the Bot's
+  // status reads needs_you.
+  bool urgent = 18;
 }
 
 // SetupOffer is the Bot offering something from the catalog to add: a

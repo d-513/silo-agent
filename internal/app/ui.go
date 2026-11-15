@@ -47,6 +47,7 @@ func (a *App) protoBot(b *db.Bot, machine string) *v1.Bot {
 		OutputPolicy:    b.OutputPolicy,
 		Model:           b.Model,
 		DashboardAsks:   a.Dashboard.Open(b.ID),
+		DashboardUrgent: a.Dashboard.Urgent(b.ID),
 		DesktopPaused:   a.Pause.Paused(b.ID),
 		Proactivity:     b.Proactivity,
 		HeartbeatCustom: a.Proactivity.Custom(b.ID, b.Proactivity),
@@ -74,7 +75,7 @@ func (a *App) viewBot(ctx context.Context, b *db.Bot) *v1.Bot {
 		p.Role = access.BotRole(a.DB, b.ID, u.ID)
 		var needsYou bool
 		p.Activity, needsYou = a.activity(b.ID, u.ID, p.Role == access.RoleManage)
-		p.Status = botStatus(p.Machine, p.Activity, needsYou)
+		p.Status = botStatus(p.Machine, p.Activity, needsYou || p.DashboardUrgent > 0)
 		p.FeedUnread = a.Feed.Unread(b.ID, u.ID)
 		if m := a.lastMessage(b.ID, u.ID, p.Role == access.RoleManage); m.Text != "" {
 			p.LastMessage, p.LastMessageAt, p.LastMessageMine = m.Text, m.At.UTC().Format(time.RFC3339), m.Mine

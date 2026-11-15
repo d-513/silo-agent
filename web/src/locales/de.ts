@@ -1573,6 +1573,7 @@ const de: Record<string, string> = {
   "Answers in the main chat. Ctrl/⌘-click for a new chat.": "Antwortet im Hauptchat. Strg/⌘-Klick für einen neuen Chat.",
   "Opens in the main chat. Ctrl/⌘-click for a new chat.": "Öffnet im Hauptchat. Strg/⌘-Klick für einen neuen Chat.",
   "What this Bot posted for you to read later. Reply to a post in the main chat, or in a chat of its own.": "Was dieser Bot für dich zum späteren Lesen gepostet hat. Antworte auf einen Beitrag im Hauptchat oder in einem eigenen Chat.",
+  "Urgent question for you": "Dringende Frage an dich",
   "Question for you": "Frage an dich",
   "Answered": "Beantwortet",
   "Put away": "Weggelegt",

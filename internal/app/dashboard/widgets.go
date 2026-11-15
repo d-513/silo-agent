@@ -508,6 +508,7 @@ func (s *Service) listForBot(botID string) (string, error) {
 		Title       string          `json:"title"`
 		Summary     string          `json:"summary,omitempty"`
 		Priority    int             `json:"priority"`
+		Urgent      bool            `json:"urgent,omitempty"`
 		Blocks      json.RawMessage `json:"blocks"`
 		SubmitLabel string          `json:"submit_label,omitempty"`
 		UpdatedAt   string          `json:"updated_at"`
@@ -543,7 +544,7 @@ func (s *Service) listForBot(botID string) (string, error) {
 		if !json.Valid([]byte(blocks)) {
 			blocks = "[]"
 		}
-		out.Asks = append(out.Asks, askView{ID: c.ID, Key: c.Key, Title: c.Title, Summary: c.Summary, Priority: c.Priority,
+		out.Asks = append(out.Asks, askView{ID: c.ID, Key: c.Key, Title: c.Title, Summary: c.Summary, Priority: c.Priority, Urgent: c.Urgent,
 			Blocks: json.RawMessage(blocks), SubmitLabel: c.SubmitLabel, UpdatedAt: c.UpdatedAt.Format(time.RFC3339)})
 	}
 	var dismissed []db.DashboardCard
