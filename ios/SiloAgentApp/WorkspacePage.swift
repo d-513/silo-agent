@@ -207,7 +207,7 @@ private struct OverviewCard: View {
     private var who: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 14) {
-                CrestView(index: bot.crest, size: 44)
+                CrestView(index: bot.crest, size: 44, state: crestState(bot))
                 VStack(alignment: .leading, spacing: 4) {
                     Text(bot.name).font(.silo(15, .semibold)).foregroundStyle(Theme.ink).lineLimit(1)
                     StatusWord(look: botLook(bot))

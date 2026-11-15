@@ -12,10 +12,8 @@ struct NewBotView: View {
 
     @State private var name = ""
     @State private var description = ""
-    @State private var crest = packCrest(
-        shape: Int.random(in: 0..<SHAPE_COUNT),
-        color: Int.random(in: 0..<CREST_COLORS.count)
-    )
+    // The first shape; `task` moves it to a hue no Bot of this Workspace wears yet.
+    @State private var crest = packCrest(shape: 0, color: Int.random(in: 0..<HUE_COUNT))
     @State private var interview = true
     @State private var connectors: [Silo_V1_Connector] = []
     @State private var drives: [Silo_V1_Drive] = []
@@ -84,7 +82,10 @@ struct NewBotView: View {
                 if let error { ErrorLine(text: error) }
             }
         }
-        .task { await load() }
+        .task {
+            crest = freshCrest(taken: spaces.bots.map(\.crest), spare: unpackCrest(crest).color)
+            await load()
+        }
     }
 
     private func hint(_ text: String) -> some View {

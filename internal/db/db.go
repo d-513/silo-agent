@@ -8,6 +8,7 @@ import (
 	"github.com/pgvector/pgvector-go"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 )
 
@@ -1060,7 +1061,14 @@ func Models() []any {
 		&Mailbox{}, &MailMessage{}, &MailBody{},
 		&VoiceCall{}, &VoiceTurn{},
 		&EgressHost{}, &EgressClient{}, &EgressCA{}, &EgressTraffic{}, &EgressPattern{}, &EgressFeedState{},
+		&Migration{},
 	}
+}
+
+// Migration records a change of the data that Migrate makes once (see once).
+type Migration struct {
+	Name string `gorm:"primaryKey"`
+	At   time.Time
 }
 
 // Open connects to Postgres (a pgvector build) and migrates the schema.
@@ -1099,6 +1107,9 @@ func Migrate(gdb *gorm.DB) error {
 		return err
 	}
 	if err := hashSessionIDs(gdb); err != nil {
+		return err
+	}
+	if err := once(gdb, "stack-crests", restackCrests); err != nil {
 		return err
 	}
 	if !hadWatermark {
@@ -1197,6 +1208,34 @@ func repinIndex(gdb *gorm.DB) error {
 	for _, k := range PinnedAutomationKinds {
 		if !strings.Contains(def, "'"+k+"'") {
 			return gdb.Exec("DROP INDEX automations_pinned").Error
+		}
+	}
+	return nil
+}
+
+// once makes a change of the data the first time Migrate meets its name, and
+// records it in the same transaction, for a change whose rows do not show
+// whether it was made.
+func once(gdb *gorm.DB, name string, change func(tx *gorm.DB) error) error {
+	return gdb.Transaction(func(tx *gorm.DB) error {
+		made := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&Migration{Name: name, At: time.Now()})
+		if made.Error != nil || made.RowsAffected == 0 {
+			return made.Error
+		}
+		return change(tx)
+	})
+}
+
+// restackCrests moves crests from the twelve hat fills (fill * 8 + hat) to the
+// eight Stack hues (hue * 8 + shape, ids.CrestCount): a Bot keeps its place
+// among the shapes and the hue nearest its old fill. The fills were mist,
+// brown, wine, orange, yellow, green, emerald, cobalt, purple, pink, graphite,
+// ink; the hues are green, pink, amber, blue, gray, violet, sky, lime.
+func restackCrests(tx *gorm.DB) error {
+	const hue = "(ARRAY[4,2,1,2,2,7,0,3,5,1,4,4])[crest / 8 + 1] * 8 + crest % 8"
+	for _, table := range []string{"bots", "audit_events"} {
+		if err := tx.Exec("UPDATE " + table + " SET crest = " + hue + " WHERE crest BETWEEN 0 AND 95").Error; err != nil {
+			return err
 		}
 	}
 	return nil

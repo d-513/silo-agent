@@ -1,6 +1,7 @@
 import { MessageCircle } from "lucide-react";
 import { Btn } from "../Btn";
 import { Crest } from "../Crest";
+import type { State } from "../stack.ts";
 import { msg, t } from "../i18n.ts";
 
 // What a new chat offers to start from. The chip is a few words; the prompt it
@@ -33,12 +34,12 @@ const starters = [
 
 // The thread before anything is said: the Bot's crest, a line, and a few
 // prompts to start from.
-export function EmptyThread({ botName, botCrest, onSelectPrompt }: { botName?: string; botCrest?: number; onSelectPrompt?: (prompt: string) => void }) {
+export function EmptyThread({ botName, botCrest, botState, onSelectPrompt }: { botName?: string; botCrest?: number; botState?: State; onSelectPrompt?: (prompt: string) => void }) {
   const name = botName || t("Silo Bot");
   return (
     <div className="rise my-auto flex flex-col items-center justify-center px-4 py-14 text-center">
       <div className="blink mb-4">
-        {botCrest !== undefined ? <Crest index={botCrest} size={88} /> : <MessageCircle size={30} className="text-ink-2" />}
+        {botCrest !== undefined ? <Crest index={botCrest} size={88} state={botState} /> : <MessageCircle size={30} className="text-ink-2" />}
       </div>
       <h2 className="text-card-title leading-5 text-ink">{name}</h2>
       <p className="mt-1.5 max-w-md text-meta leading-[18px] text-ink-2">

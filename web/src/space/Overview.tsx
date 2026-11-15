@@ -9,7 +9,7 @@ import { nextWhen } from "../format";
 import type { Bot } from "../gen/silo/v1/ui_pb";
 import { t } from "../i18n.ts";
 import { Lamp, Status } from "../Lamp";
-import { botLook, botMood, type Mood } from "../statusLook";
+import { botLook, botMood, crestState, type Mood } from "../statusLook";
 import { Initials } from "./People";
 import { canAdmin, canBuild, useSpaces } from "./spaces";
 import { roleWord, SpaceMark } from "./SpaceTile";
@@ -152,7 +152,7 @@ function BotCard({ bot: b, i }: { bot: Bot; i: number }) {
       <Link to="/bots/$botId/run" params={{ botId: b.id }} aria-label={b.name} className="absolute inset-0 rounded-card outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--color-cobalt)]" />
 
       <div className="pointer-events-none flex items-start gap-3.5">
-        <Crest index={b.crest} size={44} />
+        <Crest index={b.crest} size={44} state={crestState(b)} />
         <div className="min-w-0 flex-1 pt-0.5">
           <div className="flex items-center gap-2">
             <span className="min-w-0 truncate text-card-title leading-5 text-ink">{b.name}</span>

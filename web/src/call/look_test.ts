@@ -1,5 +1,5 @@
 import { eq } from "../testing.ts";
-import { callTone, callWork, stateWords } from "./look.ts";
+import { callCrest, callTone, callWork, stateWords } from "./look.ts";
 import type { CallSnapshot } from "./session";
 
 const snap = (o: Partial<CallSnapshot>): CallSnapshot => ({ state: "listening", tool: "", heard: "", hearing: "", saying: "", muted: false, ptt: false, holding: false, level: 0, chatId: "", callId: "", error: "", startedAt: 0, ...o });
@@ -16,3 +16,10 @@ const task = { state: "working", waitingOn: "", task: "Compare flights", step: "
 eq(callWork({ tool: "exec_python" }), "Using Python", "the call's tool");
 eq(callWork({ tool: "exec_python" }, task), "Compare flights", "the task leads");
 eq(stateWords(snap({ state: "needs_you" }), "Scout"), "Needs you on screen", "an approval says where to look");
+
+// The crest on the call screen acts the call out.
+eq(callCrest(snap({ state: "hearing" })), "listening", "it listens while you speak");
+eq(callCrest(snap({ state: "thinking" })), "working", "it works behind the silence");
+eq(callCrest(snap({ state: "needs_you" })), "needs_you", "an approval waits");
+eq(callCrest(snap({ state: "speaking" })), "idle", "its own voice is its resting face");
+eq(callCrest(snap({ state: "ended" })), "asleep", "a call that ended");

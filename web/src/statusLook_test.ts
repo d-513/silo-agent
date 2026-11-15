@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { eq } from "./testing.ts";
 import type { BotActivity } from "./gen/silo/v1/ui_pb";
-import { askPhase, botLook, botMood, channelLook, chatDoing, containerLook, containerMade, containerUp, driveSettling, finishedFailed, finishedLook, folderPhase, machineStarting, needsSignIn, offerPhase, pausedOnYou, powerWord, progress, reportMark, runLook } from "./statusLook.ts";
+import { askPhase, botLook, crestState, botMood, channelLook, chatDoing, containerLook, containerMade, containerUp, driveSettling, finishedFailed, finishedLook, folderPhase, machineStarting, needsSignIn, offerPhase, pausedOnYou, powerWord, progress, reportMark, runLook } from "./statusLook.ts";
 
 // A QR login waiting to be scanned is not "Connected" and not an error: it
 // needs the owner, and says what for.
@@ -91,3 +91,15 @@ for (const f of walk(src)) {
   eq(/authStatus\s*[!=]==/.test(text), false, `${f} compares a connector's status by hand: use needsSignIn or connectorLook`);
   eq(/<Lamp status="(needs_you|online|stopped|starting)"\s*\/>\s*\n\s*<StatusWord/.test(text), false, `${f} pairs a lamp and word by hand: use Status`);
 }
+
+// The crest acts out one state, most pressing first.
+const face = (status: string, machine = "online", feedUnread = 0) => ({ status, machine, feedUnread });
+eq(crestState(face("needs_you", "online", 3)), "needs_you", "paused on you beats everything");
+eq(crestState(face("working"), true), "working", "work beats being written to");
+eq(crestState(face("online"), true), "listening", "words in the composer are heard");
+eq(crestState(face("on_call")), "listening", "a call is heard");
+eq(crestState(face("stopped", "stopped", 2)), "done", "an unread report beats a box that is off");
+eq(crestState(face("stopped", "stopped")), "asleep", "a stopped box sleeps");
+eq(crestState(face("waiting")), "asleep", "paused on someone else");
+eq(crestState(face("online")), "idle", "at rest");
+eq(crestState(face("starting", "starting")), "idle", "a box on its way up is not asleep");

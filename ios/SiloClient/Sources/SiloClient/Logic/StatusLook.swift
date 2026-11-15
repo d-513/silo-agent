@@ -100,6 +100,27 @@ public func chatDoing(_ bot: Silo_V1_Bot, _ chatID: String?) -> Silo_V1_BotActiv
         .element
 }
 
+/// What a Bot's crest acts out, most pressing first: paused on you, at work, being spoken to, a
+/// report nobody has read, a box that is off or a run waiting on someone else, else at rest.
+/// `heard` is this screen's own knowledge that the person is writing or speaking to it right now.
+public func crestState(_ bot: Silo_V1_Bot, heard: Bool = false) -> StackState {
+    if bot.status == "needs_you" { return .needsYou }
+    if bot.status == "working" { return .working }
+    if heard || bot.status == "on_call" { return .listening }
+    if bot.feedUnread > 0 { return .done }
+    if bot.status == "waiting" || bot.machine == "stopped" { return .asleep }
+    return .idle
+}
+
+/// The crest of a Bot known only by its lamp (a widget's row): the lamp's own states, else at rest.
+public func crestState(lamp: LampStatus) -> StackState {
+    switch lamp {
+    case .needsYou: return .needsYou
+    case .working: return .working
+    default: return .idle
+    }
+}
+
 /// The one line for a Bot: what needs you, what it is doing, else when it last worked. The box is
 /// not part of it at rest: a message or an automation starts a stopped Bot.
 public func botLook(_ bot: Silo_V1_Bot, now: Date = Date()) -> StatusLook {

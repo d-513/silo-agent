@@ -120,9 +120,9 @@ struct ChatScreen: View {
                         if let waits { Circle().fill(waits).frame(width: 7, height: 7).offset(x: 4, y: -3) }
                     }
                 if let bot {
-                    CrestView(index: bot.crest, size: 28)
-                        .overlay(alignment: .bottomTrailing) {
-                            Lamp(status: botLook(bot).lamp, ground: Theme.canvas).offset(x: 2, y: 2)
+                    CrestView(index: bot.crest, size: 28, state: crestState(bot))
+                        .overlay(alignment: .topTrailing) {
+                            Lamp(status: botLook(bot).lamp, ground: Theme.canvas).offset(x: 2, y: -2)
                         }
                 }
             }
@@ -169,7 +169,7 @@ private struct DraftIntro: View {
         if let bot = model.selectedBot {
             VStack(alignment: .leading, spacing: 12) {
                 Spacer()
-                CrestView(index: bot.crest, size: 44)
+                CrestView(index: bot.crest, size: 44, state: crestState(bot))
                 Text(bot.name).font(.silo(26, .medium)).foregroundStyle(Theme.ink)
                 if !bot.description_p.isEmpty {
                     Text(bot.description_p)

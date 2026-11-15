@@ -1,5 +1,6 @@
 import { t } from "../i18n.ts";
 import { type Doing, runLook, started } from "../statusLook.ts";
+import type { State } from "../stack.ts";
 import type { CallSnapshot, EndReason } from "./session";
 
 // How a call shows what is going on, whichever way it is drawn: the bar's orb
@@ -23,6 +24,24 @@ export function callTone(s: Pick<CallSnapshot, "state" | "muted">): CallTone {
   if (s.muted) return "muted";
   if (s.state === "working") return "working";
   return s.state === "thinking" ? "thinking" : "quiet";
+}
+
+// What the Bot's crest acts out on the call screen: it listens while you
+// speak, works behind the silence, and rests while its own voice is heard.
+export function callCrest(s: Pick<CallSnapshot, "state" | "muted">): State {
+  switch (callTone(s)) {
+    case "you":
+      return "listening";
+    case "needs_you":
+      return "needs_you";
+    case "working":
+    case "thinking":
+      return "working";
+    case "ended":
+      return "asleep";
+    default:
+      return "idle";
+  }
 }
 
 // What the Bot is on while a call waits, in the status lines' words: its task

@@ -127,6 +127,8 @@
   --breakpoint-wide: 960px;
   --ease-quiet: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
+  /* A small overshoot: only a crest's pieces use it. */
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 :root {
@@ -373,37 +375,169 @@ button {
   animation: silo-ping 900ms var(--ease-quiet) both;
 }
 
-/* Crest nod: the hat dips over the nose and comes back. `blink` on a hover
- * host nods once on hover; `blink-idle` (Working Bots in the rail) nods about
- * every 6s. */
-.crest-hat {
+/* The Stack: a crest's pieces slide to where a state puts them (Crest.tsx sets
+ * the geometry, these rules time it), and each state has one loop of its own.
+ * The timing belongs to the state being entered. A crest under 20px
+ * (data-quiet) never loops. */
+.crest-piece,
+.crest-head {
+  transition-property: x, y, width, height, rx, transform;
+  transition-duration: 220ms;
+  transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
+.crest[data-state="listening"] :is(.crest-piece, .crest-head) {
+  transition-duration: 180ms;
+  transition-timing-function: var(--ease-pop);
+}
+.crest[data-state="needs_you"] :is(.crest-piece, .crest-head) {
+  transition-duration: 300ms;
+  transition-timing-function: var(--ease-pop);
+}
+.crest[data-state="done"] :is(.crest-piece, .crest-head) {
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-pop);
+}
+.crest[data-state="asleep"] :is(.crest-piece, .crest-head) {
+  transition-duration: 600ms;
+  transition-timing-function: ease-in-out;
+}
+@keyframes crest-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes crest-blink {
+  0%,
+  97.6%,
+  100% {
+    transform: none;
+  }
+  98.8% {
+    transform: scaleY(0.1);
+  }
+}
+@keyframes crest-blink-once {
+  50% {
+    transform: scaleY(0.1);
+  }
+}
+/* New eyes fade in over the old state's; at rest they blink to the crest's own clock. */
+.crest-eyes {
   transform-box: fill-box;
-  transform-origin: 50% 100%;
+  transform-origin: center;
+  animation: crest-in 100ms linear both;
 }
-@keyframes silo-blink {
+.crest[data-state="idle"]:not([data-quiet]) .crest-eyes {
+  animation:
+    crest-in 100ms linear both,
+    crest-blink var(--crest-blink, 5s) var(--crest-blink-at, 2s) infinite;
+}
+.blink:hover .crest-eyes {
+  animation: crest-blink-once 120ms var(--ease-quiet);
+}
+/* Working: the next layer slides in under the stack, its outline crawling,
+ * while the pieces above shift left and right in turn. */
+@keyframes crest-slide {
+  0% {
+    transform: translateX(var(--crest-slide, 30px));
+    opacity: 0;
+  }
+  25%,
+  50% {
+    transform: none;
+    opacity: 1;
+  }
+  75%,
+  100% {
+    transform: none;
+    opacity: 0;
+  }
+}
+@keyframes crest-crawl {
+  to {
+    stroke-dashoffset: -9;
+  }
+}
+@keyframes crest-sway {
   0%,
+  50%,
   100% {
     transform: none;
   }
-  45% {
-    transform: translateY(5%) scaleY(0.93);
+  12.5% {
+    transform: translateX(-2px);
+  }
+  37.5% {
+    transform: translateX(2px);
   }
 }
-@keyframes silo-blink-idle {
-  0%,
-  95%,
+.crest-incoming {
+  animation:
+    crest-slide 1600ms var(--ease-quiet) infinite,
+    crest-crawl 700ms linear infinite;
+}
+.crest[data-state="working"] .crest-sway {
+  animation: crest-sway 1600ms ease-in-out calc(var(--i, 0) * 180ms) infinite;
+}
+/* Needs you: the badge pops in just after the head, which then bobs. */
+@keyframes crest-pop {
+  from {
+    transform: scale(0);
+  }
+}
+@keyframes crest-bob {
+  50% {
+    transform: translateY(-1.5px);
+  }
+}
+.crest-badge {
+  transform-origin: 87px 15px;
+  animation: crest-pop 220ms var(--ease-pop) 80ms both;
+}
+.crest-ticks {
+  animation: crest-in 160ms linear 140ms both;
+}
+.crest[data-state="needs_you"] .crest-bob {
+  animation: crest-bob 2s ease-in-out 300ms infinite;
+}
+/* Done: the check draws itself. */
+@keyframes crest-draw {
+  from {
+    stroke-dashoffset: 12;
+  }
+}
+.crest-check {
+  stroke-dasharray: 12;
+  animation: crest-draw 200ms var(--ease-quiet) 200ms both;
+}
+/* Asleep: the z's drift up and fade. */
+@keyframes crest-zz {
+  0% {
+    transform: translateY(3px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
   100% {
-    transform: none;
-  }
-  96.8% {
-    transform: translateY(5%) scaleY(0.93);
+    transform: translateY(-5px);
+    opacity: 0;
   }
 }
-.blink:hover .crest-hat {
-  animation: silo-blink 220ms var(--ease-quiet);
+.crest-zz {
+  animation: crest-zz 3s ease-in-out 600ms infinite backwards;
 }
-.blink-idle .crest-hat {
-  animation: silo-blink-idle 6s var(--ease-quiet) infinite;
+/* With reduced motion nothing loops or slides: a change of state is one short
+ * fade, restarted by the name flipping (Crest.tsx's data-fade). */
+@keyframes crest-fade-a {
+  from {
+    opacity: 0.4;
+  }
+}
+@keyframes crest-fade-b {
+  from {
+    opacity: 0.4;
+  }
 }
 
 @keyframes silo-slip-in {
@@ -596,8 +730,7 @@ button {
   .silo-live .silo-md *::after,
   .ping,
   .shimmer-text,
-  .blink:hover .crest-hat,
-  .blink-idle .crest-hat,
+  .crest *,
   .drain,
   .spin,
   .animate-spin,
@@ -622,6 +755,15 @@ button {
   button:active,
   a:active {
     transform: none !important;
+  }
+  .crest * {
+    transition: none !important;
+  }
+  .crest[data-fade="0"] {
+    animation: crest-fade-a 150ms linear;
+  }
+  .crest[data-fade="1"] {
+    animation: crest-fade-b 150ms linear;
   }
 }
 

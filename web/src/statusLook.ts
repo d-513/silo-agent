@@ -1,6 +1,7 @@
 import { ago } from "./format.ts";
 import type { Bot, BotActivity } from "./gen/silo/v1/ui_pb";
 import { t } from "./i18n.ts";
+import type { State } from "./stack.ts";
 import { toolMeta } from "./thread/toolInfo.ts";
 
 // How each kind of thing shows its state: the shared lamp, the word beside it
@@ -82,6 +83,19 @@ export function botLook(bot: Pick<Bot, "status" | "activity" | "lastActiveAt">):
     default:
       return { lamp: "none", word: bot.lastActiveAt ? t("Last active {{when}}", { when: ago(bot.lastActiveAt) }) : t("Has not worked yet"), tone: "text-ink-3" };
   }
+}
+
+// crestState is what a Bot's crest acts out, most pressing first: paused on
+// you, at work, being spoken to, a report nobody has read, a box that is off
+// or a run waiting on someone else, else at rest. `heard` is this page's own
+// knowledge that the person is writing or speaking to it right now.
+export function crestState(bot: Pick<Bot, "status" | "machine" | "feedUnread">, heard = false): State {
+  if (bot.status === "needs_you") return "needs_you";
+  if (bot.status === "working") return "working";
+  if (heard || bot.status === "on_call") return "listening";
+  if (bot.feedUnread > 0) return "done";
+  if (bot.status === "waiting" || bot.machine === "stopped") return "asleep";
+  return "idle";
 }
 
 // A Bot's standing on the Workspace's overview. A question on the Dashboard is

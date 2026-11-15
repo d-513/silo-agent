@@ -135,7 +135,7 @@ struct CallFace: View {
                     .opacity(opacity)
                     .breathing(index == 0 && s.state == .thinking)
             }
-            CrestView(index: crest, size: 104)
+            CrestView(index: crest, size: 104, state: callCrest(s))
                 .opacity(s.state == .connecting ? 0.4 : 1)
             if s.state == .connecting { Spinner(size: 22) }
             if s.muted {

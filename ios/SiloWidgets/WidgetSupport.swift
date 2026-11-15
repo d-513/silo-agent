@@ -18,7 +18,7 @@ func picked(_ entity: BotEntity?, in state: SharedState) -> SharedBot? {
 struct SignedOutWidget: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            CrestView(index: packCrest(shape: 2, color: 11), size: 30)
+            CrestView(index: 0, size: 30)
             Spacer(minLength: 0)
             Text("Silo").font(.silo(15, .semibold)).foregroundStyle(Theme.ink)
             Text("Open the app and sign in.").font(.silo(12.5)).foregroundStyle(Theme.ink3)

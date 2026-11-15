@@ -7,7 +7,7 @@ import { Crest } from "../Crest";
 import type { Bot, Chat } from "../gen/silo/v1/ui_pb";
 import { msg, t } from "../i18n.ts";
 import { Lamp } from "../Lamp";
-import { botLook, powerWord, machineStarting } from "../statusLook";
+import { botLook, crestState, powerWord, machineStarting } from "../statusLook";
 import { Rail } from "../Shell";
 import { paneMeta } from "./MachineRail";
 import { onSettings, paneKinds, type PaneKind, type Tab } from "./tabs";
@@ -87,8 +87,8 @@ export function BotTopBar({
           ) : null}
         </span>
         <span className="relative flex h-7 w-7 shrink-0">
-          <Crest index={bot.crest} size={28} />
-          <Lamp status={botLook(bot).lamp} onCrest="well" className="absolute -right-0.5 -bottom-0.5" />
+          <Crest index={bot.crest} size={28} state={crestState(bot)} />
+          <Lamp status={botLook(bot).lamp} onCrest="well" className="absolute -top-0.5 -right-0.5" />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-body-lg leading-[18px] font-semibold text-ink">{bot.name}</span>

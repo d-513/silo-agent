@@ -9,7 +9,7 @@ import { useBots } from "./bots";
 import { Crest } from "./Crest";
 import { isSignedOut } from "./errors";
 import { Lamp } from "./Lamp";
-import { botLook } from "./statusLook";
+import { botLook, crestState } from "./statusLook";
 import { preloadMarkdown } from "./mdPlugins";
 import { OfflineBanner } from "./Offline";
 import { canBuild, useCurrentSpace } from "./space/spaces";
@@ -192,12 +192,12 @@ export function Rail({ page, activeBotId, className = "" }: { page: Page; active
                 to="/bots/$botId/run"
                 params={{ botId: b.id }}
                 title={`${b.name} · ${look.word}`}
-                className={railHit(on, `blink ${look.lamp === "working" ? "blink-idle" : ""}`)}
+                className={railHit(on, "blink")}
               >
                 {railBar(on)}
                 <span className="relative flex h-7 w-7">
-                  <Crest index={b.crest} size={28} />
-                  <Lamp status={look.lamp} onCrest={on ? "surface" : "well"} className="absolute -right-0.5 -bottom-0.5" />
+                  <Crest index={b.crest} size={28} state={crestState(b)} name={b.name} />
+                  <Lamp status={look.lamp} onCrest={on ? "surface" : "well"} className="absolute -top-0.5 -right-0.5" />
                 </span>
               </Link>
             );

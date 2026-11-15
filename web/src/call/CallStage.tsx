@@ -7,7 +7,7 @@ import { Lamp } from "../Lamp";
 import { chatDoing, progress } from "../statusLook";
 import { Tip, TipTitle } from "../Tip";
 import { Clock, useHoldKeys } from "./CallBar";
-import { callTone, type CallTone, callWork, stateWords } from "./look";
+import { callCrest, callTone, type CallTone, callWork, stateWords } from "./look";
 import type { Call } from "./useCall";
 import type { CallSnapshot } from "./session";
 import { t } from "../i18n.ts";
@@ -141,7 +141,7 @@ function Face({ s, crest, botName, onInterrupt }: { s: CallSnapshot; crest: numb
         </span>
       ) : null}
       <span className={s.state === "connecting" ? "opacity-40" : ""}>
-        <Crest index={crest} size={104} />
+        <Crest index={crest} size={104} state={callCrest(s)} />
       </span>
       {s.muted ? (
         <span className="absolute top-1/2 left-1/2 flex h-8 w-8 translate-x-[30px] translate-y-[26px] items-center justify-center rounded-full bg-vermilion text-on-accent shadow-[0_0_0_3px_var(--color-canvas)]">

@@ -8,12 +8,13 @@ import { pressClass } from "../Btn";
 import { Clock } from "../call/CallBar";
 import type { Call } from "../call/useCall";
 import { Crest } from "../Crest";
+import { useHeard } from "./heardStore";
 import { inputClass } from "../Field";
 import { Collapse } from "../Collapse";
 import { ago, fullTime } from "../format";
 import { UI, type Bot, type BotActivity, type Chat } from "../gen/silo/v1/ui_pb";
 import { Lamp, Status } from "../Lamp";
-import { botLook, chatDoing, type Doing, progress, runLook, started, type StatusLook, pausedOnYou } from "../statusLook";
+import { botLook, chatDoing, crestState, type Doing, progress, runLook, started, type StatusLook, pausedOnYou } from "../statusLook";
 import { type ChatGroup, groupChats, groupKeyOf, isOpen } from "./chatGroups";
 import { setGroupOpen, useGroupsPicked } from "./chatGroupsStore";
 import { ChatTitleInput } from "./ChatTitleInput";
@@ -169,9 +170,10 @@ function Scroll({ drawer, children }: { drawer: boolean; children: ReactNode }) 
 // BotHead heads the sidebar: the Bot's face, name and state. It is not a
 // link; the home card under it holds where the Bot lives.
 function BotHead({ bot }: { bot: Bot }) {
+  const heard = useHeard(bot.id);
   return (
-    <div className="flex items-center gap-2.5 px-4 pt-3.5 pb-2.5">
-      <Crest index={bot.crest} size={28} />
+    <div className="blink flex items-center gap-2.5 px-4 pt-3.5 pb-2.5">
+      <Crest index={bot.crest} size={28} state={crestState(bot, heard)} />
       <span className="min-w-0 flex-1">
         <h1 className="truncate text-card-title leading-5">{bot.name}</h1>
         <HeadLine bot={bot} />

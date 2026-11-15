@@ -37,6 +37,7 @@ Not decisions, just not done yet:
 - Subagents: the Taskboard page.
 - Artifacts: Share and Save skill.
 - Offer cards: the provider's mark.
+- Crests: the loops (the blink at rest, the dashed layer while working, the bob, the drifting z's) and listening while you type. A crest slides between states and shows needs you, working, done and asleep; a widget's shows only needs you and working.
 
 ## Not yet run on a phone
 
@@ -47,4 +48,5 @@ Everything here compiles and was checked as far as a simulator goes; none of it 
 - CallKit, the earpiece at your ear, the route picker with AirPods and in a car.
 - The Dynamic Island's and Lock Screen's look (the views are in the debug gallery; the system accepts and renders the activity).
 - Widgets on the Home Screen, controls, the Action Button, quick actions, the share sheet, notifications with Allow and Deny, background refresh.
+- The crest drawn in code (`CrestView`, `Logic/Stack.swift`): written on a machine with no Swift toolchain, so it has not been compiled, and `StackTests` has not been run. Build once and look at the debug gallery, the lock screen's circular widget (`cutout`) included.
 - Signing: set a team, then check the App Group it derives.

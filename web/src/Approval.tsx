@@ -140,7 +140,7 @@ export function NeedYouSlip({
         <div className="min-h-0 flex-1 overflow-auto px-6 pt-5 pb-4">
           <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-pressed wide:hidden" />
           <div className="mb-5 flex items-center gap-2.5">
-            <Crest index={bot.crest} size={28} />
+            <Crest index={bot.crest} size={28} state="needs_you" />
             <span className="min-w-0 truncate text-card-title leading-5">{bot.name}</span>
             <span className="ml-auto flex shrink-0 items-center gap-2">
               <Status look={runLook({ ...started, state: "needs_you" })} />

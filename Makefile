@@ -68,7 +68,7 @@ silo.yaml: ## Create silo.yaml from the example if it is missing
 deps: ## Download Go module dependencies
 	$(GO) mod download
 
-brand: ## Export brand/ to the favicons and app icons (needs ImageMagick with librsvg)
+brand: ## Export brand/ to the favicons, app icons and crest tokens (needs ImageMagick with librsvg, and Node)
 	python3 -I brand/export.py
 
 web-install: ## Install frontend dependencies

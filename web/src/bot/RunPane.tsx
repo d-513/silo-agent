@@ -8,6 +8,8 @@ import { CallBar } from "../call/CallBar";
 import { CallStage } from "../call/CallStage";
 import { callIsHere } from "../call/place";
 import type { Call } from "../call/useCall";
+import { crestState } from "../statusLook";
+import { setHeard } from "./heardStore";
 import { useQuery } from "@connectrpc/connect-query";
 import { Composer, type Said } from "../composer/Composer";
 import { fail } from "../errors";
@@ -85,6 +87,12 @@ export function RunPane({
   // when asked for (Type).
   const staged = callHere && call.expanded;
   const [typing, setTyping] = useState(false);
+  // Words in the composer are the person writing to this Bot: its crest listens.
+  const writing = draft.text.trim() !== "";
+  useEffect(() => {
+    setHeard(id, writing);
+    return () => setHeard(id, false);
+  }, [id, writing]);
   useEffect(() => {
     if (!staged) setTyping(false);
   }, [staged]);
@@ -155,6 +163,7 @@ export function RunPane({
         botId={id}
         botName={bot.name}
         botCrest={bot.crest}
+        botState={crestState(bot, writing)}
         chatId={chatId}
         events={run.events}
         sending={run.sending}

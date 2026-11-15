@@ -54,6 +54,18 @@ public func callTone(_ s: CallSnapshot) -> CallTone {
     return s.state == .thinking ? .thinking : .quiet
 }
 
+/// What the Bot's crest acts out on the call screen: it listens while you speak, works behind the
+/// silence, and rests while its own voice is heard.
+public func callCrest(_ s: CallSnapshot) -> StackState {
+    switch callTone(s) {
+    case .you: return .listening
+    case .needsYou: return .needsYou
+    case .working, .thinking: return .working
+    case .ended: return .asleep
+    case .bot, .muted, .quiet: return .idle
+    }
+}
+
 /// What the Bot is on while a call waits, in the status lines' words: its task if it has one, else
 /// the tool the call last heard of.
 public func callWork(_ s: CallSnapshot, doing: Doing? = nil) -> String {

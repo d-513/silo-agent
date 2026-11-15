@@ -4,7 +4,8 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ui } from "./api";
 import { Btn, btnClass } from "./Btn";
-import { COLOR_COUNT, Crest, CrestPicker, packCrest, SHAPE_COUNT } from "./Crest";
+import { Crest, CrestPicker, HUE_COUNT } from "./Crest";
+import { freshCrest } from "./stack.ts";
 import { fail } from "./errors";
 import { UI } from "./gen/silo/v1/ui_pb";
 import { reload } from "./query";
@@ -16,22 +17,23 @@ import { ToggleRow } from "./Switch";
 import { deviceZone } from "./zones";
 import { t } from "./i18n.ts";
 
-function randomCrest() {
-  return packCrest(Math.floor(Math.random() * SHAPE_COUNT), Math.floor(Math.random() * COLOR_COUNT));
-}
-
 export function NewBotPage() {
   const { spaceId } = useParams({ from: "/_authed/w/$spaceId/new" });
   const nav = useNavigate();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [crest, setCrest] = useState(randomCrest);
   const [interview, setInterview] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const { email: me } = useAuth();
   const { spaces } = useSpaces();
   const build = canBuild(spaces?.find((x) => x.id === spaceId)?.role);
+  // A new Bot starts as the first shape in a hue no Bot of this Workspace
+  // wears yet; once the picker is touched the choice is the person's.
+  const taken = (useQuery(UI.method.listBots, {}).data?.bots ?? []).filter((b) => b.spaceId === spaceId).map((b) => b.crest);
+  const [spare] = useState(() => Math.floor(Math.random() * HUE_COUNT));
+  const [picked, setCrest] = useState<number | null>(null);
+  const crest = picked ?? freshCrest(taken, spare);
   // What the Workspace has for it, all ticked (but nobody else's personal
   // sign-in), and who else uses it.
   const conns = useQuery(UI.method.listSpaceConnectors, { spaceId }, { enabled: build }).data?.connectors ?? [];

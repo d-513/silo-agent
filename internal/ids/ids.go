@@ -23,9 +23,11 @@ func Hash(s string) string {
 	return hex.EncodeToString(h[:])
 }
 
+// A Bot's crest is one of eight Stack shapes in one of eight hues, packed as
+// hue * CrestShapes + shape in the order of brand/tokens.json.
 const (
 	CrestShapes = 8
-	CrestColors = 12
+	CrestColors = 8
 	CrestCount  = CrestShapes * CrestColors
 )
 

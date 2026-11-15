@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Turns brand/ into every file the products ship. Needs ImageMagick with librsvg.
+"""Turns brand/tokens.json into every file the products ship.
 
-Writes brand/icons/ and brand/sheet.png, then web/public, web/src/crestArt.ts
-and the iOS app icon and crest images.
+Needs ImageMagick with librsvg, and Node 22.6 or newer (the web's renderer,
+web/src/stack.ts, draws everything). Writes web/src/crestArt.ts and the Swift
+copy of it, brand/logo/mark*.svg and glyph.svg, brand/icons/, brand/sheet.png,
+the icons in web/public and the iOS app icon and mark.
 Run it with `make brand`. Nothing it writes is edited by hand.
 """
 import json
@@ -10,34 +12,50 @@ import re
 import shutil
 import subprocess
 import tempfile
-import xml.etree.ElementTree as ET
 from pathlib import Path
 
 BRAND = Path(__file__).resolve().parent
 ROOT = BRAND.parent
 PUBLIC = ROOT / "web/public"
-APPICON = ROOT / "ios/SiloAgentApp/Assets.xcassets/AppIcon.appiconset"
-ICONS = BRAND / "icons"
 ASSETS = ROOT / "ios/SiloAgentApp/Assets.xcassets"
-SHARED_ASSETS = ROOT / "ios/SiloShared/Crests.xcassets"
+APPICON = ASSETS / "AppIcon.appiconset"
+ICONS = BRAND / "icons"
+LOGO = BRAND / "logo"
+SWIFT = ROOT / "ios/SiloClient/Sources/SiloClient/Logic/StackArt.swift"
 
-P = json.loads((BRAND / "palette.json").read_text())
-SIZES = (88, 56, 44, 28, 20, 16)
+T = json.loads((BRAND / "tokens.json").read_text())
+HUES = list(T["hues"])
+SHAPES = list(T["shapes"])
+STATES = T["states"]
+# The app's two grounds, for the sheet.
+PAPER, DARK = "#FAF9F7", "#171615"
+# The brand mark is the first roster Bot at rest.
+MARK = T["bots"]["silo"]
 
 
-def inner(path):
-    return re.search(r"<svg[^>]*>(.*)</svg>", path.read_text(), re.S).group(1).strip()
+def look(shape, hue, **more):
+    """One drawing to ask render.ts for. Shapes and hues go by name here."""
+    return {"shape": SHAPES.index(shape), "hue": HUES.index(hue), "label": "Silo", **more}
 
 
-def tile(mark, ground, scale, radius=0, size=64):
-    """A square icon: the mark, optically centred, on a ground if it has one."""
-    x, y = 32 - 32 * scale, 32.5 - 33.5 * scale
-    k = size / 64
-    rect = f'<rect width="{size}" height="{size}" rx="{radius}" fill="{ground}"/>' if ground else ""
+def render(looks):
+    out = subprocess.run(
+        ["node", "--experimental-strip-types", "--no-warnings", str(BRAND / "render.ts")],
+        input=json.dumps(looks), capture_output=True, text=True, check=True,
+    )
+    return json.loads(out.stdout)
+
+
+def inner(svg):
+    return re.search(r"<svg[^>]*>(.*)</svg>", svg, re.S).group(1)
+
+
+def bleed(glyph, ground, scale=1.0):
+    """A square with no corners, for the stores to cut: the mark on its ground."""
+    move = f' transform="translate({50 - 50 * scale:g} {50 - 50 * scale:g}) scale({scale:g})"' if scale != 1 else ""
     return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {size} {size}" width="{size}" height="{size}" role="img" aria-label="Silo">\n'
-        f"  {rect}\n"
-        f'  <g transform="scale({k:g}) translate({x:g} {y:g}) scale({scale:g})">\n    {mark}\n  </g>\n</svg>\n'
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="Silo">'
+        f'<rect width="100" height="100" fill="{ground}"/><g{move}>{inner(glyph)}</g></svg>'
     )
 
 
@@ -51,174 +69,100 @@ def png(svg, out, size):
     )
 
 
-def hexmix(a, b, t):
-    ca, cb = (tuple(int(c[i:i + 2], 16) for i in (1, 3, 5)) for c in (a, b))
-    return "#" + "".join(f"{round(x + (y - x) * t):02X}" for x, y in zip(ca, cb))
-
-
-def tones(color, light, dark):
-    """The three stops of a felt surface: lit, the color, shaded."""
-    return (hexmix(color, "#FFFFFF", light), color, hexmix(color, "#000000", dark))
-
-
-def crest(shape, fill):
-    """A hat in a fill. The sources are drawn in cobalt."""
-    cobalt = next(f for f in P["crest_fills"] if f["name"] == "cobalt")
-    swap = dict(zip(tones(cobalt["fill"], 0.42, 0.36), tones(fill["fill"], 0.42, 0.36)))
-    swap.update(zip(tones(cobalt["coat"], 0.3, 0.4), tones(fill["coat"], 0.3, 0.4)))
-    swap[cobalt["detail"]] = fill["detail"]
-    text = (BRAND / f"crests/{shape}.svg").read_text()
-    text = re.sub("|".join(swap), lambda m: swap[m[0]], text)
-    if fill["name"] == "mist":
-        edge = f'fill="url(#hat-felt)" stroke="{P["mist_edge"]}" stroke-width=".8"'
-        text = text.replace('fill="url(#hat-felt)"', edge)
-    return text
-
-
-def web_art():
-    """What Crest.tsx draws: the same shapes as crests/*.svg, as data."""
-    svg = "{http://www.w3.org/2000/svg}"
-
-    def part(el):
-        tag = el.tag.removeprefix(svg)
-        out = {"t": tag} | {k: el.get(k) for k in ("d", "cx", "cy", "r", "rx", "ry") if el.get(k)}
-        if el.get("class") == "detail":
-            out["detail"] = el.get("stroke-width")
-        return out
-
-    def parts(root, name):
-        return [part(el) for el in root.find(f".//*[@id='{name}']")]
-
-    roots = [ET.parse(BRAND / f"crests/{s}.svg").getroot() for s in P["crest_shapes"]]
-    first = roots[0]
-    grads = {g.get("id"): g for g in first.iter(f"{svg}radialGradient")}
-    turb = first.find(f".//{svg}feTurbulence")
-    disp = first.find(f".//{svg}feDisplacementMap")
-
-    def stops(name):
-        return [s.get("stop-color") for s in grads[name]]
-
-    art = {
-        "BOOTS": parts(first, "boots"),
-        "MITTENS": parts(first, "mittens"),
-        "COAT": first.find(f".//*[@id='coat']").get("d"),
-        "BEARD": first.find(f".//*[@id='beard']").get("d"),
-        "NOSE": {k: first.find(f".//*[@id='nose']").get(k) for k in ("cx", "cy", "r")},
-        "HATS": [parts(r, "hat") for r in roots],
-        "GRADIENTS": {k: {a: g.get(a) for a in ("cx", "cy", "r")} for k, g in grads.items()},
-        "STOPS": {k: stops(k) for k in ("beard-wool", "nose-felt", "boot-felt")},
-        "PAINT": [{"hat": tones(f["fill"], 0.42, 0.36), "coat": tones(f["coat"], 0.3, 0.4)} for f in P["crest_fills"]],
-        "FELT": {"frequency": turb.get("baseFrequency"), "scale": disp.get("scale")},
-    }
-    lines = ["// Generated by brand/export.py from brand/crests and brand/palette.json. Run `make brand`.", ""]
-    lines.append('export type Part = { t: string; d?: string; cx?: string; cy?: string; r?: string; rx?: string; ry?: string; detail?: string };')
-    lines.append("")
-    for name, value in art.items():
-        lines.append(f"export const {name} = {json.dumps(value, separators=(',', ': '))} as const;")
-    (ROOT / "web/src/crestArt.ts").write_text("\n".join(lines) + "\n")
-
-
-def catalog(root):
-    """An empty asset catalog folder."""
-    shutil.rmtree(root, ignore_errors=True)
-    root.mkdir(parents=True)
-    (root / "Contents.json").write_text(json.dumps({"info": {"author": "xcode", "version": 1}}, indent=2) + "\n")
-
-
-def imageset(root, name, svg, size):
-    """One image at 3x: iOS scales it down itself on a 2x screen."""
-    folder = root / f"{name}.imageset"
-    folder.mkdir()
-    png(svg, folder / f"{name}.png", size)
-    contents = {"images": [{"filename": f"{name}.png", "idiom": "universal", "scale": "3x"}], "info": {"author": "xcode", "version": 1}}
-    (folder / "Contents.json").write_text(json.dumps(contents, indent=2) + "\n")
-
-
-def silhouette(shape):
-    """One color, for the lock screen: the coat keeps the beard's place cut out."""
-    text = crest(shape, next(f for f in P["crest_fills"] if f["name"] == "cobalt"))
-    text = re.sub(r'fill="url\(#[^)]+\)"', 'fill="#000000"', text)
-    text = re.sub(r'stroke="#[0-9A-F]{6}"', 'stroke="none"', text)
-    beard = re.search(r'\s*<path id="beard"[^>]* d="([^"]+)"/>', text)
-    text = text.replace(beard[0], "")
-    cut = (
-        '<mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="48" height="48">'
-        f'<rect width="48" height="48" fill="#FFFFFF"/><path d="{beard[1]}" fill="#000000"/></mask>'
+def code_art():
+    """The tokens as code: what Crest.tsx and CrestView draw from."""
+    hues = [{"name": name} | stops for name, stops in T["hues"].items()]
+    shapes = [{"name": name} | shape for name, shape in T["shapes"].items()]
+    mono = {"color": T["mono"]["color"], "background": T["mono"]["background"], "layerOpacity": T["mono"]["layerOpacity"]}
+    dump = lambda v: json.dumps(v, separators=(",", ": "))
+    (ROOT / "web/src/crestArt.ts").write_text(
+        "// Generated by brand/export.py from brand/tokens.json. Run `make brand`.\n"
+        "// The order of HUES and SHAPES is packed into a Bot's crest (hue * 8 + shape): never reorder.\n\n"
+        f"export const HUES = {dump(hues)} as const;\n\n"
+        f"export const SHAPES = {dump(shapes)} as const;\n\n"
+        f"export const MONO = {dump(mono)} as const;\n"
     )
-    text = text.replace("</defs>", f"  {cut}\n  </defs>")
-    return text.replace('<path id="coat"', '<path id="coat" mask="url(#cut)"')
 
-
-def ios_art(work):
-    """Small crests go in every target, large ones and the mark in the app only."""
-    catalog(SHARED_ASSETS)
-    large = ASSETS / "Crests"
-    catalog(large)
-    for color, fill in enumerate(P["crest_fills"]):
-        for s, shape in enumerate(P["crest_shapes"]):
-            index = color * len(P["crest_shapes"]) + s
-            svg = work / f"crest-{index}.svg"
-            svg.write_text(crest(shape, fill))
-            imageset(SHARED_ASSETS, f"crest-{index}", svg, 132)
-            imageset(large, f"crest-large-{index}", svg, 312)
-    for s, shape in enumerate(P["crest_shapes"]):
-        svg = work / f"mono-{s}.svg"
-        svg.write_text(silhouette(shape))
-        imageset(SHARED_ASSETS, f"crest-mono-{s}", svg, 102)
-    shutil.rmtree(ASSETS / "silo-mark.imageset", ignore_errors=True)
-    imageset(ASSETS, "silo-mark", BRAND / "logo/mark.svg", 180)
+    num = lambda v: f"{v:g}"
+    box = lambda b: f"StackBox(x: {num(b['x'])}, y: {num(b['y'])}, w: {num(b['w'])}, h: {num(b['h'])})"
+    lines = [
+        "// Generated by brand/export.py from brand/tokens.json. Run `make brand`.",
+        "// The order of the hues and shapes is packed into a Bot's crest (hue * 8 + shape): never reorder.",
+        "",
+        "public let STACK_HUES: [StackHue] = [",
+    ]
+    for h in hues:
+        stops = ", ".join(f"{k}: 0x{h[k][1:]}" for k in ("ground", "head", "a", "b", "c"))
+        lines.append(f'    StackHue(name: "{h["name"]}", {stops}),')
+    lines += ["]", "", "public let STACK_SHAPES: [StackShape] = ["]
+    for s in shapes:
+        corner = "nil" if s["corner"] == "pill" else num(s["corner"])
+        layers = ", ".join(box(l) for l in s["layers"])
+        lines.append(
+            f'    StackShape(name: "{s["name"]}", head: {box(s["head"])}, layers: [{layers}], corner: {corner}, '
+            f'eyes: .{s["eyes"]}, eyeDx: {num(s["eyeDx"])}, smile: {str(s["smile"]).lower()}, tilt: {num(s.get("tilt", 0))}),'
+        )
+    opacity = ", ".join(f"{k}: [{', '.join(num(v) for v in vs)}]" for k, vs in mono["layerOpacity"].items())
+    lines += ["]", "", f"public let STACK_MONO_OPACITY: [Int: [Double]] = [{opacity}]"]
+    SWIFT.write_text("\n".join(lines) + "\n")
 
 
 def sheet(work):
-    """Every hat in every fill, then the sizes the app draws, on both grounds."""
-    fills = {f["name"]: f for f in P["crest_fills"]}
-    rows = []
-    for fill in P["crest_fills"]:
+    """Every shape in every hue, the roster in every state, then the small sizes on both grounds."""
+    def row(name, looks, size, ground="none", cell=None):
         cells = []
-        for shape in P["crest_shapes"]:
-            svg = work / f"{shape}-{fill['name']}.svg"
-            svg.write_text(crest(shape, fill))
-            cell = work / f"{shape}-{fill['name']}.png"
-            png(svg, cell, 56)
-            cells.append(str(cell))
-        row = work / f"row-{fill['name']}.png"
-        subprocess.run(["magick", *cells, "-background", "none", "-gravity", "center", "-extent", "68x68", "+append", "+repage", str(row)], check=True)
-        rows.append(str(row))
-    sizes = []
-    for ground, mix in ((P["paper"], ("cobalt", "orange", "yellow", "wine", "emerald", "ink", "pink", "brown")), (P["dark"], ("purple", "green", "mist", "graphite", "cobalt", "orange", "yellow", "pink"))):
-        for size in SIZES[3:]:
-            cells = []
-            for shape, name in zip(P["crest_shapes"], mix):
-                cell = work / f"{shape}-{name}.svg"
-                cell.write_text(crest(shape, fills[name]))
-                out = work / f"s{size}-{shape}-{name}.png"
-                png(cell, out, size)
-                cells.append(str(out))
-            row = work / f"size-{size}-{ground[1:]}.png"
-            subprocess.run(
-                ["magick", *cells, "-background", ground, "-gravity", "center", "-extent", f"{68}x{size + 12}", "+append", "+repage", str(row)],
-                check=True,
-            )
-            sizes.append(str(row))
-    subprocess.run(["magick", *rows, *sizes, "-background", P["paper"], "-gravity", "west", "-append", "+repage", "-flatten", str(BRAND / "sheet.png")], check=True)
+        for i, svg in enumerate(render(looks)):
+            src = work / f"{name}-{i}.svg"
+            src.write_text(svg)
+            out = work / f"{name}-{i}.png"
+            png(src, out, size)
+            cells.append(str(out))
+        cell = cell or size + 12
+        out = work / f"{name}.png"
+        subprocess.run(["magick", *cells, "-background", ground, "-gravity", "center", "-extent", f"68x{cell}", "+append", "+repage", str(out)], check=True)
+        return str(out)
+
+    rows = [row(f"hue-{h}", [look(s, h, size=100) for s in SHAPES], 56) for h in HUES]
+    roster = list(T["bots"].values())
+    rows += [row(f"state-{st}", [look(b["shape"], b["hue"], state=st, size=100) for b in roster], 56) for st in STATES]
+    for ground in (PAPER, DARK):
+        for size in (40, 24, 16):
+            for st in ("idle", "working", "needs_you"):
+                looks = [look(b["shape"], b["hue"], state=st, size=size) for b in roster]
+                rows.append(row(f"size-{size}-{st}-{ground[1:]}", looks, size, ground))
+    subprocess.run(["magick", *rows, "-background", PAPER, "-gravity", "west", "-append", "+repage", "-flatten", str(BRAND / "sheet.png")], check=True)
 
 
 def main():
+    code_art()
     ICONS.mkdir(exist_ok=True)
-    mark = inner(BRAND / "logo/mark.svg")
-    small = inner(BRAND / "logo/mark-small.svg")
+    LOGO.mkdir(exist_ok=True)
 
+    m = MARK
+    mark, glyph, mono, tinted, small, medium, at48 = render([
+        look(m["shape"], m["hue"], size=100),
+        look(m["shape"], m["hue"], size=100, ground=False),
+        look(m["shape"], m["hue"], size=100, mono=T["mono"]["color"]),
+        look(m["shape"], m["hue"], size=100, mono="#FFFFFF", monoBg="#000000", ground=False),
+        look(m["shape"], m["hue"], size=16),
+        look(m["shape"], m["hue"], size=32),
+        look(m["shape"], m["hue"], size=48),
+    ])
+    ground = T["hues"][m["hue"]]["ground"]
+    for name, text in {"mark.svg": mark, "glyph.svg": glyph, "mark-mono.svg": mono, "mark-small.svg": small}.items():
+        (LOGO / name).write_text(text + "\n")
     made = {
-        "tile.svg": tile(mark, P["paper"], 0.8, 14),
-        "app-icon.svg": tile(mark, P["paper"], 0.8),
-        "app-icon-dark.svg": tile(mark, P["dark"], 0.8),
-        "app-icon-tinted.svg": tile(mark, "#000000", 0.8),
-        "maskable.svg": tile(mark, P["paper"], 0.62),
-        "favicon.svg": tile(mark, None, 1),
-        "favicon-small.svg": tile(small, None, 1),
+        "tile.svg": mark,
+        "app-icon.svg": bleed(glyph, ground),
+        "app-icon-dark.svg": bleed(glyph, ground),
+        "app-icon-tinted.svg": bleed(tinted, "#000000"),
+        "maskable.svg": bleed(glyph, ground, 0.8),
+        "favicon.svg": medium,
+        "favicon-small.svg": small,
+        "favicon-48.svg": at48,
     }
     for name, text in made.items():
-        (ICONS / name).write_text(text)
+        (ICONS / name).write_text(text + "\n")
 
     for src, dst in (
         ("icons/favicon.svg", "favicon.svg"),
@@ -228,12 +172,13 @@ def main():
         ("logo/lockup.svg", "silo-lockup.svg"),
         ("logo/stacked.svg", "silo-stacked.svg"),
     ):
-        shutil.copy(BRAND / src, PUBLIC / dst)
+        if (BRAND / src).exists():
+            shutil.copy(BRAND / src, PUBLIC / dst)
 
     for src, dst, size in (
         ("favicon-small.svg", "favicon-16.png", 16),
-        ("favicon-small.svg", "favicon-32.png", 32),
-        ("favicon.svg", "favicon-48.png", 48),
+        ("favicon.svg", "favicon-32.png", 32),
+        ("favicon-48.svg", "favicon-48.png", 48),
         ("app-icon.svg", "apple-touch-icon.png", 180),
         ("tile.svg", "icon-192.png", 192),
         ("tile.svg", "icon-512.png", 512),
@@ -249,12 +194,17 @@ def main():
         with tempfile.TemporaryDirectory() as work:
             flat = Path(work) / "flat.png"
             png(ICONS / src, flat, 1024)
-            grey = ["-colorspace", "Gray", "-level", "0%,85%"] if "tinted" in dst else []
+            grey = ["-colorspace", "Gray"] if "tinted" in dst else []
             subprocess.run(["magick", str(flat), "-alpha", "off", *grey, str(APPICON / dst)], check=True)
 
-    web_art()
-    with tempfile.TemporaryDirectory() as work:
-        ios_art(Path(work))
+    # The mark on sign-in. Crests are drawn in code on iOS, so no other image is made.
+    folder = ASSETS / "silo-mark.imageset"
+    shutil.rmtree(folder, ignore_errors=True)
+    folder.mkdir()
+    png(LOGO / "mark.svg", folder / "silo-mark.png", 180)
+    contents = {"images": [{"filename": "silo-mark.png", "idiom": "universal", "scale": "3x"}], "info": {"author": "xcode", "version": 1}}
+    (folder / "Contents.json").write_text(json.dumps(contents, indent=2) + "\n")
+
     with tempfile.TemporaryDirectory() as work:
         sheet(Path(work))
 

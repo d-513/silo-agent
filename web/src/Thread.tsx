@@ -6,6 +6,7 @@ import type { Artifact } from "./Artifact";
 import type { AgentLink } from "./links";
 import { foldEvents, type Attachment, type Block, type Ev, type Quote } from "./fold";
 import { EmptyThread } from "./thread/EmptyThread";
+import type { State } from "./stack.ts";
 import { isBotScratch } from "./thread/Present";
 import { renderBlock, type BlockCtx } from "./thread/renderBlock";
 import { useConnectorMarks } from "./thread/toolIcons";
@@ -34,6 +35,7 @@ export function Thread({
   botId,
   botName,
   botCrest,
+  botState,
   chatId,
   events,
   sending,
@@ -52,6 +54,8 @@ export function Thread({
   botId: string;
   botName?: string;
   botCrest?: number;
+  /** What the crest of an empty thread acts out. */
+  botState?: State;
   chatId?: string;
   events: Ev[];
   sending: boolean;
@@ -175,7 +179,7 @@ export function Thread({
           </div>
         )}
         {blocks.length === 0 && !sending && emptyState}
-        {blocks.length === 0 && !sending && !emptyState && <EmptyThread botName={botName} botCrest={botCrest} onSelectPrompt={onSelectPrompt} />}
+        {blocks.length === 0 && !sending && !emptyState && <EmptyThread botName={botName} botCrest={botCrest} botState={botState} onSelectPrompt={onSelectPrompt} />}
         {rows}
         {working ? (
           <div className={`rise flex h-8 items-center text-small font-medium ${gapAfter(prevRow, true)}`}>

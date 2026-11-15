@@ -150,8 +150,8 @@ struct BotWidgetView: View {
     }
 
     private func crest(_ bot: SharedBot, size: CGFloat) -> some View {
-        CrestView(index: bot.crest, size: size)
-            .overlay(alignment: .bottomTrailing) { Lamp(status: bot.look.lamp, ground: Theme.canvas).offset(x: 2, y: 2) }
+        CrestView(index: bot.crest, size: size, state: crestState(lamp: bot.look.lamp))
+            .overlay(alignment: .topTrailing) { Lamp(status: bot.look.lamp, ground: Theme.canvas).offset(x: 2, y: -2) }
     }
 
     private func callButton(_ bot: SharedBot, wide: Bool = false) -> some View {
@@ -171,10 +171,7 @@ struct BotWidgetView: View {
     private func circular(_ bot: SharedBot) -> some View {
         ZStack {
             AccessoryWidgetBackground()
-            Image("crest-mono-\(unpackCrest(bot.crest).shape)")
-                .resizable()
-                .renderingMode(.template)
-                .frame(width: 34, height: 34)
+            CrestView(index: bot.crest, size: 34, cutout: true)
         }
         .widgetURL(SiloLink.mainChat(bot: bot.id).url)
         .accessibilityLabel("\(bot.name), \(bot.look.word)")

@@ -116,7 +116,7 @@ Desktop-first web app, light and dark (§2, Dark). A calm, precise console looki
 1. **One ink.** Text, primary buttons and icons share `ink`. The UI is mostly black and white on paper.
 2. **Color is a signal, not a decoration.** `cobalt` means "you are here / you can type here". `emerald` means something is happening now: a Bot at work, a live connection. A Bot that is only switched on is not news, so it stays unlit. `vermilion` means it needs you. If none of those apply, don't use color.
 3. **Separate by tone before lines.** Areas sit on `canvas`, `well` or `surface`. Hairlines are translucent ink and used sparingly.
-4. **Motion answers an action.** Nothing moves by itself except a Working lamp, and that lamp breathes rather than blinks.
+4. **Motion answers an action.** Nothing moves by itself except a Working lamp, which breathes rather than blinks, and a Bot's crest, which acts out its state in small loops (see Crests).
 5. **Morph, don't swap.** Send becomes Stop in the same place, and copy becomes a check. Nothing jumps or reflows.
 6. **Every decision leaves a receipt** in the thread. No toasts, no `confirm()`.
 7. **The Bot's words look different from the interface.** Replies are set in a serif, and everything else is Geist.
@@ -159,7 +159,7 @@ Never use opacity to make grey text. Pick a level.
 | `vermilion-deep` | `#A82E24` | Hover on vermilion fills.                                                                                                                      |
 | `vermilion-pale` | `#FBEAE8` | Hover behind Deny, PDF file badge, error field background.                                                                                     |
 
-The accents never appear as gradients, glows or large fields, with one exception: the faint `cobalt-pale` corner of a featured card (a connector in the library, a channel adapter), a radial fade from the top right. Orange, amber, gold, purple and cyan never appear in the UI. The crest fills below are the only exception, and a crest is the one drawing in the UI with shading.
+The accents never appear as gradients, glows or large fields, with one exception: the faint `cobalt-pale` corner of a featured card (a connector in the library, a channel adapter), a radial fade from the top right. Orange, amber, gold, purple and cyan never appear in the UI. The crest hues below are the only exception.
 
 ### The hatch
 
@@ -187,30 +187,26 @@ Dark is the same system re-inked, not a second design: every component names the
 - **Raised is lighter.** On paper the order is `surface` over `canvas` over `well` over `pressed`. In the dark it is `canvas`, `well`, `surface`, `pressed` from deepest to lightest, so a card still lifts, a hover still answers, and a code block inside a card still sits in.
 - **Fills flip their label.** The lifted accents are too light for white text, so a primary button is a paper fill with a dark label, and Stop, an armed delete and the Feed count carry `on-accent`.
 - **Shade is black and heavier** (`--shade-*`), but the ring does the work: a dark card is seated by its `line`, not its shadow.
-- **Crests do not change.** A crest is the Bot's own skrzat: its colors are the same in both themes. The ink crest takes a faint edge in the dark, as mist takes one on paper.
+- **Crests do not change.** A crest carries its own ground, so its colors are the same in both themes. The gray tile takes a faint edge in the dark (`--crest-edge`), where it would sink into the page.
 - **Brand logos keep a paper tile** (`mark`, with a 2px halo in the dark): they are drawn for a light page, and a black mark must not sink into the ground.
 - A QR code stays black on white.
 - **Choosing:** the rail's sun/moon item, just above the account avatar. Until the reader picks, the app follows the system setting and keeps following it; the pick is remembered in the browser. The glyph morphs (the moon turns out as the sun turns in, 320ms `ease-settle`) and shows where a press leads; the palette itself changes in one frame, with no fade.
 - `theme_test.ts` holds both palettes to their contrast floors (4.5:1 for every word color on `canvas`, `well` and `surface`; the same for a label on its fill).
 
-### Crest fills
+### Crest hues
 
-The order is fixed because it's packed into the `crest` int as `color * 8 + shape`. Never reorder these, only restyle them.
+The order is fixed because it's packed into the `crest` int as `hue * 8 + shape`. Never reorder these, only restyle them. They are `brand/tokens.json`; `make brand` writes them into the code. `ground` is the tile and the ink of the eyes and the badge's glyph, `head` the lightest stop, and the layers take `b` (one layer), `b, c` (two) or `a, b, c` (three), top to bottom.
 
-| #   | Name     | Fill                                    | Detail   |
-| --- | -------- | --------------------------------------- | -------- |
-| 0   | mist     | `#F3F2EF` + 1.4px `line-strong` outline | `ink`    |
-| 1   | brown    | `#8B5A3C`                               | `canvas` |
-| 2   | wine     | `#9F1239`                               | `canvas` |
-| 3   | orange   | `#EA580C`                               | `canvas` |
-| 4   | yellow   | `#E0AE1C`                               | `ink`    |
-| 5   | green    | `#16A34A`                               | `canvas` |
-| 6   | emerald  | `#0F7A55`                               | `canvas` |
-| 7   | cobalt   | `#2B4FC7`                               | `canvas` |
-| 8   | purple   | `#6D28D9`                               | `canvas` |
-| 9   | pink     | `#DB2777`                               | `canvas` |
-| 10  | graphite | `#55534E`                               | `canvas` |
-| 11  | ink      | `#1A1917`                               | `canvas` |
+| #   | Name   | ground    | head      | a         | b         | c         |
+| --- | ------ | --------- | --------- | --------- | --------- | --------- |
+| 0   | green  | `#123B33` | `#D6FBE4` | `#A6F0C6` | `#6FE3A8` | `#1FBF7A` |
+| 1   | pink   | `#3D1230` | `#FFD9EC` | `#FFA6D2` | `#FF6FB5` | `#E0408F` |
+| 2   | amber  | `#4A2A08` | `#FFF0C2` | `#FFE08A` | `#FFD05A` | `#F59B14` |
+| 3   | blue   | `#101B4D` | `#DDE6FF` | `#A9BEFF` | `#6F8FFF` | `#3D63F5` |
+| 4   | gray   | `#14161A` | `#F4F5F7` | `#CDD1D8` | `#A3A9B3` | `#5B616B` |
+| 5   | violet | `#2A1657` | `#EADFFF` | `#D0BEFF` | `#B79CFF` | `#7C4DFF` |
+| 6   | sky    | `#0C3550` | `#D5F2FF` | `#A9E2FF` | `#7CD3FF` | `#1FA3F0` |
+| 7   | lime   | `#10331A` | `#E4FBC0` | `#B6EE6B` | `#8FD93B` | `#69B81F` |
 
 Wine is deliberately darker than `vermilion`, so a red Bot never reads as Needs you.
 
@@ -354,7 +350,7 @@ The Bot's question (`ask_owner`), the same card in a thread and on the Dashboard
 
 ### Status lamp
 
-- A 7px dot, or 9px when it sits on a crest corner with a 2px ring in the ground color. States:
+- A 7px dot, or 9px when it sits on a crest's top right corner (where the crest's own badge is at larger sizes) with a 2px ring in the ground color. States:
   - Working: `lamp`, breathing.
   - Live connection: `lamp`, solid. A call, a mounted drive, a running container: something connected right now.
   - Needs you: `vermilion`.
@@ -368,9 +364,18 @@ The Bot's question (`ask_owner`), the same card in a thread and on the Dashboard
 
 ### Crests
 
-- A crest is the whole skrzat: one body (coat, mittens, wool beard, boots, a felt nose) under one of eight hats (bobble, bent tip, wide brim, paper boat, cone, striped cone, baker's toque, stocking cap) in one of the twelve fills. The fill takes the hat and mittens, its darker `coat` the coat, and Detail the hat's stripes. Each surface is a soft three-stop radial gradient with a slightly rough felt edge; nothing finer, because fiber noise and highlights go dirty at these sizes. The art lives in [brand/](brand/README.md), and `make brand` generates `web/src/crestArt.ts` from it. Sizes run from 16 to 104. The web draws them live; iOS shows the same art as images, and has no nod.
-- **Nod:** on hover, the hat dips over the nose and back over 220ms (`.crest-hat`, the bottom of the hat as its origin). Working Bots in the rail nod by themselves about every 6s. That's the only personality animation in the product.
-- Picker: selected cell `cobalt-pale` with an inset 1px `cobalt` ring; selected color dot `0 0 0 2px surface, 0 0 0 4px cobalt`.
+- A crest is a **Stack**: a small head with a face on one to three rounded layers, on its own rounded tile (corner 24% of the tile). A Bot is one of eight shapes (wobble, duo, pyramid, tower, blocks, hourglass, tilt, coins) in one of the eight hues; the shape tells Bots apart, the hue is decoration. The same character, wobble in green at rest, is Silo's mark. It is flat: no gradients, no shading, no outline. The geometry is `web/src/stack.ts` (ported to iOS as `Logic/Stack.swift`), the tokens and the designer's reference drawings live in [brand/](brand/README.md), and `stack_test.ts` holds the renderer to those drawings byte for byte.
+- **It acts out what the Bot is doing** (`crestState` in `statusLook.ts`, most pressing first):
+  - **needs you**: the head pops up off the layers, wide eyes, two ticks beside the gap, a white badge with "!".
+  - **working**: the pieces get shorter and restack higher over a dashed layer sliding in; dash eyes.
+  - **listening** (words in this Bot's composer, or a call hearing you): the head lifts and tilts, bright eyes.
+  - **done** (a Feed post nobody has read): everything centres, happy eyes, a badge with a check.
+  - **asleep** (the box is off, or the run waits on someone else): the layers flatten, the head sinks, closed eyes, two z's.
+  - **idle**: the shape's own face.
+- **Sizes:** 76px and up draws everything; under 76 the smile goes and the eyes grow; under 48 the mark fills the tile and the badge is not drawn (the lamp on the crest's top right corner is the badge); under 20 only the resting face, centred, with the largest eyes. 16 is the smallest; rows use 28 to 44.
+- **Motion** (`index.css`, "The Stack"): each piece is its own element and slides to its new place in 220ms ease-out, with a small overshoot (`ease-pop`) entering listening (180ms), needs you (300ms) and done (200ms), and a 600ms slump into asleep; new eyes fade in over 100ms. Each state has one loop: at rest the eyes blink every 4 to 7s (each crest on its own clock) and once on hover of a `blink` host; working slides the dashed layer in and out with its outline crawling while the pieces sway 2 units in turn; needs you bobs the head 1.5 units every 2s after the badge pops in; done draws its check; asleep drifts the z's up. A crest under 20px never loops. With reduced motion nothing loops or slides: a change of state is one 150ms fade. iOS slides the pieces between states and runs no loops.
+- **Never the only signal.** A crest beside its Bot's name and status line is decoration (`aria-hidden`); alone (the rail) it is an image named "Name, state".
+- Picker: a **Shape** row (the eight shapes in the current hue; selected cell `cobalt-pale` with an inset 1px `cobalt` ring) and a **Color** row (each hue's ground as a dot with its `b` stop at the centre; selected `0 0 0 2px surface, 0 0 0 4px cobalt`). A new Bot starts as wobble in a hue no Bot of its Workspace wears yet.
 
 ### Rules
 
@@ -516,11 +521,11 @@ The Bot's question (`ask_owner`), the same card in a thread and on the Dashboard
 ## 9. Do not
 
 - Use blue button fills, gradients (a featured card's corner aside, §2), glows, glass or blur.
-- Use orange, amber, purple or cyan anywhere except crest fills.
+- Use orange, amber, purple or cyan anywhere except crest hues.
 - Put a border on every box. Use tone first.
 - Use spinners where a skeleton or an in-place morph works.
 - Add toasts, `confirm()` or modal dim-to-black.
 - Loop any animation other than the Working lamp's breathing.
 - Use IBM Plex, Inter or decorative display faces. Geist, Geist Mono and Source Serif 4 (replies only) are the only fonts.
 - Show a secret value.
-- Add illustrations, other mascots or 3D robots. The skrzat is the one character: a vector crest in the app, and a felt render only on sign-in and first run ([brand/](brand/README.md)).
+- Add illustrations, other mascots or 3D robots. The Stack is the one character: a Bot's crest in the app and Silo's mark outside it ([brand/](brand/README.md)).

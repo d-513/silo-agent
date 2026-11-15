@@ -58,13 +58,13 @@ struct BotSidebar: View {
                     Button {
                         if on { model.sidebarOpen = false } else { model.selectedBotID = bot.id }
                     } label: {
-                        CrestView(index: bot.crest, size: 28)
+                        CrestView(index: bot.crest, size: 28, state: crestState(bot))
                             .frame(width: 40, height: 40)
                             .background(on ? Theme.surface : .clear, in: shape)
                             .overlay(shape.stroke(on ? Theme.line : .clear))
-                            .overlay(alignment: .bottomTrailing) {
+                            .overlay(alignment: .topTrailing) {
                                 let look = botLook(bot)
-                                Lamp(status: look.lamp, ground: Theme.well).offset(x: 1, y: 1)
+                                Lamp(status: look.lamp, ground: Theme.well).offset(x: 1, y: -1)
                             }
                     }
                     .buttonStyle(.press)
@@ -215,7 +215,7 @@ private struct BotHead: View {
         let look = botLook(bot)
         let paused = bot.activity.first { $0.state == "needs_you" }
         HStack(spacing: 10) {
-            CrestView(index: bot.crest, size: 30)
+            CrestView(index: bot.crest, size: 30, state: crestState(bot))
             VStack(alignment: .leading, spacing: 1) {
                 Text(bot.name).font(.silo(16, .semibold)).foregroundStyle(Theme.ink).lineLimit(1)
                 HStack(spacing: 6) {

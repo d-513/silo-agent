@@ -246,7 +246,7 @@ struct SignInView: View {
 
 // MARK: - Pieces
 
-/// The skrzat and the name, as on the web's sign-in card.
+/// The mark and the name, as on the web's sign-in card.
 struct AuthMark: View {
     var body: some View {
         HStack(spacing: 12) {
@@ -280,7 +280,7 @@ private struct StepRail: View {
 
 /// A few crests, the Bots' faces, settling in once as the app opens.
 private struct CrestRow: View {
-    private static let crests: [Int32] = [61, 54, 16, 34, 75] // cobalt hex, emerald cloud, wine circle, yellow squircle, pink pill
+    private static let crests: [Int32] = [0, 9, 18, 27, 45] // the roster: Silo, Inbox, Calendar, Research, Home
     @State private var shown = false
     @Environment(\.accessibilityReduceMotion) private var still
 
