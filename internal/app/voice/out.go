@@ -29,6 +29,7 @@ type piece struct {
 	id     int
 	runID  string
 	text   string
+	at     time.Time // when it was queued
 	cancel context.CancelFunc
 
 	mu        sync.Mutex
@@ -118,7 +119,7 @@ func (o *outbox) poke() {
 func (o *outbox) say(text, runID string) {
 	o.mu.Lock()
 	o.nextID++
-	o.queue = append(o.queue, &piece{id: o.nextID, runID: runID, text: text})
+	o.queue = append(o.queue, &piece{id: o.nextID, runID: runID, text: text, at: time.Now()})
 	o.mu.Unlock()
 	o.poke()
 }

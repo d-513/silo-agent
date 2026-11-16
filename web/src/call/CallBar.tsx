@@ -5,6 +5,7 @@ import { Tip, TipTitle } from "../Tip";
 import type { Bot as BotRow } from "../gen/silo/v1/ui_pb";
 import { chatDoing, type Doing } from "../statusLook";
 import { callClock } from "./audio";
+import { Timings } from "./Timings";
 import { callTone, type CallTone, stateWords } from "./look";
 import type { Call } from "./useCall";
 import type { CallSession, CallSnapshot } from "./session";
@@ -69,6 +70,7 @@ function Bar({ s, call, botName, doing, onExpand }: { s: CallSnapshot; call: Cal
           <div className="flex items-baseline gap-2">
             <span className={`truncate text-row leading-5 font-medium ${(s.error && ended) || s.state === "needs_you" ? "text-vermilion" : "text-ink"}`}>{stateWords(s, botName, doing)}</span>
             {!ended ? <Clock since={s.startedAt} /> : null}
+            <Timings s={s} up />
           </div>
           <Caption s={s} botName={botName} />
         </div>

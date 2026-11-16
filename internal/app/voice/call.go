@@ -178,6 +178,7 @@ type call struct {
 	ttsOff   bool
 	ttsRetry time.Time
 	pending  *db.VoiceTurn // the turn waiting for its first sound
+	lap      *lap          // the turn's timings, for the debug readout (lap.go)
 	pendAt   time.Time
 	// The talker (talker.go): the turn it is answering, a count for ids,
 	// whether it said goodbye, and exchanges waiting for a reply to end.
@@ -474,7 +475,9 @@ func (c *call) turn(t turnIn) {
 	c.nTurns++
 	c.pending = &db.VoiceTurn{CallID: c.id, BotID: c.botID, EndOfTurnMs: t.eouMs, SpeechToTextMs: int(stt / time.Millisecond), CreatedAt: time.Now()}
 	c.pendAt = t.at
+	c.lap = &lap{at: t.at, EouMs: t.eouMs, SttMs: int(stt / time.Millisecond)}
 	c.mu.Unlock()
+	c.lapDo(func(*lap) {})
 	// With the call over nobody would hear the talker: the Bot takes the turn.
 	if c.mode == config.VoiceModeTalker && c.ctx.Err() == nil {
 		c.talk(text, cut)
@@ -565,7 +568,15 @@ func (c *call) reply(runID, text string, end bool) {
 		ready = append(ready, st.Flush()...)
 		delete(c.replies, runID)
 	}
+	firstWords := text != "" && c.lap != nil && !c.lap.handAt.IsZero() && c.lap.BotMs == 0
 	c.mu.Unlock()
+	if firstWords {
+		c.lapDo(func(l *lap) {
+			if l.BotMs == 0 {
+				l.BotMs = since(l.handAt)
+			}
+		})
+	}
 	for _, r := range ready {
 		c.say(r, runID)
 	}
@@ -674,7 +685,15 @@ func (c *call) pieceStarted(p *piece) {
 	if c.pending != nil && c.pending.FirstAudioMs == 0 {
 		c.pending.FirstAudioMs = int(time.Since(c.pendAt) / time.Millisecond)
 	}
+	first := c.lap != nil && c.lap.FirstMs == 0 && p.at.After(c.lap.at)
 	c.mu.Unlock()
+	if first {
+		c.lapDo(func(l *lap) {
+			if l.FirstMs == 0 {
+				l.FirstMs, l.TtsMs = since(l.at), since(p.at)
+			}
+		})
+	}
 	_ = c.send(map[string]any{"t": "say", "text": p.text, "id": p.id})
 	c.setState(stateSpeaking, "")
 	// Flushed on its first frame: no idle will come to move the state on.

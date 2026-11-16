@@ -7,6 +7,7 @@ import { Lamp } from "../Lamp";
 import { chatDoing, progress } from "../statusLook";
 import { Tip, TipTitle } from "../Tip";
 import { Clock, useHoldKeys } from "./CallBar";
+import { Timings } from "./Timings";
 import { callCrest, callTone, type CallTone, callWork, stateWords } from "./look";
 import type { Call } from "./useCall";
 import type { CallSnapshot } from "./session";
@@ -54,6 +55,7 @@ export function CallStage({
           {ended ? null : <Lamp status="online" />}
           <span className="truncate">{ended ? t("Call ended") : t("On a call · {{where}}", { where })}</span>
           {ended ? null : <Clock since={s.startedAt} />}
+          <Timings s={s} />
         </span>
         <span className="flex-1" />
         <button

@@ -1866,6 +1866,7 @@ const de: Record<string, string> = {
   "Talk any time; a pause ends your turn.": "Sprich jederzeit; eine Pause beendet deinen Beitrag.",
   "Only what you say while holding the button (or Space) is heard. For a noisy room, or speakers the Bot hears itself through.": "Gehört wird nur, was du sagst, während du die Taste (oder die Leertaste) hältst. Für laute Räume oder Lautsprecher, über die sich der Bot selbst hört.",
   "Unmute": "Stummschaltung aufheben",
+  "Latency": "Latenz",
   "Mute": "Stummschalten",
   "End call": "Anruf beenden",
   "End_call": "Beenden",

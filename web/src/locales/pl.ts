@@ -1948,6 +1948,7 @@ const pl: Record<string, string> = {
   "Talk any time; a pause ends your turn.": "Mów kiedy chcesz; przerwa kończy twoją wypowiedź.",
   "Only what you say while holding the button (or Space) is heard. For a noisy room, or speakers the Bot hears itself through.": "Słychać tylko to, co mówisz, trzymając przycisk (albo spację). Na głośne pomieszczenie albo głośniki, przez które Bot słyszy sam siebie.",
   "Unmute": "Włącz mikrofon",
+  "Latency": "Opóźnienie",
   "Mute": "Wycisz",
   "End call": "Zakończ rozmowę",
   "End_call": "Zakończ",

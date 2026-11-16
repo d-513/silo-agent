@@ -79,6 +79,10 @@ func (c *call) talk(said, cut string) {
 		Tools:     talkerTools,
 		MaxTokens: 400,
 		Latency:   true,
+		// The talker answers small talk or hands the turn on: thinking first
+		// only delays the first word (Claude Code's default thinks for
+		// seconds before a delegate call). The lowest level the model takes.
+		Thinking: llm.NearestThinking(llm.ThinkingOff, c.s.models.ThinkingLevels(c.ctx, cfg.ModelVoice)),
 	}
 	ctx, cancel := context.WithTimeout(c.ctx, talkTimeout)
 	defer cancel()
@@ -98,8 +102,13 @@ func (c *call) talk(said, cut string) {
 	reader := speech.NewStream(speech.PointersFor(c.snd.Language))
 	var text strings.Builder
 	calls := map[int]*llm.ToolCall{}
+	timed := false
 	for stream.Next() {
 		ev := stream.Event()
+		if !timed && (ev.Kind == llm.EventText || ev.Kind == llm.EventToolCallStart) {
+			timed = true
+			c.lapDo(func(l *lap) { l.TalkerMs = since(started) })
+		}
 		switch ev.Kind {
 		case llm.EventText:
 			text.WriteString(ev.Text)
@@ -154,9 +163,11 @@ func (c *call) talk(said, cut string) {
 	}
 	c.mu.Unlock()
 	if delegated {
+		c.lapDo(func(l *lap) { l.Talker = "delegated" })
 		c.hand(said, cut)
 		return
 	}
+	c.lapDo(func(l *lap) { l.Talker = "answered" })
 	// Written once it has been heard, or cut short.
 	if !c.out.busy() || turn.interrupted {
 		c.finishTalk()
@@ -167,6 +178,7 @@ func (c *call) talk(said, cut string) {
 // lose what was said.
 func (c *call) talkFailed(turn *talkTurn, provider, model string, req llm.Request, err error, started time.Time) {
 	log.Printf("voice: call %s talker %s/%s: %v", c.id, provider, model, err)
+	c.lapDo(func(l *lap) { l.Talker = "failed" })
 	c.mu.Lock()
 	if c.talking == turn {
 		c.talking = nil
@@ -249,6 +261,7 @@ func (c *call) flushWaiting() {
 // hand gives a turn to the Bot: the human's words, marked spoken, as a
 // message in the chat.
 func (c *call) hand(said, cut string) {
+	c.lapDo(func(l *lap) { l.handAt = time.Now() })
 	if _, err := c.s.host.StartOrInject(c.botID, c.chatID, said, run.Extra{Spoken: &run.Spoken{CallID: c.id, Interrupted: cut}}, nil); err != nil {
 		log.Printf("voice: call %s: %v", c.id, err)
 		if errors.Is(err, run.ErrBusy) {
