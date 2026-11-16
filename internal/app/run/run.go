@@ -5,6 +5,7 @@
 package run
 
 import (
+	"context"
 	"errors"
 
 	v1 "silo.agent/gen/silo/v1"
@@ -25,9 +26,31 @@ type Origin struct {
 	// Automation is set when a scheduled automation started the run. Its runs
 	// start from a fresh context and are not delivered anywhere.
 	Automation *db.Automation
+	// Profile is set when the automation is a domain's housekeeping job: the
+	// run is narrowed to it.
+	Profile *Profile
 	// Subagent is set when the run is a subagent's work in its own log chat.
 	// Its runs are not delivered anywhere and get the subagent tool set.
 	Subagent *db.Subagent
+}
+
+// Profile narrows a run to one background job: a prompt of its own in place
+// of the Bot's, only the tools it names, a model of its own, and no machine.
+// A pinned automation carries one (automation.Pinned.Profile), so a domain's
+// housekeeping goes through the same loop, rules and log as any run without
+// being handed the Bot's whole reach.
+type Profile struct {
+	// Name labels the job's model calls in the LLM debug log ("memory").
+	Name string
+	// Prompt is the base system prompt, in the Bot's own prompt's place. The
+	// run is told who the Bot is and who uses it, and nothing else of it.
+	Prompt func() string
+	// Tools are the built-in tools the run is offered, by name, wherever each
+	// is otherwise exposed. None of them may need the Bot's machine: the run
+	// does not start it.
+	Tools []string
+	// Model is the model the run uses; "" means the Bot's own.
+	Model func() string
 }
 
 // Report is what a lead's wake run opens with: its subagents' results.
@@ -142,6 +165,9 @@ type Engine interface {
 	Place(Placement) (Placed, error)
 	// LiveRunID is the active run of a conversation, or "".
 	LiveRunID(botID, chatID string) string
+	// Wait blocks until the run has exited (or ctx ends) and answers the
+	// status it ended with; "" when ctx ended first.
+	Wait(ctx context.Context, runID string) string
 	// StopChatLive stops any live run of the conversation and waits for it.
 	StopChatLive(botID, chatID string)
 	// Command runs text typed in a channel conversation as a slash command;

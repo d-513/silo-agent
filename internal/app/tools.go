@@ -52,6 +52,9 @@ type runTools struct {
 
 func (a *App) runToolsFor(botID string, origin *run.Origin) runTools {
 	defs := a.Tools.Offered(botID, isSubagent(origin))
+	if p := profileOf(origin); p != nil {
+		defs = a.Tools.Pick(botID, p.Tools)
+	}
 	rt := runTools{list: tool.LLM(defs), byName: make(map[string]*tool.Def, len(defs))}
 	for i := range defs {
 		rt.byName[defs[i].Name] = &defs[i]
@@ -61,7 +64,7 @@ func (a *App) runToolsFor(botID string, origin *run.Origin) runTools {
 
 // execTool runs one tool call the model made: the completion surface. def is
 // the definition its name resolved to (toolDef), nil when there is none.
-func (a *App) execTool(ctx context.Context, def *tool.Def, botID, chatID, runID, name, argsJSON string, subagent bool) (string, string, error) {
+func (a *App) execTool(ctx context.Context, def *tool.Def, botID, chatID, runID, name, argsJSON string, origin *run.Origin) (string, string, error) {
 	if def == nil {
 		return "", "", fmt.Errorf("unknown tool %s", name)
 	}
@@ -78,8 +81,8 @@ func (a *App) execTool(ctx context.Context, def *tool.Def, botID, chatID, runID,
 		}
 	}
 	res, err := a.Tools.Run(ctx, &tool.Call{
-		Surface: tool.Completion, Bot: &bot, ChatID: chatID, RunID: runID, Subagent: subagent,
-		Def: def, Args: args, ArgsJSON: argsJSON,
+		Surface: tool.Completion, Bot: &bot, ChatID: chatID, RunID: runID, Subagent: isSubagent(origin),
+		Picked: profileOf(origin) != nil, Def: def, Args: args, ArgsJSON: argsJSON,
 	})
 	return res.Text, res.Image, err
 }
@@ -200,23 +203,24 @@ func (a *App) artifactTool(ctx context.Context, c *tool.Call) (tool.Result, erro
 // recallTool searches memories: lines for the model, rows for Python.
 func (a *App) recallTool(ctx context.Context, c *tool.Call) (string, error) {
 	if !c.Structured() {
-		return a.Memory.RecallTool(ctx, c.Bot.ID, c.Str("query"), c.Int("limit"))
+		return a.Memory.RecallTool(ctx, c.Bot.ID, c.Str("query"), c.Int("limit"), c.Picked)
 	}
-	rows, err := a.Memory.Recall(ctx, c.Bot.ID, c.Str("query"), c.Int("limit"), 0)
+	rows, err := a.Memory.Recall(ctx, c.Bot.ID, c.Str("query"), c.Int("limit"), false)
 	if err != nil {
 		return "", err
 	}
-	type memory struct {
+	type found struct {
 		ID        string  `json:"id"`
 		Content   string  `json:"content"`
+		Kind      string  `json:"kind"`
 		CreatedAt string  `json:"created_at"`
 		Distance  float64 `json:"distance"`
 	}
 	out := struct {
-		Memories []memory `json:"memories"`
-	}{Memories: []memory{}}
+		Memories []found `json:"memories"`
+	}{Memories: []found{}}
 	for _, r := range rows {
-		out.Memories = append(out.Memories, memory{r.ID, r.Content, r.CreatedAt.Format(time.RFC3339), r.Distance})
+		out.Memories = append(out.Memories, found{r.ID, r.Content, r.Kind, r.CreatedAt.Format(time.RFC3339), r.Distance})
 	}
 	b, err := json.Marshal(out)
 	return string(b), err

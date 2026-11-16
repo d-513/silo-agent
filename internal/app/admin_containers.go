@@ -353,6 +353,8 @@ func (a *App) AdminContainerAction(ctx context.Context, req *connect.Request[v1.
 
 // boxAction is one plain engine action on a Silo container by name.
 func (a *App) boxAction(ctx context.Context, name, action string) error {
+	// A Bot's box stopped or removed here no longer opens the worker API.
+	a.boxes.forget(strings.TrimPrefix(name, "silo-"))
 	var err error
 	st, serr := a.Docker.Inspect(ctx, name)
 	switch action {

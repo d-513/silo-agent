@@ -77,7 +77,15 @@ struct MemoriesPage: View {
 
     private func meta(_ memory: Silo_V1_Memory) -> some View {
         HStack(spacing: 6) {
+            if memory.kind == "preference" || memory.kind == "lesson" {
+                Text(memory.kind).foregroundStyle(Theme.ink2)
+                Text("·").accessibilityHidden(true)
+            }
             Text(shortDay(memory.createdAt))
+            if memory.status == "tentative" {
+                Text("·").accessibilityHidden(true)
+                Text("noticed, not yet relied on").lineLimit(1)
+            }
             if !memory.chatID.isEmpty {
                 Text("·").accessibilityHidden(true)
                 Button { openChat(memory.chatID) } label: {
@@ -104,7 +112,8 @@ struct MemoriesPage: View {
 
     private func load() async {
         guard let botID = model.selectedBotID else { return }
-        do { memories = try await model.client.listMemories(botID: botID) } catch { await model.report(error) }
+        // Retired memories (replaced or forgotten) are told to nobody; putting one back is on the web.
+        do { memories = try await model.client.listMemories(botID: botID).filter { $0.status != "retired" } } catch { await model.report(error) }
         loaded = true
     }
 

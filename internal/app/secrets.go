@@ -287,9 +287,9 @@ func secretHostsOf(raw string) []string {
 }
 
 func (a *App) forgetMask(botID string) {
-	a.mu.Lock()
+	a.maskMu.Lock()
 	delete(a.mask, botID)
-	a.mu.Unlock()
+	a.maskMu.Unlock()
 }
 
 func (a *App) DeleteSecret(ctx context.Context, req *connect.Request[v1.DeleteSecretRequest]) (*connect.Response[v1.DeleteSecretResponse], error) {

@@ -97,7 +97,7 @@ var catalog = map[string]spec{
 	"bot.soul":             {manager: true, title: "Soul", mode: Allow, summary: want("edit SOUL")},
 	"bot.remember":         {title: "Remember", mode: Allow, summary: want("save a memory")},
 	"bot.recall":           {title: "Recall", mode: Allow, summary: want("search its memories")},
-	"bot.forget":           {title: "Forget", mode: Allow, summary: want("delete a memory")},
+	"bot.forget":           {title: "Forget", mode: Allow, summary: want("retire a memory")},
 	"bot.set_timezone":     {manager: true, title: "Set time zone", mode: Allow, summary: want("change the time zone its schedules use")},
 	"bot.search_docs":      {title: "Search documents", mode: Allow, summary: want("search the owner's indexed documents")},
 	"bot.feed":             {title: "Post to Feed", mode: Allow, summary: want("post to your Feed")},

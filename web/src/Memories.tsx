@@ -1,4 +1,7 @@
 import { Brain, MessageCircle, Trash2 } from "lucide-react";
+import { btnClass } from "./Btn";
+import { FilterChip } from "./FilterChip";
+import { FILTERS, kindWord, shows, type Filter } from "./memoryView";
 import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -26,12 +29,17 @@ function MemoryRow({
   m,
   score,
   onDelete,
+  onKeep,
 }: {
   botId: string;
   m: Memory;
   score?: number;
   onDelete: () => void;
+  onKeep: () => void;
 }) {
+  const kind = kindWord(m.kind);
+  const waiting = m.status === "tentative";
+  const retired = m.status === "retired";
   const created = m.createdAt ? new Date(m.createdAt) : null;
   const full = created && !Number.isNaN(created.getTime()) ? fullTime(created) : undefined;
   return (
@@ -42,9 +50,37 @@ function MemoryRow({
         </span>
       ) : null}
       <div className="min-w-0 flex-1">
-        <p className="text-body leading-[22px] break-words whitespace-pre-wrap text-ink">{m.content}</p>
+        <p className={`text-body leading-[22px] break-words whitespace-pre-wrap ${retired ? "text-ink-3 line-through" : "text-ink"}`}>
+          {m.content}
+        </p>
         <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-label leading-4 text-ink-3">
+          {kind ? (
+            <>
+              <span className="text-ink-2">{t(kind)}</span>
+              <span aria-hidden>·</span>
+            </>
+          ) : null}
           {m.createdAt ? <span title={full}>{day(m.createdAt)}</span> : null}
+          {waiting ? (
+            <>
+              <span aria-hidden>·</span>
+              <span title={t("Worked out, not said. The Bot is told it once it shows again in a later conversation, or when you keep it.")}>
+                {t("noticed, not yet relied on")}
+              </span>
+            </>
+          ) : null}
+          {retired && m.retiredAt ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>{m.supersededBy ? t("replaced {{date}}", { date: day(m.retiredAt) }) : t("forgotten {{date}}", { date: day(m.retiredAt) })}</span>
+            </>
+          ) : null}
+          {m.useCount > 0 ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>{t("used in {{count}} chats", { count: m.useCount })}</span>
+            </>
+          ) : null}
           {m.chatId ? (
             <>
               <span aria-hidden>·</span>
@@ -66,6 +102,11 @@ function MemoryRow({
           ) : null}
         </p>
       </div>
+      {waiting || retired ? (
+        <button type="button" className={btnClass("secondary", "shrink-0", "sm")} onClick={onKeep}>
+          {waiting ? t("Keep") : t("Put back")}
+        </button>
+      ) : null}
       <ArmedButton
         kind="ghost"
         size="sm"
@@ -82,13 +123,15 @@ function MemoryRow({
 }
 
 // MemoriesPane lists the Bot's memories, grouped by when they were saved, or
-// ranks them by meaning for a query. The Bot writes them with `remember` (or
-// the collector reads quiet chats); the human reads, searches and deletes.
+// ranks them by meaning for a query. The Bot writes them with `remember` and
+// its memory keeper reads quiet chats; the human reads, searches, deletes,
+// keeps what the keeper only noticed and puts back what was retired.
 export function MemoriesPane({ bot, onError }: { bot: Bot; onError: (s: string) => void }) {
   const botId = bot.id;
   const q = useQuery(UI.method.listMemories, { botId });
   const all = q.data?.memories ?? null;
   const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
   const { hits, setHits, searching, error: searchErr } = useSearch<Memory>(
     query,
     (s) => ui.searchMemories({ botId, query: s }).then((r) => r.memories),
@@ -96,7 +139,10 @@ export function MemoriesPane({ bot, onError }: { bot: Bot; onError: (s: string) 
     [botId],
   );
 
-  useEffect(() => setQuery(""), [botId]);
+  useEffect(() => {
+    setQuery("");
+    setFilter("all");
+  }, [botId]);
   useEffect(() => {
     if (q.error) onError(fail(q.error));
   }, [q.error]);
@@ -112,24 +158,35 @@ export function MemoriesPane({ bot, onError }: { bot: Bot; onError: (s: string) 
     }
   }
 
+  async function keep(id: string) {
+    onError("");
+    try {
+      const kept = await ui.keepMemory({ botId, id });
+      patch(UI.method.listMemories, { botId }, (r) => ({ ...r, memories: r.memories.map((m) => (m.id === id ? kept : m)) }));
+      setHits((cur) => (cur ? cur.map((m) => (m.id === id ? { ...kept, distance: m.distance } : m)) : cur));
+    } catch (e) {
+      onError(fail(e));
+    }
+  }
+
+  const shown = useMemo(() => (all ? all.filter((m) => shows(filter, m)) : null), [all, filter]);
   const groups = useMemo(() => {
-    if (!all) return [];
-    return groupChats(all.map((m) => ({ ...m, updatedAt: m.createdAt })));
-  }, [all]);
+    if (!shown) return [];
+    return groupChats(shown.map((m) => ({ ...m, updatedAt: m.createdAt })));
+  }, [shown]);
+  const live = all ? all.filter((m) => shows("all", m)).length : 0;
 
   const searchMode = query.trim() !== "";
-  const rows = searchMode ? hits : all;
+  const rows = searchMode ? hits : shown;
 
   return (
     <div className="silo-page pb-12">
       <div className="mb-1 flex items-center gap-2.5">
         <h2 className="text-title text-ink">{t("Memories")}</h2>
-        {all && all.length > 0 ? (
-          <Count n={all.length} />
-        ) : null}
+        {live > 0 ? <Count n={live} /> : null}
       </div>
       <p className="mb-6 text-ink-2">
-        {t("Durable facts the Bot remembers across conversations. The Bot sees all of them while they are few, a summary once they are many, and searches them by meaning.")}
+        {t("What the Bot keeps across conversations: facts, how you want things done, and what it learned works. It is told your preferences and its lessons every time, and the facts in full while they are few, as a summary once they are many.")}
       </p>
 
       {(all === null || all.length > 0 || searchMode) && (
@@ -141,12 +198,21 @@ export function MemoriesPane({ bot, onError }: { bot: Bot; onError: (s: string) 
             placeholder={t("Search by meaning, e.g. “what does the user drink”")}
           />
           {searchErr ? <ErrorWell className="mt-2">{searchErr}</ErrorWell> : null}
+          {all && !searchMode ? (
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              {FILTERS.filter((f) => f.always || all.some((m) => shows(f.key, m))).map((f) => (
+                <FilterChip key={f.key} on={filter === f.key} onClick={() => setFilter(f.key)}>
+                  {t(f.label)}
+                </FilterChip>
+              ))}
+            </div>
+          ) : null}
         </div>
       )}
 
       {rows === null ? (
         <SkeletonRows rows={4} height={64} />
-      ) : !searchMode && rows.length === 0 ? (
+      ) : !searchMode && all !== null && all.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
           <Brain size={20} className="text-ink-3" />
           <p className="text-ink-2">{t("No memories yet")}</p>
@@ -154,17 +220,21 @@ export function MemoriesPane({ bot, onError }: { bot: Bot; onError: (s: string) 
             {t("{{name}} saves what matters from your chats.", { name: bot.name })}
           </p>
         </div>
-      ) : searchMode && rows.length === 0 ? (
+      ) : rows.length === 0 ? (
         <div className="rounded-card bg-surface px-6 py-10 text-center text-ink-3 shadow-card">
           <p className="text-row text-ink-2">{searchErr ? t("Search failed.") : t("Nothing matches.")}</p>
-          <button type="button" className="mt-2 text-meta font-medium text-cobalt hover:underline" onClick={() => setQuery("")}>
-            {t("Clear search")}
+          <button
+            type="button"
+            className="mt-2 text-meta font-medium text-cobalt hover:underline"
+            onClick={() => (searchMode ? setQuery("") : setFilter("all"))}
+          >
+            {searchMode ? t("Clear search") : t("Show all")}
           </button>
         </div>
       ) : searchMode ? (
         <ul className="overflow-hidden rounded-card bg-surface shadow-card">
           {rows.map((m) => (
-            <MemoryRow key={m.id} botId={botId} m={m} score={match(m.distance)} onDelete={() => void remove(m.id)} />
+            <MemoryRow key={m.id} botId={botId} m={m} score={match(m.distance)} onDelete={() => void remove(m.id)} onKeep={() => void keep(m.id)} />
           ))}
         </ul>
       ) : (
@@ -177,7 +247,7 @@ export function MemoriesPane({ bot, onError }: { bot: Bot; onError: (s: string) 
               </div>
               <ul className="overflow-hidden rounded-card bg-surface shadow-card">
                 {g.chats.map((m) => (
-                  <MemoryRow key={m.id} botId={botId} m={m} onDelete={() => void remove(m.id)} />
+                  <MemoryRow key={m.id} botId={botId} m={m} onDelete={() => void remove(m.id)} onKeep={() => void keep(m.id)} />
                 ))}
               </ul>
             </section>

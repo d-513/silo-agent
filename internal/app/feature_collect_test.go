@@ -9,8 +9,10 @@ import (
 	"connectrpc.com/connect"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/memory"
 	"silo.agent/internal/apptest"
 	"silo.agent/internal/db"
+	"silo.agent/internal/llm"
 	"silo.agent/internal/llm/dummy"
 )
 
@@ -41,10 +43,10 @@ func ageChat(h *apptest.H, chatID string) {
 
 func TestCollectMemoriesSavesFactsOnce(t *testing.T) {
 	dummy.Reset()
-	dummy.Collect("Test_C1", `Here you go:
-`+"```json"+`
-{"save":[{"text":"The human's dog is called Rex"},{"text":"Deploys happen on Fridays"}]}
-`+"```")
+	dummy.Collect("Test_C1", dummy.Turn{ToolCalls: []llm.ToolCall{
+		{Name: "remember", Arguments: `{"content":"The human's dog is called Rex"}`},
+		{Name: "remember", Arguments: `{"content":"Deploys happen on Fridays"}`},
+	}})
 	h := apptest.New(t)
 	bot := h.CreateBot("Collector")
 	chat := h.FirstChat(bot.GetId())
@@ -90,14 +92,19 @@ func TestCollectMemoriesSavesFactsOnce(t *testing.T) {
 	}
 }
 
-func TestCollectMemoriesUpdateForgetOnlyShownIDs(t *testing.T) {
+// The keeper updates by replacing: the old memory is retired, not rewritten
+// or deleted, and nothing of another Bot's can be touched.
+func TestCollectMemoriesReplaceForgetOnlyOwnBot(t *testing.T) {
 	dummy.Reset()
 	h := apptest.New(t)
 	bot := h.CreateBot("Editor")
 	chat := h.FirstChat(bot.GetId())
 	other := h.CreateBot("Other")
 
-	dummy.Collect("Test_C3", `{"save":[{"text":"The human lives in Oslo"},{"text":"The human drinks tea"}]}`)
+	dummy.Collect("Test_C3", dummy.Turn{ToolCalls: []llm.ToolCall{
+		{Name: "remember", Arguments: `{"content":"The human lives in Oslo"}`},
+		{Name: "remember", Arguments: `{"content":"The human drinks tea"}`},
+	}})
 	run, _ := h.Send(bot.GetId(), chat, "Test_C3_Input")
 	h.WaitRun(run)
 	collect(t, h, bot.GetId(), chat)
@@ -105,49 +112,57 @@ func TestCollectMemoriesUpdateForgetOnlyShownIDs(t *testing.T) {
 	h.DB.Where("bot_id = ? AND content LIKE ?", bot.GetId(), "%Oslo%").First(&oslo)
 	h.DB.Where("bot_id = ? AND content LIKE ?", bot.GetId(), "%tea%").First(&tea)
 
-	// A memory of another Bot is never shown, so its id is refused.
 	otherChat := h.FirstChat(other.GetId())
-	dummy.Collect("Test_C0", `{"save":[{"text":"The stranger likes jazz"}]}`)
+	dummy.Collect("Test_C0", dummy.Remember(`{"content":"The stranger likes jazz"}`))
 	run0, _ := h.Send(other.GetId(), otherChat, "Test_C0_Input")
 	h.WaitRun(run0)
 	collect(t, h, other.GetId(), otherChat)
 	var jazz db.Memory
 	h.DB.Where("bot_id = ?", other.GetId()).First(&jazz)
 
-	dummy.Collect("Test_C4", `{"update":[{"id":"`+oslo.ID+`","text":"The human moved from Oslo to Bergen in 2026"},{"id":"`+jazz.ID+`","text":"hijacked"}],"forget":["`+tea.ID+`","`+jazz.ID+`"]}`)
+	dummy.Collect("Test_C4", dummy.Turn{ToolCalls: []llm.ToolCall{
+		{Name: "remember", Arguments: `{"content":"The human moved from Oslo to Bergen in 2026","replaces":["` + oslo.ID + `","` + jazz.ID + `"]}`},
+		{Name: "forget", Arguments: `{"id":"` + tea.ID + `"}`},
+		{Name: "forget", Arguments: `{"id":"` + jazz.ID + `"}`},
+	}})
 	run2, _ := h.Send(bot.GetId(), chat, "Test_C4_Input Oslo tea")
 	h.WaitRun(run2)
 	res := collect(t, h, bot.GetId(), chat)
 	if res.GetUpdated() != 1 || res.GetForgotten() != 1 {
 		t.Fatalf("updated %d forgotten %d", res.GetUpdated(), res.GetForgotten())
 	}
+	var bergen db.Memory
+	h.DB.Where("bot_id = ? AND content LIKE ?", bot.GetId(), "%Bergen%").First(&bergen)
 	h.DB.Where("id = ?", oslo.ID).First(&oslo)
-	if !strings.Contains(oslo.Content, "Bergen") {
-		t.Fatalf("oslo not rewritten: %q", oslo.Content)
+	if bergen.ID == "" || oslo.Status != memory.StatusRetired || oslo.SupersededBy != bergen.ID {
+		t.Fatalf("oslo %q superseded by %q, bergen %q", oslo.Status, oslo.SupersededBy, bergen.ID)
 	}
-	var n int64
-	h.DB.Model(&db.Memory{}).Where("id = ?", tea.ID).Count(&n)
-	if n != 0 {
-		t.Fatal("tea should be forgotten")
+	h.DB.Where("id = ?", tea.ID).First(&tea)
+	if tea.Status != memory.StatusRetired {
+		t.Fatalf("tea should be retired, is %q", tea.Status)
 	}
 	h.DB.Where("id = ?", jazz.ID).First(&jazz)
-	if jazz.Content != "The stranger likes jazz" {
-		t.Fatalf("another bot's memory changed: %q", jazz.Content)
+	if jazz.Content != "The stranger likes jazz" || jazz.Status != memory.StatusActive {
+		t.Fatalf("another bot's memory changed: %q %q", jazz.Content, jazz.Status)
+	}
+	// Retired memories are told to nobody.
+	if p := h.App.SystemPromptText(bot.GetId()); strings.Contains(p, "lives in Oslo") || strings.Contains(p, "drinks tea") || !strings.Contains(p, "Bergen") {
+		t.Fatalf("prompt should hold only what is current:\n%s", p[max(0, len(p)-600):])
 	}
 }
 
-func TestCollectMemoriesBadReplyAdvancesProviderErrorDoesNot(t *testing.T) {
+func TestCollectMemoriesNoSaveAdvancesProviderErrorDoesNot(t *testing.T) {
 	dummy.Reset()
 	h := apptest.New(t)
 	bot := h.CreateBot("Flaky")
 	chat := h.FirstChat(bot.GetId())
 
-	dummy.Collect("Test_C5", "I think the human likes cats.")
+	dummy.Collect("Test_C5", dummy.Turn{Text: "I think the human likes cats."})
 	run, _ := h.Send(bot.GetId(), chat, "Test_C5_Input")
 	h.WaitRun(run)
 	res := collect(t, h, bot.GetId(), chat)
-	if res.GetSaved() != 0 || res.GetNote() == "" || memorySeq(h, chat) == 0 {
-		t.Fatalf("garbage reply: saved %d note %q seq %d", res.GetSaved(), res.GetNote(), memorySeq(h, chat))
+	if res.GetSaved() != 0 || memorySeq(h, chat) == 0 {
+		t.Fatalf("a run that saved nothing: saved %d seq %d", res.GetSaved(), memorySeq(h, chat))
 	}
 
 	before := memorySeq(h, chat)
@@ -170,7 +185,7 @@ func TestCollectMemoriesBadReplyAdvancesProviderErrorDoesNot(t *testing.T) {
 	if n := h.App.SweepMemories(time.Now()); n != 1 {
 		t.Fatalf("sweep read %d, want 1", n)
 	}
-	dummy.Collect("Test_C6", `{}`)
+	dummy.Collect("Test_C6")
 	if n := h.App.SweepMemories(time.Now()); n != 0 {
 		t.Fatalf("sweep should pause after a provider error, read %d", n)
 	}
@@ -181,7 +196,7 @@ func TestCollectMemoriesBadReplyAdvancesProviderErrorDoesNot(t *testing.T) {
 
 func TestSweepMemoriesPicksIdleWebChatsOnly(t *testing.T) {
 	dummy.Reset()
-	dummy.Collect("Test_C7", `{"save":[{"text":"The human's favourite colour is green"}]}`)
+	dummy.Collect("Test_C7", dummy.Remember(`{"content":"The human's favourite colour is green"}`))
 	h := apptest.New(t)
 	bot := h.CreateBot("Sweeper")
 	chat := h.FirstChat(bot.GetId())

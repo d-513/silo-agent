@@ -23,7 +23,7 @@ import { nextWhen } from "./format";
 import { msg, t } from "./i18n.ts";
 
 function isPinned(kind: string) {
-  return kind === "heartbeat" || kind === "dashboard";
+  return kind === "heartbeat" || kind === "dashboard" || kind === "memory";
 }
 
 function nextLine(a: Automation, bot: Bot) {

@@ -2253,8 +2253,30 @@ public nonisolated struct Silo_V1_Memory: Sendable {
   /// Cosine distance to the query; set only by SearchMemories.
   public var distance: Double = 0
 
-  /// Set when the memory collector saved it from this chat.
+  /// Set when the memory keeper saved it from this chat.
   public var chatID: String = String()
+
+  /// "fact", "preference" (how the human wants things done) or "lesson" (what
+  /// works on this machine and these sites).
+  public var kind: String = String()
+
+  /// "active" (the Bot is told it), "tentative" (worked out, waiting to be
+  /// seen again) or "retired" (replaced or forgotten; kept for 30 days).
+  public var status: String = String()
+
+  /// Nobody said it: the Bot or its memory keeper worked it out.
+  public var inferred: Bool = false
+
+  /// The separate times it was seen.
+  public var evidence: Int32 = 0
+
+  /// The conversations that leaned on it.
+  public var useCount: Int32 = 0
+
+  /// The memory that replaced a retired one, if one did.
+  public var supersededBy: String = String()
+
+  public var retiredAt: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2334,6 +2356,22 @@ public nonisolated struct Silo_V1_DeleteMemoryResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// KeepMemory makes a memory active on the owner's word: a tentative one is
+/// kept as true, a retired one is put back.
+public nonisolated struct Silo_V1_KeepMemoryRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var botID: String = String()
+
+  public var id: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -13736,7 +13774,7 @@ nonisolated extension Silo_V1_DeleteBotResponse: SwiftProtobuf.Message, SwiftPro
 
 nonisolated extension Silo_V1_Memory: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Memory"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}content\0\u{3}created_at\0\u{3}last_used_at\0\u{1}distance\0\u{4}\u{2}chat_id\0\u{c}\u{6}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}content\0\u{3}created_at\0\u{3}last_used_at\0\u{1}distance\0\u{4}\u{2}chat_id\0\u{1}kind\0\u{1}status\0\u{1}inferred\0\u{1}evidence\0\u{3}use_count\0\u{3}superseded_by\0\u{3}retired_at\0\u{c}\u{6}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -13750,6 +13788,13 @@ nonisolated extension Silo_V1_Memory: SwiftProtobuf.Message, SwiftProtobuf._Mess
       case 4: try { try decoder.decodeSingularStringField(value: &self.lastUsedAt) }()
       case 5: try { try decoder.decodeSingularDoubleField(value: &self.distance) }()
       case 7: try { try decoder.decodeSingularStringField(value: &self.chatID) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.kind) }()
+      case 9: try { try decoder.decodeSingularStringField(value: &self.status) }()
+      case 10: try { try decoder.decodeSingularBoolField(value: &self.inferred) }()
+      case 11: try { try decoder.decodeSingularInt32Field(value: &self.evidence) }()
+      case 12: try { try decoder.decodeSingularInt32Field(value: &self.useCount) }()
+      case 13: try { try decoder.decodeSingularStringField(value: &self.supersededBy) }()
+      case 14: try { try decoder.decodeSingularStringField(value: &self.retiredAt) }()
       default: break
       }
     }
@@ -13774,6 +13819,27 @@ nonisolated extension Silo_V1_Memory: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if !self.chatID.isEmpty {
       try visitor.visitSingularStringField(value: self.chatID, fieldNumber: 7)
     }
+    if !self.kind.isEmpty {
+      try visitor.visitSingularStringField(value: self.kind, fieldNumber: 8)
+    }
+    if !self.status.isEmpty {
+      try visitor.visitSingularStringField(value: self.status, fieldNumber: 9)
+    }
+    if self.inferred != false {
+      try visitor.visitSingularBoolField(value: self.inferred, fieldNumber: 10)
+    }
+    if self.evidence != 0 {
+      try visitor.visitSingularInt32Field(value: self.evidence, fieldNumber: 11)
+    }
+    if self.useCount != 0 {
+      try visitor.visitSingularInt32Field(value: self.useCount, fieldNumber: 12)
+    }
+    if !self.supersededBy.isEmpty {
+      try visitor.visitSingularStringField(value: self.supersededBy, fieldNumber: 13)
+    }
+    if !self.retiredAt.isEmpty {
+      try visitor.visitSingularStringField(value: self.retiredAt, fieldNumber: 14)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -13784,6 +13850,13 @@ nonisolated extension Silo_V1_Memory: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.lastUsedAt != rhs.lastUsedAt {return false}
     if lhs.distance != rhs.distance {return false}
     if lhs.chatID != rhs.chatID {return false}
+    if lhs.kind != rhs.kind {return false}
+    if lhs.status != rhs.status {return false}
+    if lhs.inferred != rhs.inferred {return false}
+    if lhs.evidence != rhs.evidence {return false}
+    if lhs.useCount != rhs.useCount {return false}
+    if lhs.supersededBy != rhs.supersededBy {return false}
+    if lhs.retiredAt != rhs.retiredAt {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -13968,6 +14041,41 @@ nonisolated extension Silo_V1_DeleteMemoryResponse: SwiftProtobuf.Message, Swift
   }
 
   public static func ==(lhs: Silo_V1_DeleteMemoryResponse, rhs: Silo_V1_DeleteMemoryResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_KeepMemoryRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".KeepMemoryRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}bot_id\0\u{1}id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.botID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.botID.isEmpty {
+      try visitor.visitSingularStringField(value: self.botID, fieldNumber: 1)
+    }
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_KeepMemoryRequest, rhs: Silo_V1_KeepMemoryRequest) -> Bool {
+    if lhs.botID != rhs.botID {return false}
+    if lhs.id != rhs.id {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

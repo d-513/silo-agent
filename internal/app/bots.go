@@ -224,6 +224,7 @@ func (a *App) haltBot(ctx context.Context, b *db.Bot) {
 	a.reloadBot(b)
 	a.cancelBot(b.ID)
 	a.Hub.Drop(b.ID)
+	a.boxes.forget(b.ID)
 	if b.ContainerID != "" {
 		_ = a.Docker.Stop(ctx, b.ContainerID)
 	}
@@ -240,6 +241,7 @@ func (a *App) destroyBot(ctx context.Context, b *db.Bot) {
 	a.reloadBot(b)
 	a.cancelBot(b.ID)
 	a.Hub.Drop(b.ID)
+	a.boxes.forget(b.ID)
 	a.Docker.Drop(ctx, b.ID, b.ContainerID)
 	b.ContainerID = ""
 	b.TokenHash = unheldToken()

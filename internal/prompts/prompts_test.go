@@ -47,6 +47,17 @@ func TestSystemPromptNamesTheJavaScriptToolchain(t *testing.T) {
 	}
 }
 
+// The box ships the everyday shell tools and uv (botimage/Containerfile, whose
+// last check fails the build when one is missing); the model reaches for one
+// only if the prompt says it is there.
+func TestSystemPromptNamesTheInstalledTools(t *testing.T) {
+	for _, want := range []string{"`curl`", "`jq`", "`sqlite3`", "`uv`", "`pip install`"} {
+		if !strings.Contains(System, want) {
+			t.Fatalf("SYSTEM.md does not say %s is installed", want)
+		}
+	}
+}
+
 // Behind the network filter only 80 and 443 connect directly; the box's
 // start.sh points proxychains4, ssh and $SILO_SOCKS_PROXY at the SOCKS5 door.
 // The model only finds that door if the prompt names it and the switch.
@@ -93,15 +104,22 @@ func TestCompactPromptKeepsMarker(t *testing.T) {
 	}
 }
 
-// The dummy provider recognizes a memory collection by this heading, and the
-// collector parses the JSON shape the prompt teaches.
-func TestMemoryPromptKeepsMarkerAndShape(t *testing.T) {
-	if !strings.HasPrefix(Memory, "# MEMORY COLLECTOR") {
-		t.Fatal("MEMORY.md must start with the MEMORY COLLECTOR heading")
+// The dummy provider recognizes a memory keeper's run by this heading, the
+// keeper's prompt names the tools its profile offers, and the part about
+// working things out is filled in from its own file.
+func TestMemoryPromptKeepsMarkerAndTools(t *testing.T) {
+	if !strings.HasPrefix(Memory, "# MEMORY KEEPER") {
+		t.Fatal("MEMORY.md must start with the MEMORY KEEPER heading")
 	}
-	for _, want := range []string{`"save"`, `"update"`, `"forget"`} {
+	for _, want := range []string{"`remember`", "`forget`", "`reinforce`", "`recall`", "`review_memories`", "{infer}", "[Silo output filter:"} {
 		if !strings.Contains(Memory, want) {
 			t.Fatalf("MEMORY.md no longer mentions %s", want)
 		}
+	}
+	if !strings.Contains(MemoryInfer, "inferred: true") || !strings.Contains(MemoryStated, "Never pass `inferred`") {
+		t.Fatal("the keeper's two inference sections must say how inferred is used")
+	}
+	if !strings.Contains(MemoryTidy, "`review_memories`") {
+		t.Fatal("MEMORY_TIDY.md must send the keeper to review_memories")
 	}
 }

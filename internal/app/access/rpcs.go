@@ -108,6 +108,7 @@ var RPCs = map[string]RPCNeed{
 	"ListMemories":             BotUse,
 	"SearchMemories":           BotUse,
 	"DeleteMemory":             BotManage,
+	"KeepMemory":               BotManage,
 	"ListKnowledge":            BotUse,
 	"AddKnowledgeFolder":       BotManage,
 	"RemoveKnowledgeFolder":    BotManage,

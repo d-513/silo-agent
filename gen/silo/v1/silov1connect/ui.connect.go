@@ -166,6 +166,8 @@ const (
 	UISearchMemoriesProcedure = "/silo.v1.UI/SearchMemories"
 	// UIDeleteMemoryProcedure is the fully-qualified name of the UI's DeleteMemory RPC.
 	UIDeleteMemoryProcedure = "/silo.v1.UI/DeleteMemory"
+	// UIKeepMemoryProcedure is the fully-qualified name of the UI's KeepMemory RPC.
+	UIKeepMemoryProcedure = "/silo.v1.UI/KeepMemory"
 	// UIListKnowledgeProcedure is the fully-qualified name of the UI's ListKnowledge RPC.
 	UIListKnowledgeProcedure = "/silo.v1.UI/ListKnowledge"
 	// UIAddKnowledgeFolderProcedure is the fully-qualified name of the UI's AddKnowledgeFolder RPC.
@@ -596,6 +598,7 @@ type UIClient interface {
 	ListMemories(context.Context, *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error)
 	SearchMemories(context.Context, *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error)
 	DeleteMemory(context.Context, *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error)
+	KeepMemory(context.Context, *connect.Request[v1.KeepMemoryRequest]) (*connect.Response[v1.Memory], error)
 	// Knowledge: workspace folders (drives included) indexed for search_docs.
 	ListKnowledge(context.Context, *connect.Request[v1.ListKnowledgeRequest]) (*connect.Response[v1.ListKnowledgeResponse], error)
 	AddKnowledgeFolder(context.Context, *connect.Request[v1.AddKnowledgeFolderRequest]) (*connect.Response[v1.KnowledgeFolder], error)
@@ -1211,6 +1214,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UIDeleteMemoryProcedure,
 			connect.WithSchema(uIMethods.ByName("DeleteMemory")),
+			connect.WithClientOptions(opts...),
+		),
+		keepMemory: connect.NewClient[v1.KeepMemoryRequest, v1.Memory](
+			httpClient,
+			baseURL+UIKeepMemoryProcedure,
+			connect.WithSchema(uIMethods.ByName("KeepMemory")),
 			connect.WithClientOptions(opts...),
 		),
 		listKnowledge: connect.NewClient[v1.ListKnowledgeRequest, v1.ListKnowledgeResponse](
@@ -2196,6 +2205,7 @@ type uIClient struct {
 	listMemories             *connect.Client[v1.ListMemoriesRequest, v1.ListMemoriesResponse]
 	searchMemories           *connect.Client[v1.SearchMemoriesRequest, v1.SearchMemoriesResponse]
 	deleteMemory             *connect.Client[v1.DeleteMemoryRequest, v1.DeleteMemoryResponse]
+	keepMemory               *connect.Client[v1.KeepMemoryRequest, v1.Memory]
 	listKnowledge            *connect.Client[v1.ListKnowledgeRequest, v1.ListKnowledgeResponse]
 	addKnowledgeFolder       *connect.Client[v1.AddKnowledgeFolderRequest, v1.KnowledgeFolder]
 	removeKnowledgeFolder    *connect.Client[v1.RemoveKnowledgeFolderRequest, v1.RemoveKnowledgeFolderResponse]
@@ -2678,6 +2688,11 @@ func (c *uIClient) SearchMemories(ctx context.Context, req *connect.Request[v1.S
 // DeleteMemory calls silo.v1.UI.DeleteMemory.
 func (c *uIClient) DeleteMemory(ctx context.Context, req *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error) {
 	return c.deleteMemory.CallUnary(ctx, req)
+}
+
+// KeepMemory calls silo.v1.UI.KeepMemory.
+func (c *uIClient) KeepMemory(ctx context.Context, req *connect.Request[v1.KeepMemoryRequest]) (*connect.Response[v1.Memory], error) {
+	return c.keepMemory.CallUnary(ctx, req)
 }
 
 // ListKnowledge calls silo.v1.UI.ListKnowledge.
@@ -3562,6 +3577,7 @@ type UIHandler interface {
 	ListMemories(context.Context, *connect.Request[v1.ListMemoriesRequest]) (*connect.Response[v1.ListMemoriesResponse], error)
 	SearchMemories(context.Context, *connect.Request[v1.SearchMemoriesRequest]) (*connect.Response[v1.SearchMemoriesResponse], error)
 	DeleteMemory(context.Context, *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error)
+	KeepMemory(context.Context, *connect.Request[v1.KeepMemoryRequest]) (*connect.Response[v1.Memory], error)
 	// Knowledge: workspace folders (drives included) indexed for search_docs.
 	ListKnowledge(context.Context, *connect.Request[v1.ListKnowledgeRequest]) (*connect.Response[v1.ListKnowledgeResponse], error)
 	AddKnowledgeFolder(context.Context, *connect.Request[v1.AddKnowledgeFolderRequest]) (*connect.Response[v1.KnowledgeFolder], error)
@@ -4173,6 +4189,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UIDeleteMemoryProcedure,
 		svc.DeleteMemory,
 		connect.WithSchema(uIMethods.ByName("DeleteMemory")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIKeepMemoryHandler := connect.NewUnaryHandler(
+		UIKeepMemoryProcedure,
+		svc.KeepMemory,
+		connect.WithSchema(uIMethods.ByName("KeepMemory")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListKnowledgeHandler := connect.NewUnaryHandler(
@@ -5221,6 +5243,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uISearchMemoriesHandler.ServeHTTP(w, r)
 		case UIDeleteMemoryProcedure:
 			uIDeleteMemoryHandler.ServeHTTP(w, r)
+		case UIKeepMemoryProcedure:
+			uIKeepMemoryHandler.ServeHTTP(w, r)
 		case UIListKnowledgeProcedure:
 			uIListKnowledgeHandler.ServeHTTP(w, r)
 		case UIAddKnowledgeFolderProcedure:
@@ -5796,6 +5820,10 @@ func (UnimplementedUIHandler) SearchMemories(context.Context, *connect.Request[v
 
 func (UnimplementedUIHandler) DeleteMemory(context.Context, *connect.Request[v1.DeleteMemoryRequest]) (*connect.Response[v1.DeleteMemoryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteMemory is not implemented"))
+}
+
+func (UnimplementedUIHandler) KeepMemory(context.Context, *connect.Request[v1.KeepMemoryRequest]) (*connect.Response[v1.Memory], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.KeepMemory is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListKnowledge(context.Context, *connect.Request[v1.ListKnowledgeRequest]) (*connect.Response[v1.ListKnowledgeResponse], error) {

@@ -281,7 +281,7 @@ func TestCollectRefusedWhileAReplyRuns(t *testing.T) {
 // A diverged chat does not have its copied part collected again.
 func TestDivergedChatIsNotCollectedAgain(t *testing.T) {
 	dummy.Reset()
-	dummy.Collect("Test_rs_div", "```json\n{\"save\":[{\"text\":\"The dog is Rex\"}]}\n```")
+	dummy.Collect("Test_rs_div", dummy.Remember(`{"content":"The dog is Rex"}`))
 	h := apptest.New(t)
 	id := h.CreateBot("Diverger").GetId()
 	chat := h.FirstChat(id)
@@ -296,5 +296,33 @@ func TestDivergedChatIsNotCollectedAgain(t *testing.T) {
 	calls := len(dummy.CollectCalls())
 	if res := collect(t, h, id, copied.GetId()); res.GetNote() != "nothing new" || len(dummy.CollectCalls()) != calls {
 		t.Fatalf("the copy was collected again: %q, %d calls", res.GetNote(), len(dummy.CollectCalls())-calls)
+	}
+}
+
+// A run that reaches runs.max_duration ends as an error that says so, not as
+// if someone had pressed Stop.
+func TestRunTimeLimitSaysSo(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_rs_limit", dummy.Turn{Delay: 5 * time.Second, Text: "too late"})
+	dir := t.TempDir()
+	h := apptest.New(t, apptest.WithYAML(apptest.DefaultYAML(dir)+"runs:\n  max_duration: 300ms\n"))
+	bot := h.CreateBot("Limit")
+	chat := h.FirstChat(bot.GetId())
+	runID, _ := h.Send(bot.GetId(), chat, "Test_rs_limit")
+	evs := h.WaitRun(runID)
+	if got := runStatus(t, h, runID); got != "error" {
+		t.Fatalf("run status %q, want error", got)
+	}
+	said := false
+	for _, ev := range evs {
+		if ev.Kind == "assistant" && ev.Body == "Stopped." {
+			t.Fatal("a run out of time reads as stopped by someone")
+		}
+		if ev.Kind == "error" && strings.Contains(ev.Body, "time limit") {
+			said = true
+		}
+	}
+	if !said {
+		t.Fatal("the run did not say it reached its time limit")
 	}
 }

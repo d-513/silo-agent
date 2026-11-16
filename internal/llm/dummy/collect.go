@@ -1,72 +1,92 @@
 package dummy
 
 import (
-	"errors"
 	"strings"
 
 	"silo.agent/internal/llm"
 )
 
-// CollectMarker is the heading the CP's memory collector prompt starts with; a
-// Complete whose system prompt carries it answers with a scripted collection.
-const CollectMarker = "MEMORY COLLECTOR"
+// CollectMarker is the heading the CP's memory keeper prompt starts with: a
+// request whose system prompt carries it is a keeper run's turn, and is
+// answered from the turns Collect registered instead of the chat's script.
+const CollectMarker = "MEMORY KEEPER"
 
-// CollectError is a Collect reply that fails the call like a provider error.
-const CollectError = "!error"
+// CollectError fails a keeper turn like a provider error.
+var CollectError = Turn{Fail: "dummy: upstream unavailable"}
 
-var (
-	collects     = map[string]string{}
-	collectCalls []string
-)
+// keeperScript is the model-like suffix a keeper run's scripts are filed
+// under, so one token can script the chat and the keeper that reads it.
+const keeperScript = "@keeper"
 
-// Collect registers the collector's raw reply for requests whose excerpt holds
-// token. Unmatched requests answer {} (nothing to save).
-func Collect(token, reply string) {
-	mu.Lock()
-	defer mu.Unlock()
-	collects[token] = reply
+var collectCalls []string
+
+// Collect registers the keeper's turns for a run whose opening holds token
+// (in what the human said, when it is reading a conversation). A run nothing
+// is registered for answers with one line and no tool call: nothing to keep.
+func Collect(token string, turns ...Turn) {
+	Script(token+keeperScript, turns...)
 }
 
-// CollectCalls returns the user text of every collector request so far.
+// Remember is a keeper (or chat) turn that calls remember with args, a JSON
+// object.
+func Remember(args string) Turn { return Call("remember", args) }
+
+// Call is a turn that makes one tool call.
+func Call(name, args string) Turn {
+	return Turn{ToolCalls: []llm.ToolCall{{Name: name, Arguments: args}}}
+}
+
+// CollectCalls returns what every keeper run so far opened with.
 func CollectCalls() []string {
 	mu.Lock()
 	defer mu.Unlock()
 	return append([]string(nil), collectCalls...)
 }
 
-func collectFrom(req llm.Request) (llm.Response, bool, error) {
-	is := false
+func isKeeper(req llm.Request) bool {
 	for _, blk := range req.System {
 		if strings.Contains(blk.Text, CollectMarker) {
-			is = true
+			return true
 		}
 	}
-	if !is {
-		return llm.Response{}, false, nil
-	}
-	hay := ""
+	return false
+}
+
+// keeperTurn picks a keeper run's next turn: the script of the first token
+// the human said in the conversation it reads, else of the first token in
+// its opening at all (a tidy run has no conversation).
+func keeperTurn(req llm.Request) Turn {
+	opening, index := "", 0
 	for _, m := range req.Messages {
-		hay += m.Text + "\n"
+		switch m.Role {
+		case llm.RoleUser:
+			if opening == "" {
+				opening = m.Text
+			}
+		case llm.RoleAssistant:
+			index++
+		}
 	}
 	// Match only what the human said: the dummy chat model echoes an older
 	// token in later assistant turns.
 	var said strings.Builder
-	for _, entry := range strings.Split(hay, "\n\n") {
+	for _, entry := range strings.Split(opening, "\n\n") {
 		if strings.HasPrefix(entry, "USER:") {
 			said.WriteString(entry)
 		}
 	}
+	token := firstToken(said.String())
+	if token == "" {
+		token = firstToken(opening)
+	}
 	mu.Lock()
-	collectCalls = append(collectCalls, hay)
-	reply := "{}"
-	for token, r := range collects {
-		if strings.Contains(said.String(), token) {
-			reply = r
-		}
+	if index == 0 {
+		collectCalls = append(collectCalls, opening)
 	}
+	turns := scenarios[token+keeperScript]
 	mu.Unlock()
-	if reply == CollectError {
-		return llm.Response{}, true, errors.New("dummy: upstream unavailable")
+	if index < len(turns) {
+		return turns[index]
 	}
-	return llm.Response{Text: reply, Usage: llm.Usage{InputTokens: requestRunes(req), OutputTokens: 8}}, true, nil
+	return Turn{Text: "Nothing more to keep."}
 }

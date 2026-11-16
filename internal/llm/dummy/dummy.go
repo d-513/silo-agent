@@ -89,7 +89,6 @@ func Reset() {
 	mu.Lock()
 	defer mu.Unlock()
 	scenarios = map[string][]Turn{}
-	collects = map[string]string{}
 	collectCalls = nil
 	streamed = nil
 	decided = nil
@@ -219,9 +218,6 @@ func (c *client) Complete(ctx context.Context, req llm.Request) (llm.Response, e
 	mu.Lock()
 	completed = append(completed, req)
 	mu.Unlock()
-	if res, ok, err := collectFrom(req); ok {
-		return res, err
-	}
 	for _, blk := range req.System {
 		if strings.Contains(blk.Text, DigestMarker) {
 			return llm.Response{Text: DigestText, Usage: llm.Usage{InputTokens: requestRunes(req), OutputTokens: 2}}, nil
@@ -285,6 +281,9 @@ func verdictFrom(req llm.Request) string {
 // turns of a single run. The turn index is the number of assistant messages
 // already present.
 func resolveTurn(req llm.Request) Turn {
+	if isKeeper(req) {
+		return keeperTurn(req)
+	}
 	token := ""
 	lastUser := ""
 	for _, m := range req.Messages {

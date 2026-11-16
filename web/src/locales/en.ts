@@ -78,6 +78,8 @@ const en: Record<string, string> = {
   "{{count}} jobs_other": "{{count}} jobs",
   "{{count}} allowed_one": "{{count}} allowed",
   "{{count}} allowed_other": "{{count}} allowed",
+  "used in {{count}} chats_one": "used in {{count}} chat",
+  "used in {{count}} chats_other": "used in {{count}} chats",
 };
 
 export default en;

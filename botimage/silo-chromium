@@ -15,6 +15,15 @@
 #     cross-platform spoof.
 #   --enable-low-end-device-mode is intentionally absent: it forced
 #     navigator.deviceMemory to 2, which contradicts the real CPU count.
+# Chromium is killed with the box, never closed, so the profile always reads
+# as crashed. Mark it closed cleanly before a launch (only when no Chromium is
+# running: a running one owns the file), and hide the restore bubble anyway.
+prefs=/home/silo/chrome-profile/Default/Preferences
+if [ -f "$prefs" ] && ! pgrep -u "$(id -u)" -x chromium >/dev/null 2>&1; then
+  jq -c '.profile.exit_type = "Normal" | .profile.exited_cleanly = true' "$prefs" > "$prefs.silo" 2>/dev/null \
+    && mv -f "$prefs.silo" "$prefs" || rm -f "$prefs.silo"
+fi
+
 major=$(chromium --version 2>/dev/null | cut -d' ' -f2 | cut -d. -f1)
 [ -n "$major" ] && set -- --user-agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Safari/537.36" "$@"
 
@@ -33,5 +42,6 @@ exec chromium \
   --disk-cache-size=134217728 \
   --password-store=basic \
   --mute-audio \
+  --hide-crash-restore-bubble \
   --load-extension=/opt/silo/ubol,/opt/silo/stealth \
   "$@"

@@ -513,3 +513,31 @@ func TestOutboundAllowOpensOneAddress(t *testing.T) {
 		t.Fatalf("a listed address was blocked: status %q error %q", row.GetAuthStatus(), row.GetLastError())
 	}
 }
+
+// Code in a Bot's box can read its token, so the token must not open the
+// worker API from anywhere else while the box is not running: a stopped
+// box's token is refused, and the same box started again gets back in.
+func TestWorkerTokenOpensNothingWhileTheBoxIsDown(t *testing.T) {
+	h := apptest.New(t)
+	bot := h.CreateBot("Boxed")
+	wc := h.WorkerClient(bot.GetId())
+	call := func() error {
+		_, err := wc.GetSecret(h.Ctx(), connect.NewRequest(&v1.SecretReq{Name: "nothing"}))
+		return err
+	}
+	if err := call(); connect.CodeOf(err) == connect.CodeFailedPrecondition {
+		t.Fatalf("a running box's worker was refused: %v", err)
+	}
+	if _, err := h.Client.StopBot(h.Ctx(), connect.NewRequest(&v1.GetBotRequest{Id: bot.GetId()})); err != nil {
+		t.Fatal(err)
+	}
+	if err := call(); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("a stopped box's token still opens the worker API: %v", err)
+	}
+	if _, err := h.Client.StartBot(h.Ctx(), connect.NewRequest(&v1.GetBotRequest{Id: bot.GetId()})); err != nil {
+		t.Fatal(err)
+	}
+	if err := call(); connect.CodeOf(err) == connect.CodeFailedPrecondition {
+		t.Fatalf("the box started again is still refused: %v", err)
+	}
+}

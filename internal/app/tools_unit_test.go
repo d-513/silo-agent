@@ -54,9 +54,11 @@ func TestToolRulesAreInTheCatalog(t *testing.T) {
 // The exposure of the built-in tools, as shipped. Changing a tool's
 // ExposeCompletion / ExposePython is deliberate: update this list with it.
 func TestBuiltinToolExposure(t *testing.T) {
-	var chat, python, both []string
+	var chat, python, both, job []string
 	for _, d := range (&App{}).toolDefs() {
 		switch {
+		case d.JobOnly:
+			job = append(job, d.Name)
 		case d.ExposeCompletion && d.ExposePython:
 			both = append(both, d.Name)
 		case d.ExposeCompletion:
@@ -65,7 +67,7 @@ func TestBuiltinToolExposure(t *testing.T) {
 			python = append(python, d.Name)
 		}
 	}
-	for _, l := range [][]string{chat, python, both} {
+	for _, l := range [][]string{chat, python, both, job} {
 		sort.Strings(l)
 	}
 	want := map[string]string{
@@ -73,8 +75,10 @@ func TestBuiltinToolExposure(t *testing.T) {
 		"python": "channel chats chrome close_tunnel delete_automation feed forget list_automations list_dashboard list_mail list_models list_secrets list_tunnels put_widget read_mail remove_dashboard_card remove_widget search_docs " +
 			"set_proactivity set_timezone set_widget task_add task_done task_list task_reset transcribe upsert_dashboard_card web_read web_search",
 		"both": "artifact ask_owner click create_automation decide key look offer_setup open_tunnel recall remember scroll type update_automation",
+		// Offered to no chat and no code: only a job's run that names them.
+		"job": "reinforce review_memories",
 	}
-	for name, got := range map[string][]string{"chat": chat, "python": python, "both": both} {
+	for name, got := range map[string][]string{"chat": chat, "python": python, "both": both, "job": job} {
 		w := strings.Fields(want[name])
 		sort.Strings(w)
 		if strings.Join(got, " ") != strings.Join(w, " ") {

@@ -15,7 +15,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"unicode"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -28,6 +27,7 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/hub"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/pgsearch"
 	"silo.agent/internal/textx"
 )
 
@@ -280,36 +280,6 @@ type knowledgeHit struct {
 	IndexedAt time.Time
 }
 
-// stopwords are dropped from the keyword half so "when do we deploy" does not
-// match every chunk that says "we". The vector half still sees the question.
-var stopwords = map[string]bool{}
-
-func init() {
-	for _, w := range strings.Fields(`a an the and or but of to in on at by for from with as is are was were be been
-		do does did how what when where who whom why which that this these those it its we you i me my our your
-		they them their he she his her there here can could should would will shall may might not no if then than
-		about into over under again also any some tell give find show`) {
-		stopwords[w] = true
-	}
-}
-
-// keywordQuery keeps the query's own words minus stopwords, as typed, so
-// Postgres parses "XK-4471-B" the same way it parsed the indexed text.
-func keywordQuery(q string) string {
-	var keep []string
-	for _, f := range strings.Fields(q) {
-		bare := strings.ToLower(strings.TrimFunc(f, func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) }))
-		if bare == "" || stopwords[bare] {
-			continue
-		}
-		keep = append(keep, f)
-	}
-	if len(keep) > 16 {
-		keep = keep[:16]
-	}
-	return strings.Join(keep, " ")
-}
-
 func likeEscape(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
@@ -327,83 +297,31 @@ func (s *Service) search(ctx context.Context, botID, query string, k int, prefix
 		return nil, err
 	}
 	prefix = strings.Trim(workspace.Rel(prefix), "/")
-	kw := keywordQuery(query)
 
-	var args []any
-	arg := func(v any) string {
-		args = append(args, v)
-		return fmt.Sprintf("$%d", len(args))
+	var args pgsearch.Args
+	where := "c.bot_id = " + args.Add(botID)
+	if prefix != "" {
+		where += " AND (s.path = " + args.Add(prefix) + " OR s.path LIKE " + args.Add(likeEscape(prefix)+"/%") + ` ESCAPE '\')`
 	}
-	filter := func() string {
-		s := "c.bot_id = " + arg(botID)
-		if prefix != "" {
-			s += " AND (s.path = " + arg(prefix) + " OR s.path LIKE " + arg(likeEscape(prefix)+"/%") + ` ESCAPE '\')`
-		}
-		return s
-	}
-	vq := arg(vecs[0])
-	vecFilter := filter()
-	vecOrder := "c.embedding <=> " + arg(vecs[0])
-	maxDist := arg(knowledgeMaxDistance)
-	kwA := arg(kw)
-	kwO := arg(kw)
-	kwFilter := filter()
-	limit := arg(k)
-
-	sqlText := `
-WITH q AS (
-  SELECT plainto_tsquery('simple', ` + kwA + `) AS a,
-         replace(plainto_tsquery('simple', ` + kwO + `)::text, '&', '|')::tsquery AS o
-),
-vec AS (
-  SELECT id, ROW_NUMBER() OVER (ORDER BY d) AS r FROM (
-    SELECT c.id, c.embedding <=> ` + vq + ` AS d
-    FROM knowledge_chunks c JOIN knowledge_sources s ON s.id = c.source_id
-    WHERE ` + vecFilter + `
-    ORDER BY ` + vecOrder + ` LIMIT ` + fmt.Sprint(knowledgeCandidate) + `
-  ) v WHERE d < ` + maxDist + `
-),
-kw AS (
-  SELECT id, ROW_NUMBER() OVER (ORDER BY exact DESC, rank DESC) AS r FROM (
-    SELECT c.id, (c.tsv @@ q.a) AS exact, ts_rank(c.tsv, q.o) AS rank
-    FROM knowledge_chunks c JOIN knowledge_sources s ON s.id = c.source_id CROSS JOIN q
-    WHERE ` + kwFilter + ` AND c.tsv @@ q.o
-    ORDER BY (c.tsv @@ q.a) DESC, ts_rank(c.tsv, q.o) DESC LIMIT ` + fmt.Sprint(knowledgeCandidate) + `
-  ) k
-),
-fused AS (
-  SELECT id, SUM(1.0 / (60 + r)) AS score FROM (
-    SELECT id, r FROM vec UNION ALL SELECT id, r FROM kw
-  ) u GROUP BY id
-)
+	stmt := pgsearch.Fused(&args, pgsearch.Source{
+		From: "knowledge_chunks c JOIN knowledge_sources s ON s.id = c.source_id",
+		ID:   "c.id", Embedding: "c.embedding", TSV: "c.tsv",
+		Where: where, Candidates: knowledgeCandidate, MaxDistance: knowledgeMaxDistance,
+	}, vecs[0], query) + `
 SELECT s.path, c.locator, c.content, f.score, s.indexed_at
 FROM fused f JOIN knowledge_chunks c ON c.id = f.id JOIN knowledge_sources s ON s.id = c.source_id
-ORDER BY f.score DESC, s.path, c.ord LIMIT ` + limit
+ORDER BY f.score DESC, s.path, c.ord LIMIT ` + args.Add(k)
 
 	var out []knowledgeHit
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// With the bot filter the HNSW scan can run dry before it has k rows;
-		// iterative scan (pgvector 0.8) keeps going. Older servers lack it, and
-		// a failed SET must not poison the transaction.
-		tx.Exec("SAVEPOINT iter")
-		if err := tx.Exec("SET LOCAL hnsw.iterative_scan = relaxed_order").Error; err != nil {
-			tx.Exec("ROLLBACK TO SAVEPOINT iter")
-		}
-		rows, err := tx.Statement.ConnPool.QueryContext(ctx, sqlText, args...)
-		if err != nil {
+	err = pgsearch.Run(ctx, s.db, stmt, &args, func(rows *sql.Rows) error {
+		var h knowledgeHit
+		var at sql.NullTime
+		if err := rows.Scan(&h.Path, &h.Locator, &h.Content, &h.Score, &at); err != nil {
 			return err
 		}
-		defer rows.Close()
-		for rows.Next() {
-			var h knowledgeHit
-			var at sql.NullTime
-			if err := rows.Scan(&h.Path, &h.Locator, &h.Content, &h.Score, &at); err != nil {
-				return err
-			}
-			h.IndexedAt = at.Time
-			out = append(out, h)
-		}
-		return rows.Err()
+		h.IndexedAt = at.Time
+		out = append(out, h)
+		return nil
 	})
 	return out, err
 }

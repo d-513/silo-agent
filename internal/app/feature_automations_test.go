@@ -40,8 +40,8 @@ func TestAutomationHeartbeatIsPinnedAndIdle(t *testing.T) {
 	h := apptest.New(t)
 	bot := h.CreateBot("Pulse")
 	list := listAutomations(t, h, bot.GetId())
-	if len(list) != 2 || list[0].GetKind() != "heartbeat" || list[1].GetKind() != "dashboard" {
-		t.Fatalf("new bot should have heartbeat and dashboard pinned, got %v", list)
+	if len(list) != 3 || list[0].GetKind() != "heartbeat" || list[1].GetKind() != "memory" || list[2].GetKind() != "dashboard" {
+		t.Fatalf("new bot should have heartbeat, memory and dashboard pinned, got %v", list)
 	}
 	for _, au := range list {
 		if au.GetSchedule() != "" || au.GetNextRunAt() != "" || au.GetPrompt() == "" {
@@ -55,7 +55,7 @@ func TestAutomationHeartbeatIsPinnedAndIdle(t *testing.T) {
 	// Its log chat is not a web chat.
 	chats, _ := h.Client.ListChats(h.Ctx(), connect.NewRequest(&v1.ListChatsRequest{BotId: bot.GetId()}))
 	for _, c := range chats.Msg.GetChats() {
-		if c.GetId() == hb.GetChatId() || c.GetId() == list[1].GetChatId() {
+		if c.GetId() == hb.GetChatId() || c.GetId() == list[1].GetChatId() || c.GetId() == list[2].GetChatId() {
 			t.Fatal("automation log leaked into the chat list")
 		}
 	}
@@ -63,7 +63,7 @@ func TestAutomationHeartbeatIsPinnedAndIdle(t *testing.T) {
 		t.Fatalf("sending into an automation log should be refused, got %v", err)
 	}
 	// A second list does not duplicate them.
-	if n := len(listAutomations(t, h, bot.GetId())); n != 2 {
+	if n := len(listAutomations(t, h, bot.GetId())); n != 3 {
 		t.Fatalf("pinned automations duplicated: %d", n)
 	}
 }
@@ -272,7 +272,7 @@ func TestAutomationToolsCreateListUpdateDelete(t *testing.T) {
 		t.Fatalf("delete results %q", res[3:])
 	}
 	list := listAutomations(t, h, bot.GetId())
-	if len(list) != 2 || list[0].GetSchedule() != "0 */6 * * *" || list[0].GetNextRunAt() == "" {
+	if len(list) != 3 || list[0].GetSchedule() != "0 */6 * * *" || list[0].GetNextRunAt() == "" {
 		t.Fatalf("after tools: %v", list)
 	}
 }

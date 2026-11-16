@@ -140,7 +140,11 @@ func (a *App) AuthorizeAction(ctx context.Context, bot *db.Bot, runID, conn, act
 		case dec = <-ch:
 		}
 		if dec == "canceled" {
-			// The run was stopped while it waited (cancelRuns).
+			// The run was stopped while it waited (cancelRuns). A stop that
+			// came between the waiter and the row settled the row before it
+			// existed: settle it now, or it stays pending with nobody waiting
+			// and the Bot reads as needing someone forever.
+			a.DB.Model(&db.Approval{}).Where("id = ? AND status = ?", ap.ID, "pending").Update("status", "canceled")
 			return ap.ID, errors.New("canceled")
 		}
 		if !security.Granted(dec) {

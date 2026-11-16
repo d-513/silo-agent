@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	"silo.agent/internal/app/models"
@@ -18,15 +19,20 @@ import (
 	"silo.agent/internal/textx"
 )
 
-// Memories reach the model through its prompt, never through a
-// search made while the human waits. While a Bot's memories are few they are
-// all there. Once they outgrow InjectMax a digest stands in for them: a
-// summary the sweep writes in the background and rewrites when the memories
-// have changed. The exact facts stay a `recall` away.
+// Memories reach the model through its prompt, never through a search made
+// while the human waits. Preferences and lessons are always there, word for
+// word: they are few and they shape every answer. Facts are all there while
+// they are few; once they outgrow InjectMax a digest stands in for them, a
+// summary the sweep writes in the background and rewrites when the facts have
+// changed. The exact facts stay a `recall` away. Only active memories are
+// told: a tentative one waits to be seen again, a retired one is gone.
 const (
-	// InjectMax is the total size of memory text, in characters, up to which
-	// every memory is in the prompt.
+	// InjectMax is the total size of fact text, in characters, up to which
+	// every fact is in the prompt.
 	InjectMax = 6000
+	// GuideMax is the size up to which each of preferences and lessons is
+	// listed; past it the newest stay (the keeper merges them before that).
+	GuideMax = 3000
 	// digestMax is the size the digest is asked to stay under.
 	digestMax = 3000
 	// digestInput caps what one digest call reads; a larger store is
@@ -39,42 +45,64 @@ const (
 	digestPerTick = 3
 )
 
-// Prompt is the system prompt's memories section for one Bot. It
-// reads the database only and changes only when the memories (or their
-// digest) do, so the prompt before it stays cached.
+// told narrows a query to the memories of one kind a Bot is told.
+func (s *Service) told(botID, kind string) *gorm.DB {
+	return s.db.Model(&db.Memory{}).Where("bot_id = ? AND status = ? AND kind = ?", botID, StatusActive, kind)
+}
+
+// Prompt is the system prompt's memories section for one Bot. It reads the
+// database only and changes only when the memories (or their digest) do, so
+// the prompt before it stays cached.
 func (s *Service) Prompt(botID string) string {
 	if !s.cfg().Memory.InPrompt {
 		return ""
 	}
+	var parts []string
+	for _, g := range []struct{ kind, head string }{
+		{KindPreference, "Preferences: how the human wants things done. Follow them unless told otherwise now."},
+		{KindLesson, "Lessons: what has worked here before, and what has not."},
+	} {
+		if rows := s.listed(botID, g.kind, GuideMax); len(rows) > 0 {
+			parts = append(parts, g.head+"\n"+formatRecalled(rows))
+		}
+	}
+	if facts := s.facts(botID); facts != "" {
+		parts = append(parts, facts)
+	}
+	return strings.Join(parts, "\n")
+}
+
+// facts is the part of the section that tells the Bot's facts: all of them,
+// or their digest.
+func (s *Service) facts(botID string) string {
 	var st struct {
 		N    int64
 		Size int64
 	}
-	s.db.Model(&db.Memory{}).Select("count(*) AS n, COALESCE(SUM(LENGTH(content)), 0) AS size").
-		Where("bot_id = ?", botID).Scan(&st)
+	s.told(botID, KindFact).Select("count(*) AS n, COALESCE(SUM(LENGTH(content)), 0) AS size").Scan(&st)
 	if st.N == 0 {
 		return ""
 	}
 	if st.Size <= InjectMax {
-		return "Everything in memory, oldest first. Use an id with `forget` when one is wrong.\n" +
-			formatRecalled(s.listed(botID, 0))
+		return "Facts, oldest first. Use an id with `forget` when one is wrong.\n" +
+			formatRecalled(s.listed(botID, KindFact, 0))
 	}
 	var d db.MemoryDigest
 	s.db.Where("bot_id = ?", botID).Limit(1).Find(&d)
 	if strings.TrimSpace(d.Text) != "" {
-		return "Too many to list. This is a summary of them as of " + d.UpdatedAt.UTC().Format("2006-01-02") +
-			"; `recall` searches all of them by meaning — use it before relying on a detail that is not spelled out here.\n\n" +
+		return "Facts: too many to list. This is a summary of them as of " + d.UpdatedAt.UTC().Format("2006-01-02") +
+			"; `recall` searches all of them by meaning and by their words — use it before relying on a detail that is not spelled out here.\n\n" +
 			strings.TrimSpace(d.Text)
 	}
-	return "Too many to list. These are the newest; `recall` searches all of them by meaning.\n" +
-		formatRecalled(s.listed(botID, InjectMax))
+	return "Facts: too many to list. These are the newest; `recall` searches all of them by meaning and by their words.\n" +
+		formatRecalled(s.listed(botID, KindFact, InjectMax))
 }
 
-// listed is the Bot's memories oldest first. With a budget it is the newest
-// ones whose text fits it.
-func (s *Service) listed(botID string, budget int) []Recalled {
+// listed is the Bot's active memories of one kind, oldest first. With a
+// budget it is the newest ones whose text fits it.
+func (s *Service) listed(botID, kind string, budget int) []Recalled {
 	var rows []Recalled
-	q := s.db.Model(&db.Memory{}).Select("id, content, created_at").Where("bot_id = ?", botID)
+	q := s.told(botID, kind).Select(recalledCols)
 	if budget <= 0 {
 		q.Order("created_at, id").Scan(&rows)
 		return rows
@@ -92,8 +120,8 @@ func (s *Service) listed(botID string, budget int) []Recalled {
 	return rows
 }
 
-// storeKey identifies the exact contents of a Bot's memory: the SHA-256 of
-// each memory's id and text, NUL-terminated, in id order (storeKeyOf). It is
+// storeKey identifies the exact facts a Bot is told: the SHA-256 of
+// each one's id and text, NUL-terminated, in id order (storeKeyOf). It is
 // computed in the database, so a sweep does not load every memory to learn
 // that nothing changed.
 func (s *Service) storeKey(botID string) string {
@@ -107,7 +135,7 @@ func (s *Service) storeKey(botID string) string {
 			ID      string
 			Content string
 		}
-		s.db.Model(&db.Memory{}).Select("id, content").Where("bot_id = ?", botID).Order("id").Scan(&rows)
+		s.told(botID, KindFact).Select("id, content").Order("id").Scan(&rows)
 		pairs := make([][2]string, len(rows))
 		for i, r := range rows {
 			pairs[i] = [2]string{r.ID, r.Content}
@@ -133,7 +161,7 @@ func (s *Service) SweepDigests(ctx context.Context, now time.Time) int {
 		return 0
 	}
 	var bots []string
-	s.db.Model(&db.Memory{}).Select("bot_id").Group("bot_id").
+	s.db.Model(&db.Memory{}).Select("bot_id").Where("status = ? AND kind = ?", StatusActive, KindFact).Group("bot_id").
 		Having("SUM(LENGTH(content)) > ?", InjectMax).Order("bot_id").Scan(&bots)
 	wrote := 0
 	for _, botID := range bots {
@@ -171,13 +199,17 @@ func (s *Service) SweepDigests(ctx context.Context, now time.Time) int {
 
 // digest asks the memory model for the briefing of a Bot's memories.
 func (s *Service) digest(ctx context.Context, botID string) (string, error) {
-	rows := s.listed(botID, digestInput)
+	rows := s.listed(botID, KindFact, digestInput)
 	if len(rows) == 0 {
 		return "", fmt.Errorf("no memories")
 	}
 	var b strings.Builder
 	for _, r := range rows {
-		fmt.Fprintf(&b, "- (%s) %s\n", r.CreatedAt.UTC().Format("2006-01-02"), r.Content)
+		used := ""
+		if r.UseCount > 0 {
+			used = fmt.Sprintf(", used %d×", r.UseCount)
+		}
+		fmt.Fprintf(&b, "- (%s%s) %s\n", r.CreatedAt.UTC().Format("2006-01-02"), used, r.Content)
 	}
 	client, _, model, err := s.models.Observed(s.cfg().MemoryModel(), botID, "memory")
 	if err != nil {

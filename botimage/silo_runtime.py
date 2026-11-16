@@ -514,18 +514,27 @@ def read_mail(id: str, save_attachments: bool | None = None, offset: int | None 
     return call("mailbox", "read", {"id": id, "save_attachments": save_attachments, "offset": offset})
 
 
-def remember(content: str) -> dict:
-    """Save one durable fact to long-term memory (same as the `remember` tool).
+def remember(
+    content: str,
+    kind: str | None = None,
+    inferred: bool = False,
+    replaces: list[str] | None = None,
+) -> dict:
+    """Save one memory (same as the `remember` tool).
 
-    One self-contained fact per call; a near-duplicate updates the existing one.
+    One self-contained sentence per call. `kind` is "fact" (the default),
+    "preference" (how the human wants things done) or "lesson" (what works
+    here). `inferred=True` marks what the human did not say: it is kept
+    tentative until it is seen again. `replaces` retires the memories (by id)
+    this one makes out of date. Saying again what is already there updates it.
     """
-    return call("bot", "remember", {"content": content})
+    return call("bot", "remember", {"content": content, "kind": kind, "inferred": inferred, "replaces": replaces or []})
 
 
 def recall(query: str, limit: int | None = None) -> dict:
-    """Search long-term memories by meaning.
+    """Search long-term memories by meaning and by their words.
 
-    Returns {memories: [{id, content, created_at, distance}, ...]}, closest
+    Returns {memories: [{id, content, kind, created_at, distance}, ...]}, best
     first (distance is cosine: 0 is identical). Default 5, max 20.
     """
     return call("bot", "recall", {"query": query, "limit": limit})
@@ -543,7 +552,7 @@ def search_docs(query: str, limit: int | None = None, path: str | None = None) -
 
 
 def forget(id: str) -> dict:
-    """Delete one long-term memory by its id (from recall)."""
+    """Retire one long-term memory by its id (from recall): it is no longer told or found."""
     return call("bot", "forget", {"id": id})
 
 

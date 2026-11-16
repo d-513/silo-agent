@@ -177,8 +177,10 @@ func (a *App) driveSections(pc promptContext) []promptSection {
 // last belongs to the conversation): memories, then the notes of
 // this one conversation. A run builds the prompt once and never rebuilds it.
 type systemPromptBuilder struct {
-	base     string
-	bot      *db.Bot
+	base string
+	bot  *db.Bot
+	// bare leaves SOUL out: a job's run is not the Bot speaking.
+	bare     bool
 	sections []promptSection
 	trailing []promptSection
 }
@@ -213,11 +215,13 @@ func (b *systemPromptBuilder) Blocks() []llm.SystemBlock {
 	}
 
 	var soul strings.Builder
-	soul.WriteString("\n\n## SOUL\n")
-	if t := strings.TrimSpace(b.bot.Soul); t != "" {
-		soul.WriteString(t)
-	} else {
-		soul.WriteString("(empty — write it with the soul tool.)")
+	if !b.bare {
+		soul.WriteString("\n\n## SOUL\n")
+		if t := strings.TrimSpace(b.bot.Soul); t != "" {
+			soul.WriteString(t)
+		} else {
+			soul.WriteString("(empty — write it with the soul tool.)")
+		}
 	}
 
 	raw := []llm.SystemBlock{
@@ -272,6 +276,14 @@ func (a *App) buildSystemBlocks(botID string, origin ...*run.Origin) []llm.Syste
 	var o *run.Origin
 	if len(origin) > 0 {
 		o = origin[0]
+	}
+	if p := profileOf(o); p != nil {
+		// A job's run has its own prompt and is told only whose Bot this is.
+		b := &systemPromptBuilder{base: strings.TrimSpace(p.Prompt()), bot: &bot, bare: true}
+		for _, sec := range a.peopleSections(promptContext{bot: &bot}) {
+			b.add(sec)
+		}
+		return b.Blocks()
 	}
 	pc := a.promptContext(botID, &bot, o)
 	b := &systemPromptBuilder{base: basePrompt(isSubagent(o)), bot: &bot}

@@ -24,6 +24,7 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("cp_url", "http://host.containers.internal:8080")
 	_ = k.Set("bot_image", "localhost/silo-bot:v1")
 	_ = k.Set("mcp_stdio_image", DefaultMCPStdioImage)
+	_ = k.Set("bot_limits.pids", DefaultBotPids)
 	_ = k.Set("drives.image", DefaultDriveImage)
 	_ = k.Set("drives.cache_max_size", "10G")
 	_ = k.Set("egress.enabled", true)
@@ -54,6 +55,7 @@ func setDefaults(k *koanf.Koanf) {
 	}
 	_ = k.Set("memory.in_prompt", true)
 	_ = k.Set("memory.collect", true)
+	_ = k.Set("memory.infer", true)
 	_ = k.Set("knowledge.enabled", true)
 	_ = k.Set("knowledge.sync_interval", "15m")
 	_ = k.Set("knowledge.ocr", true)
@@ -375,6 +377,9 @@ func validateYAML(raw []byte) error {
 		return err
 	}
 	if err := validateArtifacts(k); err != nil {
+		return err
+	}
+	if err := validateBotLimits(k); err != nil {
 		return err
 	}
 	if err := validateChanges(k); err != nil {

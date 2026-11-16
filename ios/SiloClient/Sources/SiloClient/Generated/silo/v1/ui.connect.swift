@@ -263,6 +263,9 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `deleteMemory`(request: Silo_V1_DeleteMemoryRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DeleteMemoryResponse>
 
+    @available(iOS 13, *)
+    func `keepMemory`(request: Silo_V1_KeepMemoryRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Memory>
+
     /// Knowledge: workspace folders (drives included) indexed for search_docs.
     @available(iOS 13, *)
     func `listKnowledge`(request: Silo_V1_ListKnowledgeRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListKnowledgeResponse>
@@ -1115,6 +1118,11 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `keepMemory`(request: Silo_V1_KeepMemoryRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Memory> {
+        return await self.client.unary(path: "/silo.v1.UI/KeepMemory", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `listKnowledge`(request: Silo_V1_ListKnowledgeRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListKnowledgeResponse> {
         return await self.client.unary(path: "/silo.v1.UI/ListKnowledge", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -1942,6 +1950,7 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let listMemories = Connect.MethodSpec(name: "ListMemories", service: "silo.v1.UI", type: .unary)
             public static let searchMemories = Connect.MethodSpec(name: "SearchMemories", service: "silo.v1.UI", type: .unary)
             public static let deleteMemory = Connect.MethodSpec(name: "DeleteMemory", service: "silo.v1.UI", type: .unary)
+            public static let keepMemory = Connect.MethodSpec(name: "KeepMemory", service: "silo.v1.UI", type: .unary)
             public static let listKnowledge = Connect.MethodSpec(name: "ListKnowledge", service: "silo.v1.UI", type: .unary)
             public static let addKnowledgeFolder = Connect.MethodSpec(name: "AddKnowledgeFolder", service: "silo.v1.UI", type: .unary)
             public static let removeKnowledgeFolder = Connect.MethodSpec(name: "RemoveKnowledgeFolder", service: "silo.v1.UI", type: .unary)

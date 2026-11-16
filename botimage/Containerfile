@@ -1,60 +1,86 @@
-# Node.js comes from the official image (same Debian base, right architecture)
-# rather than Debian's old nodejs package.
-FROM node:24-bookworm-slim AS node
+# A Bot's machine. Every base and download is pinned (by digest, version or
+# checksum), so two builds from one commit get the same image; move a pin on
+# purpose. Layers run from what changes least to what changes most: the
+# worker binary is the last thing copied.
+
+# Node.js comes from the official image (same Debian, right architecture)
+# rather than Debian's older nodejs package.
+FROM docker.io/library/node:24-trixie-slim@sha256:af02d57b57719b9657a45199a79264a9437940cd55b3c7b3fc99615654f124a0 AS node
 
 # Lightpanda is the headless browser the page reader renders script-built pages
 # with (cmd/silo-worker/render.go). It has no releases, only nightlies, so it is
 # pinned by digest: move the digest on purpose and re-run the render checks.
 FROM docker.io/lightpanda/browser@sha256:2d29d32d5ae76771096e2e9ecf46d30947ea58f9966cd2235cf4526657a029d2 AS lightpanda
 
-FROM debian:bookworm-slim
+# uv and uvx: Python packages and one-off tools without touching the system's.
+FROM ghcr.io/astral-sh/uv:0.13.8@sha256:5cc1805e2426484abca4ad46ea783bab281fdb225fd82d8ce6d66a81254bac85 AS uv
+
+FROM docker.io/library/debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2
+ARG DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8 \
+    PATH=/home/silo/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# The machine: tini as PID 1, the desktop, Chromium, fonts, Python, the user.
+# certutil (libnss3-tools), proxychains4, netcat and ssh are what start.sh
+# points at the network filter (its CA for Chromium, its SOCKS5 door).
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip python-is-python3 \
-    python3-requests python3-matplotlib python3-numpy python3-pil \
-    python3-bs4 python3-lxml python3-yaml python3-pandas \
+    tini sudo ca-certificates \
     xvfb openbox tint2 thunar feh xfce4-terminal mousepad x11vnc chromium \
-    scrot xdotool imagemagick unzip ripgrep \
-    x11-xserver-utils dbus-x11 adwaita-icon-theme gnome-themes-extra \
-    ca-certificates fonts-liberation fonts-dejavu fonts-liberation2 \
-    fonts-noto-core fonts-noto-color-emoji fonts-freefont-ttf sudo \
-    poppler-utils ghostscript pandoc tesseract-ocr catdoc unrtf \
-    python3-reportlab img2pdf weasyprint \
-    python3-docx python3-openpyxl python3-xlrd python3-odf python3-pypdf \
+    scrot xdotool xclip wmctrl x11-xserver-utils dbus-x11 \
+    adwaita-icon-theme gnome-themes-extra \
+    fonts-liberation fonts-liberation2 fonts-dejavu fonts-noto-core fonts-noto-color-emoji \
+    fonts-freefont-ttf fonts-inter fonts-ebgaramond fonts-linuxlibertine \
+    python3 python3-pip python3-venv python3-dev python-is-python3 pipx \
+    libnss3-tools proxychains4 netcat-openbsd openssh-client \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 1000 --shell /bin/bash --user-group silo \
     && echo 'silo ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/silo \
-    && chmod 440 /etc/sudoers.d/silo \
-    && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pip3 install --break-system-packages --no-cache-dir playwright python-pptx
-# Language packs for OCR of scanned documents (tesseract uses every installed
-# pack; English comes with tesseract-ocr). Its own layer so adding a language
-# does not rebuild the big one above.
-RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr-pol \
+    && chmod 440 /etc/sudoers.d/silo
+
+# Documents, OCR and media: what Knowledge, the page reader and the document
+# skills run, and what a Bot reaches for with a file someone sent. tesseract
+# reads every installed language pack, English first.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    poppler-utils ghostscript qpdf pandoc img2pdf weasyprint ocrmypdf \
+    tesseract-ocr tesseract-ocr-pol catdoc antiword unrtf \
+    imagemagick librsvg2-bin graphviz libimage-exiftool-perl ffmpeg sox \
     && rm -rf /var/lib/apt/lists/*
-# Design typefaces for the document skills (catalog pdf/word/presentations,
-# DESIGN.md): Inter + Inter Display (sans), EB Garamond (display serif), Linux
-# Libertine O / Biolinum (book serif). Their own layer, so a font change does
-# not rebuild the big one above.
-RUN apt-get update && apt-get install -y --no-install-recommends fonts-inter fonts-ebgaramond fonts-linuxlibertine \
+
+# Python libraries from Debian, so they match the system Python.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-requests python3-httpx python3-bs4 python3-lxml python3-yaml \
+    python3-numpy python3-pandas python3-scipy python3-matplotlib python3-seaborn \
+    python3-pil python3-reportlab python3-pypdf python3-docx python3-openpyxl \
+    python3-xlrd python3-xlsxwriter python3-odf python3-jinja2 python3-markdown \
+    python3-tabulate python3-tqdm python3-rich python3-dateutil python3-networkx \
+    python3-feedparser python3-icalendar python3-qrcode python3-cryptography \
+    python3-greenlet python3-typing-extensions \
     && rm -rf /var/lib/apt/lists/*
-# git: the worker keeps the workspace history (change tracking) in a shadow
-# repository, and the Bot gets it for its own projects. Its own layer, for the
-# same reason.
-RUN apt-get update && apt-get install -y --no-install-recommends git \
-    && rm -rf /var/lib/apt/lists/*
-# certutil: start.sh adds the network filter's CA to the NSS store Chromium
-# reads. Its own layer, like git.
-RUN apt-get update && apt-get install -y --no-install-recommends libnss3-tools \
-    && rm -rf /var/lib/apt/lists/*
-# The network filter's SOCKS5 door (Other protocols): proxychains4 puts any
-# dynamically linked program through it, netcat-openbsd is ssh's ProxyCommand,
-# and ssh itself (git over ssh too). start.sh points all three at the gateway.
-# Its own layer, like git.
-RUN apt-get update && apt-get install -y --no-install-recommends proxychains4 netcat-openbsd openssh-client \
-    && rm -rf /var/lib/apt/lists/*
-# ffmpeg cuts and re-encodes audio: a podcast or a recording is longer than one
-# transcription call takes. Its own layer.
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+
+# The shell's everyday tools, archives, and a compiler for native packages
+# (node-gyp, pip source builds). git is also the workspace history's store.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl wget jq yq sqlite3 file less nano vim-tiny tree lsof psmisc procps \
+    rsync patch bc gettext-base git ripgrep fd-find \
+    zip unzip xz-utils bzip2 zstd 7zip \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -s /usr/bin/fdfind /usr/local/bin/fd
+
+# What Debian does not package, pinned. Playwright drives the desktop's own
+# Chromium over CDP, so it never downloads a browser.
+RUN PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pip3 install --break-system-packages --no-cache-dir \
+    playwright==1.65.2 python-pptx==1.0.2 pdfplumber==0.11.10 duckdb==2.0.0
+# pip may install for the silo user: it then falls back to ~/.local by itself
+# (the system's site-packages are root's), and that folder exists from the
+# start so an interpreter that is already running sees what lands there.
+RUN printf '[global]\nbreak-system-packages = true\n' > /etc/pip.conf \
+    && site=$(HOME=/home/silo python3 -c 'import site; print(site.getusersitepackages())') \
+    && mkdir -p "$site" /home/silo/.local/bin \
+    && chown -R silo:silo /home/silo/.local
+
+COPY --from=uv /uv /uvx /usr/local/bin/
+
 # Lightpanda (AGPL-3.0), unmodified and run as a program of its own; the notice
 # says where its source is. Telemetry is off for the worker's renders and for a
 # Bot that runs it by hand.
@@ -65,18 +91,40 @@ RUN mkdir -p /usr/share/doc/lightpanda \
        'Source code: https://github.com/lightpanda-io/browser (the version is printed by `lightpanda version`).' \
        > /usr/share/doc/lightpanda/NOTICE
 ENV LIGHTPANDA_DISABLE_TELEMETRY=true
-# Node.js + npm + pnpm for web projects and JS tooling. Its own layer, so a Node
-# bump does not rebuild the big apt layer above.
+
+# Node.js + npm + pnpm for web projects and JS tooling.
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
-    && npm install -g --no-fund --no-audit pnpm \
-    && npm cache clean --force
-COPY bin/silo-worker /usr/local/bin/silo-worker
-COPY botimage/silo_runtime.py /opt/silo/silo_runtime.py
-COPY botimage/silo-chromium /usr/local/bin/silo-chromium
-COPY botimage/start.sh /usr/local/bin/start.sh
+    && npm install -g --no-fund --no-audit pnpm@12.21.0 \
+    && npm cache clean --force \
+    && rm -rf /root/.npm
+
+# uBlock Origin Lite, unpacked for --load-extension. Chromium writes its
+# rule indexes into the extension's folder, so the silo user owns it.
+ADD --checksum=sha256:71a8c65573489e0702f6398d3d744fcbe2bbc48336a75781c90bec50acb00b7e \
+    https://github.com/uBlockOrigin/uBOL-home/releases/download/2026.901.1442/uBOLite_2026.901.1442.chromium.zip /tmp/ubol.zip
+RUN mkdir -p /tmp/ubol-src /opt/silo/ubol \
+    && unzip -q /tmp/ubol.zip -d /tmp/ubol-src \
+    && m=$(find /tmp/ubol-src -name manifest.json | head -1) \
+    && test -n "$m" \
+    && cp -a "$(dirname "$m")/." /opt/silo/ubol/ \
+    && rm -rf /tmp/ubol.zip /tmp/ubol-src \
+    && test -f /opt/silo/ubol/manifest.json \
+    && chown -R silo:silo /opt/silo/ubol
+
+# Every tool the prompt and the skills promise is here, or the build fails.
+RUN for c in tini sudo chromium xclip wmctrl python3 pip pipx uv uvx node npm npx pnpm \
+        lightpanda pdftotext pdftoppm qpdf pandoc ocrmypdf tesseract catdoc antiword \
+        convert rsvg-convert dot exiftool ffmpeg ffprobe sox curl wget jq yq sqlite3 \
+        file less nano tree lsof rsync git rg fd zip unzip xz bzip2 zstd 7z make gcc \
+        certutil proxychains4 nc ssh; do \
+      command -v "$c" >/dev/null || { echo "missing: $c" >&2; exit 1; }; \
+    done \
+    && python3 -c 'import playwright, pptx, pdfplumber, duckdb, httpx, scipy, docx, openpyxl, weasyprint'
+
+# Silo's own files, last: they change most.
 COPY botimage/openbox/autostart /opt/silo/openbox/autostart
 COPY botimage/openbox/rc.xml /opt/silo/openbox/rc.xml
 COPY botimage/tint2/tint2rc /opt/silo/tint2/tint2rc
@@ -88,29 +136,38 @@ COPY botimage/mimeapps.list /opt/silo/mimeapps.list
 COPY botimage/chromium.png /opt/silo/chromium.png
 COPY botimage/chromium/policies.json /etc/chromium/policies/managed/silo.json
 COPY botimage/chromium/egress.pac /opt/silo/egress.pac
-COPY botimage/chromium/stealth/ /opt/silo/stealth/
-ADD https://github.com/uBlockOrigin/uBOL-home/releases/download/2026.901.1442/uBOLite_2026.901.1442.chromium.zip /tmp/ubol.zip
-RUN mkdir -p /tmp/ubol-src /opt/silo/ubol \
-    && unzip -q /tmp/ubol.zip -d /tmp/ubol-src \
-    && m=$(find /tmp/ubol-src -name manifest.json | head -1) \
-    && test -n "$m" \
-    && cp -a "$(dirname "$m")/." /opt/silo/ubol/ \
-    && rm -rf /tmp/ubol.zip /tmp/ubol-src \
-    && test -f /opt/silo/ubol/manifest.json
-RUN chmod +x /usr/local/bin/start.sh /usr/local/bin/silo-worker /usr/local/bin/silo-chromium \
-    && mkdir -p /workspace /workspace/bot /workspace/tmp /var/run/silo /run/user/1000 \
+COPY --chown=silo:silo botimage/chromium/stealth/ /opt/silo/stealth/
+COPY --chmod=755 botimage/silo-chromium /usr/local/bin/silo-chromium
+COPY --chmod=755 botimage/start.sh /usr/local/bin/start.sh
+COPY botimage/silo_runtime.py /opt/silo/silo_runtime.py
+RUN mkdir -p /workspace/bot /workspace/tmp /var/run/silo /run/user/1000 \
         /home/silo/chrome-profile /usr/local/share/applications /opt/silo/tools /var/lib/silo/history \
     && touch /opt/silo/tools/__init__.py \
     && cp /opt/silo/desktop/*.desktop /usr/local/share/applications/ \
-    && chown -R silo:silo /home/silo /workspace /var/run/silo /run/user/1000 /opt/silo/tools /opt/silo/ubol /opt/silo/stealth /var/lib/silo/history
+    && chown silo:silo /home/silo /home/silo/chrome-profile /workspace /workspace/bot /workspace/tmp \
+        /var/run/silo /run/user/1000 /opt/silo/tools /opt/silo/tools/__init__.py /var/lib/silo/history
+COPY --chmod=755 bin/silo-worker /usr/local/bin/silo-worker
+
 ENV DISPLAY=:1 \
+    HOME=/home/silo \
     SILO_WORKSPACE=/workspace \
     SILO_WORKER_SOCK=/var/run/silo/worker.sock \
     PYTHONPATH=/opt/silo \
-    HOME=/home/silo \
     USER=silo \
     LOGNAME=silo \
     XDG_RUNTIME_DIR=/run/user/1000 \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 WORKDIR /workspace
+# start.sh stays root to chown the mounts and supervise; tini reaps whatever
+# is orphaned in the box and hands start.sh the engine's signals.
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["/usr/local/bin/start.sh"]
+
+# Last, so a new commit does not rebuild anything above.
+ARG REVISION=unknown
+LABEL org.opencontainers.image.title="silo-bot" \
+      org.opencontainers.image.description="A Silo Bot's machine: desktop, Chromium, Python, Node.js and the worker" \
+      org.opencontainers.image.source="https://github.com/d-513/silo-agent" \
+      org.opencontainers.image.version="master" \
+      org.opencontainers.image.revision="$REVISION" \
+      org.opencontainers.image.base.name="docker.io/library/debian:trixie-slim"

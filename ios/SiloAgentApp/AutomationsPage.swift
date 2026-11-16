@@ -450,9 +450,9 @@ struct ScheduleEditor: View {
 }
 
 extension Silo_V1_Automation {
-    /// One of the automations every Bot has exactly one of (the Heartbeat, the Dashboard's
-    /// curator): its name is fixed and it cannot be deleted.
-    var pinned: Bool { kind == "heartbeat" || kind == "dashboard" }
+    /// One of the automations every Bot has exactly one of (the Heartbeat, the memory keeper,
+    /// the Dashboard's curator): its name is fixed and it cannot be deleted.
+    var pinned: Bool { kind == "heartbeat" || kind == "dashboard" || kind == "memory" }
 }
 
 /// What an automation is at a glance, on lucide's 24pt grid and 2pt stroke: the Heartbeat a pulse
@@ -469,6 +469,8 @@ struct AutomationMark: View {
                 drawn(Pulse(alive: automation.enabled && !automation.schedule.isEmpty))
             case "dashboard":
                 drawn(BoardMark())
+            case "memory":
+                Image(systemName: "brain").font(.system(size: size - 1, weight: .medium))
             default:
                 Image(systemName: "timer").font(.system(size: size - 1, weight: .medium))
             }

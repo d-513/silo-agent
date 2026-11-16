@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -61,13 +62,29 @@ func (a *App) StartRun(req run.Request) (string, error) {
 		origin = "compact"
 	}
 	runID := ids.New()
+	// Live before anything is written: a stop from here on finds it (and the
+	// run then stops at its first look), and a second run for the
+	// conversation is refused rather than run beside this one.
+	ctx, cancel := runContext(a.cfg().Runs.Timeout())
+	lr := &liveRun{cancel: cancel, botID: req.BotID, chatID: req.ChatID, started: time.Now(), origin: req.Origin, inbox: make(chan inboxMsg, 32), done: make(chan struct{}), wake: make(chan string, 8), pySession: a.pySessionFor(req.ChatID)}
+	if req.Origin != nil && req.Origin.Automation != nil {
+		lr.pySession = runID
+	}
+	if !a.track(runID, lr) {
+		cancel()
+		return "", run.ErrBusy
+	}
 	// A run is the person's whose chat it is in (only they write there);
 	// a background run is nobody's.
-	run := db.Run{ID: runID, BotID: req.BotID, ChatID: req.ChatID, ChannelID: channelID, Origin: origin, Status: "running", UserID: a.chatAuthor(req.ChatID), CreatedAt: time.Now()}
-	if err := a.DB.Create(&run).Error; err != nil {
+	row := db.Run{ID: runID, BotID: req.BotID, ChatID: req.ChatID, ChannelID: channelID, Origin: origin, Status: "running", UserID: a.chatAuthor(req.ChatID), CreatedAt: time.Now()}
+	if err := a.DB.Create(&row).Error; err != nil {
+		a.runExited(runID)
+		cancel()
+		close(lr.done)
 		return "", err
 	}
-	if !req.Compact {
+	// A job's run needs no machine and is not what the Bot is "on".
+	if !req.Compact && profileOf(req.Origin) == nil {
 		// Only touch the run fields: saving the whole row here could clobber a
 		// ContainerID/TokenHash that a concurrent ensureRunning just wrote.
 		task := req.Text
@@ -80,16 +97,6 @@ func (a *App) StartRun(req run.Request) (string, error) {
 		cp := b
 		a.ensureRunningBg(&cp)
 	}
-	// Tracked before the goroutine starts, so a caller that releases the
-	// conversation lock right after this already sees the run as live.
-	ctx, cancel := runContext(a.cfg().Runs.Timeout())
-	lr := &liveRun{cancel: cancel, botID: req.BotID, chatID: req.ChatID, started: time.Now(), origin: req.Origin, inbox: make(chan inboxMsg, 32), done: make(chan struct{}), wake: make(chan string, 8), pySession: a.pySessionFor(req.ChatID)}
-	if req.Origin != nil && req.Origin.Automation != nil {
-		lr.pySession = runID
-	}
-	a.mu.Lock()
-	a.runs[runID] = lr
-	a.mu.Unlock()
 	go a.runLoop(ctx, req, runID, lr)
 	return runID, nil
 }
@@ -102,6 +109,53 @@ func (a *App) StartIfIdle(req run.Request) (string, error) {
 		return "", run.ErrBusy
 	}
 	return a.StartRun(req)
+}
+
+// Wait blocks until the run has exited, or ctx ends, and answers the status
+// it ended with ("" when ctx ended first). A run already gone answers at once.
+func (a *App) Wait(ctx context.Context, runID string) string {
+	if lr := a.trackedRun(runID); lr != nil {
+		select {
+		case <-lr.done:
+		case <-ctx.Done():
+			return ""
+		}
+	}
+	var r db.Run
+	a.DB.Select("status").Where("id = ?", runID).Limit(1).Find(&r)
+	return r.Status
+}
+
+// profileOf is the job a run is narrowed to, nil for an ordinary run.
+func profileOf(origin *run.Origin) *run.Profile {
+	if origin == nil {
+		return nil
+	}
+	return origin.Profile
+}
+
+// runModel is the model a run's next turn uses: its job's, else the
+// conversation's.
+func (a *App) runModel(botID, chatID string, origin *run.Origin) string {
+	if p := profileOf(origin); p != nil && p.Model != nil {
+		if m := strings.TrimSpace(p.Model()); m != "" {
+			return m
+		}
+	}
+	return a.Models.Resolve(botID, chatID)
+}
+
+// track makes lr the conversation's live run, unless it already has one.
+func (a *App) track(runID string, lr *liveRun) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, o := range a.runs {
+		if o.botID == lr.botID && o.chatID == lr.chatID {
+			return false
+		}
+	}
+	a.runs[runID] = lr
+	return true
 }
 
 // LiveRunID returns the active run for a conversation, if any.
@@ -195,19 +249,13 @@ func (a *App) settleInbox(lr *liveRun) {
 	}
 }
 
-// closeInbox ends the run's inbox when it is empty, and reports whether it did.
-// From then on the run is no longer the conversation's live run, so a message
-// sent while it finishes starts a new one instead of being lost in an inbox
-// nobody will read. A message that is already waiting keeps the run going.
+// closeInbox retires the run when its inbox is empty, and reports whether it
+// did. From then on the run is no longer the conversation's live run, so a
+// message sent while it finishes starts a new one instead of being lost in an
+// inbox nobody will read. A message that is already waiting keeps the run
+// going. A run a stop already retired reports true.
 func (a *App) closeInbox(lr *liveRun, runID string) bool {
-	lr.injecting.Lock()
-	defer lr.injecting.Unlock()
-	if len(lr.inbox) > 0 {
-		return false
-	}
-	lr.closed = true
-	a.untrackRun(runID)
-	return true
+	return a.retire(runID, lr, true)
 }
 
 // openTurn says a model turn is being written, and how to stop it.
@@ -464,8 +512,14 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 		defer origin.Working()()
 	}
 
-	modelID := a.Models.Resolve(botID, chatID)
-	client, provider, model, err := a.Models.Observed(modelID, botID, "chat")
+	profile := profileOf(origin)
+	// label names the run's model calls in the LLM debug log.
+	label := "chat"
+	if profile != nil && profile.Name != "" {
+		label = profile.Name
+	}
+	modelID := a.runModel(botID, chatID, origin)
+	client, provider, model, err := a.Models.Observed(modelID, botID, label)
 	if err != nil {
 		a.Emit(botID, chatID, runID, "error", err.Error(), "")
 		a.finish(botID, chatID, runID, "error")
@@ -491,7 +545,7 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 		if strings.TrimSpace(title) == "" && len(atts) > 0 {
 			title = "attached " + atts[0].GetName()
 		}
-		if origin == nil || origin.Subagent == nil {
+		if !isSubagent(origin) && profile == nil {
 			go a.nameChat(botID, chatID, runID, title)
 		}
 	}
@@ -570,8 +624,8 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 		}
 		// Re-resolve each turn so a switch_model tool call takes effect on the
 		// next model call without restarting the run.
-		if m := a.Models.Resolve(botID, chatID); m != modelID {
-			if c, pr, mo, e := a.Models.Observed(m, botID, "chat"); e == nil {
+		if m := a.runModel(botID, chatID, origin); m != modelID {
+			if c, pr, mo, e := a.Models.Observed(m, botID, label); e == nil {
 				modelID, client, provider, model = m, c, pr, mo
 				settings = a.cfg().ProviderSettings(pr)
 				window = a.contextWindow(ctx, modelID)
@@ -717,7 +771,7 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 		var shown []llm.Message
 		for _, tc := range res.assistant.ToolCalls {
 			def := rt.byName[tc.Name]
-			if def == nil {
+			if def == nil && profile == nil {
 				// Not offered to this run: the engine says why (a lead's
 				// tool, a feature that is off) instead of "unknown tool".
 				def = a.toolDef(botID, tc.Name)
@@ -736,7 +790,7 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 				}
 			}
 			a.setStep(runID, tc.Name)
-			out, img, err := a.execTool(ctx, def, botID, chatID, runID, tc.Name, tc.Arguments, isSubagent(origin))
+			out, img, err := a.execTool(ctx, def, botID, chatID, runID, tc.Name, tc.Arguments, origin)
 			if a.stopped(ctx, botID, chatID, runID) {
 				return
 			}
@@ -839,12 +893,27 @@ func (a *App) nameChat(botID, chatID, runID, userText string) {
 	a.Emit(botID, chatID, runID, "chat_title", title, "")
 }
 
+// stopped reports whether the run's context has ended, and if so ends the
+// run: as whoever stopped it said (Stop, Stop Bot, a shutdown), or, when
+// nobody did, as an error saying it ran out of time.
 func (a *App) stopped(ctx context.Context, botID, chatID, runID string) bool {
 	if ctx.Err() == nil {
 		return false
 	}
+	st := ""
+	if lr := a.trackedRun(runID); lr != nil {
+		st = lr.stoppedAs()
+	}
+	if st == "" && errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		a.Emit(botID, chatID, runID, "error", fmt.Sprintf("Stopped: this run reached its time limit (%s, runs.max_duration).", a.cfg().Runs.Timeout()), "")
+		a.finish(botID, chatID, runID, "error")
+		return true
+	}
+	if st == "" {
+		st = "stopped"
+	}
 	a.Emit(botID, chatID, runID, "assistant", "Stopped.", "")
-	a.finish(botID, chatID, runID, "stopped")
+	a.finish(botID, chatID, runID, st)
 	return true
 }
 
@@ -858,9 +927,7 @@ func (a *App) stopped(ctx context.Context, botID, chatID, runID string) bool {
 // what the row says.
 func (a *App) finish(botID, chatID, runID, st string) {
 	if lr := a.trackedRun(runID); lr != nil {
-		lr.injecting.Lock()
-		lr.closed = true
-		lr.injecting.Unlock()
+		a.retire(runID, lr, false)
 	}
 	if a.DB.Model(&db.Run{}).Where("id = ? AND status = ?", runID, "running").Update("status", st).RowsAffected == 0 {
 		var r db.Run
@@ -868,7 +935,6 @@ func (a *App) finish(botID, chatID, runID, st string) {
 			st = r.Status
 		}
 	}
-	a.untrackRun(runID)
 	a.dropNotices(runID)
 	a.Emit(botID, chatID, runID, "done", st, "")
 	// The closing snapshot is a worker round trip; nothing waits for it.

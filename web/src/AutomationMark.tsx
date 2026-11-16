@@ -1,4 +1,4 @@
-import { Timer } from "lucide-react";
+import { Brain, Timer } from "lucide-react";
 import type { Automation } from "./gen/silo/v1/ui_pb";
 
 // AutomationMark is an automation's glyph, drawn on lucide's 24px grid and
@@ -6,11 +6,13 @@ import type { Automation } from "./gen/silo/v1/ui_pb";
 // the Heartbeat is a pulse trace, a flat line while it never runs on its own
 // (no schedule, or paused), and the trace redraws when the row is hovered;
 // the Dashboard's curator is the board itself, a wide widget over two small
-// ones, whose last tile fills on hover. Everything else is the timer.
+// ones, whose last tile fills on hover; the memory keeper is the Memories
+// page's own mark. Everything else is the timer.
 // Hover is the `group/auto` around it.
 export function AutomationMark({ a, size = 15 }: { a: Automation; size?: number }) {
   if (a.kind === "heartbeat") return <Heartbeat alive={a.enabled && !!a.schedule} size={size} />;
   if (a.kind === "dashboard") return <Board size={size} />;
+  if (a.kind === "memory") return <Brain size={size} />;
   return <Timer size={size} />;
 }
 

@@ -7,6 +7,11 @@ cp_url: http://host.containers.internal:8080
 public_url: http://127.0.0.1:5173
 bot_image: localhost/silo-bot:v1
 mcp_stdio_image: localhost/silo-mcp-stdio:v1
+# What one Bot's machine may take from the host (0 is no limit). Applies when
+# a machine is created: reset a container to apply it to an existing Bot.
+bot_limits:
+  memory_mb: 0
+  pids: 4096
 
 # Model ids are provider/model. Providers: openrouter, openai, anthropic.
 # The default model must be one of models below.

@@ -1,0 +1,16 @@
+# Every image builds with the repository root as its context, and needs only
+# its own folder and its binary in bin/. Everything else stays out: data/ (the
+# Bots' workspaces and browser profiles), silo.yaml (keys), node_modules, tmp/
+# and .git would otherwise be sent to the builder on every build.
+*
+!bin/silo-worker
+!bin/silo-mcp-bridge
+!bin/silo-drive
+!bin/silo-egress
+!botimage
+!mcpimage
+!driveimage
+!egressimage
+**/__pycache__
+**/.DS_Store
+botimage/silo_runtime_test.py

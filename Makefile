@@ -20,6 +20,8 @@ BOT_IMAGE   ?= localhost/silo-bot:v1
 STDIO_IMAGE ?= localhost/silo-mcp-stdio:v1
 DRIVE_IMAGE ?= localhost/silo-drive:v1
 EGRESS_IMAGE ?= localhost/silo-egress:v1
+# The commit an image is built from, for its org.opencontainers.image.revision label.
+REVISION    ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)$(shell git diff --quiet HEAD 2>/dev/null || echo -dirty)
 
 # tmux session name used by `make dev`.
 SESSION ?= silo
@@ -98,16 +100,16 @@ build-all: build-cp build-worker build-bridge bot-image stdio-image drive-image 
 images: bot-image stdio-image drive-image egress-image ## Build all container images
 
 bot-image: build-worker ## Build the local bot image
-	$(PODMAN) build --pull=newer -t $(BOT_IMAGE) -f botimage/Containerfile .
+	$(PODMAN) build --pull=newer --build-arg REVISION=$(REVISION) -t $(BOT_IMAGE) -f botimage/Containerfile .
 
 stdio-image: build-bridge ## Build the local STDIO MCP sidecar image
-	$(PODMAN) build --pull=newer -t $(STDIO_IMAGE) -f mcpimage/Containerfile .
+	$(PODMAN) build --pull=newer --build-arg REVISION=$(REVISION) -t $(STDIO_IMAGE) -f mcpimage/Containerfile .
 
 drive-image: build-drive ## Build the local drive (rclone) sidecar image
-	$(PODMAN) build --pull=newer -t $(DRIVE_IMAGE) -f driveimage/Containerfile .
+	$(PODMAN) build --pull=newer --build-arg REVISION=$(REVISION) -t $(DRIVE_IMAGE) -f driveimage/Containerfile .
 
 egress-image: build-egress ## Build the local network filter gateway image
-	$(PODMAN) build --pull=newer -t $(EGRESS_IMAGE) -f egressimage/Containerfile .
+	$(PODMAN) build --pull=newer --build-arg REVISION=$(REVISION) -t $(EGRESS_IMAGE) -f egressimage/Containerfile .
 
 ## --- run -------------------------------------------------------------------
 

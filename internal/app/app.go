@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"maps"
 	"net/http"
 	"os"
 	"os/signal"
@@ -123,10 +124,27 @@ type waiter struct {
 	runID string
 }
 
+// liveRun is a run whose goroutine has not exited. It moves one way through
+// three phases, and only these functions move it:
+//
+//   - live: in App.runs, the conversation's one live run (StartRun refuses a
+//     second). Its inbox takes the messages sent to the conversation.
+//   - ending: in App.ending, closed set. It takes no more messages, so one
+//     sent now starts a new run, but its goroutine is still writing its last
+//     events. retire is the only way here: the run itself once its inbox is
+//     empty (closeInbox, finish), or a stop (cancelRuns, Shutdown).
+//   - exited: in neither map, done closed (runExited).
+//
+// closed and the move between the maps happen together under injecting and
+// App.mu, so inject never queues a message in a run that left App.runs.
 type liveRun struct {
 	cancel context.CancelFunc
 	botID  string
 	chatID string
+	// stopAs is the final status whoever stopped the run chose (stopped,
+	// interrupted); empty while nobody did, so a context that ended anyway
+	// ran out of time.
+	stopAs atomic.Value
 	// started says which taskboard changes are this run's (currentTask).
 	started time.Time
 	// origin is where the run came from, for a tool called from Python that
@@ -137,9 +155,9 @@ type liveRun struct {
 	// so the run never reads a message whose event is not written yet.
 	inbox     chan inboxMsg
 	injecting sync.Mutex
-	// closed is set, under injecting, once the run has taken its last look
-	// at the inbox: a message that arrives after it starts a new run instead
-	// of waiting in an inbox nobody reads.
+	// closed is set, under injecting, when the run retires (see above): a
+	// message that arrives after it starts a new run instead of waiting in an
+	// inbox nobody reads.
 	closed bool
 	// stopTurn stops the model turn being written, while a spoken message may
 	// still replace it, and turnCut says one did. Under turnMu.
@@ -163,6 +181,18 @@ type liveRun struct {
 	// wake carries why a sleeping run should get up: an injected message or,
 	// for a lead, a subagent finishing. Sends never block.
 	wake chan string
+}
+
+// stopWith records why the run is being stopped, before its context is
+// canceled. The first reason stands.
+func (lr *liveRun) stopWith(status string) {
+	lr.stopAs.CompareAndSwap(nil, status)
+}
+
+// stoppedAs is the status a stop chose, "" when nobody stopped the run.
+func (lr *liveRun) stoppedAs() string {
+	s, _ := lr.stopAs.Load().(string)
+	return s
 }
 
 // signal nudges a sleeping run. A full buffer already has a reason queued.
@@ -200,8 +230,14 @@ type App struct {
 	// ending holds runs that are no longer live (stopped, or past their last
 	// turn) but still writing, until their goroutine exits, so a truncation
 	// can wait for them.
-	ending    map[string]*liveRun
-	mask      map[string]*masker.Masker
+	ending map[string]*liveRun
+	// maskMu guards mask, apart from mu: building a masker reads the
+	// database, and run bookkeeping must not wait on that.
+	maskMu sync.Mutex
+	mask   map[string]*masker.Masker
+	// boxes is when each Bot's box was last seen running, for the worker
+	// API's check (boxauth.go).
+	boxes     boxSeen
 	lifecycle sync.Map
 
 	// convs serializes the inject-or-start decision per conversation
@@ -210,9 +246,6 @@ type App struct {
 	// stopAutomations ends the scheduler loop on Shutdown.
 	stopAutomations chan struct{}
 	stopOnce        sync.Once
-	// collecting holds the chats the memory collector is reading now, so a
-	// manual collection and the sweep never read the same delta twice.
-	collecting sync.Map
 	// collectPause (unix nanos) holds the sweep back after a provider error.
 	collectPause atomic.Int64
 	// collectBackoff (chat id → collectRestState) rests a chat whose
@@ -279,8 +312,8 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Voice = voice.New(a.DB, a.cfg, a.Models, a.Workspace, a)
 	a.Knowledge = knowledge.New(a.DB, a.Hub, a.cfg, a.Models, a.Workspace)
 	a.Changes = changes.New(a.DB, a.cfg, a.Workspace, a, a.Mask)
-	a.Memory = memory.New(a.DB, a.cfg, a.Models)
 	a.Automations = automation.New(a.DB, a, a)
+	a.Memory = memory.New(a.DB, a.cfg, a.Models, a.Automations)
 	a.Proactivity = proactivity.New(a.DB, a.Automations)
 	a.Skills = skill.New(a.DB, a.Hub, a.cfg, a.Workspace)
 	a.Artifacts = artifact.New(a.DB, a.cfg, a.Workspace, a.Skills, a)
@@ -329,6 +362,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		go tickLoop(a.stopAutomations, automation.Tick, func(now time.Time) { a.Automations.FireDue(now) })
 		go tickLoop(a.stopAutomations, collectTick, func(now time.Time) { a.SweepMemories(now) })
 		go tickLoop(a.stopAutomations, collectTick, func(now time.Time) { a.Memory.SweepDigests(context.Background(), now) })
+		go tickLoop(a.stopAutomations, collectTick, func(now time.Time) { a.Memory.Tend(context.Background(), now) })
 		a.Knowledge.Recover()
 		go tickLoop(a.stopAutomations, knowledge.Tick, func(now time.Time) { a.Knowledge.Sweep(now) })
 		go tickLoop(a.stopAutomations, dashboard.Tick, func(now time.Time) { a.Dashboard.Sweep(now) })
@@ -438,11 +472,17 @@ func (a *App) Shutdown() {
 	a.Channels.StopAll()
 	a.Mail.Close()
 	a.Hub.CloseAll()
+	// The runs end as a restart would leave them (recoverOrphans), and take
+	// no more messages on the way down.
 	a.mu.Lock()
-	for _, lr := range a.runs {
+	live := maps.Clone(a.runs)
+	a.mu.Unlock()
+	for id, lr := range live {
+		lr.stopWith("interrupted")
+		a.retire(id, lr, false)
 		lr.cancel()
 	}
-	a.runs = map[string]*liveRun{}
+	a.mu.Lock()
 	for id, w := range a.approvals {
 		select {
 		case w.ch <- "canceled":
@@ -484,8 +524,8 @@ func ListenAndServe(cfg *config.Config, h http.Handler, onStop func()) error {
 }
 
 func (a *App) Mask(botID string) *masker.Masker {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	a.maskMu.Lock()
+	defer a.maskMu.Unlock()
 	m := a.mask[botID]
 	if m == nil {
 		m = masker.New()
@@ -564,9 +604,9 @@ func sessionError(err error) *connect.Error { return access.SessionError(err) }
 
 func (a *App) interceptWorker(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-		bot, tok, err := a.botFromToken(req.Header().Get("Authorization"))
+		bot, tok, err := a.workerBot(ctx, req.Header().Get("Authorization"))
 		if err != nil {
-			return nil, connect.NewError(connect.CodeUnauthenticated, err)
+			return nil, err
 		}
 		a.Mask(bot.ID).Add(tok)
 		return next(context.WithValue(ctx, botKey, bot), req)
@@ -575,9 +615,9 @@ func (a *App) interceptWorker(next connect.UnaryFunc) connect.UnaryFunc {
 
 func (a *App) interceptWorkerStream(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
-		bot, tok, err := a.botFromToken(conn.RequestHeader().Get("Authorization"))
+		bot, tok, err := a.workerBot(ctx, conn.RequestHeader().Get("Authorization"))
 		if err != nil {
-			return connect.NewError(connect.CodeUnauthenticated, err)
+			return err
 		}
 		a.Mask(bot.ID).Add(tok)
 		return next(context.WithValue(ctx, botKey, bot), conn)
@@ -678,13 +718,27 @@ func (a *App) liveRunFor(botID, chatID string) *liveRun {
 	return nil
 }
 
-// endingLocked notes a run that left a.runs while its goroutine still runs.
-// Hold a.mu.
-func (a *App) endingLocked(runID string, lr *liveRun) {
-	if a.ending == nil {
-		a.ending = map[string]*liveRun{}
+// retire moves a live run to ending (see liveRun): it takes no more
+// messages and is no longer the conversation's live run. With onlyIfEmpty it
+// does so only while no message waits in the inbox, and reports whether it
+// did. Retiring an ending run again changes nothing and reports true.
+func (a *App) retire(runID string, lr *liveRun, onlyIfEmpty bool) bool {
+	lr.injecting.Lock()
+	defer lr.injecting.Unlock()
+	if onlyIfEmpty && !lr.closed && len(lr.inbox) > 0 {
+		return false
 	}
-	a.ending[runID] = lr
+	lr.closed = true
+	a.mu.Lock()
+	if a.runs[runID] == lr {
+		delete(a.runs, runID)
+		if a.ending == nil {
+			a.ending = map[string]*liveRun{}
+		}
+		a.ending[runID] = lr
+	}
+	a.mu.Unlock()
+	return true
 }
 
 // runExited forgets a run whose goroutine is done.
@@ -743,17 +797,6 @@ func (a *App) trackedRun(runID string) *liveRun {
 	return a.ending[runID]
 }
 
-// untrackRun ends a run's time as the conversation's live run; it stays in
-// ending until its goroutine exits.
-func (a *App) untrackRun(runID string) {
-	a.mu.Lock()
-	if lr := a.runs[runID]; lr != nil {
-		delete(a.runs, runID)
-		a.endingLocked(runID, lr)
-	}
-	a.mu.Unlock()
-}
-
 func (a *App) cancelBot(botID string) {
 	// Its subagents stop with it; they must not wake a lead on the way down.
 	a.quietSubagents("interrupted", "bot_id = ?", botID)
@@ -764,33 +807,38 @@ func (a *App) stopChat(botID, chatID string) {
 	a.cancelRuns(botID, chatID, "stopped")
 }
 
-// cancelRuns stops a Bot's live runs (or one chat's). The run, its inbox
-// and its pending approvals are settled here, before the goroutine unwinds:
-// the run's final status is runStatus (finish keeps it), an approval waiting
-// on it is canceled, the same word the call's own gate writes when its
-// context ends, and a message sent from now on starts a new run.
+// cancelRuns stops a Bot's live runs (or one chat's). Each run, its pending
+// approvals and its row are settled here, before the goroutine unwinds: the
+// run retires (a message sent from now on starts a new run), its final status
+// is runStatus (finish keeps it), and an approval waiting on it is canceled,
+// the same word the call's own gate writes when its context ends.
+//
+// Only the runs it stops are touched: a run already ending (past its last
+// turn, writing its done) finishes with the status it earned.
 func (a *App) cancelRuns(botID, chatID, runStatus string) {
 	a.mu.Lock()
-	want := map[string]bool{}
-	var closing []*liveRun
+	stopping := map[string]*liveRun{}
 	for id, lr := range a.runs {
-		if lr.botID != botID {
-			continue
+		if lr.botID == botID && (chatID == "" || lr.chatID == chatID) {
+			stopping[id] = lr
 		}
-		if chatID != "" && lr.chatID != chatID {
-			continue
-		}
-		lr.cancel()
-		delete(a.runs, id)
-		a.endingLocked(id, lr)
-		want[id] = true
-		closing = append(closing, lr)
 	}
+	a.mu.Unlock()
+	ids := make([]string, 0, len(stopping))
+	for id, lr := range stopping {
+		lr.stopWith(runStatus)
+		a.retire(id, lr, false)
+		lr.cancel()
+		ids = append(ids, id)
+	}
+	a.mu.Lock()
 	for id, w := range a.approvals {
 		if w.botID != botID {
 			continue
 		}
-		if chatID != "" && !want[w.runID] {
+		// A Bot-wide stop ends every wait on the Bot, a background
+		// process's too.
+		if _, ok := stopping[w.runID]; !ok && chatID != "" {
 			continue
 		}
 		select {
@@ -800,20 +848,15 @@ func (a *App) cancelRuns(botID, chatID, runStatus string) {
 		delete(a.approvals, id)
 	}
 	a.mu.Unlock()
-	// injecting is taken without a.mu: inject holds it while it records.
-	for _, lr := range closing {
-		lr.injecting.Lock()
-		lr.closed = true
-		lr.injecting.Unlock()
+	if len(ids) > 0 {
+		a.DB.Model(&db.Run{}).Where("id IN ? AND status = ?", ids, "running").Update("status", runStatus)
 	}
-	q := a.DB.Model(&db.Run{}).Where("bot_id = ? AND status = ?", botID, "running")
-	if chatID != "" {
-		q = q.Where("chat_id = ?", chatID)
-	}
-	q.Update("status", runStatus)
 	aq := a.DB.Model(&db.Approval{}).Where("bot_id = ? AND status = ?", botID, "pending")
 	if chatID != "" {
-		aq = aq.Where("run_id IN (?)", a.DB.Model(&db.Run{}).Select("id").Where("bot_id = ? AND chat_id = ?", botID, chatID))
+		if len(ids) == 0 {
+			return
+		}
+		aq = aq.Where("run_id IN ?", ids)
 	}
 	aq.Update("status", "canceled")
 }

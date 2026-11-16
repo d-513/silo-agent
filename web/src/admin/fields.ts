@@ -21,6 +21,7 @@ export const LABELS: Record<string, string> = {
   "voice.webrtc.ice_servers": msg("STUN/TURN servers"),
   "memory.in_prompt": msg("Memories in the prompt"),
   "memory.collect": msg("Collect from idle chats"),
+  "memory.infer": msg("Keep what was only shown"),
   "knowledge.enabled": msg("Document search"),
   "knowledge.sync_interval": msg("Re-check folders every"),
   "knowledge.ocr": msg("Read scans and images (OCR)"),
@@ -54,6 +55,8 @@ export const LABELS: Record<string, string> = {
   docker_host: msg("Docker host"),
   bot_image: msg("Bot image"),
   mcp_stdio_image: msg("STDIO MCP image"),
+  "bot_limits.memory_mb": msg("Memory per Bot (MB)"),
+  "bot_limits.pids": msg("Processes per Bot"),
   "drives.image": msg("Drive sidecar image"),
   "drives.mount_root": msg("Drive mount root"),
   "drives.cache_max_size": msg("Drive cache limit"),
@@ -88,6 +91,8 @@ export const LABELS: Record<string, string> = {
 };
 
 export const HINTS: Record<string, string> = {
+  "bot_limits.memory_mb": msg("The most memory one Bot's machine may use, Chromium included. 0 is no limit; at least 512. Applies when a machine is next created."),
+  "bot_limits.pids": msg("The most processes and threads one Bot's machine may run at once, which stops a runaway build or a fork bomb. 0 is no limit. Applies when a machine is next created."),
   "context.window": msg("Tokens, used when the provider does not report one (OpenRouter does). Per-model overrides go in silo.yaml under context.windows."),
   "context.compact_at": msg("Fraction of the window (0.1–0.98) at which a run summarizes its history before the next model call."),
   "changes.max_file_mb": msg("A bigger file is recorded by its size only, never its content. 1 to 100."),
@@ -191,7 +196,7 @@ export const RULES_NOTE =
   msg("The operator's layer of the rules engine. A rule here applies to every Bot; while it is locked an owner may make it stricter but not looser. The policy text below is read before a Bot's own, by the auto-approval model and the output filter.");
 
 export const MEMORY_NOTE =
-  msg("Memories in the prompt shows the Bot every memory while they are few, and a summary written in the background once they are many; nothing is searched while you wait, and the Bot looks up details with recall. Collecting reads each chat once it has been quiet for 10 minutes and saves the facts the Bot missed, one cheap call per chat. The embedding and memory save models are under Models.");
+  msg("Memories in the prompt tells the Bot its preferences and lessons every time, and its facts in full while they are few, as a summary written in the background once they are many; nothing is searched while you wait, and the Bot looks up details with recall. Collecting has each Bot's Memory automation read a chat once it has been quiet for 10 minutes and keep what the Bot missed, and tidy the memories when many have piled up. Keep what was only shown lets it also keep preferences and lessons nobody stated; each waits, unused, until a later conversation shows it again. The embedding and memory save models are under Models.");
 
 export const KNOWLEDGE_NOTE =
   msg("Folders the owner picks on a Bot's Knowledge page are indexed with the embedding model (under Models) and searched by the Bot's search_docs tool. Drive folders are re-checked four times less often. Turning this off stops syncing and hides the tool; what is already indexed stays. OCR is CPU work inside the Bot's box, one scan at a time per folder.");
@@ -245,7 +250,7 @@ export function groupOf(key: string) {
   if (key.startsWith("changes.")) return "changes";
   if (key.startsWith("filter.")) return "filter";
   if (key.startsWith("rules.")) return "rules";
-  if (key.startsWith("drives.") || key === "docker_host" || key === "bot_image" || key === "mcp_stdio_image") return "containers";
+  if (key.startsWith("drives.") || key === "docker_host" || key === "bot_image" || key === "mcp_stdio_image" || key.startsWith("bot_limits.")) return "containers";
   if (key.startsWith("providers.")) return "providers";
   if (key.startsWith("search.")) return "search";
   if (key.startsWith("reader.")) return "reader";

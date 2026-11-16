@@ -5,8 +5,10 @@ import (
 	"errors"
 
 	v1 "silo.agent/gen/silo/v1"
+	"silo.agent/internal/app/memory"
 	"silo.agent/internal/app/proactivity"
 	"silo.agent/internal/app/tool"
+	"silo.agent/internal/app/toolarg"
 	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/db"
 	"silo.agent/internal/hub"
@@ -171,19 +173,26 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "remember",
-			Description: "Save one durable fact to this Bot's memory (searched by meaning, not always in the prompt). One fact per call; a near-duplicate updates the existing memory.",
+			Description: "Save one memory: a durable fact, a preference of the human's, or a lesson about doing the work here. One per call. Saying again what is already there updates it; `replaces` retires the memories this one makes out of date. The result lists memories close to the new one.",
 			Params: tool.Object(map[string]any{
-				"content": map[string]any{"type": "string", "description": "the fact, self-contained"},
+				"content":  map[string]any{"type": "string", "description": "one self-contained sentence"},
+				"kind":     map[string]any{"type": "string", "enum": memory.Kinds, "description": "fact (the default), preference (how the human wants things done) or lesson (what works here); preferences and lessons are told at the start of every conversation"},
+				"inferred": map[string]any{"type": "boolean", "description": "true when the human did not say it and you worked it out: it is kept tentative, out of the prompt, until it is seen again"},
+				"replaces": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "ids of memories this one makes out of date"},
 			}, "content"),
 			Connector: security.Bot, Action: "remember",
 			ExposeCompletion: true, ExposePython: true,
 			Run: text(func(ctx context.Context, c *tool.Call) (string, error) {
-				return a.Memory.Remember(ctx, c.Bot.ID, c.RunID, c.Str("content"))
+				inferred, _ := c.Args["inferred"].(bool)
+				return a.Memory.Remember(ctx, memory.Entry{
+					BotID: c.Bot.ID, RunID: c.RunID, Content: c.Str("content"), Kind: c.Str("kind"),
+					Inferred: inferred, Replaces: toolarg.Strings(c.Args, "replaces"), Keeper: c.Picked,
+				})
 			}),
 		},
 		{
 			Name:        "recall",
-			Description: "Search this Bot's memories by meaning. Returns the closest ones with ids and dates.",
+			Description: "Search this Bot's memories by meaning and by their words. Returns the closest ones with ids and dates.",
 			Params: tool.Object(map[string]any{
 				"query": map[string]any{"type": "string"},
 				"limit": map[string]any{"type": "integer", "description": "max memories (default 5, max 20)"},
@@ -209,14 +218,38 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "forget",
-			Description: "Delete one memory by id (from recall).",
+			Description: "Retire one memory by id (from recall or the Memories list): it is no longer told or found.",
 			Params: tool.Object(map[string]any{
 				"id": map[string]any{"type": "string"},
 			}, "id"),
 			Connector: security.Bot, Action: "forget",
 			ExposePython: true,
 			Run: text(func(_ context.Context, c *tool.Call) (string, error) {
-				return a.Memory.Forget(c.Bot.ID, c.Str("id"))
+				return a.Memory.Forget(c.Bot.ID, c.Str("id"), c.Picked)
+			}),
+		},
+		{
+			Name:        "reinforce",
+			Description: "Mark memories by id: the ones this conversation leaned on, and the tentative ones it showed true again (a tentative one becomes active once it has been seen on separate occasions).",
+			Params: tool.Object(map[string]any{
+				"ids": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+			}, "ids"),
+			// The keeper's own tools ride on the rules of the memory tools the
+			// Bot has: marking is a write, looking over is a read.
+			Connector: security.Bot, Action: "remember",
+			JobOnly: true,
+			Run: text(func(_ context.Context, c *tool.Call) (string, error) {
+				return a.Memory.Reinforce(c.Bot.ID, c.RunID, toolarg.Strings(c.Args, "ids"))
+			}),
+		},
+		{
+			Name:        "review_memories",
+			Description: "The next batch of memories that have not been looked over, each with the memories closest to it. What a batch shows counts as looked over.",
+			Params:      tool.Object(map[string]any{}),
+			Connector:   security.Bot, Action: "recall",
+			JobOnly: true,
+			Run: text(func(_ context.Context, c *tool.Call) (string, error) {
+				return a.Memory.Review(c.Bot.ID, c.RunID)
 			}),
 		},
 		{

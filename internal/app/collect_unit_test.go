@@ -37,19 +37,6 @@ func TestChunkEntriesKeepsNewestAndCaps(t *testing.T) {
 	}
 }
 
-func TestParseCollectReplyTolerant(t *testing.T) {
-	r, ok := parseCollectReply("Sure!\n```json\n{\"save\":[{\"text\":\"x\"}]}\n```")
-	if !ok || len(r.Save) != 1 || r.Save[0].Text != "x" {
-		t.Fatalf("fenced reply: %+v %v", r, ok)
-	}
-	if _, ok := parseCollectReply("nothing to add"); ok {
-		t.Fatal("prose must not parse")
-	}
-	if r, ok := parseCollectReply("{}"); !ok || len(r.Save) != 0 {
-		t.Fatal("{} is a valid empty reply")
-	}
-}
-
 func TestCollectCapsKeepMoreOfFailures(t *testing.T) {
 	long := strings.Repeat("y", 2000)
 	msgs := []llm.Message{

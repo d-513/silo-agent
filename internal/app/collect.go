@@ -1,8 +1,8 @@
 package app
 
 import (
+	"cmp"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -18,23 +18,24 @@ import (
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
-	"silo.agent/internal/prompts"
 	"silo.agent/internal/textx"
 )
 
-// The memory collector reads what a conversation said since it was last
-// collected (chats.memory_seq) and asks a cheap model, in one call with no
-// tools, for the facts worth keeping. Each event is read at most
-// once: the watermark moves past everything a collection read, including a
-// reply it could not parse, and stays put only on a provider error.
+// Collecting is reading what a conversation said since it was last read
+// (chats.memory_seq) and handing it to the memory keeper, whose run saves what
+// is worth keeping through the memory tools (memory.Service.Read). Each event
+// is read at most once: the watermark moves past everything a run read to its
+// end, and stays put when the run failed or was stopped.
 const (
 	// collectTick is how often the sweep looks for idle chats.
 	collectTick = 5 * time.Minute
 	// collectIdle is how long a chat must be quiet before the sweep reads it,
 	// so it never reads a conversation mid-flow.
 	collectIdle = 10 * time.Minute
-	// collectPerTick caps the chats one sweep reads.
+	// collectPerTick caps the chats one sweep reads, and collectWait how long
+	// it waits on one chat's runs.
 	collectPerTick = 5
+	collectWait    = 5 * time.Minute
 	// collectPauseFor holds the sweep back after a provider error.
 	collectPauseFor = 15 * time.Minute
 	// collectRest is how long a chat whose collection failed is skipped: the
@@ -43,24 +44,21 @@ const (
 	collectRest    = collectPauseFor
 	collectRestMax = 24 * time.Hour
 
-	// collectBudget is the excerpt size of one call in tokens; a larger delta
-	// is split into at most collectChunks calls and the oldest part dropped.
+	// collectBudget is the excerpt size of one run in tokens; a larger delta
+	// is split into at most collectChunks runs and the oldest part dropped.
 	collectBudget = 12000
 	collectChunks = 3
-	// collectShown is how many existing memories each call sees for dedupe.
+	// collectShown is how many existing memories each run is shown beside
+	// the excerpt.
 	collectShown = 15
 	// collectQueryRunes is the tail of the excerpt embedded to find them.
 	collectQueryRunes = 6000
-	// Caps on what one reply may change.
-	collectMaxSave   = 10
-	collectMaxUpdate = 5
-	collectMaxForget = 5
 )
 
 // collectCaps keep tool noise short while retaining enough detail on errors.
 var collectCaps = transcriptCaps{Args: 300, Result: 400, ErrorResult: 800}
 
-var errCollecting = errors.New("memories are already being collected for this chat")
+var errCollecting = errors.New("memories are being collected for this Bot; try again in a moment")
 
 // errReplyRunning refuses to collect a chat with a live run, like the sweep:
 // the run moves the events it reads (drainInbox), so a watermark taken now
@@ -68,32 +66,13 @@ var errCollecting = errors.New("memories are already being collected for this ch
 var errReplyRunning = errors.New("a reply is running in this chat; collect memories once it is done")
 
 type collectResult struct {
-	Saved, Updated, Forgotten int
-	// IDs are the memories this collection saved or updated.
-	IDs  []string
+	memory.Tally
 	Note string
 }
 
-// collectReply is the JSON the collector model answers with.
-type collectReply struct {
-	Save []struct {
-		Text string `json:"text"`
-	} `json:"save"`
-	Update []struct {
-		ID   string `json:"id"`
-		Text string `json:"text"`
-	} `json:"update"`
-	Forget []string `json:"forget"`
-}
-
-// collectChat reads chatID's events after its watermark and saves what the
-// collector model picks out.
+// collectChat reads chatID's events after its watermark and has the memory
+// keeper save what is worth keeping.
 func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, error) {
-	if _, busy := a.collecting.LoadOrStore(chatID, struct{}{}); busy {
-		return collectResult{}, errCollecting
-	}
-	defer a.collecting.Delete(chatID)
-
 	var ch db.Chat
 	if err := a.DB.Where("id = ?", chatID).Limit(1).Find(&ch).Error; err != nil {
 		return collectResult{}, err
@@ -113,7 +92,7 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 	if maxSeq == 0 {
 		return collectResult{Note: "nothing new"}, nil
 	}
-	// A compaction is left out: the collector reads the turns themselves,
+	// A compaction is left out: the keeper reads the turns themselves,
 	// not a summary of what it may already have read. So is a /clear: what
 	// came before it is still the conversation's to remember.
 	var evs []db.RunEvent
@@ -127,18 +106,10 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 		return collectResult{Note: "nothing new"}, nil
 	}
 	// The delta is split by events, not by transcript, so the watermark can
-	// move past each part once it is applied: a failure in a later part
-	// retries only that part, and the model never re-reads (and re-saves in
+	// move past each part once its run is done: a failure in a later part
+	// retries only that part, and the keeper never re-reads (and re-saves in
 	// other words) what it already took from an earlier one.
 	parts, dropped := splitEvents(evs, collectBudget, collectChunks)
-
-	modelID := a.cfg().MemoryModel()
-	client, provider, model, err := a.Models.Observed(modelID, ch.BotID, "memory")
-	if err != nil {
-		return collectResult{}, models.ProviderError{Err: err}
-	}
-	cache := models.CachePolicy(a.cfg().ProviderSettings(provider), "memory")
-	cache.Key, cache.Messages = "silo-memory-collector", false
 
 	var res collectResult
 	for i, part := range parts {
@@ -165,88 +136,27 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 		if over > 0 {
 			chunk = fmt.Sprintf("[%d older entries of this part were dropped to fit.]\n\n", over) + chunk
 		}
-		shown, err := a.Memory.Search(ctx, ch.BotID, tailRunes(chunk, collectQueryRunes), collectShown, 0)
+		shown, err := a.Memory.Closest(ctx, ch.BotID, tailRunes(chunk, collectQueryRunes), collectShown)
 		if err != nil {
 			return res, models.ProviderError{Err: err}
 		}
-		out, err := client.Complete(ctx, llm.Request{
-			Model:     model,
-			System:    []llm.SystemBlock{{Text: prompts.Memory, CacheAfter: true}},
-			Messages:  []llm.Message{{Role: llm.RoleUser, Text: collectInput(shown, chunk, note)}},
-			Cache:     cache,
-			MaxTokens: 1500,
-		})
-		if err != nil {
-			return res, models.ProviderError{Err: err}
-		}
-		reply, ok := parseCollectReply(out.Text)
-		if !ok {
-			log.Printf("memory collector: chat %s: unreadable reply %q", ch.ID, textx.TruncateUTF8(out.Text, 200))
-			res.Note = "the model's reply could not be read"
-			a.advanceMemorySeq(ch.ID, upTo)
-			continue
-		}
-		if err := a.applyCollect(ctx, &ch, shown, reply, &res); err != nil {
+		tally, status, err := a.Memory.Read(ctx, ch.BotID, ch.ID, memory.Excerpt(shown, chunk, note))
+		res.Saved, res.Updated, res.Forgotten = res.Saved+tally.Saved, res.Updated+tally.Updated, res.Forgotten+tally.Forgotten
+		res.IDs = append(res.IDs, tally.IDs...)
+		switch {
+		case errors.Is(err, memory.ErrBusy):
+			return res, errCollecting
+		case err != nil:
 			return res, err
+		case status == "error":
+			// A run ends in error when its model call failed.
+			return res, models.ProviderError{Err: errors.New("the memory model failed; its run is in the Memory automation's log")}
+		case status != "done":
+			return res, fmt.Errorf("the memory run did not finish (%s)", cmp.Or(status, "still running"))
 		}
 		a.advanceMemorySeq(ch.ID, upTo)
 	}
 	return res, nil
-}
-
-// applyCollect saves, rewrites, and forgets what one reply asked for. Only ids
-// the model was shown may be rewritten or forgotten.
-func (a *App) applyCollect(ctx context.Context, ch *db.Chat, shown []memory.Recalled, r collectReply, res *collectResult) error {
-	known := map[string]bool{}
-	for _, m := range shown {
-		known[m.ID] = true
-	}
-	for i, s := range r.Save {
-		if i == collectMaxSave {
-			break
-		}
-		text := strings.TrimSpace(s.Text)
-		if text == "" || utf8.RuneCountInString(text) > memory.RememberMax {
-			continue
-		}
-		saved, err := a.Memory.Save(ctx, memory.Entry{BotID: ch.BotID, ChatID: ch.ID, Content: text})
-		if err != nil {
-			return models.ProviderError{Err: err}
-		}
-		res.IDs = append(res.IDs, saved.ID)
-		if saved.Updated {
-			res.Updated++
-		} else {
-			res.Saved++
-		}
-	}
-	for i, u := range r.Update {
-		if i == collectMaxUpdate {
-			break
-		}
-		id := strings.TrimSpace(u.ID)
-		if !known[id] {
-			continue
-		}
-		if err := a.Memory.Rewrite(ctx, ch.BotID, id, u.Text); err != nil {
-			continue
-		}
-		res.IDs = append(res.IDs, id)
-		res.Updated++
-	}
-	for i, id := range r.Forget {
-		if i == collectMaxForget {
-			break
-		}
-		id = strings.TrimSpace(id)
-		if !known[id] {
-			continue
-		}
-		if _, err := a.Memory.Forget(ch.BotID, id); err == nil {
-			res.Forgotten++
-		}
-	}
-	return nil
 }
 
 // advanceMemorySeq moves a chat's watermark forward, never back.
@@ -333,35 +243,6 @@ func chunkEntries(entries []string, budget, max int) (chunks []string, dropped i
 	return chunks, start
 }
 
-// collectInput is the one user message of a collection: what the Bot already
-// knows, then the excerpt, last.
-func collectInput(shown []memory.Recalled, excerpt, note string) string {
-	var b strings.Builder
-	b.WriteString("Already saved (closest to this excerpt):\n")
-	if len(shown) == 0 {
-		b.WriteString("(none)\n")
-	}
-	for _, m := range shown {
-		fmt.Fprintf(&b, "- [%s] %s\n", m.ID, m.Content)
-	}
-	fmt.Fprintf(&b, "\nConversation excerpt%s:\n\n%s", note, excerpt)
-	return b.String()
-}
-
-// parseCollectReply reads the model's JSON, tolerating a code fence or prose
-// around it.
-func parseCollectReply(s string) (collectReply, bool) {
-	var r collectReply
-	i, j := strings.Index(s, "{"), strings.LastIndex(s, "}")
-	if i < 0 || j < i {
-		return r, false
-	}
-	if err := json.Unmarshal([]byte(s[i:j+1]), &r); err != nil {
-		return collectReply{}, false
-	}
-	return r, true
-}
-
 func tailRunes(s string, n int) string {
 	r := []rune(s)
 	if len(r) <= n {
@@ -410,7 +291,7 @@ func (a *App) SweepMemories(now time.Time) int {
 		if a.LiveRunID(r.BotID, r.ID) != "" {
 			continue
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), collectWait)
 		_, err := a.collectChat(ctx, r.ID)
 		cancel()
 		if errors.Is(err, errCollecting) {
@@ -481,12 +362,6 @@ func (a *App) CollectMemories(ctx context.Context, req *connect.Request[v1.Colle
 	out := &v1.CollectMemoriesResponse{
 		Saved: int32(res.Saved), Updated: int32(res.Updated), Forgotten: int32(res.Forgotten), Note: res.Note,
 	}
-	if len(res.IDs) > 0 {
-		var rows []db.Memory
-		a.DB.Select("id, chat_id, content, created_at, last_used_at").Where("id IN ?", res.IDs).Order("created_at").Find(&rows)
-		for _, r := range rows {
-			out.Memories = append(out.Memories, memory.Proto(r))
-		}
-	}
+	out.Memories = a.Memory.Protos(res.IDs)
 	return connect.NewResponse(out), nil
 }

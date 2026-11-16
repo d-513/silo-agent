@@ -71,11 +71,27 @@ var Dashboard string
 //go:embed COMPACT.md
 var Compact string
 
-// Memory is the system prompt of the memory collector, which reads a chat's
-// new messages and answers with the facts to save as JSON.
+// Memory is the system prompt of the memory keeper's runs, which read a
+// conversation that went quiet or tidy the store, through the memory tools.
+// {infer} is MemoryInfer or MemoryStated.
 //
 //go:embed MEMORY.md
 var Memory string
+
+// MemoryInfer is the keeper's section on keeping what nobody said, while
+// memory.infer is on; MemoryStated stands in for it while it is off.
+//
+//go:embed MEMORY_INFER.md
+var MemoryInfer string
+
+//go:embed MEMORY_STATED.md
+var MemoryStated string
+
+// MemoryTidy is the default prompt of the pinned Memory automation: what a
+// firing of it does, which is tidying the store.
+//
+//go:embed MEMORY_TIDY.md
+var MemoryTidy string
 
 // MemoryDigest is the system prompt for summarizing a Bot's long-term
 // memories into the briefing its prompt carries; {max} is the size cap.

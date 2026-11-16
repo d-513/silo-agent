@@ -129,6 +129,7 @@ service UI {
   rpc ListMemories(ListMemoriesRequest) returns (ListMemoriesResponse);
   rpc SearchMemories(SearchMemoriesRequest) returns (SearchMemoriesResponse);
   rpc DeleteMemory(DeleteMemoryRequest) returns (DeleteMemoryResponse);
+  rpc KeepMemory(KeepMemoryRequest) returns (Memory);
   // Knowledge: workspace folders (drives included) indexed for search_docs.
   rpc ListKnowledge(ListKnowledgeRequest) returns (ListKnowledgeResponse);
   rpc AddKnowledgeFolder(AddKnowledgeFolderRequest) returns (KnowledgeFolder);
@@ -1182,8 +1183,23 @@ message Memory {
   // Cosine distance to the query; set only by SearchMemories.
   double distance = 5;
   reserved 6;
-  // Set when the memory collector saved it from this chat.
+  // Set when the memory keeper saved it from this chat.
   string chat_id = 7;
+  // "fact", "preference" (how the human wants things done) or "lesson" (what
+  // works on this machine and these sites).
+  string kind = 8;
+  // "active" (the Bot is told it), "tentative" (worked out, waiting to be
+  // seen again) or "retired" (replaced or forgotten; kept for 30 days).
+  string status = 9;
+  // Nobody said it: the Bot or its memory keeper worked it out.
+  bool inferred = 10;
+  // The separate times it was seen.
+  int32 evidence = 11;
+  // The conversations that leaned on it.
+  int32 use_count = 12;
+  // The memory that replaced a retired one, if one did.
+  string superseded_by = 13;
+  string retired_at = 14;
 }
 
 message ListMemoriesRequest {
@@ -1213,6 +1229,13 @@ message DeleteMemoryRequest {
 }
 
 message DeleteMemoryResponse {}
+
+// KeepMemory makes a memory active on the owner's word: a tentative one is
+// kept as true, a retired one is put back.
+message KeepMemoryRequest {
+  string bot_id = 1;
+  string id = 2;
+}
 
 // KnowledgeFolder is a workspace folder indexed for search_docs.
 message KnowledgeFolder {

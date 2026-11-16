@@ -47,9 +47,9 @@ func TestPythonMemoryPaths(t *testing.T) {
 		t.Fatalf("forget: %+v", res)
 	}
 	var n int64
-	h.DB.Model(&db.Memory{}).Where("bot_id = ?", id).Count(&n)
+	h.DB.Model(&db.Memory{}).Where("bot_id = ? AND status = ?", id, "active").Count(&n)
 	if n != 0 {
-		t.Fatalf("memories %d after forget", n)
+		t.Fatalf("active memories %d after forget", n)
 	}
 
 	// Same gate as the chat tool.
@@ -85,8 +85,8 @@ func TestPythonAutomationAndModelPaths(t *testing.T) {
 	if res := pyCall(t, h, id, "", "automations", "delete", `{"automation":"Digest"}`); res.GetError() != "" {
 		t.Fatalf("delete: %+v", res)
 	}
-	if len(listAutomations(t, h, id)) != 2 {
-		t.Fatal("only the pinned Heartbeat and Dashboard automations should remain")
+	if len(listAutomations(t, h, id)) != 3 {
+		t.Fatal("only the pinned Heartbeat, Memory and Dashboard automations should remain")
 	}
 
 	res := pyCall(t, h, id, "", "model", "list", `{}`)

@@ -104,10 +104,15 @@ func TestMemoriesForget(t *testing.T) {
 	}
 	run3, _ := h.Send(bot.GetId(), chat.Msg.GetId(), "Test_70_Input")
 	h.WaitRun(run3)
+	// Forgetting retires: nobody is told it any more, and the owner can still
+	// put it back.
 	var n int64
-	h.DB.Model(&db.Memory{}).Where("bot_id = ?", bot.GetId()).Count(&n)
+	h.DB.Model(&db.Memory{}).Where("bot_id = ? AND status <> ?", bot.GetId(), memory.StatusRetired).Count(&n)
 	if n != 0 {
-		t.Fatalf("forget left %d rows", n)
+		t.Fatalf("forget left %d live rows", n)
+	}
+	if p := h.App.SystemPromptText(bot.GetId()); strings.Contains(p, m.Content) {
+		t.Fatal("a forgotten memory is still in the prompt")
 	}
 }
 

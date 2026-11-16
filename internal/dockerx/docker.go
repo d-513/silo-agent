@@ -255,10 +255,7 @@ func (e *Engine) Create(ctx context.Context, botID, token string, net *ClientNet
 	if net != nil && net.CPURL != "" {
 		cpURL = net.CPURL
 	}
-	host := &container.HostConfig{
-		Binds:         binds,
-		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
-	}
+	host := botHost(binds, cfg.BotLimits)
 	if net != nil && net.Network != "" {
 		// The box lives only on its own internal network; the gateway is its
 		// only way out and its DNS.
@@ -280,6 +277,29 @@ func (e *Engine) Create(ctx context.Context, botID, token string, net *ClientNet
 		return "", fmt.Errorf("container create: %w", err)
 	}
 	return resp.ID, nil
+}
+
+// botCaps are the only capabilities a Bot's box keeps, out of the engine's
+// defaults: what start.sh needs to chown its mounts and drop to silo, and what
+// sudo, apt and dpkg need for the Bot to install software, and SYS_CHROOT,
+// without which Chromium's sandbox does not start. Raw sockets, device nodes
+// and binding ports under 1024 are gone.
+var botCaps = []string{"CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID", "KILL", "SETUID", "SETGID", "AUDIT_WRITE", "SYS_CHROOT"}
+
+// botHost is how a Bot's box is run: its binds, restarted unless stopped,
+// with botCaps only, and the operator's limits.
+func botHost(binds []string, lim config.BotLimits) *container.HostConfig {
+	host := &container.HostConfig{
+		Binds:         binds,
+		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
+		CapDrop:       []string{"ALL"},
+		CapAdd:        slices.Clone(botCaps),
+	}
+	host.Memory = lim.MemoryBytes()
+	if n := lim.PidsLimit(); n > 0 {
+		host.PidsLimit = &n
+	}
+	return host
 }
 
 // botEnv is the environment a Bot's machine starts with.

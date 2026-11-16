@@ -36,6 +36,7 @@ Not decisions, just not done yet:
 - Automations: Stop, Edit and live state in the log.
 - Subagents: the Taskboard page.
 - Artifacts: Share and Save skill.
+- Memories: the filters (Preferences, Lessons, Facts, Noticed, Retired), Keep on a noticed one, and the retired ones with Put back. A row names its kind and says when it is only noticed.
 - Offer cards: the provider's mark.
 - Crests: the loops (the blink at rest, the dashed layer while working, the bob, the drifting z's) and listening while you type. A crest slides between states and shows needs you, working, done and asleep; a widget's shows only needs you and working.
 

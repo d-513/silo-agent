@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	"silo.agent/internal/app/host"
@@ -73,6 +74,9 @@ type Def struct {
 
 	// LeadOnly keeps the tool from subagents.
 	LeadOnly bool
+	// JobOnly is a tool no chat and no code is offered: only a run whose
+	// profile names it (run.Profile.Tools) has it.
+	JobOnly bool
 	// Writes marks a tool that can change files in the workspace.
 	Writes bool
 	// RepeatGuard marks a read whose third identical call in a run is answered
@@ -140,8 +144,11 @@ type Call struct {
 	RunID  string
 	// Subagent is set for a call a subagent's run made: LeadOnly tools refuse.
 	Subagent bool
-	Def      *Def
-	Args     map[string]any
+	// Picked is set for a call from a run whose profile named the tool: it
+	// was offered there by name, so where it is otherwise exposed is no matter.
+	Picked bool
+	Def    *Def
+	Args   map[string]any
 	// ArgsJSON is the arguments as they arrived, for the approval slip.
 	ArgsJSON string
 }
@@ -219,7 +226,7 @@ func (e *Engine) Register(defs ...Def) {
 			panic(fmt.Sprintf("tool %q: not a valid tool name", d.Name))
 		case d.Run == nil:
 			panic(fmt.Sprintf("tool %s: no handler", d.Name))
-		case !d.ExposeCompletion && !d.ExposePython:
+		case !d.ExposeCompletion && !d.ExposePython && !d.JobOnly:
 			panic(fmt.Sprintf("tool %s: exposed nowhere", d.Name))
 		case (d.ExposePython || !d.SelfGated) && (d.Connector == "" || d.Action == ""):
 			panic(fmt.Sprintf("tool %s: needs a connector.action", d.Name))
@@ -271,6 +278,20 @@ func (e *Engine) Offered(botID string, subagent bool) []Def {
 			seen[d.Name] = true
 			out = append(out, d)
 		}
+	}
+	return out
+}
+
+// Pick is the completion surface of a run narrowed to a job: the built-in
+// tools it names, in the order they are registered, wherever each is
+// otherwise exposed. A feature that is off still leaves its tool out.
+func (e *Engine) Pick(botID string, names []string) []Def {
+	var out []Def
+	for _, d := range e.defs {
+		if !slices.Contains(names, d.Name) || (d.Enabled != nil && !d.Enabled(botID)) {
+			continue
+		}
+		out = append(out, d)
 	}
 	return out
 }
@@ -327,7 +348,7 @@ func (e *Engine) Run(ctx context.Context, c *Call) (Result, error) {
 	if d == nil || d.Run == nil {
 		return Result{}, errors.New("unknown tool")
 	}
-	if !e.exposed(d, c.Surface) {
+	if !c.Picked && !e.exposed(d, c.Surface) {
 		return Result{}, fmt.Errorf("%s is not available here", d.Name)
 	}
 	// What is not offered cannot be called by name either: a subagent's

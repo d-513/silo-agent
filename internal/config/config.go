@@ -99,6 +99,11 @@ type Memory struct {
 	// Collect runs the memory collector over chats that went idle with new
 	// messages. The manual composer button works either way.
 	Collect bool `koanf:"collect"`
+	// Infer lets memory keep what nobody said: preferences read off how the
+	// human corrects and chooses, and lessons from what failed and then
+	// worked. Such a memory waits, out of the prompt, until it is seen a
+	// second time. Off, only what the human said is kept.
+	Infer bool `koanf:"infer"`
 }
 
 // Knowledge configures the folder index behind `search_docs` (RAG).
@@ -343,6 +348,8 @@ type Config struct {
 	// Reader configures the page reader (web_read).
 	Reader Reader `koanf:"reader"`
 	Tools  Tools  `koanf:"tools"`
+	// BotLimits caps each Bot's box (memory, processes).
+	BotLimits BotLimits `koanf:"bot_limits"`
 	// AutoenableConnectors names library connectors (by identifier) that every
 	// new Bot gets, on top of the ones flagged in the library itself.
 	AutoenableConnectors []string `koanf:"autoenable_connectors"`
@@ -654,6 +661,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "voice.webrtc.ice_servers"},
 	{Key: "memory.in_prompt", Type: "bool"},
 	{Key: "memory.collect", Type: "bool"},
+	{Key: "memory.infer", Type: "bool"},
 	{Key: "knowledge.enabled", Type: "bool"},
 	{Key: "knowledge.sync_interval"},
 	{Key: "knowledge.ocr", Type: "bool"},
@@ -683,6 +691,8 @@ var fieldDefs = []fieldMeta{
 	{Key: "database_url", Secret: true, Restart: true},
 	{Key: "docker_host", Restart: true},
 	{Key: "bot_image"},
+	{Key: "bot_limits.memory_mb"},
+	{Key: "bot_limits.pids"},
 	{Key: "mcp_stdio_image"},
 	{Key: "drives.image"},
 	{Key: "drives.mount_root"},

@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/docker/docker/api/types/container"
+
+	"silo.agent/internal/config"
 )
 
 func TestCpuMemStats(t *testing.T) {
@@ -117,5 +119,26 @@ func TestEgressGatewayNeverForwards(t *testing.T) {
 		if s[k] != want {
 			t.Errorf("%s = %q, want %q", k, s[k], want)
 		}
+	}
+}
+
+// A Bot's box keeps only the capabilities it needs (no raw sockets or device
+// nodes) and takes the operator's limits; zero is none.
+func TestBotBoxIsNarrowed(t *testing.T) {
+	h := botHost(nil, config.BotLimits{MemoryMB: 2048, Pids: 4096})
+	if !slices.Equal(h.CapDrop, []string{"ALL"}) {
+		t.Fatalf("cap drop %v", h.CapDrop)
+	}
+	for _, c := range []string{"NET_RAW", "MKNOD", "SYS_ADMIN", "NET_ADMIN", "NET_BIND_SERVICE"} {
+		if slices.Contains(h.CapAdd, c) {
+			t.Fatalf("%s kept: %v", c, h.CapAdd)
+		}
+	}
+	if h.Memory != 2048<<20 || h.PidsLimit == nil || *h.PidsLimit != 4096 {
+		t.Fatalf("limits: memory %d pids %v", h.Memory, h.PidsLimit)
+	}
+	h = botHost(nil, config.BotLimits{})
+	if h.Memory != 0 || h.PidsLimit != nil {
+		t.Fatalf("zero limits set: memory %d pids %v", h.Memory, h.PidsLimit)
 	}
 }

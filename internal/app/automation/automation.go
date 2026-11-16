@@ -64,6 +64,9 @@ type Pinned struct {
 	// Replaces are the openings of earlier default prompts: a row still on
 	// one is moved to Prompt at start (UpgradePinned). An edited prompt stays.
 	Replaces []string
+	// Profile, when set, makes this a domain's housekeeping job: its runs are
+	// narrowed to the profile (run.Profile) and start no machine.
+	Profile *run.Profile
 }
 
 // Service owns the automation rows, their tools and the scheduler.
@@ -465,8 +468,21 @@ var errAutomationBusy = errors.New("this automation is still running")
 // lands while the previous run is live is skipped, never queued.
 func (s *Service) fireAutomation(au *db.Automation) (string, error) {
 	s.ensureAutomationChat(au)
+	return s.start(au, au.Prompt)
+}
+
+// origin is where an automation's runs come from: the automation, and the
+// job its kind is narrowed to.
+func (s *Service) origin(au *db.Automation) *run.Origin {
+	p, _, _ := s.pin(au.Kind)
+	return &run.Origin{Automation: au, Profile: p.Profile}
+}
+
+// start begins a run of an automation that opens with text, unless one is
+// live, and records how the firing went.
+func (s *Service) start(au *db.Automation, text string) (string, error) {
 	now := time.Now()
-	runID, err := s.engine.StartIfIdle(run.Request{BotID: au.BotID, ChatID: au.ChatID, Text: au.Prompt, Origin: &run.Origin{Automation: au}})
+	runID, err := s.engine.StartIfIdle(run.Request{BotID: au.BotID, ChatID: au.ChatID, Text: text, Origin: s.origin(au)})
 	if errors.Is(err, run.ErrBusy) {
 		s.db.Model(&db.Automation{}).Where("id = ?", au.ID).Updates(map[string]any{"last_status": "skipped", "last_run_at": now})
 		return "", errAutomationBusy
@@ -512,12 +528,35 @@ func (s *Service) Ask(botID, kind, text string) (runID, chatID string, err error
 		return "", "", errors.New("this Bot has no " + kind + " automation")
 	}
 	s.ensureAutomationChat(au)
-	runID, err = s.engine.StartOrInject(botID, au.ChatID, text, run.Extra{}, &run.Origin{Automation: au})
+	runID, err = s.engine.StartOrInject(botID, au.ChatID, text, run.Extra{}, s.origin(au))
 	if err != nil {
 		return "", "", err
 	}
 	s.db.Model(&db.Automation{}).Where("id = ?", au.ID).Updates(map[string]any{"last_run_id": runID, "last_run_at": time.Now(), "last_status": ""})
 	return runID, au.ChatID, nil
+}
+
+// ErrBusy is what Do answers while the pinned automation's last run is live.
+var ErrBusy = errAutomationBusy
+
+// Do gives a pinned automation one piece of work and waits for it: a run of
+// its own in its log, from a fresh context, that opens with text ("" is the
+// automation's own prompt, as a firing sends). It answers the run and the
+// status it ended with ("" when ctx ended first). While its last run is live
+// it answers ErrBusy: work is never stacked on a run or run beside one.
+func (s *Service) Do(ctx context.Context, botID, kind, text string) (runID, status string, err error) {
+	au := s.Pinned(botID, kind)
+	if au == nil {
+		return "", "", errors.New("this Bot has no " + kind + " automation")
+	}
+	s.ensureAutomationChat(au)
+	if text == "" {
+		text = au.Prompt
+	}
+	if runID, err = s.start(au, text); err != nil {
+		return "", "", err
+	}
+	return runID, s.engine.Wait(ctx, runID), nil
 }
 
 // --- proto / RPC ---

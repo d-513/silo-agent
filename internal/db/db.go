@@ -603,18 +603,40 @@ type CatalogSeed struct {
 	SeededAt time.Time
 }
 
-// Memory is one long-term fact a Bot saved with `remember` or that the memory
-// collector saved from a conversation (ChatID). Searched by embedding.
+// Memory is one thing a Bot keeps across conversations: saved with `remember`
+// in a chat, or by the memory keeper from a conversation it read (ChatID).
+// Searched by embedding and by its words (Migrate adds a generated tsv).
 type Memory struct {
 	ID         string `gorm:"primaryKey"`
 	BotID      string `gorm:"index"`
 	Content    string
 	Embedding  pgvector.Vector `gorm:"type:vector(1536)"`
 	EmbedModel string
+	// RunID is the run that last wrote or supported it.
 	RunID      string
 	ChatID     string `gorm:"default:''"`
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
+	// Kind is what it is about: a fact, a preference (how the human wants
+	// things done) or a lesson (what works on this machine and these sites).
+	Kind string `gorm:"not null;default:'fact'"`
+	// Status is active (the Bot is told it), tentative (worked out, waiting
+	// for a second sighting) or retired (replaced or forgotten: kept for a
+	// while so the owner can put it back).
+	Status string `gorm:"not null;default:'active'"`
+	// Inferred marks what nobody said: the keeper or the Bot worked it out.
+	Inferred bool `gorm:"not null;default:false"`
+	// Evidence counts the separate times it was seen; EvidenceAt is the last.
+	Evidence   int `gorm:"not null;default:1"`
+	EvidenceAt *time.Time
+	// UseCount is how many conversations leaned on it.
+	UseCount int `gorm:"not null;default:0"`
+	// SupersededBy is the memory that replaced a retired one, if one did.
+	SupersededBy string `gorm:"not null;default:''"`
+	RetiredAt    *time.Time
+	// ReviewedAt is when the keeper last looked it over against its
+	// neighbours; nil until it has, and again after its text changes.
+	ReviewedAt *time.Time
 }
 
 // MemoryDigest is the summary that stands in for a Bot's memories in
@@ -691,7 +713,7 @@ type KnowledgeChunk struct {
 // (automation.Service.Pin registers them). The partial unique index
 // automations_pinned covers these and no others, so a new pinned kind is
 // added here too.
-var PinnedAutomationKinds = []string{"heartbeat", "dashboard"}
+var PinnedAutomationKinds = []string{"heartbeat", "dashboard", "memory"}
 
 // pinnedKindList is PinnedAutomationKinds as an SQL list.
 var pinnedKindList = "('" + strings.Join(PinnedAutomationKinds, "', '") + "')"
@@ -1158,6 +1180,11 @@ func Migrate(gdb *gorm.DB) error {
 		"CREATE UNIQUE INDEX IF NOT EXISTS subagents_name ON subagents (parent_chat_id, lower(name))",
 		"CREATE UNIQUE INDEX IF NOT EXISTS space_owner ON space_members (space_id) WHERE role = 'owner'",
 		"CREATE INDEX IF NOT EXISTS memories_embedding_hnsw ON memories USING hnsw (embedding vector_cosine_ops)",
+		"ALTER TABLE memories ADD COLUMN IF NOT EXISTS tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', content)) STORED",
+		"CREATE INDEX IF NOT EXISTS memories_tsv ON memories USING gin (tsv)",
+		// A database from before memories lost their first kind column still
+		// has it, nullable: whatever it holds that is no kind now is a fact.
+		"UPDATE memories SET kind = 'fact' WHERE kind IS NULL OR kind NOT IN ('fact', 'preference', 'lesson')",
 		// 'simple' keeps the keyword half language-neutral: names, part
 		// numbers and error codes match exactly in any language.
 		"ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', content)) STORED",
