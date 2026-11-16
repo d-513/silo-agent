@@ -34,6 +34,22 @@ export type CallSnapshot = {
   error: string;
   ended?: EndReason;
   startedAt: number;
+  // The last turn's latency, stage by stage (the debug readout), and what
+  // the browser holds before playing the Bot's voice.
+  lap?: Lap;
+  playoutMs?: number;
+};
+
+// Lap is one turn's timings from the control plane, in ms (0: not yet, or
+// not on this path). See internal/app/voice/lap.go.
+export type Lap = {
+  eou_ms: number;
+  stt_ms: number;
+  talker_ms: number;
+  talker: string;
+  bot_ms: number;
+  tts_ms: number;
+  first_ms: number;
 };
 
 // Voice detection settings. A turn ends after redemptionMs of quiet (long
@@ -61,6 +77,7 @@ type ServerMsg = {
   text?: string;
   reason?: string;
   message?: string;
+  lap?: Lap;
 };
 
 export class CallSession {
@@ -337,6 +354,9 @@ export class CallSession {
           this.endedEarly = true;
         }
         break;
+      case "lap":
+        this.set({ lap: m.lap });
+        break;
       case "error":
         // Not fatal: the call goes on.
         this.notice = !!m.message;
@@ -399,6 +419,7 @@ export class CallSession {
             if (r.type === "inbound-rtp" && r.kind === "audio") {
               const ms = playoutMs(r);
               if (ms > 0) this.send({ t: "playout", delay_ms: ms });
+              if (ms > 0 && ms !== this.snap.playoutMs) this.set({ playoutMs: ms });
             }
           });
         });
@@ -494,6 +515,9 @@ export class CallSession {
   }
 
   private fail(error: string) {
+    // A call that already ended keeps the reason it ended with: what breaks
+    // after (the detector loading on a closed AudioContext) is only fallout.
+    if (this.ended()) return;
     this.notice = false;
     this.set({ error });
     this.finish("error");

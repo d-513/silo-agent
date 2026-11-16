@@ -64,7 +64,7 @@ var (
 
 // candidates are where libopus usually is, after the configured path and
 // the loader's own search.
-var candidates = []string{"libopus.so.0", "libopus.so", "/usr/lib/x86_64-linux-gnu/libopus.so.0", "/usr/lib/aarch64-linux-gnu/libopus.so.0", "/usr/lib64/libopus.so.0", "/run/current-system/sw/lib/libopus.so.0", "/opt/homebrew/lib/libopus.0.dylib"}
+var candidates = []string{"libopus.so.0", "libopus.so", "/usr/lib/x86_64-linux-gnu/libopus.so.0", "/usr/lib/aarch64-linux-gnu/libopus.so.0", "/usr/lib64/libopus.so.0", "/run/current-system/sw/lib/libopus.so.0", "/opt/homebrew/lib/libopus.0.dylib", "/usr/local/lib/libopus.0.dylib"}
 
 // Load opens libopus once: at path when one is given, else where it usually
 // is (on NixOS, a libopus in the store). Later calls answer the first result.
@@ -74,8 +74,10 @@ func Load(path string) error {
 		if path != "" {
 			tries = append([]string{path}, tries...)
 		}
-		if nix, _ := filepath.Glob("/nix/store/*-libopus-*/lib/libopus.so.0"); len(nix) > 0 {
-			tries = append(tries, nix...)
+		for _, glob := range []string{"/nix/store/*-libopus-*/lib/libopus.so.0", "/nix/store/*-libopus-*/lib/libopus.0.dylib"} {
+			if nix, _ := filepath.Glob(glob); len(nix) > 0 {
+				tries = append(tries, nix...)
+			}
 		}
 		var last string
 		for _, p := range tries {
