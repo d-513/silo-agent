@@ -19150,9 +19150,12 @@ type ProviderModel struct {
 	// voices are a speech model's voice ids, where the provider lists them.
 	Voices []string `protobuf:"bytes,5,rep,name=voices,proto3" json:"voices,omitempty"`
 	// A transcription or speech model's live abilities, as on ModelOption.
-	Live          bool `protobuf:"varint,6,opt,name=live,proto3" json:"live,omitempty"`
-	Words         bool `protobuf:"varint,7,opt,name=words,proto3" json:"words,omitempty"`
-	EndOfTurn     bool `protobuf:"varint,8,opt,name=end_of_turn,json=endOfTurn,proto3" json:"end_of_turn,omitempty"`
+	Live      bool `protobuf:"varint,6,opt,name=live,proto3" json:"live,omitempty"`
+	Words     bool `protobuf:"varint,7,opt,name=words,proto3" json:"words,omitempty"`
+	EndOfTurn bool `protobuf:"varint,8,opt,name=end_of_turn,json=endOfTurn,proto3" json:"end_of_turn,omitempty"`
+	// fast says the provider reports a fast mode for this text model: it can
+	// also be allowed as id + ":fast", at the provider's premium price.
+	Fast          bool `protobuf:"varint,9,opt,name=fast,proto3" json:"fast,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -19239,6 +19242,13 @@ func (x *ProviderModel) GetWords() bool {
 func (x *ProviderModel) GetEndOfTurn() bool {
 	if x != nil {
 		return x.EndOfTurn
+	}
+	return false
+}
+
+func (x *ProviderModel) GetFast() bool {
+	if x != nil {
+		return x.Fast
 	}
 	return false
 }
@@ -30591,7 +30601,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x06models\x18\x01 \x03(\tR\x06models\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\"7\n" +
 	"\x19ListProviderModelsRequest\x12\x1a\n" +
-	"\bprovider\x18\x01 \x01(\tR\bprovider\"\xd0\x01\n" +
+	"\bprovider\x18\x01 \x01(\tR\bprovider\"\xe4\x01\n" +
 	"\rProviderModel\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12%\n" +
@@ -30600,7 +30610,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x06voices\x18\x05 \x03(\tR\x06voices\x12\x12\n" +
 	"\x04live\x18\x06 \x01(\bR\x04live\x12\x14\n" +
 	"\x05words\x18\a \x01(\bR\x05words\x12\x1e\n" +
-	"\vend_of_turn\x18\b \x01(\bR\tendOfTurn\"L\n" +
+	"\vend_of_turn\x18\b \x01(\bR\tendOfTurn\x12\x12\n" +
+	"\x04fast\x18\t \x01(\bR\x04fast\"L\n" +
 	"\x1aListProviderModelsResponse\x12.\n" +
 	"\x06models\x18\x01 \x03(\v2\x16.silo.v1.ProviderModelR\x06models\"7\n" +
 	"\x19GetProviderAccountRequest\x12\x1a\n" +

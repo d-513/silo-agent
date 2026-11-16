@@ -23,6 +23,8 @@ type ModelInfo struct {
 	Kind string
 	// Voices are a speech model's voice ids, where the provider lists them.
 	Voices []string
+	// Fast says the provider reports a fast mode for the model (FastSuffix).
+	Fast bool
 }
 
 // ModelLister is the optional interface a provider implements when it can

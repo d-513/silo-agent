@@ -106,6 +106,9 @@ type Request struct {
 	// provider that keeps a session of its own (Claude). Requests of one
 	// conversation carry the same value; empty is a call on its own.
 	Conversation string
+	// Fast asks for the model's fast mode (fast.go). Set by WithFast for a
+	// model id ending in FastSuffix, never by hand.
+	Fast bool
 }
 
 // EventKind identifies a streamed event.
@@ -279,6 +282,9 @@ type Descriptor struct {
 	// Warning is what the operator must know before using the provider,
 	// shown above its settings.
 	Warning string
+	// Fast marks a provider that can serve a text model in fast mode (a
+	// model id ending in FastSuffix): faster output at a premium price.
+	Fast bool
 }
 
 // Serves reports whether the provider has models of a kind.
@@ -343,6 +349,7 @@ var builtinProviders = []registered{
 	{
 		desc: Descriptor{
 			ID:            OpenRouter,
+			Fast:          true,
 			Name:          "OpenRouter",
 			Description:   "OpenAI-compatible gateway to many models, decision models included (Jev, Clef and others through its Decisions API). Most upstreams cache a stable prefix on their own; Claude is cached only when the request marks it, which prompt caching does.",
 			Kinds:         []string{KindText, KindDecision, KindTranscription, KindSpeech, KindEmbedding},
@@ -364,6 +371,7 @@ var builtinProviders = []registered{
 	{
 		desc: Descriptor{
 			ID:            OpenAI,
+			Fast:          true,
 			Live:          []string{KindTranscription},
 			Name:          "OpenAI",
 			Description:   "OpenAI's API. Automatic prefix caching; prompt_cache_key improves routing.",
@@ -380,6 +388,7 @@ var builtinProviders = []registered{
 	{
 		desc: Descriptor{
 			ID:            Anthropic,
+			Fast:          true,
 			Name:          "Anthropic",
 			Description:   "Anthropic's native Messages API. Explicit cache_control prompt-cache breakpoints.",
 			SupportsCache: true,
@@ -397,6 +406,7 @@ var builtinProviders = []registered{
 	{
 		desc: Descriptor{
 			ID:          Claude,
+			Fast:        true,
 			Name:        "Claude Agent",
 			Description: "Claude on a Claude subscription, through the official Claude Code program on this server. It runs with Silo's prompt and only Silo's tools; you sign in instead of pasting a key.",
 			KeyOptional: true,
@@ -594,8 +604,15 @@ func Parse(modelID string) (provider, model string, err error) {
 	if !ok {
 		return "", "", fmt.Errorf("model id %q must be provider/model", modelID)
 	}
-	if !Known(p) {
+	d, known := Lookup(p)
+	if !known {
 		return "", "", fmt.Errorf("unknown model provider %q in %q", p, modelID)
+	}
+	if base, fast := SplitFast(m); fast && (base == "" || !d.Fast) {
+		if base == "" {
+			return "", "", fmt.Errorf("model id %q names no model before %s", modelID, FastSuffix)
+		}
+		return "", "", fmt.Errorf("%q: %s has no fast mode", modelID, d.Name)
 	}
 	return p, m, nil
 }

@@ -169,6 +169,9 @@ func (c claudeConf) command(args ...string) (*exec.Cmd, error) {
 type claudeLaunch struct {
 	model  string
 	effort string // a thinking level, "" for the model's default
+	// fast turns fast mode on: the settings flag is also the Agent SDK's
+	// opt-in, which the binary otherwise refuses (sdk_opt_in_required).
+	fast   bool
 	system string
 	tools  []Tool
 	// session is the binary's session id; resume continues it, otherwise it
@@ -196,6 +199,9 @@ func (l claudeLaunch) args() []string {
 	}
 	if l.model != "" {
 		args = append(args, "--model", l.model)
+	}
+	if l.fast {
+		args = append(args, "--settings", `{"fastMode":true}`)
 	}
 	switch l.effort {
 	case "":
@@ -234,6 +240,10 @@ type claudeLine struct {
 	} `json:"modelUsage"`
 	// The init line.
 	Tools []string `json:"tools"`
+	// Fast mode as the binary has it (init and result lines): on, off or
+	// cooldown (rate limited), and why it cannot serve.
+	FastModeState  string `json:"fast_mode_state"`
+	FastModeReason string `json:"fast_mode_disabled_reason"`
 }
 
 // parkedCall is a tool call the binary is waiting on.

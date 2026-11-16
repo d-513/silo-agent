@@ -130,6 +130,7 @@ type claudeModel struct {
 	Description    string   `json:"description"`
 	Efforts        []string `json:"supportedEffortLevels"`
 	ThinkingOff    bool     `json:"supportsThinkingOff"`
+	SupportsFast   bool     `json:"supportsFastMode"`
 	SupportsEffort bool     `json:"supportsEffort"`
 }
 
@@ -196,7 +197,7 @@ func (c *claudeClient) ListModels(ctx context.Context) ([]ModelInfo, error) {
 		if m.Description != "" {
 			name += " · " + m.Description
 		}
-		info := ModelInfo{ID: m.Value, Name: name, Kind: KindText}
+		info := ModelInfo{ID: m.Value, Name: name, Kind: KindText, Fast: m.SupportsFast}
 		for _, id := range []string{m.Value, m.Resolved} {
 			if w, ok := claudeWindows.Load(id); ok {
 				info.ContextWindow = w.(int)

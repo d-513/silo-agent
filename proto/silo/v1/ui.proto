@@ -2719,6 +2719,9 @@ message ProviderModel {
   bool live = 6;
   bool words = 7;
   bool end_of_turn = 8;
+  // fast says the provider reports a fast mode for this text model: it can
+  // also be allowed as id + ":fast", at the provider's premium price.
+  bool fast = 9;
 }
 
 message ListProviderModelsResponse {

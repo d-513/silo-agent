@@ -481,9 +481,12 @@ func validateModels(k *koanf.Koanf) error {
 	for _, kind := range llm.Kinds {
 		for _, m := range k.Strings(kind.List) {
 			m = strings.TrimSpace(m)
-			provider, _, err := llm.Parse(m)
+			provider, model, err := llm.Parse(m)
 			if err != nil {
 				return fmt.Errorf("invalid model %q: %w", m, err)
+			}
+			if _, fast := llm.SplitFast(model); fast && kind.ID != llm.KindText {
+				return fmt.Errorf("%s: %q: only text models have a fast mode", kind.List, m)
 			}
 			if d, _ := llm.Lookup(provider); !d.Serves(kind.ID) {
 				if len(d.Kinds) == 1 {

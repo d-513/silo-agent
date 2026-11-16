@@ -184,6 +184,11 @@ func (c *openAICompatClient) opts(req Request) []option.RequestOption {
 	if req.Latency && c.windows != nil {
 		out = append(out, option.WithJSONSet("provider.sort", "latency"))
 	}
+	if req.Fast {
+		// OpenAI's fast mode (formerly priority processing) and OpenRouter's
+		// priority tier, which also covers Anthropic's fast mode.
+		out = append(out, option.WithJSONSet("service_tier", "fast"))
+	}
 	if c.explicitCache(req) {
 		ctrl := map[string]any{"type": "ephemeral"}
 		if strings.TrimSpace(req.Cache.TTL) == "1h" {

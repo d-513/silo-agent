@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -114,7 +115,7 @@ func (s *claudeSession) reset() {
 
 // ensure has a process running for this request.
 func (s *claudeSession) ensure(req Request, stable string) error {
-	launch := strings.Join([]string{req.Model, req.Thinking, claudeToolsSig(req.Tools), sigText(stable)}, "|")
+	launch := strings.Join([]string{req.Model, req.Thinking, strconv.FormatBool(req.Fast), claudeToolsSig(req.Tools), sigText(stable)}, "|")
 	if s.proc != nil && (s.proc.dead() || s.launch != launch) {
 		if len(s.pending) > 0 {
 			return errClaudeDiverged
@@ -124,16 +125,27 @@ func (s *claudeSession) ensure(req Request, stable string) error {
 	if s.proc != nil {
 		return nil
 	}
-	l := claudeLaunch{model: req.Model, effort: req.Thinking, system: stable, tools: req.Tools}
+	l := claudeLaunch{model: req.Model, effort: req.Thinking, fast: req.Fast, system: stable, tools: req.Tools}
 	if !s.once {
 		if s.id == "" {
 			s.id = newUUID()
 		}
 		l.session, l.resume = s.id, s.started
 	}
-	p, _, err := startClaude(s.conf, l)
+	p, body, err := startClaude(s.conf, l)
 	if err != nil {
 		return err
+	}
+	if req.Fast {
+		var init struct {
+			State  string `json:"fast_mode_state"`
+			Reason string `json:"fast_mode_disabled_reason"`
+		}
+		_ = json.Unmarshal(body, &init)
+		if init.State != "on" {
+			p.kill()
+			return claudeFastError(req.Model, init.State, init.Reason)
+		}
 	}
 	if name := p.alienTool(); name != "" {
 		p.kill()
@@ -457,6 +469,12 @@ func (st *claudeStream) finish(pending []string) {
 
 func (st *claudeStream) take(line claudeLine) {
 	switch line.Type {
+	case "system":
+		// Checked before the model is asked: a fast turn the binary would
+		// answer at standard speed (a cooldown after a rate limit) fails.
+		if st.req.Fast && line.Subtype == "init" && line.FastModeState != "" && line.FastModeState != "on" {
+			st.fail(claudeFastError(st.req.Model, line.FastModeState, line.FastModeReason))
+		}
 	case "stream_event":
 		st.event(line.Event)
 	case "result":
@@ -560,4 +578,30 @@ func (st *claudeStream) event(raw json.RawMessage) {
 			st.finish(st.calls)
 		}
 	}
+}
+
+// claudeFastError says why a fast model cannot run fast: a fast turn never
+// falls back to standard speed.
+func claudeFastError(model, state, reason string) error {
+	why := map[string]string{
+		"extra_usage_disabled": "fast mode is billed as extra usage, which this account has turned off",
+		"free":                 "this account's plan has no fast mode",
+		"preference":           "fast mode is turned off for this organization",
+		"model_not_allowed":    "this model is not in the organization's allowed models",
+		"not_first_party":      "fast mode is not available through this provider",
+		"disabled_by_env":      "fast mode is turned off in Claude Code's environment",
+		"network_error":        "Claude Code could not check fast mode",
+		"pending":              "Claude Code is still checking fast mode",
+		"sdk_opt_in_required":  "Claude Code refused the fast mode opt-in",
+	}[reason]
+	switch {
+	case why != "":
+	case state == "cooldown":
+		why = "fast mode is rate limited for now"
+	case reason != "":
+		why = reason
+	default:
+		why = "Claude Code does not offer fast mode for this model"
+	}
+	return fmt.Errorf("%s%s cannot run fast: %s; pick the model without %s", model, FastSuffix, why, FastSuffix)
 }

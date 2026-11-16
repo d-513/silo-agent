@@ -20,6 +20,15 @@ A model id is **`provider/model`**, split on the first `/` (so `openrouter/opena
 - `model` is the default model (used when a chat has no override). It should be one of `models`.
 - `model_title` names new chats; leave it empty to use `model`.
 
+### Fast mode
+
+A text model id ending in `:fast` is that model in its provider's **fast mode**: faster output at a premium price, chosen per model by the operator. It is an allowlist entry of its own (`claude/opus` and `claude/opus:fast` side by side), so the Bot default, a chat, `model_voice` and the other roles can each pick it, and the cost is decided where it is listed.
+
+- Providers: `anthropic` (`speed: "fast"`; GA on Claude Opus 5.5 and Fable/Mythos 5.2), `openai` (`service_tier: "fast"`, GPT-5.6 and later), `openrouter` (`service_tier: "fast"`, its priority tier, Anthropic's fast mode included) and `claude` (Claude Code's own fast mode; models whose list marks `supportsFastMode`, e.g. `opus`; on a subscription it may be billed as extra usage, and an account with extra usage off is refused). Any other provider refuses `:fast`, as does a non-text list.
+- Under Providers, **List models** shows a fast row under each model the provider says has fast mode (Claude Code reports it; for the others type the id on the Text page).
+- A fast request the provider refuses or rate-limits **fails the turn**; Silo never answers it at standard speed. (OpenAI and OpenRouter may themselves serve a fast request at standard speed and price when traffic ramps.)
+- `context.windows` and `thinking.levels` entries for the base model cover its `:fast` id unless it has an entry of its own.
+
 ### Decision models
 
 A model is one of two kinds. A **text model** writes: prose and tool calls, in a chat. A **decision model** (TypeSafe's Jev, Cloudflare's Clef, and the others of that family) writes nothing: it is shown a state and asked typed questions — `noul` (yes or no), `choice` (one of the options you describe), `score` (a place on an ordered scale) — and answers each with calibrated probabilities, in well under a second and for a fraction of the price. Code branches on those numbers.

@@ -235,6 +235,16 @@ A bidi handler does its `stream.Send`s on its own goroutine, with `Receive` in t
 - Each provider maps the level itself: OpenRouter `reasoning.effort` (`off`→`none`), OpenAI/local `reasoning_effort`, Anthropic adaptive thinking (`display: summarized`) + `output_config.effort`, or a `budget_tokens` budget with `max_tokens` raised past it.
 - Anthropic's signed thinking blocks come back as `EventThinkingBlock`, ride on the in-run assistant message (`Message.Thinking`/`ThinkingModel`, never persisted), and are replayed first in that turn only to the model that wrote them: a tool loop with thinking needs them.
 
+## Fast mode
+
+`internal/llm/fast.go`. A text model id ending in `llm.FastSuffix` (`claude/opus:fast`) is that model in its provider's fast mode, at a premium price: an allowlist entry of its own, so the operator chooses the cost and every picker and role can name it. `llm.Parse` refuses the suffix for a provider without `Descriptor.Fast` (Anthropic, OpenAI, OpenRouter, Claude) and `validateModels` on any list but text.
+
+- **The suffix stops at the client layer.** `models.Service.Client` returns the bare model (thinking levels, context windows and model lists know no suffix); `Observed` wraps a fast id's client in `llm.WithFast`, which sets `Request.Fast`. **A text model is called through `Observed`**, or it runs at standard speed (the talker does too). The debug log records the model as `…:fast`. `context.windows`/`thinking.levels` take the fast id's own entry, else its base's.
+- Each provider maps it: Anthropic `speed: "fast"`, the OpenAI-compatible client `service_tier: "fast"`, Claude Code `--settings {"fastMode":true}` (the flag is also the Agent SDK's opt-in; without it the binary answers `sdk_opt_in_required`), with `Request.Fast` part of the session's launch key.
+- **A fast request that cannot run fast fails the turn**, never falls back to standard: Claude Code is checked at `initialize` and on each turn's `init` line, before the model is asked (`claudeFastError` words the binary's reason; `cooldown` is its rate limit). Anthropic's own errors pass through.
+- **List models** shows a fast row under each model whose `ProviderModel.fast` is set (`withFast` in `admin/providerModels.ts`); only Claude Code reports it (`supportsFastMode`).
+- `TestFastModelReachesTheProvider`, `TestFastModelIDs`, `TestClaudeFastLaunch`, `TestFastModelsAreTextOnly`.
+
 ## Model kinds
 
 `internal/llm/kinds.go` is a registry: `text`, `decision`, `transcription`, `speech`, `embedding`, each with its interface (`llm.Implements`) and its silo.yaml allowlist (`models`, `decision_models`, `transcription_models`, `speech_models`, `embedding_models`).

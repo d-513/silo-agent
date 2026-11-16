@@ -64,7 +64,8 @@ type exchange struct{ said, cut, reply string }
 // talk answers one turn with the talker; on any failure the Bot takes it.
 func (c *call) talk(said, cut string) {
 	cfg := c.s.cfg()
-	client, provider, model, err := c.s.models.Client(cfg.ModelVoice)
+	// Observed: it records the call, and runs a fast model fast.
+	client, provider, model, err := c.s.models.Observed(cfg.ModelVoice, c.botID, "voice-talk")
 	if err != nil {
 		log.Printf("voice: call %s talker: %v", c.id, err)
 		c.hand(said, cut)
@@ -128,12 +129,9 @@ func (c *call) talk(said, cut string) {
 	}
 	reply := strings.TrimSpace(text.String())
 	var names []string
-	var tcs []llm.ToolCall
 	for _, tc := range calls {
 		names = append(names, tc.Name)
-		tcs = append(tcs, *tc)
 	}
-	c.s.models.Record(c.botID, "voice-talk", llm.Record{Provider: provider, Model: model, System: req.System, Messages: req.Messages, Tools: req.Tools, Text: reply, ToolCalls: tcs, Error: stream.Err(), Duration: time.Since(started)})
 	if err := stream.Err(); err != nil && reply == "" && len(calls) == 0 {
 		c.talkFailed(turn, provider, model, req, err, started)
 		return

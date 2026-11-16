@@ -15,7 +15,7 @@ import { accountsOf, capOf, isReady, providersInUse, resolveJobs, type Cap } fro
 import { ProviderAccount, ProviderNotice } from "./ProviderAccount";
 import { ProviderMark, Status } from "./ProviderMap";
 import { ModelsHead } from "./roles";
-import { bareModel, filterModels, filterWord, fmtContext, kindOf, kindsIn, kindWord, removeTitle, type ModelKind } from "./providerModels";
+import { bareModel, filterModels, filterWord, fmtContext, kindOf, kindsIn, kindWord, removeTitle, withFast, type ModelKind } from "./providerModels";
 import { useSettingsForm } from "./useAdminSettings";
 import { LiveChip } from "./LiveChip";
 import { locale, msg, t } from "../i18n.ts";
@@ -271,7 +271,9 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
   const kinds = kindsIn(models);
   const [picked, setKind] = useState<ModelKind>("text");
   const kind = kinds.includes(picked) ? picked : (kinds[0] ?? "text");
-  const ofKind = models.filter((m) => kindOf(m) === kind);
+  // A model with fast mode is followed by its fast row: the same model,
+  // allowed under its own id at the provider's premium price.
+  const ofKind = withFast(models.filter((m) => kindOf(m) === kind));
   const shown = filterModels(ofKind, query);
   const allowed = allowedOf(kind);
   const isAllowed = (id: string) => allowed.some((m) => m.id === id);
@@ -307,7 +309,7 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
               <li key={m.id} className="flex h-11 items-center gap-3 pr-1.5 pl-3 text-small">
                 <span className="max-w-full shrink-0 truncate font-mono text-ink max-sm:min-w-0 max-sm:flex-1 max-sm:shrink">{bareModel(m.id)}</span>
                 <LiveChip kind={kind} live={m.live} words={m.words} endOfTurn={m.endOfTurn} />
-                <span className="min-w-0 flex-1 truncate text-ink-3 max-sm:hidden">{m.name}</span>
+                <span className="min-w-0 flex-1 truncate text-ink-3 max-sm:hidden">{m.fastOf ? t("Fast mode: faster output at the provider's premium price") : m.name}</span>
                 {context ? (
                   <span className="shrink-0 font-mono text-label text-ink-3 tabular-nums" title={kind === "speech" ? undefined : t("{{tokens}} tokens of context", { tokens: m.contextWindow.toLocaleString(locale()) })}>
                     {context}

@@ -103,3 +103,14 @@ export function withModel(allowed: string[], id: string, on: boolean): string[] 
   if (on) return has ? allowed : [...allowed, id];
   return has ? allowed.filter((m) => m !== id) : allowed;
 }
+
+/** The id a fast-mode model is allowed under (the server's llm.FastSuffix). */
+export const FAST_SUFFIX = ":fast";
+
+/**
+ * The list with a fast-mode row after every model the provider says has one:
+ * the same model at its premium price, allowed under id + ":fast".
+ */
+export function withFast<T extends { id: string; fast?: boolean }>(list: T[]): (T & { fastOf?: string })[] {
+  return list.flatMap((m) => (m.fast && !m.id.endsWith(FAST_SUFFIX) ? [m, { ...m, id: m.id + FAST_SUFFIX, fast: false, fastOf: m.id }] : [m]));
+}

@@ -6034,6 +6034,10 @@ public nonisolated struct Silo_V1_ProviderModel: Sendable {
 
   public var endOfTurn: Bool = false
 
+  /// fast says the provider reports a fast mode for this text model: it can
+  /// also be allowed as id + ":fast", at the provider's premium price.
+  public var fast: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -21802,7 +21806,7 @@ nonisolated extension Silo_V1_ListProviderModelsRequest: SwiftProtobuf.Message, 
 
 nonisolated extension Silo_V1_ProviderModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ProviderModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{3}context_window\0\u{1}kind\0\u{1}voices\0\u{1}live\0\u{1}words\0\u{3}end_of_turn\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{3}context_window\0\u{1}kind\0\u{1}voices\0\u{1}live\0\u{1}words\0\u{3}end_of_turn\0\u{1}fast\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -21818,6 +21822,7 @@ nonisolated extension Silo_V1_ProviderModel: SwiftProtobuf.Message, SwiftProtobu
       case 6: try { try decoder.decodeSingularBoolField(value: &self.live) }()
       case 7: try { try decoder.decodeSingularBoolField(value: &self.words) }()
       case 8: try { try decoder.decodeSingularBoolField(value: &self.endOfTurn) }()
+      case 9: try { try decoder.decodeSingularBoolField(value: &self.fast) }()
       default: break
       }
     }
@@ -21848,6 +21853,9 @@ nonisolated extension Silo_V1_ProviderModel: SwiftProtobuf.Message, SwiftProtobu
     if self.endOfTurn != false {
       try visitor.visitSingularBoolField(value: self.endOfTurn, fieldNumber: 8)
     }
+    if self.fast != false {
+      try visitor.visitSingularBoolField(value: self.fast, fieldNumber: 9)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -21860,6 +21868,7 @@ nonisolated extension Silo_V1_ProviderModel: SwiftProtobuf.Message, SwiftProtobu
     if lhs.live != rhs.live {return false}
     if lhs.words != rhs.words {return false}
     if lhs.endOfTurn != rhs.endOfTurn {return false}
+    if lhs.fast != rhs.fast {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

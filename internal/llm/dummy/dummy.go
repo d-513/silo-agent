@@ -137,6 +137,7 @@ func init() {
 		Description:   "Deterministic scripted provider for tests. Not for production.",
 		Kinds:         []string{llm.KindText, llm.KindDecision, llm.KindTranscription, llm.KindSpeech, llm.KindEmbedding},
 		SupportsCache: false,
+		Fast:          true,
 		Settings: []llm.SettingDef{
 			{Key: "api_key", Label: "API key", Description: "Ignored; kept for shape compatibility."},
 		},

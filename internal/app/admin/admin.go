@@ -264,6 +264,7 @@ func (s *Service) ListProviderModels(ctx context.Context, req *connect.Request[v
 		out.Models = append(out.Models, &v1.ProviderModel{
 			Id: provider + "/" + m.ID, Name: m.Name, ContextWindow: int32(m.ContextWindow), Kind: kind, Voices: m.Voices,
 			Live: caps.Live, Words: caps.Words, EndOfTurn: caps.EndOfTurn,
+			Fast: m.Fast && kind == llm.KindText,
 		})
 	}
 	return connect.NewResponse(out), nil

@@ -170,6 +170,11 @@ func (c *anthropicClient) params(req Request, mode thinkMode) anthropic.MessageN
 		Messages:  anthropicMessages(RepairToolPairs(req.Messages), req.Cache, req.Model),
 		Tools:     anthropicTools(req.Tools),
 	}
+	if req.Fast {
+		// GA on Opus 5.5 and Fable/Mythos 5.2; a model without it answers
+		// with an error, which fails the turn rather than running slow.
+		p.Speed = anthropic.MessageNewParamsSpeedFast
+	}
 	switch mode {
 	case thinkAdaptive:
 		// Summarized so the thread shows the reasoning; the default on current

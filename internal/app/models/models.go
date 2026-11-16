@@ -56,21 +56,32 @@ func (s *Service) Title(botID, chatID string) string {
 // Observed builds a provider client for a provider/model id. Every client
 // is wrapped by the engine's observer so the debug log sees every model call
 // (chat, title, auto-approval) with the label naming its feature.
+//
+// A model id ending in llm.FastSuffix comes back as the bare model with a
+// client that asks for fast mode on every request: this is the way to call
+// a text model, since Client drops the suffix.
 func (s *Service) Observed(modelID, botID, label string) (llm.Client, string, string, error) {
 	client, provider, model, err := s.Client(modelID)
 	if err != nil {
 		return nil, provider, model, err
 	}
-	return llm.Observe(client, provider, func(rec llm.Record) { s.Record(botID, label, rec) }), provider, model, nil
+	client = llm.Observe(client, provider, func(rec llm.Record) { s.Record(botID, label, rec) })
+	if _, fast := llm.SplitFast(modelID); fast {
+		client = llm.WithFast(client)
+	}
+	return client, provider, model, nil
 }
 
 // Client builds the bare provider client for a provider/model id, so
-// optional interfaces such as llm.Embedder stay reachable.
+// optional interfaces such as llm.Embedder stay reachable. The model it
+// returns has no fast suffix: a lookup (thinking levels, a context window)
+// is about the model, and a call that should run fast goes through Observed.
 func (s *Service) Client(modelID string) (llm.Client, string, string, error) {
 	provider, model, err := llm.Parse(modelID)
 	if err != nil {
 		return nil, "", "", err
 	}
+	model, _ = llm.SplitFast(model)
 	client, err := s.Provider(provider)
 	if err != nil {
 		return nil, provider, model, err

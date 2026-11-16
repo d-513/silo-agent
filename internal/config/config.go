@@ -155,15 +155,26 @@ type ModelWindow struct {
 	Window int    `koanf:"window"`
 }
 
-// WindowFor returns the operator override for modelID, or 0.
+// WindowFor returns the operator override for modelID, or 0. A model in
+// fast mode takes its own entry, else its base model's.
 func (c Context) WindowFor(modelID string) int {
-	modelID = strings.TrimSpace(modelID)
-	for _, w := range c.Windows {
-		if strings.TrimSpace(w.Model) == modelID && w.Window > 0 {
-			return w.Window
+	for _, id := range fastAndBase(modelID) {
+		for _, w := range c.Windows {
+			if strings.TrimSpace(w.Model) == id && w.Window > 0 {
+				return w.Window
+			}
 		}
 	}
 	return 0
+}
+
+// fastAndBase is a model id, then its base model's when it is a fast one.
+func fastAndBase(modelID string) []string {
+	modelID = strings.TrimSpace(modelID)
+	if base, fast := llm.SplitFast(modelID); fast {
+		return []string{modelID, base}
+	}
+	return []string{modelID}
 }
 
 // Thinking configures the composer's thinking-level picker.
@@ -182,11 +193,13 @@ type ModelThinking struct {
 }
 
 // LevelsFor returns the operator override for modelID and whether one is set.
+// A model in fast mode takes its own entry, else its base model's.
 func (t Thinking) LevelsFor(modelID string) ([]string, bool) {
-	modelID = strings.TrimSpace(modelID)
-	for _, m := range t.Levels {
-		if strings.TrimSpace(m.Model) == modelID {
-			return m.Levels, true
+	for _, id := range fastAndBase(modelID) {
+		for _, m := range t.Levels {
+			if strings.TrimSpace(m.Model) == id {
+				return m.Levels, true
+			}
 		}
 	}
 	return nil, false

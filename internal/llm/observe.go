@@ -78,6 +78,9 @@ func (c *observedClient) EndTurn(ctx context.Context, req Request) error {
 func (c *observedClient) record(req Request, rec Record) Record {
 	rec.Provider = c.provider
 	rec.Model = req.Model
+	if req.Fast {
+		rec.Model += FastSuffix
+	}
 	rec.System = req.System
 	rec.Messages = req.Messages
 	rec.Tools = req.Tools

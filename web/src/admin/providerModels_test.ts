@@ -1,5 +1,5 @@
 import { eq } from "../testing.ts";
-import { bareModel, eitherKind, filterModels, fmtContext, kindOf, kindsIn, withModel } from "./providerModels.ts";
+import { bareModel, eitherKind, filterModels, fmtContext, kindOf, kindsIn, withFast, withModel } from "./providerModels.ts";
 import { FIRST_SECTION, isFormSection, isSection, SECTIONS } from "./sections.ts";
 
 eq(bareModel("openrouter/openai/gpt-5.6-luna"), "openai/gpt-5.6-luna", "the model part keeps its own slashes");
@@ -51,3 +51,12 @@ eq(isSection(FIRST_SECTION), true, "the first section is a section");
 eq(isSection("nope"), false, "unknown section");
 eq(isSection(undefined), false, "no section");
 eq(SECTIONS.filter((s) => !isFormSection(s.id)).map((s) => s.id), ["yaml"], "the file is not the form");
+
+const fastList = withFast([
+  { id: "claude/opus", fast: true },
+  { id: "claude/haiku", fast: false },
+]);
+eq(fastList.map((m) => m.id), ["claude/opus", "claude/opus:fast", "claude/haiku"], "a fast row follows each model that has fast mode");
+eq(fastList[1].fastOf, "claude/opus", "the fast row knows its model");
+eq(fastList[1].fast, false, "a fast row is not offered a fast row of its own");
+eq(withFast([{ id: "claude/opus:fast", fast: true }]).length, 1, "an id already fast gets no second suffix");
