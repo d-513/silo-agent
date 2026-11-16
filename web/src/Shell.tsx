@@ -192,7 +192,8 @@ export function Shell() {
   useEffect(() => preloadMarkdown(), []);
   return (
     <div className="flex h-dvh overflow-hidden max-wide:flex-col">
-      {wide ? (
+      {page === "admin" ? null : wide ? (
+        // Admin draws a sidebar of its own (AdminLayout).
         <Sidebar page={page} activeBotId={activeBotId} />
       ) : activeBotId ? null : (
         // On a narrow screen a Bot page carries its own top bar, whose drawer
@@ -200,7 +201,8 @@ export function Shell() {
         <Rail page={page} />
       )}
       {/* A Bot page fills the height and scrolls inside its own panes. */}
-      <main className={`min-w-0 flex-1 ${activeBotId ? "min-h-0 overflow-hidden" : "overflow-auto"}`}>
+      {/* Admin draws its own sidebar and scrolls its own page. */}
+      <main className={`min-w-0 flex-1 ${activeBotId || page === "admin" ? "min-h-0 overflow-hidden" : "overflow-auto"}`}>
         <Outlet />
       </main>
       <OfflineBanner />

@@ -1,5 +1,5 @@
 import { useQuery } from "@connectrpc/connect-query";
-import { AudioLines, Binary, Check, ChevronRight, Ear, Plug, Plus, RefreshCw, Split, Type, Volume2, X } from "lucide-react";
+import { AudioLines, Binary, Check, ChevronRight, Ear, List as ListIcon, Plug, Plus, RefreshCw, Split, Type, Volume2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSearch } from "@tanstack/react-router";
 import { Btn } from "../Btn";
@@ -19,6 +19,7 @@ import { bareModel, filterModels, filterWord, fmtContext, kindOf, kindsIn, kindW
 import { useSettingsForm } from "./useAdminSettings";
 import { LiveChip } from "./LiveChip";
 import { locale, msg, t } from "../i18n.ts";
+import { Modal } from "../Modal";
 
 export function ProviderSettings() {
   const form = useSettingsForm();
@@ -185,30 +186,27 @@ function Legend() {
   );
 }
 
-// ProviderDetail is an open provider: its settings (saved with the form),
-// and on request the models its saved key can call, each one press from the
-// allowlist of its kind.
+// ProviderDetail is an open provider: its settings (saved with the form), and
+// List models, which opens the models its saved key can call in a dialog,
+// each one press from the allowlist of its kind.
 function ProviderDetail({ provider }: { provider: Provider }) {
   const { fields, values, engines, providers, setValue } = useSettingsForm();
   const rows = fields.filter((f) => f.key.startsWith(`providers.${provider.id}.`));
   // The list is asked with what is saved, so an edited key must be saved first.
   const unsaved = rows.some((f) => f.source !== ConfigSource.ENV && (values[f.key] ?? "") !== f.value);
   const [open, setOpen] = useState(false);
-  // Asked only once opened; kept for the visit so reopening is instant.
-  const list = useQuery(UI.method.listProviderModels, { provider: provider.id }, { enabled: open, staleTime: Infinity, retry: false });
 
   const button = (
     <Btn
       size="sm"
-      aria-expanded={open}
-      aria-disabled={unsaved && !open ? true : undefined}
-      className={unsaved && !open ? "cursor-not-allowed opacity-50" : ""}
+      aria-haspopup="dialog"
+      aria-disabled={unsaved ? true : undefined}
+      className={unsaved ? "cursor-not-allowed opacity-50" : ""}
       onClick={() => {
-        if (unsaved && !open) return;
-        setOpen(!open);
+        if (!unsaved) setOpen(true);
       }}
     >
-      {open ? t("Hide models") : t("List models")}
+      <ListIcon size={14} /> {t("List models")}
     </Btn>
   );
 
@@ -216,7 +214,7 @@ function ProviderDetail({ provider }: { provider: Provider }) {
     <div className="bg-surface shadow-[inset_0_1px_0_var(--color-line)]">
       <div className="flex items-start gap-3 px-5 pt-4 pb-1">
         <p className="min-w-0 flex-1 text-small leading-5 text-ink-2">{provider.description}</p>
-        {unsaved && !open ? <Tip content={t("Save your changes first. The list is asked with {{name}}'s saved settings.", { name: provider.name })}>{button}</Tip> : button}
+        {unsaved ? <Tip content={t("Save your changes first. The list is asked with {{name}}'s saved settings.", { name: provider.name })}>{button}</Tip> : button}
       </div>
       {provider.warning || provider.signIn ? (
         <div className="grid gap-3 px-5 pt-3 pb-2">
@@ -231,23 +229,38 @@ function ProviderDetail({ provider }: { provider: Provider }) {
           </div>
         ))}
       </div>
-      {open ? (
-        <div className="bg-well px-5 py-4 shadow-[inset_0_1px_0_var(--color-line)]">
-          {list.isPending ? (
-            <SkeletonRows rows={4} height={36} />
-          ) : list.error ? (
-            <div className="flex items-start gap-3">
-              <ErrorWell className="min-w-0 flex-1">{fail(list.error)}</ErrorWell>
-              <Btn size="sm" onClick={() => void list.refetch()}>
-                {t("Try again")}
-              </Btn>
-            </div>
-          ) : (
-            <ModelList provider={provider} models={list.data.models} refreshing={list.isFetching} onRefresh={() => void list.refetch()} />
-          )}
-        </div>
-      ) : null}
+      {open ? <ModelsDialog provider={provider} onClose={() => setOpen(false)} /> : null}
     </div>
+  );
+}
+
+// ModelsDialog is a provider's models over the page: asked once it opens and
+// kept for the visit, so opening it again is instant.
+function ModelsDialog({ provider, onClose }: { provider: Provider; onClose: () => void }) {
+  const list = useQuery(UI.method.listProviderModels, { provider: provider.id }, { staleTime: Infinity, retry: false });
+  const title = t("{{name}} models", { name: provider.name });
+  return (
+    <Modal onClose={onClose} size="wide" rise dismissOnBackdrop label={title}>
+      <div className="mb-4 flex items-center gap-3 pr-8">
+        <ProviderMark id={provider.id} name={provider.name} />
+        <div className="min-w-0">
+          <h2 className="truncate text-heading text-ink">{title}</h2>
+          <p className="text-meta text-ink-3">{t("What its saved key can call. Add a model to allow it; the allowlists are under Models.")}</p>
+        </div>
+      </div>
+      {list.isPending ? (
+        <SkeletonRows rows={6} height={36} />
+      ) : list.error ? (
+        <div className="flex items-start gap-3">
+          <ErrorWell className="min-w-0 flex-1">{fail(list.error)}</ErrorWell>
+          <Btn size="sm" onClick={() => void list.refetch()}>
+            {t("Try again")}
+          </Btn>
+        </div>
+      ) : (
+        <ModelList provider={provider} models={list.data.models} refreshing={list.isFetching} onRefresh={() => void list.refetch()} />
+      )}
+    </Modal>
   );
 }
 
@@ -284,7 +297,7 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
       {shown.length === 0 ? (
         <p className="py-2 text-small text-ink-2">{t("No model matches “{{search}}”.", { search: query.trim() })}</p>
       ) : (
-        <ul className="max-h-[396px] divide-y divide-line overflow-y-auto overscroll-contain rounded-control bg-surface shadow-card">
+        <ul className="max-h-[min(60vh,560px)] divide-y divide-line overflow-y-auto overscroll-contain rounded-control bg-surface shadow-card">
           {shown.map((m) => {
             const on = isAllowed(m.id);
             const busy = busyModels.has(m.id);

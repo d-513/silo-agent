@@ -1,7 +1,6 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { LogOut, Phone, Plus, Settings2, Wrench } from "lucide-react";
+import { Phone, Plus, Settings2 } from "lucide-react";
 import { useMemo } from "react";
-import { useAuth } from "../auth";
 import { ActivityStrip } from "../bot/ActivityStrip";
 import { useHeard } from "../bot/heardStore";
 import { ActiveBar, UnreadBadge } from "../bot/SideNav";
@@ -19,14 +18,7 @@ import { SpaceSwitch } from "../space/SpaceTile";
 import { botLook, botNow, crestState } from "../statusLook";
 import { Tip, TipTitle } from "../Tip";
 import { byLastMessage, shortWhen } from "./botOrder";
-import { type Page, signOut, ThemeToggle } from "./chrome";
-
-// A foot or head control of the sidebar: a 36px hit area on `well`.
-function hit(on: boolean) {
-  return `relative flex h-9 w-9 shrink-0 items-center justify-center rounded-control transition-[background-color,color,box-shadow] duration-[160ms] ease-quiet ${
-    on ? "bg-surface text-ink shadow-card" : "text-ink-2 hover:bg-pressed hover:text-ink"
-  }`;
-}
+import { AccountControls, hit, type Page } from "./chrome";
 
 // Sidebar is the wide layout's left column, on every signed-in page: Silo,
 // the Workspace the console is in (its name opens the switcher, the gear its
@@ -34,7 +26,6 @@ function hit(on: boolean) {
 // message first, each with its Call), and the account at the foot. Below 960
 // the Rail's top bar stands in for it.
 export function Sidebar({ page, activeBotId }: { page: Page; activeBotId?: string }) {
-  const { admin, email, setSession } = useAuth();
   const { bots, callEnabled } = useBots();
   const { space, spaces } = useCurrentSpace();
   const { pathname } = useLocation();
@@ -42,7 +33,6 @@ export function Sidebar({ page, activeBotId }: { page: Page; activeBotId?: strin
   const air = useOnAir();
   const here = useMemo(() => byLastMessage((bots ?? []).filter((b) => b.spaceId === space?.id)), [bots, space?.id]);
   const newBotOn = !!space && pathname === `/w/${space.id}/new`;
-  const initial = (email.trim()[0] ?? "?").toUpperCase();
 
   // Call rings the Bot's own page, which holds the call: this one if it is
   // open, else the one the press opens.
@@ -53,10 +43,7 @@ export function Sidebar({ page, activeBotId }: { page: Page; activeBotId?: strin
 
   return (
     <aside className="flex w-[280px] shrink-0 flex-col bg-well" aria-label={"Silo"}>
-      <div className="flex h-14 shrink-0 items-center gap-2.5 px-4">
-        <SiloMark className="h-7 w-7" />
-        <span className="text-card-title text-ink">{"Silo"}</span>
-      </div>
+      <SidebarHead />
       <div className="flex shrink-0 items-center gap-1 px-2">
         <SpaceSwitch space={space} spaces={spaces} row />
         {space ? (
@@ -90,28 +77,20 @@ export function Sidebar({ page, activeBotId }: { page: Page; activeBotId?: strin
         ) : null}
       </nav>
       <div className="flex shrink-0 items-center gap-0.5 p-2 shadow-[inset_0_1px_0_var(--color-line)]">
-        <Link
-          to="/account"
-          title={email ? `${t("Account")} · ${email}` : t("Account")}
-          data-tab-on={page === "account" || undefined}
-          className={`flex h-10 min-w-0 flex-1 items-center gap-2.5 rounded-control px-2 transition-[background-color,box-shadow] duration-[160ms] ease-quiet ${
-            page === "account" ? "bg-surface shadow-card" : "hover:bg-pressed"
-          }`}
-        >
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-micro font-semibold text-on-ink">{initial}</span>
-          <span className="min-w-0 flex-1 truncate text-small text-ink-2">{email || t("Account")}</span>
-        </Link>
-        {admin ? (
-          <Link to="/admin/settings" title={t("Admin")} aria-label={t("Admin")} data-tab-on={page === "admin" || undefined} className={hit(page === "admin")}>
-            <Wrench size={17} />
-          </Link>
-        ) : null}
-        <ThemeToggle className={hit(false)} />
-        <button type="button" title={t("Sign out")} aria-label={t("Sign out")} className={hit(false)} onClick={() => void signOut(setSession)}>
-          <LogOut size={16} />
-        </button>
+        <AccountControls page={page} />
       </div>
     </aside>
+  );
+}
+
+// SidebarHead is Silo's mark and name at the top of a sidebar (Admin has
+// one of its own).
+export function SidebarHead() {
+  return (
+    <div className="flex h-14 shrink-0 items-center gap-2.5 px-4">
+      <SiloMark className="h-7 w-7" />
+      <span className="text-card-title text-ink">{"Silo"}</span>
+    </div>
   );
 }
 

@@ -1,5 +1,7 @@
-import { Moon, Sun } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { LogOut, Moon, Sun, Wrench } from "lucide-react";
 import { ui } from "../api";
+import { useAuth } from "../auth";
 import { isSignedOut } from "../errors";
 import { t } from "../i18n.ts";
 import { flipTheme, setTheme, useTheme } from "../theme";
@@ -34,5 +36,44 @@ export function ThemeToggle({ className }: { className: string }) {
         <Sun size={17} className={`${glyph} ${dark ? "" : `-rotate-90 ${away}`}`} />
       </span>
     </button>
+  );
+}
+
+// A foot or head control of the sidebar: a 36px hit area on `well`.
+export function hit(on: boolean) {
+  return `relative flex h-9 w-9 shrink-0 items-center justify-center rounded-control transition-[background-color,color,box-shadow] duration-[160ms] ease-quiet ${
+    on ? "bg-surface text-ink shadow-card" : "text-ink-2 hover:bg-pressed hover:text-ink"
+  }`;
+}
+
+// AccountControls is the account, Admin, the theme and Sign out: the
+// sidebar's foot, and the head of Admin, which has no sidebar. `wide` lets
+// the account chip take the row's free room.
+export function AccountControls({ page, wide = true, adminLink = true }: { page: Page; wide?: boolean; adminLink?: boolean }) {
+  const { admin, email, setSession } = useAuth();
+  const initial = (email.trim()[0] ?? "?").toUpperCase();
+  return (
+    <>
+      <Link
+        to="/account"
+        title={email ? `${t("Account")} · ${email}` : t("Account")}
+        data-tab-on={page === "account" || undefined}
+        className={`flex h-10 min-w-0 items-center gap-2.5 rounded-control px-2 transition-[background-color,box-shadow] duration-[160ms] ease-quiet ${
+          wide ? "flex-1" : "max-w-[260px]"
+        } ${page === "account" ? "bg-surface shadow-card" : "hover:bg-pressed"}`}
+      >
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-micro font-semibold text-on-ink">{initial}</span>
+        <span className="min-w-0 flex-1 truncate text-small text-ink-2">{email || t("Account")}</span>
+      </Link>
+      {admin && adminLink ? (
+        <Link to="/admin/settings" title={t("Admin")} aria-label={t("Admin")} data-tab-on={page === "admin" || undefined} className={hit(page === "admin")}>
+          <Wrench size={17} />
+        </Link>
+      ) : null}
+      <ThemeToggle className={hit(false)} />
+      <button type="button" title={t("Sign out")} aria-label={t("Sign out")} className={hit(false)} onClick={() => void signOut(setSession)}>
+        <LogOut size={16} />
+      </button>
+    </>
   );
 }
