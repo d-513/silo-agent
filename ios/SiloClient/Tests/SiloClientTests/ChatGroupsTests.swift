@@ -14,4 +14,11 @@ final class ChatGroupsTests: XCTestCase {
         XCTAssertEqual(groups.map(\.title), ["Today", "Yesterday", "Previous 7 days", "Previous 30 days", "August 2026", "Older"])
         XCTAssertEqual(groups[0].items.map(\.0), ["a", "g"])
     }
+
+    func testFoldedByDefault() {
+        let open = ["Today", "Yesterday", "Previous 7 days", "Previous 30 days", "Team"]
+        XCTAssertTrue(open.allSatisfy { ChatGroup<Int>(title: $0, items: []).opensByDefault })
+        XCTAssertFalse(ChatGroup<Int>(title: ChatGroup<Int>.closed, items: []).opensByDefault)
+        XCTAssertFalse(ChatGroup<Int>(title: "August 2026", items: []).opensByDefault)
+    }
 }

@@ -552,6 +552,19 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `listProviderModels`(request: Silo_V1_ListProviderModelsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListProviderModelsResponse>
 
+    /// A provider the operator signs in to instead of pasting a key (admins only).
+    @available(iOS 13, *)
+    func `getProviderAccount`(request: Silo_V1_GetProviderAccountRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ProviderAccount>
+
+    @available(iOS 13, *)
+    func `beginProviderSignIn`(request: Silo_V1_BeginProviderSignInRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_BeginProviderSignInResponse>
+
+    @available(iOS 13, *)
+    func `finishProviderSignIn`(request: Silo_V1_FinishProviderSignInRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ProviderAccount>
+
+    @available(iOS 13, *)
+    func `signOutProvider`(request: Silo_V1_SignOutProviderRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ProviderAccount>
+
     @available(iOS 13, *)
     func `setConnectorVars`(request: Silo_V1_SetConnectorVarsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Settings>
 
@@ -1532,6 +1545,26 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `getProviderAccount`(request: Silo_V1_GetProviderAccountRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ProviderAccount> {
+        return await self.client.unary(path: "/silo.v1.UI/GetProviderAccount", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `beginProviderSignIn`(request: Silo_V1_BeginProviderSignInRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_BeginProviderSignInResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/BeginProviderSignIn", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `finishProviderSignIn`(request: Silo_V1_FinishProviderSignInRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ProviderAccount> {
+        return await self.client.unary(path: "/silo.v1.UI/FinishProviderSignIn", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `signOutProvider`(request: Silo_V1_SignOutProviderRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ProviderAccount> {
+        return await self.client.unary(path: "/silo.v1.UI/SignOutProvider", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `setConnectorVars`(request: Silo_V1_SetConnectorVarsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Settings> {
         return await self.client.unary(path: "/silo.v1.UI/SetConnectorVars", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -1995,6 +2028,10 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let putSettings = Connect.MethodSpec(name: "PutSettings", service: "silo.v1.UI", type: .unary)
             public static let setModels = Connect.MethodSpec(name: "SetModels", service: "silo.v1.UI", type: .unary)
             public static let listProviderModels = Connect.MethodSpec(name: "ListProviderModels", service: "silo.v1.UI", type: .unary)
+            public static let getProviderAccount = Connect.MethodSpec(name: "GetProviderAccount", service: "silo.v1.UI", type: .unary)
+            public static let beginProviderSignIn = Connect.MethodSpec(name: "BeginProviderSignIn", service: "silo.v1.UI", type: .unary)
+            public static let finishProviderSignIn = Connect.MethodSpec(name: "FinishProviderSignIn", service: "silo.v1.UI", type: .unary)
+            public static let signOutProvider = Connect.MethodSpec(name: "SignOutProvider", service: "silo.v1.UI", type: .unary)
             public static let setConnectorVars = Connect.MethodSpec(name: "SetConnectorVars", service: "silo.v1.UI", type: .unary)
             public static let setAutoenableConnectors = Connect.MethodSpec(name: "SetAutoenableConnectors", service: "silo.v1.UI", type: .unary)
             public static let listAuditEvents = Connect.MethodSpec(name: "ListAuditEvents", service: "silo.v1.UI", type: .unary)

@@ -26,6 +26,15 @@ final class StatusLookTests: XCTestCase {
         XCTAssertEqual(runLook(.started), StatusLook(lamp: .working, word: "Thinking", tone: .emerald))
     }
 
+    // A Bot at rest has nothing to say for itself; one at work does.
+    func testBotNow() {
+        var bot = Silo_V1_Bot()
+        bot.status = "online"
+        XCTAssertNil(botNow(bot))
+        bot.status = "needs_you"
+        XCTAssertEqual(botNow(bot)?.word, "Needs you")
+    }
+
     func testProgress() {
         XCTAssertEqual(progress(row(task: "t", done: 2, total: 5)), "2/5")
         XCTAssertEqual(progress(row(done: 2, total: 5)), "")

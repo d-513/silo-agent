@@ -115,9 +115,9 @@ struct ThreadAskCard: View {
         } else {
             HStack(spacing: 5) {
                 Image(systemName: "questionmark.bubble").font(.system(size: 13))
-                Text("Question for you").font(.silo(12, .medium))
+                Text(card.urgent ? "Urgent question for you" : "Question for you").font(.silo(12, .medium))
             }
-            .foregroundStyle(Theme.cobalt)
+            .foregroundStyle(card.urgent ? Theme.vermilion : Theme.cobalt)
             .transition(.opacity)
         }
     }

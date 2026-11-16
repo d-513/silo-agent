@@ -110,7 +110,7 @@ struct ChatScreen: View {
     /// its lamp.
     private var drawerButton: some View {
         let bot = model.selectedBot
-        let waits: Color? = !model.approvals.isEmpty ? Theme.vermilion : (bot?.dashboardAsks ?? 0) > 0 ? Theme.cobalt : nil
+        let waits: Color? = !model.approvals.isEmpty || (bot?.dashboardUrgent ?? 0) > 0 ? Theme.vermilion : (bot?.dashboardAsks ?? 0) > 0 ? Theme.cobalt : nil
         return Button { model.sidebarOpen = true } label: {
             HStack(spacing: 8) {
                 Image(systemName: "line.3.horizontal")

@@ -294,6 +294,15 @@ public final class SiloClient: Sendable {
         return try unwrap(await ui.renameChat(request: request, headers: [:]))
     }
 
+    /// Puts a chat away or brings it back; nothing is deleted.
+    public func setChatHidden(botID: String, chatID: String, hidden: Bool) async throws -> Silo_V1_Chat {
+        try unwrap(await ui.setChatHidden(request: .with {
+            $0.botID = botID
+            $0.chatID = chatID
+            $0.hidden = hidden
+        }, headers: [:]))
+    }
+
     public func deleteChat(botID: String, chatID: String) async throws {
         var request = Silo_V1_DeleteChatRequest()
         request.botID = botID

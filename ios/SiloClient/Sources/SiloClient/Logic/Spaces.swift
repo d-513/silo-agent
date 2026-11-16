@@ -110,54 +110,41 @@ public enum SpaceTab: String, CaseIterable, Sendable, Hashable, Identifiable {
     }
 }
 
-// MARK: - Overview
+// MARK: - The Bot list
 
-/// Where a Bot stands on the overview. A question waiting on the Dashboard is not Needs you:
-/// nothing is paused on it, so it sorts after the approvals.
-public enum BotMood: Int, Comparable, Sendable {
-    case needsYou, asks, working, resting
-
-    public static func < (a: BotMood, b: BotMood) -> Bool { a.rawValue < b.rawValue }
-
-    /// Needs you, questions and at work are "Now"; the rest rest.
-    public var isNow: Bool { self < .resting }
-}
-
-/// A Bot's standing on the overview. A question on the Dashboard is not Needs you: nothing is
-/// paused on it, so it sorts after the approvals.
-public func botMood(status: String, asks: Int) -> BotMood {
-    if status == "needs_you" { return .needsYou }
-    if asks > 0 { return .asks }
-    return status == "online" || status == "stopped" || status.isEmpty ? .resting : .working
-}
-
-/// The overview's two groups, each in mood order and otherwise in the order given.
-public func overviewGroups<T>(_ items: [T], mood: (T) -> BotMood) -> (now: [T], resting: [T]) {
-    let sorted = items.enumerated()
+/// Bots by their newest message, newest first. A Bot nobody has written to keeps the order it came
+/// in (newest made first), after the ones with a conversation. Web: `nav/botOrder.ts`.
+public func byLastMessage<T>(_ items: [T], at: (T) -> String) -> [T] {
+    func time(_ item: T) -> Double { isoDate(at(item))?.timeIntervalSince1970 ?? 0 }
+    return items.enumerated()
         .sorted { a, b in
-            let ma = mood(a.element), mb = mood(b.element)
-            return ma == mb ? a.offset < b.offset : ma < mb
+            let ta = time(a.element), tb = time(b.element)
+            return ta == tb ? a.offset < b.offset : ta > tb
         }
         .map(\.element)
-    return (sorted.filter { mood($0).isNow }, sorted.filter { !mood($0).isNow })
 }
 
-/// The Workspace at a glance: how many need you, the questions waiting, how many work, rest,
-/// are off. Only what has any.
-public func overviewPulse(moods: [BotMood], asks: Int) -> [(mood: BotMood, words: String)] {
-    func count(_ m: BotMood) -> Int { moods.filter { $0 == m }.count }
-    let parts: [(BotMood, Int, String)] = [
-        (.needsYou, count(.needsYou), plural(count(.needsYou), "need you", "need you")),
-        (.asks, asks, plural(asks, "question", "questions")),
-        (.working, count(.working), "\(count(.working)) at work"),
-        (.resting, count(.resting), "\(count(.resting)) resting"),
-    ]
-    return parts.filter { $0.1 > 0 }.map { ($0.0, $0.2) }
+/// A time as a list row has room for it: 14:05 today, Mon this week, 3 Nov, or 3 Nov 2024.
+public func shortWhen(_ iso: String, now: Date = Date(), calendar: Calendar = .current, locale: Locale = .current) -> String {
+    guard let date = isoDate(iso) else { return "" }
+    let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: now)).day ?? 0
+    let format = DateFormatter()
+    format.calendar = calendar
+    format.timeZone = calendar.timeZone
+    format.locale = locale
+    if days <= 0 {
+        format.setLocalizedDateFormatFromTemplate("jjmm")
+    } else if days < 7 {
+        format.setLocalizedDateFormatFromTemplate("EEE")
+    } else if calendar.component(.year, from: date) == calendar.component(.year, from: now) {
+        format.setLocalizedDateFormatFromTemplate("dMMM")
+    } else {
+        format.setLocalizedDateFormatFromTemplate("dMMMyyyy")
+    }
+    return format.string(from: date)
 }
 
-private func plural(_ n: Int, _ one: String, _ many: String) -> String { "\(n) \(n == 1 ? one : many)" }
-
-/// Where a live run is, as the strip and the overview say it.
+/// Where a live run is, as the strip and the Bot list say it.
 public func activitySource(kind: String, title: String) -> String {
     switch kind {
     case "main": return "Main chat"
@@ -180,6 +167,7 @@ public func activityStepApp(_ step: String) -> String {
     case "skill": return "Skills"
     case "artifact": return "Artifact"
     case "web_search": return "Web search"
+    case "web_read": return "Web page"
     case "channel": return "Channels"
     case "chats": return "Chats"
     case "feed": return "Feed"

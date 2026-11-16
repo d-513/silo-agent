@@ -17,6 +17,14 @@ final class ToolSummaryTests: XCTestCase {
         XCTAssertEqual(toolAction(name: "exec_python", args: #"{"code":"\nimport os\nprint(1)"#), "import os")
     }
 
+    func testWebBatches() {
+        XCTAssertEqual(toolAction(name: "web_search", args: #"{"query":"swift actors"}"#), "swift actors")
+        XCTAssertEqual(toolAction(name: "web_search", args: #"{"queries":["a","b","c"]}"#), "a +2 more")
+        XCTAssertEqual(toolAction(name: "web_read", args: #"{"urls":["https://x.dev"]}"#), "https://x.dev")
+        XCTAssertEqual(toolAction(name: "web_read", args: #"{"url":"https://y.dev","query":"price"}"#), "https://y.dev")
+        XCTAssertEqual(toolApp("web_read"), "Web page")
+    }
+
     func testBotScratch() {
         XCTAssertTrue(isBotScratch("bot/shot.png"))
         XCTAssertTrue(isBotScratch("/workspace/bot"))

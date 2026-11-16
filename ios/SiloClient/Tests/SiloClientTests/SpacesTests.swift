@@ -48,23 +48,24 @@ final class SpacesTests: XCTestCase {
         XCTAssertEqual(SpaceTab.visible(role: "admin"), SpaceTab.allCases)
     }
 
-    func testMoodAndOrder() {
-        XCTAssertEqual(botMood(status: "needs_you", asks: 2), .needsYou)
-        XCTAssertEqual(botMood(status: "online", asks: 1), .asks)
-        XCTAssertEqual(botMood(status: "working", asks: 0), .working)
-        XCTAssertEqual(botMood(status: "on_call", asks: 0), .working)
-        XCTAssertEqual(botMood(status: "", asks: 0), .resting)
-        XCTAssertEqual(botMood(status: "stopped", asks: 0), .resting)
-
-        let bots: [(String, BotMood)] = [("a", .resting), ("b", .working), ("c", .resting), ("d", .needsYou), ("e", .resting), ("f", .asks)]
-        let groups = overviewGroups(bots) { $0.1 }
-        XCTAssertEqual(groups.now.map(\.0), ["d", "f", "b"])
-        XCTAssertEqual(groups.resting.map(\.0), ["a", "c", "e"])
+    func testByLastMessage() {
+        let bots: [(String, String)] = [
+            ("never", ""), ("old", "2026-11-01T10:00:00Z"), ("new", "2026-11-15T09:00:00Z"), ("also never", ""), ("mid", "2026-11-10T10:00:00.5Z"),
+        ]
+        XCTAssertEqual(byLastMessage(bots) { $0.1 }.map(\.0), ["new", "mid", "old", "never", "also never"])
     }
 
-    func testPulse() {
-        let pulse = overviewPulse(moods: [.needsYou, .working, .resting, .resting], asks: 1)
-        XCTAssertEqual(pulse.map(\.words), ["1 need you", "1 question", "1 at work", "2 resting"])
+    func testShortWhen() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let now = ISO8601DateFormatter().date(from: "2026-11-16T12:00:00Z")!
+        let en = Locale(identifier: "en_GB")
+        func when(_ iso: String) -> String { shortWhen(iso, now: now, calendar: calendar, locale: en) }
+        XCTAssertEqual(when("2026-11-16T09:05:00Z"), "09:05")
+        XCTAssertEqual(when("2026-11-13T09:05:00Z"), "Fri")
+        XCTAssertEqual(when("2026-11-03T09:05:00Z"), "3 Nov")
+        XCTAssertEqual(when("2025-11-03T09:05:00Z"), "3 Nov 2025")
+        XCTAssertEqual(when(""), "")
     }
 
     func testActivityWords() {

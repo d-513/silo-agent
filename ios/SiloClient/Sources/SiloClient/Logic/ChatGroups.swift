@@ -1,13 +1,17 @@
 import Foundation
 
 /// The sidebar's date groups, as on the web (`bot/chatGroups.ts`): Today, Yesterday, Previous 7
-/// days, Previous 30 days, then one group per month, newest first.
+/// days, Previous 30 days, then one group per month, newest first. The sidebar adds Closed chats
+/// (the chats you put away) and the Team after them.
 public struct ChatGroup<Item>: Identifiable {
     public let title: String
     public var items: [Item]
     public var id: String { title }
 
-    /// The recent groups start open and the month groups folded.
+    /// The title of the chats you closed. They fold away last.
+    public static var closed: String { "Closed chats" }
+
+    /// The recent groups and the Team start open; the month groups and the closed chats folded.
     public var opensByDefault: Bool {
         ["Today", "Yesterday", "Previous 7 days", "Previous 30 days", "Team"].contains(title)
     }

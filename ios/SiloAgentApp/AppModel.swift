@@ -134,6 +134,16 @@ final class AppModel {
     /// Rings the open Bot: in the main chat from the sidebar, in this chat from the composer.
     func call(chat: String = "", screen: Bool = true) {
         guard let bot = selectedBot else { return }
+        call(bot: bot, chat: chat, screen: screen)
+    }
+
+    /// Rings a Bot in your main chat from the Bot list, opening it first: the call is held there.
+    func call(bot: Silo_V1_Bot, chat: String = "", screen: Bool = true) {
+        if bot.id != selectedBotID {
+            path = []
+            sidebarOpen = false
+            selectedBotID = bot.id
+        }
         Task { await CallModel.shared.start(.init(id: bot.id, name: bot.name, crest: bot.crest), chat: chat, screen: screen, host: serverURL) }
     }
 
@@ -505,6 +515,21 @@ final class AppModel {
         do {
             replaceChat(try await client.renameChat(botID: botID, chatID: id, title: clean))
         } catch {
+            errorMessage = describe(error)
+        }
+    }
+
+    /// Closes a chat (puts it away; nothing is deleted) or brings it back. The list shows it at once
+    /// and takes the server's row when it comes.
+    func hideChat(_ id: String, hidden: Bool) async {
+        guard let botID = selectedBotID, let current = chats.first(where: { $0.id == id }), current.hidden != hidden else { return }
+        var moved = current
+        moved.hidden = hidden
+        replaceChat(moved)
+        do {
+            replaceChat(try await client.setChatHidden(botID: botID, chatID: id, hidden: hidden))
+        } catch {
+            replaceChat(current)
             errorMessage = describe(error)
         }
     }

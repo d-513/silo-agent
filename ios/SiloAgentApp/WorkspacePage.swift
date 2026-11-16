@@ -1,10 +1,9 @@
 import SiloClient
 import SwiftUI
 
-/// The Workspace page's body, set inside a `SiloPage` by whoever shows it: its overview of the Bots
-/// the user is on (those that need you or are at work first, each live conversation and what it is
-/// on, else when it last worked and what it will do next), then a tab for everything that is the
-/// Workspace's, each shown only to the roles it is for.
+/// The Workspace page's body, set inside a `SiloPage` by whoever shows it: a tab for everything that
+/// is the Workspace's, each shown only to the roles it is for, then the Bots the user is on as a list
+/// of conversations, the newest message first (the web's wide sidebar, `nav/Sidebar.tsx`).
 struct WorkspacePage: View {
     @Environment(AppModel.self) private var model
     @Environment(SpaceModel.self) private var spaces
@@ -26,7 +25,7 @@ struct WorkspacePage: View {
             } else if spaces.bots.isEmpty {
                 empty
             } else {
-                overview
+                list
             }
         }
         .scrollIndicators(.hidden)
@@ -107,33 +106,17 @@ struct WorkspacePage: View {
         .scrollClipDisabled()
     }
 
-    // MARK: overview
+    // MARK: the Bots
 
-    @ViewBuilder
-    private var overview: some View {
-        let bots = spaces.bots
-        let mood = { (b: Silo_V1_Bot) in botMood(status: b.status, asks: Int(b.dashboardAsks)) }
-        let groups = overviewGroups(bots, mood: mood)
-        let pulse = overviewPulse(moods: bots.map(mood), asks: bots.reduce(0) { $0 + Int($1.dashboardAsks) })
-        if !pulse.isEmpty {
-            PulseBand(parts: pulse).padding(.top, 20)
-        }
-        if !groups.now.isEmpty {
-            group(title: "Now", groups.now)
-        }
-        if !groups.resting.isEmpty {
-            group(title: groups.now.isEmpty ? "Bots" : "Resting", groups.resting)
-        }
-    }
-
-    private func group(title: String, _ bots: [Silo_V1_Bot]) -> some View {
+    private var list: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionLabel(text: title)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 12, alignment: .top)], spacing: 12) {
-                ForEach(bots, id: \.id) { OverviewCard(bot: $0).rise() }
+            SectionLabel(text: "Bots")
+            Panel {
+                ForEach(byLastMessage(spaces.bots) { $0.lastMessageAt }, id: \.id) { BotListRow(bot: $0) }
             }
         }
         .padding(.top, 24)
+        .rise()
     }
 
     private var empty: some View {
@@ -157,242 +140,122 @@ struct WorkspacePage: View {
 
 private func plural(_ n: Int, _ one: String, _ many: String) -> String { "\(n) \(n == 1 ? one : many)" }
 
-/// The pulse: a lamp and count per state that has any, on a `well` band. Resting has no lamp, and
-/// the questions waiting are in cobalt with their glyph.
-private struct PulseBand: View {
-    let parts: [(mood: BotMood, words: String)]
-
-    var body: some View {
-        FlowRow(spacing: 12) {
-            ForEach(parts, id: \.words) { part in
-                HStack(spacing: 7) {
-                    switch part.mood {
-                    case .asks: Image(systemName: "questionmark.bubble").font(.system(size: 12))
-                    case .needsYou: Lamp(status: .needsYou)
-                    case .working: Lamp(status: .working)
-                    case .resting: EmptyView()
-                    }
-                    Text(part.words).font(.silo(13, .medium))
-                }
-                .foregroundStyle(part.mood == .needsYou ? Theme.vermilion : part.mood == .asks ? Theme.cobalt : Theme.ink2)
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.well, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).stroke(Theme.line))
-    }
-}
-
-/// One Bot on the overview: who it is, what it is doing (or what it will do next, the status line
-/// saying when it last worked), and what waits for you there. The card opens the Bot; a live
-/// conversation on it opens that chat, and what waits opens the Dashboard or the Feed.
-private struct OverviewCard: View {
+/// One Bot as a conversation: its crest and lamp, its name with when it last said something, and
+/// under it what it is doing now, else the last thing said (yours marked), else that there is none.
+/// The row opens the Bot; Call sits at its end. Web: `BotRow` in `nav/Sidebar.tsx`.
+private struct BotListRow: View {
     @Environment(AppModel.self) private var model
     let bot: Silo_V1_Bot
 
-    private var mood: BotMood { botMood(status: bot.status, asks: Int(bot.dashboardAsks)) }
+    private var on: Bool { bot.id == model.selectedBotID }
 
     var body: some View {
-        PressCard(label: bot.name, ribbon: mood == .needsYou, action: { open(chat: nil) }) {
-            VStack(alignment: .leading, spacing: 0) {
-                who.allowsHitTesting(false)
-                doing
-                waiting
-            }
-        }
-    }
-
-    private var who: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 14) {
-                CrestView(index: bot.crest, size: 44, state: crestState(bot))
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(bot.name).font(.silo(15, .semibold)).foregroundStyle(Theme.ink).lineLimit(1)
-                    StatusWord(look: botLook(bot))
-                }
-                .padding(.top, 2)
-                Spacer(minLength: 0)
-                if bot.people.contains(where: { !$0.you }) { people }
-            }
-            if !bot.description_p.isEmpty {
-                Text(bot.description_p)
-                    .font(.silo(13))
-                    .foregroundStyle(Theme.ink2)
-                    .lineLimit(2)
-                    .padding(.top, 12)
-            }
-        }
-    }
-
-    private var people: some View {
-        HStack(spacing: -6) {
-            ForEach(bot.people.prefix(3), id: \.userID) { person in
-                Initials(email: person.email, size: 22)
-                    .background(Circle().fill(Theme.surface).padding(-2))
-            }
-            if bot.people.count > 3 {
-                Text("+\(bot.people.count - 3)")
-                    .font(.silo(11))
-                    .foregroundStyle(Theme.ink3)
-                    .padding(.leading, 10)
-            }
-        }
-    }
-
-    /// Each live conversation and what it is on, else what it will do next on its own.
-    @ViewBuilder
-    private var doing: some View {
-        let runs = bot.activity.filter { $0.kind != "subagent" }
-        let agents = bot.activity.count - runs.count
-        if !runs.isEmpty || agents > 0 {
-            VStack(alignment: .leading, spacing: 1) {
-                ForEach(Array(runs.prefix(2).enumerated()), id: \.offset) { _, run in
-                    RunRow(row: run) { open(chat: run.chatID) }
-                }
-                if runs.count > 2 {
-                    Text("…and \(runs.count - 2) more")
-                        .font(.silo(12))
-                        .foregroundStyle(Theme.ink3)
-                        .padding(.horizontal, 8)
-                        .allowsHitTesting(false)
-                }
-                if agents > 0 {
-                    Text(agents == 1 ? "1 subagent at work" : "\(agents) subagents at work")
-                        .font(.silo(12))
-                        .foregroundStyle(Theme.ink3)
-                        .padding(.horizontal, 8)
-                        .frame(height: 28)
-                        .allowsHitTesting(false)
-                }
-            }
-            .padding(.horizontal, -8)
-            .padding(.top, 12)
-        } else if !bot.nextRunAt.isEmpty {
-            HStack(spacing: 6) {
-                Image(systemName: "timer").font(.system(size: 12))
-                Text("\(bot.nextRunName) · \(nextRunWhen(bot.nextRunAt))").lineLimit(1)
-            }
-            .font(.silo(12.5))
-            .foregroundStyle(Theme.ink3)
-            .padding(.top, 14)
-            .allowsHitTesting(false)
-        }
-    }
-
-    /// What the Bot left for you: its questions on the Dashboard, new posts in the Feed.
-    @ViewBuilder
-    private var waiting: some View {
-        if bot.dashboardAsks > 0 || bot.feedUnread > 0 {
-            VStack(alignment: .leading, spacing: 4) {
-                Theme.line.frame(height: 1).allowsHitTesting(false)
-                FlowRow(spacing: 4) {
-                    if bot.dashboardAsks > 0 {
-                        waits(bot.dashboardAsks == 1 ? "1 question" : "\(bot.dashboardAsks) questions", "questionmark.bubble", .dashboard)
-                    }
-                    if bot.feedUnread > 0 {
-                        waits("\(bot.feedUnread) new in Feed", "tray", .feed)
+        let look = botLook(bot)
+        let unread = Int(bot.dashboardAsks + bot.feedUnread)
+        let when = shortWhen(bot.lastMessageAt)
+        HStack(spacing: 8) {
+            Button(action: open) {
+                HStack(spacing: 12) {
+                    CrestView(index: bot.crest, size: 36, state: crestState(bot))
+                        .overlay(alignment: .topTrailing) { Lamp(status: look.lamp, ground: Theme.surface).offset(x: 2, y: -2) }
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(bot.name).font(.silo(15, .medium)).foregroundStyle(Theme.ink).lineLimit(1)
+                            Spacer(minLength: 0)
+                            if !when.isEmpty {
+                                Text(when).font(.silo(11.5)).monospacedDigit().foregroundStyle(Theme.ink3)
+                            }
+                        }
+                        HStack(spacing: 8) {
+                            line.frame(maxWidth: .infinity, alignment: .leading)
+                            if unread > 0 && !on { UnreadBadge(count: unread) }
+                        }
                     }
                 }
+                .padding(.leading, 14)
+                .padding(.vertical, 11)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, -8)
-            .padding(.top, 10)
+            .buttonStyle(RowPressStyle())
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(bot.name), \(look.word)")
+            if model.callEnabled { CallBotButton(bot: bot) }
         }
+        .padding(.trailing, model.callEnabled ? 10 : 14)
     }
 
-    private func waits(_ words: String, _ symbol: String, _ page: BotTab) -> some View {
-        Button { open(page: page) } label: {
-            HStack(spacing: 6) {
-                Image(systemName: symbol).font(.system(size: 12))
-                Text(words).font(.silo(12.5, .medium))
-            }
-            .foregroundStyle(Theme.cobalt)
-            .padding(.horizontal, 8)
-            .frame(height: 32)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(RowPressStyle())
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
-    }
-
-    /// Opens the Bot, at a chat when one is named. Another Bot's chat is opened through the
-    /// "last chat" it remembers, which is where `chooseBot` lands.
-    private func open(chat: String?) {
-        let target = chat.flatMap { id in bot.activity.first { $0.chatID == id }.map { $0.kind == "subagent" && !$0.leadChatID.isEmpty ? $0.leadChatID : id } }
-        if bot.id == model.selectedBotID {
-            if let target { model.showChat(target) } else { model.path = [] }
-            model.sidebarOpen = false
-            return
-        }
-        if let target { UserDefaults.standard.set(target, forKey: "lastChat.\(bot.id)") }
-        model.selectedBotID = bot.id
-    }
-
-    /// Opens one of the Bot's pages. Choosing another Bot clears the path, so the page is pushed
-    /// once it has been chosen.
-    private func open(page: BotTab) {
-        model.sidebarOpen = false
-        guard bot.id != model.selectedBotID else {
-            model.path = [.page(page)]
-            return
-        }
-        model.selectedBotID = bot.id
-        Task {
-            await model.chooseBot(bot.id)
-            model.path = [.page(page)]
-        }
-    }
-}
-
-/// One live conversation on a card: lamp, where it runs, what it is on, its place on the taskboard.
-/// A conversation the reader may not open is only a line, and a press on it opens the Bot.
-private struct RunRow: View {
-    let row: Silo_V1_BotActivity
-    let open: () -> Void
-
-    var body: some View {
-        if row.chatID.isEmpty {
-            line.allowsHitTesting(false)
-        } else {
-            Button(action: open) { line }
-                .buttonStyle(RowPressStyle())
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
-        }
-    }
-
+    /// What the Bot is up to while that is anything, else the last message, else that there is none.
+    @ViewBuilder
     private var line: some View {
-        let look = runLook(Doing(row))
-        let step = progress(row)
-        return HStack(spacing: 8) {
-            Lamp(status: look.lamp)
-            // Their own stack, so the two share what is left: the shorter keeps all its words.
-            HStack(spacing: 8) {
-                Text(activitySource(kind: row.kind, title: row.title))
-                    .font(.silo(12.5))
-                    .foregroundStyle(Theme.ink2)
-                    .lineLimit(1)
-                    .frame(minWidth: 48, alignment: .leading)
-                Text(look.word)
-                    .font(.silo(12.5))
-                    .foregroundStyle(look.lamp == .working ? Theme.ink3 : Theme.color(look.tone))
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            if !step.isEmpty {
-                Text(step).font(.siloMono(11.5)).monospacedDigit().foregroundStyle(Theme.ink3).fixedSize()
-            }
+        if let now = botNow(bot) {
+            Text(now.word).font(.silo(13, .medium)).foregroundStyle(Theme.color(now.tone)).lineLimit(1)
+        } else if bot.lastMessage.isEmpty {
+            Text("No messages yet").font(.silo(13)).foregroundStyle(Theme.ink3).lineLimit(1)
+        } else {
+            let you = Text("You:").foregroundStyle(Theme.ink2)
+            (bot.lastMessageMine ? Text("\(you) \(bot.lastMessage)") : Text(bot.lastMessage))
+                .font(.silo(13)).foregroundStyle(Theme.ink3).lineLimit(1)
         }
-        .padding(.horizontal, 8)
-        .frame(height: 32)
-        .contentShape(Rectangle())
+    }
+
+    /// Opens the Bot where it opens: the last chat used with it, else its main chat.
+    private func open() {
+        model.sidebarOpen = false
+        if on { model.path = [] } else { model.selectedBotID = bot.id }
     }
 }
 
-/// "Tue, Oct 30 09:00": when an automation fires next.
-func nextRunWhen(_ iso: String) -> String {
-    guard let date = parseDate(iso) else { return "" }
-    return date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute())
+/// Rings the Bot in your main chat. It carries the call: a breathing dot while it connects, then
+/// the clock, which leads back.
+private struct CallBotButton: View {
+    @Environment(AppModel.self) private var model
+    let bot: Silo_V1_Bot
+
+    var body: some View {
+        let call = CallModel.shared
+        if call.live, call.who?.id == bot.id, let s = call.snap {
+            Button { call.expanded = true } label: {
+                HStack(spacing: 6) {
+                    if s.state == .connecting {
+                        Circle().fill(Theme.ink3).frame(width: 7, height: 7).breathing()
+                    } else {
+                        Lamp(status: .online)
+                        CallClock(since: s.startedAt)
+                    }
+                }
+                .padding(.horizontal, s.state == .connecting ? 0 : 10)
+                .frame(minWidth: 34, minHeight: 34)
+                .background(Theme.well, in: Capsule())
+            }
+            .buttonStyle(.press)
+            .accessibilityLabel(s.state == .connecting ? "Calling…" : "Back to the call")
+        } else {
+            Button { model.call(bot: bot) } label: {
+                Image(systemName: "phone.fill")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.onInk)
+                    .frame(width: 34, height: 34)
+                    .background(Theme.ink, in: Circle())
+            }
+            .buttonStyle(.press)
+            .sensoryFeedback(.impact(weight: .medium), trigger: call.live)
+            .accessibilityLabel("Call \(bot.name)")
+        }
+    }
+}
+
+/// What waits on a Bot you are not looking at: its questions and unread posts, as a cobalt count.
+private struct UnreadBadge: View {
+    let count: Int
+
+    var body: some View {
+        Text(count > 99 ? "99+" : "\(count)")
+            .font(.siloMono(11, .medium))
+            .foregroundStyle(Theme.onAccent)
+            .padding(.horizontal, 6)
+            .frame(height: 18)
+            .background(Theme.cobalt, in: Capsule())
+    }
 }
 
 /// One tab of the Workspace page, in the page frame; each tab puts its actions in the head.

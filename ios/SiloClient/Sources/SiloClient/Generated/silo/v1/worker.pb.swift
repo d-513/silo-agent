@@ -284,6 +284,22 @@ public nonisolated struct Silo_V1_Cmd: Sendable {
     set {body = .artifactForget(newValue)}
   }
 
+  public var render: Silo_V1_RenderCmd {
+    get {
+      if case .render(let v)? = body {return v}
+      return Silo_V1_RenderCmd()
+    }
+    set {body = .render(newValue)}
+  }
+
+  public var readDoc: Silo_V1_ReadDocCmd {
+    get {
+      if case .readDoc(let v)? = body {return v}
+      return Silo_V1_ReadDocCmd()
+    }
+    set {body = .readDoc(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public nonisolated enum OneOf_Body: Equatable, Sendable {
@@ -318,6 +334,8 @@ public nonisolated struct Silo_V1_Cmd: Sendable {
     case artifactPin(Silo_V1_ArtifactPinCmd)
     case artifactRead(Silo_V1_ArtifactReadCmd)
     case artifactForget(Silo_V1_ArtifactForgetCmd)
+    case render(Silo_V1_RenderCmd)
+    case readDoc(Silo_V1_ReadDocCmd)
 
   }
 
@@ -549,6 +567,49 @@ public nonisolated struct Silo_V1_ExtractCmd: Sendable {
 
   /// Read scanned PDF pages and image files with tesseract. Off, a scan is
   /// reported (detail says OCR is off) instead of read.
+  public var ocr: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// RenderCmd loads one page in the box's headless browser (Lightpanda), lets
+/// its scripts run and returns the document as it then stands, as JSON
+/// {url, status, html}. Each render is a process of its own: nothing a page
+/// did is there for the next one.
+public nonisolated struct Silo_V1_RenderCmd: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var url: String = String()
+
+  /// Refuse requests to internal addresses, after DNS (the operator's
+  /// reader.block_private).
+  public var blockPrivate: Bool = false
+
+  /// The language to ask in, a BCP 47 tag ("" is en-US).
+  public var locale: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// ReadDocCmd reads the text of a document the Control Plane fetched (a PDF, a
+/// word-processor file) with the box's own tools, as ExtractCmd does for a file
+/// in the workspace, and answers the same JSON. The file is not kept.
+public nonisolated struct Silo_V1_ReadDocCmd: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// name is only what the file is called: its extension picks the tool.
+  public var name: String = String()
+
+  public var data: Data = Data()
+
   public var ocr: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -1122,7 +1183,7 @@ fileprivate nonisolated let _protobuf_package = "silo.v1"
 
 nonisolated extension Silo_V1_Cmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Cmd"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}terminal\0\u{3}exec_python\0\u{3}file_read\0\u{3}file_write\0\u{3}file_patch\0\u{1}grep\0\u{1}cancel\0\u{3}run_id\0\u{3}dir_list\0\u{3}browse_file\0\u{1}mkdir\0\u{1}remove\0\u{3}put_file\0\u{3}sync_tools\0\u{3}ensure_chrome\0\u{1}look\0\u{1}click\0\u{1}type\0\u{1}key\0\u{1}scroll\0\u{3}sync_skills\0\u{1}walk\0\u{1}extract\0\u{3}open_tunnel\0\u{1}checkpoint\0\u{1}changes\0\u{3}change_files\0\u{3}change_patch\0\u{1}restore\0\u{3}artifact_pin\0\u{3}artifact_read\0\u{3}artifact_forget\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}terminal\0\u{3}exec_python\0\u{3}file_read\0\u{3}file_write\0\u{3}file_patch\0\u{1}grep\0\u{1}cancel\0\u{3}run_id\0\u{3}dir_list\0\u{3}browse_file\0\u{1}mkdir\0\u{1}remove\0\u{3}put_file\0\u{3}sync_tools\0\u{3}ensure_chrome\0\u{1}look\0\u{1}click\0\u{1}type\0\u{1}key\0\u{1}scroll\0\u{3}sync_skills\0\u{1}walk\0\u{1}extract\0\u{3}open_tunnel\0\u{1}checkpoint\0\u{1}changes\0\u{3}change_files\0\u{3}change_patch\0\u{1}restore\0\u{3}artifact_pin\0\u{3}artifact_read\0\u{3}artifact_forget\0\u{1}render\0\u{3}read_doc\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1535,6 +1596,32 @@ nonisolated extension Silo_V1_Cmd: SwiftProtobuf.Message, SwiftProtobuf._Message
           self.body = .artifactForget(v)
         }
       }()
+      case 34: try {
+        var v: Silo_V1_RenderCmd?
+        var hadOneofValue = false
+        if let current = self.body {
+          hadOneofValue = true
+          if case .render(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.body = .render(v)
+        }
+      }()
+      case 35: try {
+        var v: Silo_V1_ReadDocCmd?
+        var hadOneofValue = false
+        if let current = self.body {
+          hadOneofValue = true
+          if case .readDoc(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.body = .readDoc(v)
+        }
+      }()
       default: break
       }
     }
@@ -1678,6 +1765,14 @@ nonisolated extension Silo_V1_Cmd: SwiftProtobuf.Message, SwiftProtobuf._Message
     case .artifactForget?: try {
       guard case .artifactForget(let v)? = self.body else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 33)
+    }()
+    case .render?: try {
+      guard case .render(let v)? = self.body else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 34)
+    }()
+    case .readDoc?: try {
+      guard case .readDoc(let v)? = self.body else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 35)
     }()
     default: break
     }
@@ -2237,6 +2332,86 @@ nonisolated extension Silo_V1_ExtractCmd: SwiftProtobuf.Message, SwiftProtobuf._
   public static func ==(lhs: Silo_V1_ExtractCmd, rhs: Silo_V1_ExtractCmd) -> Bool {
     if lhs.path != rhs.path {return false}
     if lhs.maxBytes != rhs.maxBytes {return false}
+    if lhs.ocr != rhs.ocr {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_RenderCmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RenderCmd"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}url\0\u{3}block_private\0\u{1}locale\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.blockPrivate) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.locale) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 1)
+    }
+    if self.blockPrivate != false {
+      try visitor.visitSingularBoolField(value: self.blockPrivate, fieldNumber: 2)
+    }
+    if !self.locale.isEmpty {
+      try visitor.visitSingularStringField(value: self.locale, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_RenderCmd, rhs: Silo_V1_RenderCmd) -> Bool {
+    if lhs.url != rhs.url {return false}
+    if lhs.blockPrivate != rhs.blockPrivate {return false}
+    if lhs.locale != rhs.locale {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_ReadDocCmd: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ReadDocCmd"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}data\0\u{1}ocr\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.data) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.ocr) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 1)
+    }
+    if !self.data.isEmpty {
+      try visitor.visitSingularBytesField(value: self.data, fieldNumber: 2)
+    }
+    if self.ocr != false {
+      try visitor.visitSingularBoolField(value: self.ocr, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_ReadDocCmd, rhs: Silo_V1_ReadDocCmd) -> Bool {
+    if lhs.name != rhs.name {return false}
+    if lhs.data != rhs.data {return false}
     if lhs.ocr != rhs.ocr {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true

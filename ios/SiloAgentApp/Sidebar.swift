@@ -2,7 +2,7 @@ import Observation
 import SiloClient
 import SwiftUI
 
-/// The web's sidebar on a phone: the Workspace and its Bots' crests, the Bot's face and state, the
+/// The web's sidebar on a phone: the Workspace and its Bots' crests (newest message first), the Bot's face and state, the
 /// home card (the main chat with its Call, and the Dashboard), work with no row of its own, the
 /// pages beside the chat, the machine, the side chats folded into date groups, and Settings at the
 /// foot. Web: `web/src/bot/BotSidebar.tsx`.
@@ -52,7 +52,7 @@ struct BotSidebar: View {
                     SpaceMarkView(mark: spaces.current?.mark ?? "", size: 40)
                 }
                 Theme.lineStrong.frame(width: 1, height: 24).padding(.horizontal, 2)
-                ForEach(spaces.bots, id: \.id) { bot in
+                ForEach(byLastMessage(spaces.bots) { $0.lastMessageAt }, id: \.id) { bot in
                     let on = bot.id == model.selectedBotID
                     let shape = RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
                     Button {
@@ -134,13 +134,10 @@ struct BotSidebar: View {
         .padding(.bottom, 6)
     }
 
-    /// Your own side chats by date; on a Bot several people use, its managers also get the Team:
-    /// everyone else's chats and the Bot's own, read-only.
+    /// Your own side chats by date, then the ones you closed, folded; on a Bot several people use,
+    /// its managers also get the Team: everyone else's chats and the Bot's own, read-only.
     @ViewBuilder
     private var chats: some View {
-        let own = chatGroups(model.chats.filter { $0.mine && !$0.main }, updatedAt: { parseDate($0.updatedAt) })
-        let others = model.chats.filter { !$0.mine }
-        let groups = others.isEmpty ? own : own + [ChatGroup(title: "Team", items: others)]
         ForEach(groups) { group in
             let open = isOpen(group)
             Section {
@@ -154,6 +151,15 @@ struct BotSidebar: View {
                 groupHeader(group, open: open)
             }
         }
+    }
+
+    private var groups: [ChatGroup<Silo_V1_Chat>] {
+        var groups = chatGroups(model.chats.filter { $0.mine && !$0.main && !$0.hidden }, updatedAt: { parseDate($0.updatedAt) })
+        let closed = model.chats.filter { $0.mine && !$0.main && $0.hidden }
+        if !closed.isEmpty { groups.append(ChatGroup(title: ChatGroup<Silo_V1_Chat>.closed, items: closed)) }
+        let others = model.chats.filter { !$0.mine }
+        if !others.isEmpty { groups.append(ChatGroup(title: "Team", items: others)) }
+        return groups
     }
 
     // A group folds to the opposite of how it starts; what the reader did is remembered.
@@ -320,10 +326,12 @@ private struct HomeCard: View {
     /// The one thing worth saying about the board: what needs you, what changed, else nothing new.
     @ViewBuilder
     private var digest: some View {
-        if !model.approvals.isEmpty {
+        // Approvals, and the questions the Bot marked urgent, which read as Needs you too.
+        let needs = model.approvals.count + Int(bot.dashboardUrgent)
+        if needs > 0 {
             HStack(spacing: 6) {
                 Circle().fill(Theme.vermilion).frame(width: 6, height: 6)
-                Text("\(model.approvals.count) need you").font(.silo(12.5, .medium)).foregroundStyle(Theme.vermilion)
+                Text("\(needs) need you").font(.silo(12.5, .medium)).foregroundStyle(Theme.vermilion)
             }
         } else if bot.dashboardAsks > 0 {
             HStack(spacing: 5) {
@@ -580,8 +588,8 @@ private struct UnreadCount: View {
     }
 }
 
-/// A chat in the sidebar: one line, its live run at the end. The open one keeps rename and delete
-/// in view (there is no hover here); any row opens them with a long press.
+/// A chat in the sidebar: one line, its live run at the end. A long press renames it, closes it
+/// (puts it away, as the web's tab ×) or reopens it, and deletes it.
 struct SidebarChatRow: View {
     @Environment(AppModel.self) private var model
     let chat: Silo_V1_Chat
@@ -620,6 +628,11 @@ struct SidebarChatRow: View {
         .buttonStyle(RowPressStyle())
         .longPressMenu(enabled: !team) {
             MenuRow(title: "Rename", symbol: "pencil") { begin() }
+            if chat.hidden {
+                MenuRow(title: "Reopen", symbol: "arrow.uturn.up") { Task { await model.hideChat(chat.id, hidden: false) } }
+            } else {
+                MenuRow(title: "Close", symbol: "xmark") { Task { await model.hideChat(chat.id, hidden: true) } }
+            }
             MenuRow(title: "Delete", symbol: "trash", destructive: true) { deleting = true }
         }
         .promptSlip($renaming, title: "Rename chat", prompt: "Title", text: $renameText) {

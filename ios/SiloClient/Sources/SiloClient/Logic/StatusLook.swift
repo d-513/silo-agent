@@ -142,6 +142,13 @@ public func botLook(_ bot: Silo_V1_Bot, now: Date = Date()) -> StatusLook {
     }
 }
 
+/// What a Bot is up to right now, when that is worth saying in place of its last message: paused
+/// on someone, at work, on a call, starting. Nothing at rest.
+public func botNow(_ bot: Silo_V1_Bot) -> StatusLook? {
+    let look = botLook(bot)
+    return look.lamp == .none ? nil : look
+}
+
 /// "Last active 2 h ago", or that it never has.
 public func lastActive(_ iso: String, now: Date = Date()) -> String {
     guard let date = isoDate(iso) else { return "Has not worked yet" }

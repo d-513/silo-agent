@@ -62,6 +62,16 @@ private func firstLine(_ text: String) -> String {
     text.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty } ?? ""
 }
 
+/// A batch of web searches or reads: the one item, or the first and how many more. Web: `searches`.
+private func batch(_ raw: String, _ key: String) -> String {
+    guard let data = raw.data(using: .utf8),
+          let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let list = object[key] as? [Any] else { return "" }
+    let items = list.compactMap { ($0 as? String) ?? ($0 as? NSNumber)?.stringValue }.filter { !$0.isEmpty }
+    guard let first = items.first else { return "" }
+    return items.count < 2 ? first : "\(first) +\(items.count - 1) more"
+}
+
 /// The one-line subject of a tool row: the file, command, query, or agent it acted on.
 public func toolAction(name: String, args raw: String) -> String {
     let a = parseToolArgs(raw)
@@ -76,8 +86,8 @@ public func toolAction(name: String, args raw: String) -> String {
     case "grep": return "grep \(a["pattern"] ?? "")".trimmingCharacters(in: .whitespaces)
     case "scroll": return a["dy"].map { "scroll \($0)" } ?? "scroll"
     case "type": return "type"
-    case "web_search": return a["query"] ?? ""
-    case "web_read": return a["url"] ?? ""
+    case "web_search": return a["query"].flatMap { $0.isEmpty ? nil : $0 } ?? batch(raw, "queries")
+    case "web_read": return a["url"].flatMap { $0.isEmpty ? nil : $0 } ?? batch(raw, "urls")
     case "skill": return (a["name"]).flatMap { $0.isEmpty ? nil : $0 } ?? path
     case "channel": return (a["channel"]).flatMap { $0.isEmpty ? nil : $0 } ?? (a["to"] ?? "")
     case "list_models": return "list"
