@@ -1,4 +1,4 @@
-import { afterClose, chatTabs, closedChats } from "./chatTabs.ts";
+import { afterClose, chatTabs, closedChats } from "./tabOrder.ts";
 import { eq } from "../testing.ts";
 
 const chat = (id: string, day: number, o: Partial<{ main: boolean; mine: boolean; hidden: boolean }> = {}) => ({

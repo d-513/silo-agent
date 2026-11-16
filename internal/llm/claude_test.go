@@ -3,6 +3,10 @@ package llm
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -144,7 +148,9 @@ func TestClaudeRunsLockedDown(t *testing.T) {
 			t.Errorf("leaked %s", e)
 		}
 	}
-	if !slices.Contains(d.Env, "CLAUDE_CONFIG_DIR="+c.conf.configDir()) || d.Cwd != c.conf.workDir() {
+	// macOS's temporary directory is behind a link (/var is /private/var).
+	work, _ := filepath.EvalSymlinks(c.conf.workDir())
+	if !slices.Contains(d.Env, "CLAUDE_CONFIG_DIR="+c.conf.configDir()) || d.Cwd != work {
 		t.Fatalf("not in its own directory: cwd %s", d.Cwd)
 	}
 }
@@ -428,5 +434,28 @@ func TestClaudeMissingBinary(t *testing.T) {
 	}
 	if _, err := c.Stream(context.Background(), Request{Model: "opus", Messages: []Message{user("hi")}}); err == nil || !strings.Contains(err.Error(), "providers.claude.binary") {
 		t.Fatalf("stream: %v", err)
+	}
+}
+
+// On a Mac the binary would keep its sign-in in a keychain its empty HOME does
+// not have, and macOS would ask the person at the screen to make one. It finds
+// Silo's stand-in `security` first, which answers "no such item".
+func TestClaudeKeepsOutOfTheKeychain(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("only macOS keeps the sign-in in a keychain")
+	}
+	conf := claudeConf{dir: t.TempDir()}
+	if err := conf.mkdirs(); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("/bin/sh", "-c", "command -v security; security find-generic-password -s x")
+	cmd.Env = conf.env()
+	out, err := cmd.Output()
+	var ee *exec.ExitError
+	if !errors.As(err, &ee) || ee.ExitCode() != 44 {
+		t.Fatalf("security answered %v: %s", err, out)
+	}
+	if got := strings.TrimSpace(string(out)); got != filepath.Join(conf.shimDir(), "security") {
+		t.Fatalf("security is %s", got)
 	}
 }

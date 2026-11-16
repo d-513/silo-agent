@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -75,6 +76,7 @@ func (c claudeConf) configDir() string { return filepath.Join(c.dir, "config") }
 func (c claudeConf) ledgerDir() string { return filepath.Join(c.dir, "sessions") }
 func (c claudeConf) workDir() string   { return filepath.Join(c.dir, "work") }
 func (c claudeConf) homeDir() string   { return filepath.Join(c.dir, "home") }
+func (c claudeConf) shimDir() string   { return filepath.Join(c.dir, "bin") }
 func (c claudeConf) cacheKey() string  { return c.binary + "\x00" + c.dir + "\x00" + sigText(c.token) }
 func (c claudeConf) hasToken() bool    { return strings.TrimSpace(c.token) != "" }
 func (c claudeConf) mkdirs() error {
@@ -83,8 +85,29 @@ func (c claudeConf) mkdirs() error {
 			return err
 		}
 	}
+	if runtime.GOOS == "darwin" {
+		return c.keychainShim()
+	}
 	return nil
 }
+
+// keychainShim stands in for macOS's `security` program. On a Mac the binary
+// keeps its sign-in in the login keychain, but its HOME is an empty directory
+// of Silo's, where there is no keychain: the real program then has macOS ask
+// the person at the screen to make one ("A keychain cannot be found…").
+// The shim answers every call with 44, the code for "no such item", so a
+// read finds nothing and a save fails cleanly; the binary then keeps the
+// sign-in in .credentials.json under CLAUDE_CONFIG_DIR, as it does on Linux.
+// That way the sign-in stays in providers.claude.dir, never in someone's
+// keychain.
+func (c claudeConf) keychainShim() error {
+	if err := os.MkdirAll(c.shimDir(), 0o700); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(c.shimDir(), "security"), []byte(keychainShimScript), 0o700)
+}
+
+const keychainShimScript = "#!/bin/sh\n# Silo: the Claude Code binary keeps its sign-in in CLAUDE_CONFIG_DIR, not a keychain.\nexit 44\n"
 
 // claudePassEnv are the only variables of the control plane the binary sees:
 // what it needs to run and to reach the network. Nothing else is inherited,
@@ -115,6 +138,9 @@ func (c claudeConf) env() []string {
 	}
 	for _, k := range claudePassEnv {
 		if v, ok := os.LookupEnv(k); ok {
+			if k == "PATH" && runtime.GOOS == "darwin" {
+				v = c.shimDir() + string(os.PathListSeparator) + v
+			}
 			env = append(env, k+"="+v)
 		}
 	}

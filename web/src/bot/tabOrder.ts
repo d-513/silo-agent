@@ -1,5 +1,5 @@
 // Which of a Bot's chats are tabs. Pure, so node can test it
-// (chatTabs_test.ts).
+// (tabOrder_test.ts).
 
 type Row = { id: string; main: boolean; mine: boolean; hidden: boolean; createdAt: string };
 

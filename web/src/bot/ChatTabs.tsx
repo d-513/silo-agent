@@ -14,7 +14,7 @@ import { Initials } from "../space/People";
 import { chatDoing, type Doing, runLook, started } from "../statusLook";
 import { useDismiss } from "../useMenu";
 import { People } from "./BotSidebar";
-import { afterClose, chatTabs, closedChats } from "./chatTabs";
+import { afterClose, chatTabs, closedChats } from "./tabOrder";
 import { ChatTitleInput } from "./ChatTitleInput";
 import { FadeScroll } from "./FadeScroll";
 import { UnreadBadge } from "./SideNav";
