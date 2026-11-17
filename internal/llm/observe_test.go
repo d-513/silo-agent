@@ -55,7 +55,7 @@ func TestObserveAssemblesStream(t *testing.T) {
 		{Kind: EventUsage, Usage: Usage{InputTokens: 3, OutputTokens: 4}},
 		{Kind: EventDone},
 	}}
-	c := Observe(inner, "stub", func(r Record) { got = append(got, r) })
+	c := Observe(inner, "stub", func(_ context.Context, r Record) { got = append(got, r) })
 	s, err := c.Stream(context.Background(), Request{Model: "m", System: []SystemBlock{{Text: "S"}}})
 	if err != nil {
 		t.Fatal(err)
@@ -84,7 +84,7 @@ func TestObserveAssemblesStream(t *testing.T) {
 func TestObserveCompleteAndError(t *testing.T) {
 	var got []Record
 	inner := &stubClient{complete: Response{Text: "title", Usage: Usage{OutputTokens: 2}}}
-	c := Observe(inner, "stub", func(r Record) { got = append(got, r) })
+	c := Observe(inner, "stub", func(_ context.Context, r Record) { got = append(got, r) })
 	if _, err := c.Complete(context.Background(), Request{Model: "m"}); err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestObserveCompleteAndError(t *testing.T) {
 
 	got = nil
 	boom := errors.New("boom")
-	c = Observe(&stubClient{err: boom}, "stub", func(r Record) { got = append(got, r) })
+	c = Observe(&stubClient{err: boom}, "stub", func(_ context.Context, r Record) { got = append(got, r) })
 	if _, err := c.Stream(context.Background(), Request{}); err == nil {
 		t.Fatal("expected stream error")
 	}

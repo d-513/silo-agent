@@ -269,6 +269,12 @@ const (
 	UIStreamRunProcedure = "/silo.v1.UI/StreamRun"
 	// UIListChatEventsProcedure is the fully-qualified name of the UI's ListChatEvents RPC.
 	UIListChatEventsProcedure = "/silo.v1.UI/ListChatEvents"
+	// UIListRunsProcedure is the fully-qualified name of the UI's ListRuns RPC.
+	UIListRunsProcedure = "/silo.v1.UI/ListRuns"
+	// UIGetRunCallsProcedure is the fully-qualified name of the UI's GetRunCalls RPC.
+	UIGetRunCallsProcedure = "/silo.v1.UI/GetRunCalls"
+	// UIListBackgroundProcedure is the fully-qualified name of the UI's ListBackground RPC.
+	UIListBackgroundProcedure = "/silo.v1.UI/ListBackground"
 	// UIListCommandsProcedure is the fully-qualified name of the UI's ListCommands RPC.
 	UIListCommandsProcedure = "/silo.v1.UI/ListCommands"
 	// UIEditMessageProcedure is the fully-qualified name of the UI's EditMessage RPC.
@@ -667,6 +673,12 @@ type UIClient interface {
 	// replays only the newest turns and opens with an "earlier" event when
 	// there is more.
 	ListChatEvents(context.Context, *connect.Request[v1.ListChatEventsRequest]) (*connect.Response[v1.ListChatEventsResponse], error)
+	// Everything a Bot did, for its managers: its runs, newest first, each in
+	// numbers; the model calls made for one run beside its turns; and the model
+	// calls made for no run at all, which are kept in memory only.
+	ListRuns(context.Context, *connect.Request[v1.ListRunsRequest]) (*connect.Response[v1.ListRunsResponse], error)
+	GetRunCalls(context.Context, *connect.Request[v1.GetRunCallsRequest]) (*connect.Response[v1.GetRunCallsResponse], error)
+	ListBackground(context.Context, *connect.Request[v1.ListBackgroundRequest]) (*connect.Response[v1.ListBackgroundResponse], error)
 	// ListCommands is the slash commands a chat's composer offers.
 	ListCommands(context.Context, *connect.Request[v1.ListCommandsRequest]) (*connect.Response[v1.ListCommandsResponse], error)
 	EditMessage(context.Context, *connect.Request[v1.EditMessageRequest]) (*connect.Response[v1.SendResponse], error)
@@ -1522,6 +1534,24 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("ListChatEvents")),
 			connect.WithClientOptions(opts...),
 		),
+		listRuns: connect.NewClient[v1.ListRunsRequest, v1.ListRunsResponse](
+			httpClient,
+			baseURL+UIListRunsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListRuns")),
+			connect.WithClientOptions(opts...),
+		),
+		getRunCalls: connect.NewClient[v1.GetRunCallsRequest, v1.GetRunCallsResponse](
+			httpClient,
+			baseURL+UIGetRunCallsProcedure,
+			connect.WithSchema(uIMethods.ByName("GetRunCalls")),
+			connect.WithClientOptions(opts...),
+		),
+		listBackground: connect.NewClient[v1.ListBackgroundRequest, v1.ListBackgroundResponse](
+			httpClient,
+			baseURL+UIListBackgroundProcedure,
+			connect.WithSchema(uIMethods.ByName("ListBackground")),
+			connect.WithClientOptions(opts...),
+		),
 		listCommands: connect.NewClient[v1.ListCommandsRequest, v1.ListCommandsResponse](
 			httpClient,
 			baseURL+UIListCommandsProcedure,
@@ -2256,6 +2286,9 @@ type uIClient struct {
 	stopRun                  *connect.Client[v1.StopRunRequest, v1.StopRunResponse]
 	streamRun                *connect.Client[v1.StreamRunRequest, v1.RunEvent]
 	listChatEvents           *connect.Client[v1.ListChatEventsRequest, v1.ListChatEventsResponse]
+	listRuns                 *connect.Client[v1.ListRunsRequest, v1.ListRunsResponse]
+	getRunCalls              *connect.Client[v1.GetRunCallsRequest, v1.GetRunCallsResponse]
+	listBackground           *connect.Client[v1.ListBackgroundRequest, v1.ListBackgroundResponse]
 	listCommands             *connect.Client[v1.ListCommandsRequest, v1.ListCommandsResponse]
 	editMessage              *connect.Client[v1.EditMessageRequest, v1.SendResponse]
 	deleteMessage            *connect.Client[v1.DeleteMessageRequest, v1.DeleteMessageResponse]
@@ -2943,6 +2976,21 @@ func (c *uIClient) StreamRun(ctx context.Context, req *connect.Request[v1.Stream
 // ListChatEvents calls silo.v1.UI.ListChatEvents.
 func (c *uIClient) ListChatEvents(ctx context.Context, req *connect.Request[v1.ListChatEventsRequest]) (*connect.Response[v1.ListChatEventsResponse], error) {
 	return c.listChatEvents.CallUnary(ctx, req)
+}
+
+// ListRuns calls silo.v1.UI.ListRuns.
+func (c *uIClient) ListRuns(ctx context.Context, req *connect.Request[v1.ListRunsRequest]) (*connect.Response[v1.ListRunsResponse], error) {
+	return c.listRuns.CallUnary(ctx, req)
+}
+
+// GetRunCalls calls silo.v1.UI.GetRunCalls.
+func (c *uIClient) GetRunCalls(ctx context.Context, req *connect.Request[v1.GetRunCallsRequest]) (*connect.Response[v1.GetRunCallsResponse], error) {
+	return c.getRunCalls.CallUnary(ctx, req)
+}
+
+// ListBackground calls silo.v1.UI.ListBackground.
+func (c *uIClient) ListBackground(ctx context.Context, req *connect.Request[v1.ListBackgroundRequest]) (*connect.Response[v1.ListBackgroundResponse], error) {
+	return c.listBackground.CallUnary(ctx, req)
 }
 
 // ListCommands calls silo.v1.UI.ListCommands.
@@ -3646,6 +3694,12 @@ type UIHandler interface {
 	// replays only the newest turns and opens with an "earlier" event when
 	// there is more.
 	ListChatEvents(context.Context, *connect.Request[v1.ListChatEventsRequest]) (*connect.Response[v1.ListChatEventsResponse], error)
+	// Everything a Bot did, for its managers: its runs, newest first, each in
+	// numbers; the model calls made for one run beside its turns; and the model
+	// calls made for no run at all, which are kept in memory only.
+	ListRuns(context.Context, *connect.Request[v1.ListRunsRequest]) (*connect.Response[v1.ListRunsResponse], error)
+	GetRunCalls(context.Context, *connect.Request[v1.GetRunCallsRequest]) (*connect.Response[v1.GetRunCallsResponse], error)
+	ListBackground(context.Context, *connect.Request[v1.ListBackgroundRequest]) (*connect.Response[v1.ListBackgroundResponse], error)
 	// ListCommands is the slash commands a chat's composer offers.
 	ListCommands(context.Context, *connect.Request[v1.ListCommandsRequest]) (*connect.Response[v1.ListCommandsResponse], error)
 	EditMessage(context.Context, *connect.Request[v1.EditMessageRequest]) (*connect.Response[v1.SendResponse], error)
@@ -4497,6 +4551,24 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("ListChatEvents")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIListRunsHandler := connect.NewUnaryHandler(
+		UIListRunsProcedure,
+		svc.ListRuns,
+		connect.WithSchema(uIMethods.ByName("ListRuns")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGetRunCallsHandler := connect.NewUnaryHandler(
+		UIGetRunCallsProcedure,
+		svc.GetRunCalls,
+		connect.WithSchema(uIMethods.ByName("GetRunCalls")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIListBackgroundHandler := connect.NewUnaryHandler(
+		UIListBackgroundProcedure,
+		svc.ListBackground,
+		connect.WithSchema(uIMethods.ByName("ListBackground")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIListCommandsHandler := connect.NewUnaryHandler(
 		UIListCommandsProcedure,
 		svc.ListCommands,
@@ -5345,6 +5417,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIStreamRunHandler.ServeHTTP(w, r)
 		case UIListChatEventsProcedure:
 			uIListChatEventsHandler.ServeHTTP(w, r)
+		case UIListRunsProcedure:
+			uIListRunsHandler.ServeHTTP(w, r)
+		case UIGetRunCallsProcedure:
+			uIGetRunCallsHandler.ServeHTTP(w, r)
+		case UIListBackgroundProcedure:
+			uIListBackgroundHandler.ServeHTTP(w, r)
 		case UIListCommandsProcedure:
 			uIListCommandsHandler.ServeHTTP(w, r)
 		case UIEditMessageProcedure:
@@ -6024,6 +6102,18 @@ func (UnimplementedUIHandler) StreamRun(context.Context, *connect.Request[v1.Str
 
 func (UnimplementedUIHandler) ListChatEvents(context.Context, *connect.Request[v1.ListChatEventsRequest]) (*connect.Response[v1.ListChatEventsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListChatEvents is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListRuns(context.Context, *connect.Request[v1.ListRunsRequest]) (*connect.Response[v1.ListRunsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListRuns is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetRunCalls(context.Context, *connect.Request[v1.GetRunCallsRequest]) (*connect.Response[v1.GetRunCallsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetRunCalls is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListBackground(context.Context, *connect.Request[v1.ListBackgroundRequest]) (*connect.Response[v1.ListBackgroundResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListBackground is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListCommands(context.Context, *connect.Request[v1.ListCommandsRequest]) (*connect.Response[v1.ListCommandsResponse], error) {

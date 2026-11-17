@@ -31,13 +31,17 @@ const (
 	// KeeperKind is the pinned automation's kind.
 	KeeperKind = "memory"
 
-	// reviewSeeds is how many memories one batch looks over, each with up to
-	// reviewNear neighbours no farther than reviewDistance; a run takes at
-	// most reviewBatches of them.
-	reviewSeeds    = 10
+	// A review batch is as many memories as fit the room the keeper's model
+	// has for it (Service.Room, in bytes: the store is mostly looked over in
+	// one batch), at most reviewSeeds, each with up to reviewNear neighbours
+	// no farther than reviewDistance; a run takes at most reviewBatches.
+	// ReviewRoomMin is the room when nobody says, ReviewRoomMax the most.
+	reviewSeeds    = 400
 	reviewNear     = 3
 	reviewDistance = 0.4
 	reviewBatches  = 3
+	ReviewRoomMin  = 10_000
+	ReviewRoomMax  = 200_000
 	// tentativeStale is how long a guess waits before it is looked over again.
 	tentativeStale = 30 * 24 * time.Hour
 	// workStale is how long a work entry stands untouched before it is looked
@@ -47,7 +51,7 @@ const (
 	// keeper tidies unasked, and tidyEvery the least time between two tidies.
 	tidyMin   = 20
 	tidyEvery = 6 * time.Hour
-	tidyWait  = 5 * time.Minute
+	tidyWait  = 15 * time.Minute
 )
 
 // KeeperTools are the tools the keeper's run is offered.
@@ -71,6 +75,9 @@ func (s *Service) keeper() automation.Pinned {
 			Tools:  KeeperTools,
 			Model:  func() string { return s.cfg().MemoryModel() },
 		},
+		// The sweep reads quiet chats and Tend tidies a pile-up, both only
+		// while the operator has collecting on.
+		OnItsOwn: func() bool { return s.cfg().Memory.Collect },
 	}
 }
 
@@ -200,27 +207,45 @@ func (s *Service) Review(botID, runID string) (string, error) {
 	if len(seeds) == 0 {
 		return "Nothing left to look over.", nil
 	}
-	seedIDs := make([]string, len(seeds))
+	// Only what fits the room is shown, and only what is shown counts as
+	// looked over: the rest is the next batch's.
+	room := s.room()
+	var seedIDs []string
 	var out strings.Builder
-	for i, m := range seeds {
-		seedIDs[i] = m.ID
-		out.WriteString(formatDetailed([]Recalled{recalled(m)}))
+	for _, m := range seeds {
+		var one strings.Builder
+		one.WriteString(formatDetailed([]Recalled{recalled(m)}))
 		near, err := s.nearest(botID, m.Embedding, reviewNear+1, reviewDistance, true)
 		if err != nil {
 			return "", err
 		}
 		for _, n := range near {
 			if n.ID != m.ID {
-				out.WriteString("    close to it: " + strings.TrimPrefix(formatDetailed([]Recalled{n}), "- "))
+				one.WriteString("    close to it: " + strings.TrimPrefix(formatDetailed([]Recalled{n}), "- "))
 			}
 		}
+		if len(seedIDs) > 0 && out.Len()+one.Len() > room {
+			break
+		}
+		seedIDs = append(seedIDs, m.ID)
+		out.WriteString(one.String())
 	}
-	s.db.Model(&db.Memory{}).Where("id IN ?", seedIDs).Update("reviewed_at", now)
+	for i := 0; i < len(seedIDs); i += 500 {
+		s.db.Model(&db.Memory{}).Where("id IN ?", seedIDs[i:min(i+500, len(seedIDs))]).Update("reviewed_at", now)
+	}
 	cur.n++
 	s.batches.Store(botID, cur)
 	var left int64
 	unreviewed(s.db.Model(&db.Memory{}).Where("bot_id = ?", botID), now).Count(&left)
-	return fmt.Sprintf("%d to look over (%d more wait after these):\n%s", len(seeds), left, out.String()), nil
+	return fmt.Sprintf("%d to look over (%d more wait after these):\n%s", len(seedIDs), left, out.String()), nil
+}
+
+// room is how many bytes one review batch may fill.
+func (s *Service) room() int {
+	if s.Room == nil {
+		return ReviewRoomMin
+	}
+	return min(max(s.Room(), ReviewRoomMin), ReviewRoomMax)
 }
 
 func recalled(m db.Memory) Recalled {

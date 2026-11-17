@@ -67,6 +67,10 @@ type Pinned struct {
 	// Profile, when set, makes this a domain's housekeeping job: its runs are
 	// narrowed to the profile (run.Profile) and start no machine.
 	Profile *run.Profile
+	// OnItsOwn, when set, reports that the owning domain starts this kind's
+	// runs by itself when there is work (Do), whatever the row's schedule and
+	// switch say, so a page does not read "no schedule" as "never runs".
+	OnItsOwn func() bool
 }
 
 // Service owns the automation rows, their tools and the scheduler.
@@ -578,7 +582,14 @@ func (s *Service) protoAutomation(au *db.Automation) *v1.Automation {
 		Enabled: au.Enabled, Kind: au.Kind, ChatId: au.ChatID,
 		LastRunAt: textx.RFC3339(au.LastRunAt), NextRunAt: textx.RFC3339(au.NextRunAt), LastStatus: status,
 		Running: running, CreatedBy: au.CreatedBy, CreatedAt: au.CreatedAt.Format(time.RFC3339),
+		OnItsOwn: s.onItsOwn(au.Kind),
 	}
+}
+
+// onItsOwn reports whether a kind's domain starts its runs unasked.
+func (s *Service) onItsOwn(kind string) bool {
+	p, _, ok := s.pin(kind)
+	return ok && p.OnItsOwn != nil && p.OnItsOwn()
 }
 
 func (s *Service) ownAutomation(ctx context.Context, botID, id string, need access.Need) (*db.Automation, error) {

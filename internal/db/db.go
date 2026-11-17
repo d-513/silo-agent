@@ -313,7 +313,23 @@ type Run struct {
 	Status    string
 	// UserID is who started it; empty for a background run (an automation,
 	// a channel, a mail wake). It decides who may answer its approvals.
-	UserID    string `gorm:"not null;default:''"`
+	UserID string `gorm:"not null;default:''"`
+	// Job is the housekeeping job a run was narrowed to (run.Profile.Name:
+	// "memory"); empty for every other run.
+	Job string `gorm:"not null;default:''"`
+	// Trigger is what started it (run.Trigger*): a message, a spoken turn,
+	// a mail, a schedule. Empty on rows from before the column.
+	Trigger string `gorm:"not null;default:''"`
+	// Title is one line of what the run was started for, masked like the
+	// log; Model the model of its last turn.
+	Title string `gorm:"not null;default:''"`
+	Model string `gorm:"not null;default:''"`
+	// DurationMs is how long it ran, written when it ends; 0 while it runs
+	// and on rows from before the column.
+	DurationMs int64 `gorm:"not null;default:0"`
+	// Summary is the run in numbers (app.runSummary as JSON), written when
+	// it ends and worked out from the log on first read for older rows.
+	Summary   string `gorm:"not null;default:''"`
 	CreatedAt time.Time
 }
 

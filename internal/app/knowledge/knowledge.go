@@ -292,7 +292,7 @@ func (s *Service) search(ctx context.Context, botID, query string, k int, prefix
 	if query == "" {
 		return nil, models.ErrNoQuery
 	}
-	vecs, _, err := s.models.Embed(ctx, []string{query})
+	vecs, _, err := s.models.Embed(ctx, botID, []string{query})
 	if err != nil {
 		return nil, err
 	}

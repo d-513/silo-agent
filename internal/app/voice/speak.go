@@ -142,7 +142,7 @@ func (s *Service) Speak(ctx context.Context, botID string, snd Sound, text strin
 	}
 	start := time.Now()
 	out, err := sp.Speak(ctx, model, llm.SpeechRequest{Text: text, Voice: snd.Voice, Speed: snd.Speed, Language: snd.Language, Format: format})
-	s.models.Record(botID, "speech", llm.Record{
+	s.models.Record(ctx, botID, "speech", llm.Record{
 		Provider: provider,
 		Model:    model,
 		Messages: []llm.Message{{Role: llm.RoleUser, Text: text}},

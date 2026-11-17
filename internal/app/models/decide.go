@@ -26,7 +26,7 @@ func (s *Service) Decide(ctx context.Context, modelID, botID, label string, req 
 	req.Model = model
 	start := time.Now()
 	res, err := decider.Decide(ctx, req)
-	s.Record(botID, label, decisionRecord(provider, req, res, err, time.Since(start)))
+	s.Record(ctx, botID, label, decisionRecord(provider, req, res, err, time.Since(start)))
 	return res, err
 }
 

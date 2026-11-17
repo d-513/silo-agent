@@ -170,6 +170,23 @@ export function finishedLook(status: string): StatusLook {
   }
 }
 
+// A run in the list of everything a Bot did: at work, or how it ended.
+export function ranLook(status: string): StatusLook {
+  switch (status) {
+    case "running":
+      return { lamp: "working", word: t("Working"), tone: "text-emerald" };
+    case "interrupted":
+      return { lamp: "stopped", word: t("Interrupted"), tone: "text-ink-3" };
+    default:
+      return finishedLook(status);
+  }
+}
+
+/** A listed run that has not ended. */
+export function stillRunning(status: string): boolean {
+  return status === "running";
+}
+
 /** A run or subagent that ended in failure. */
 export function finishedFailed(status: string): boolean {
   return status === "error";

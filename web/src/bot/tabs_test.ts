@@ -3,7 +3,7 @@ import { onChatSide, onSettings, paneOf } from "./tabs.ts";
 import { eq } from "../testing.ts";
 
 // Every page belongs to exactly one place.
-eq([onChatSide("run"), onChatSide("dashboard"), onChatSide("feed"), onChatSide("mail"), onChatSide("rules"), onChatSide("files")], [true, true, true, false, false, false], "chat side");
+eq([onChatSide("run"), onChatSide("runs"), onChatSide("dashboard"), onChatSide("feed"), onChatSide("mail"), onChatSide("rules"), onChatSide("files")], [true, true, true, true, false, false, false], "chat side");
 eq([onSettings("settings"), onSettings("container"), onSettings("tunnels"), onSettings("channels")], [true, true, true, false], "settings");
 
 // The right-rail panes have a page that is the pane itself.

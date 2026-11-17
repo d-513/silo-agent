@@ -93,6 +93,10 @@ type Def struct {
 	Check func(c *Call) error
 	// Title names the call on the thread's call row. Nil uses the rule's title.
 	Title func(c *Call) string
+	// ResultMax is how many bytes of the result the model is given; 0 is the
+	// loop's usual cap. A tool whose whole point is one long listing (the
+	// keeper's review of the memory store) says how long.
+	ResultMax int
 
 	Run Handler
 }

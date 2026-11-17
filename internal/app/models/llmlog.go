@@ -25,10 +25,12 @@ const llmlogLimit = 500
 // bloat a row. Raw is preserved up to this many runes.
 const llmlogTextMax = 200_000
 
-// Record persists one observed model call when the operator turned debug on.
+// Record tells Seen of one observed model call, and persists it when the
+// operator turned debug on.
 // It runs synchronously on the caller's goroutine; the insert is small and
 // SQLite handles concurrent writers with the configured busy timeout.
-func (s *Service) Record(botID, label string, rec llm.Record) {
+func (s *Service) Record(ctx context.Context, botID, label string, rec llm.Record) {
+	s.see(ctx, botID, label, rec)
 	if s.db == nil || !s.cfg().Debug {
 		return
 	}

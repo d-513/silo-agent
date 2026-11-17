@@ -33,6 +33,22 @@ function nextLine(a: Automation, bot: Bot) {
   return a.nextRunAt ? t("Next {{when}}", { when: nextWhen(a.nextRunAt) }) : "";
 }
 
+// cadence says when an automation runs, in one line. One the server also
+// starts by itself (the Memory keeper, which reads chats as they go quiet)
+// says that first: its schedule and its switch are only about the tidying, so
+// "No schedule" alone would read as if it never saved anything.
+function cadence(a: Automation, bot: Bot) {
+  if (a.kind !== "memory") {
+    // With no schedule, the line about it says it once.
+    if (!a.schedule && a.enabled && !a.running) return nextLine(a, bot);
+    return `${describe(a.schedule)} · ${nextLine(a, bot)}`;
+  }
+  const reads = a.onItsOwn ? t("Reads chats once they go quiet") : t("Reads a chat only when asked");
+  if (a.running) return `${reads} · ${nextLine(a, bot)}`;
+  if (!a.enabled || !a.schedule) return `${reads} · ${a.onItsOwn ? t("tidies when memories pile up") : t("no tidying schedule")}`;
+  return `${reads} · ${t("tidies: {{schedule}}", { schedule: describe(a.schedule) })} · ${nextLine(a, bot)}`;
+}
+
 const modeOptions: { value: Mode; label: string }[] = [
   { value: "none", label: msg("No schedule") },
   { value: "minutes", label: msg("Every few minutes") },
@@ -127,6 +143,7 @@ function Editor({ bot, auto, onSaved, onDeleted, onError }: { bot: Bot; auto?: A
   const [enabled, setEnabled] = useState(auto?.enabled ?? true);
   const saver = useSave();
   const pinned = auto ? isPinned(auto.kind) : false;
+  const keeper = auto?.kind === "memory";
   async function save(e: FormEvent) {
     e.preventDefault();
     onError("");
@@ -147,10 +164,23 @@ function Editor({ bot, auto, onSaved, onDeleted, onError }: { bot: Bot; auto?: A
         <input className={inputClass} value={name} disabled={pinned} placeholder={t("Morning digest")} onChange={(e) => setName(e.target.value)} />
       </Field>
       <ScheduleField value={schedule} onChange={setSchedule} zone={bot.timeZone} />
-      <PromptWell label={t("Prompt")} hint={t("Sent as the message of every run. Each run starts fresh, so say what to do and where to keep state.")} value={prompt} onChange={setPrompt} />
+      {keeper ? (
+        <p className="-mt-2 text-meta leading-[18px] text-ink-3">
+          {auto?.onItsOwn
+            ? t("This schedule is only for tidying. Chats are read on their own once they go quiet, and memories are tidied when they pile up, with or without it.")
+            : t("This schedule is only for tidying. Automatic reading is off on this server, so a chat is read when you ask: the brain button or /remember.")}
+        </p>
+      ) : null}
+      <PromptWell label={t("Prompt")} hint={keeper ? t("Sent as the message of a tidying run. Reading a chat does not use it.") : t("Sent as the message of every run. Each run starts fresh, so say what to do and where to keep state.")} value={prompt} onChange={setPrompt} />
       <div className="flex items-center gap-3">
         <Switch on={enabled} onChange={setEnabled} title={t("Active")} />
-        <span className="text-small text-ink-2">{enabled ? t("Active — runs on its schedule") : t("Paused — keeps its schedule, does not run")}</span>
+        <span className="text-small text-ink-2">{keeper
+            ? enabled
+              ? t("Active — tidies on its schedule")
+              : t("Paused — no scheduled tidying; chats are still read")
+            : enabled
+              ? t("Active — runs on its schedule")
+              : t("Paused — keeps its schedule, does not run")}</span>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <SaveButton type="submit" state={saver.state} disabled={!name.trim() || !prompt.trim()}>
@@ -194,7 +224,7 @@ function Row({ bot, a, onToggle }: { bot: Bot; a: Automation; onToggle: (on: boo
             {finishedFailed(a.lastStatus) ? <span className="text-label text-vermilion">{t("Last run failed")}</span> : null}
           </span>
           <span className="block truncate text-meta text-ink-3">
-            {describe(a.schedule)} · {nextLine(a, bot)}
+            {cadence(a, bot)}
           </span>
         </span>
       </Link>
@@ -282,7 +312,7 @@ export function AutomationLog({
           </span>
           {busy ? <Lamp status={runLook(chatDoing(bot, sel.chatId) ?? started).lamp} /> : null}
           <span className="text-meta text-ink-3">
-            {describe(sel.schedule)} · {nextLine(sel, bot)}
+            {cadence(sel, bot)}
           </span>
           <span className="flex-1" />
           <Btn kind="ghost" size="sm" onClick={() => setEditing((v) => !v)}>

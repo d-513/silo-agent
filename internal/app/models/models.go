@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"maps"
 	"strings"
+	"time"
 
 	"github.com/pgvector/pgvector-go"
 	"gorm.io/gorm"
@@ -25,6 +26,9 @@ import (
 type Service struct {
 	db  *gorm.DB
 	cfg func() config.Config
+	// Seen is told every model call made for a Bot, whatever its kind and
+	// whether or not the debug log is on (see Call). nil tells nobody.
+	Seen func(Call)
 }
 
 func New(gdb *gorm.DB, cfg func() config.Config) *Service { return &Service{db: gdb, cfg: cfg} }
@@ -65,7 +69,7 @@ func (s *Service) Observed(modelID, botID, label string) (llm.Client, string, st
 	if err != nil {
 		return nil, provider, model, err
 	}
-	client = llm.Observe(client, provider, func(rec llm.Record) { s.Record(botID, label, rec) })
+	client = llm.Observe(client, provider, func(ctx context.Context, rec llm.Record) { s.Record(ctx, botID, label, rec) })
 	if _, fast := llm.SplitFast(modelID); fast {
 		client = llm.WithFast(client)
 	}
@@ -301,8 +305,9 @@ func (s *Service) EmbedModelID() string {
 	return config.DefaultEmbeddingModel
 }
 
-// Embed turns texts into vectors with the operator's embedding model.
-func (s *Service) Embed(ctx context.Context, texts []string) ([]pgvector.Vector, string, error) {
+// Embed turns texts into vectors with the operator's embedding model, for
+// botID (whose call it is recorded as).
+func (s *Service) Embed(ctx context.Context, botID string, texts []string) ([]pgvector.Vector, string, error) {
 	modelID := s.EmbedModelID()
 	client, provider, model, err := s.Client(modelID)
 	if err != nil {
@@ -312,7 +317,9 @@ func (s *Service) Embed(ctx context.Context, texts []string) ([]pgvector.Vector,
 	if !ok {
 		return nil, modelID, fmt.Errorf("%s cannot embed; set embedding_model to an OpenAI-compatible model", provider)
 	}
+	start := time.Now()
 	raw, err := e.Embed(ctx, model, texts)
+	s.Note(ctx, botID, "embed", provider, model, time.Since(start), err)
 	if err != nil {
 		return nil, modelID, fmt.Errorf("embed: %w", err)
 	}

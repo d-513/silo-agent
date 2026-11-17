@@ -11,6 +11,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/connector"
+	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/tool"
 	"silo.agent/internal/db"
@@ -27,6 +28,8 @@ func (a *App) CallTool(ctx context.Context, req *connect.Request[v1.ToolReq]) (*
 	bot := currentBot(ctx)
 	slug, action, argsJSON := req.Msg.GetConnector(), req.Msg.GetAction(), req.Msg.GetArgsJson()
 	runID := a.callRun(bot.ID, req.Msg.GetRunId())
+	// A model asked on this call's behalf (a judge, a decision) is the run's.
+	ctx = models.InRun(ctx, runID)
 	fail := func(err error) (*connect.Response[v1.ToolRes], error) {
 		return connect.NewResponse(&v1.ToolRes{Error: err.Error()}), nil
 	}
@@ -93,6 +96,7 @@ func pythonResult(s string) string {
 }
 
 func (a *App) AuthorizeAction(ctx context.Context, bot *db.Bot, runID, conn, action, argsJSON, fallback string) (string, error) {
+	ctx = models.InRun(ctx, runID)
 	decision := security.Rule(a.ruleDecision(bot.ID, conn, action, fallback))
 	auto := decision == security.Auto
 	if auto {

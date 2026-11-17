@@ -47,6 +47,8 @@ const pages: [path: string, lit: string[]][] = [
   ["memories", ["Memories"]],
   ["knowledge", ["Knowledge"]],
   ["feed", ["Feed"]],
+  // Runs opens from the closed chats' menu and lights nothing.
+  ["runs", []],
 ];
 
 test("every route loads, stays put, and lights its place", async ({ page }) => {

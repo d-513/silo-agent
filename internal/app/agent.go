@@ -11,9 +11,12 @@ import (
 	"sync"
 	"time"
 
+	"gorm.io/gorm"
+
 	"silo.agent/internal/app/chats"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/run"
+	"silo.agent/internal/app/tool"
 	"silo.agent/internal/channels"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
@@ -43,23 +46,10 @@ func (a *App) StartRun(req run.Request) (string, error) {
 	if a.ownerDisabled(&b) {
 		return "", errOwnerDisabled
 	}
+	kind := req.Kind()
 	channelID := ""
-	origin := "chat"
 	if req.Origin != nil && req.Origin.Channel != nil {
 		channelID = req.Origin.Channel.ID
-		origin = "channel"
-	}
-	if req.Origin != nil && req.Origin.Automation != nil {
-		origin = "automation"
-	}
-	if req.Origin != nil && req.Origin.Subagent != nil {
-		origin = "subagent"
-	}
-	if req.Report != nil && channelID == "" {
-		origin = "subagents"
-	}
-	if req.Compact {
-		origin = "compact"
 	}
 	runID := ids.New()
 	// Live before anything is written: a stop from here on finds it (and the
@@ -67,7 +57,7 @@ func (a *App) StartRun(req run.Request) (string, error) {
 	// conversation is refused rather than run beside this one.
 	ctx, cancel := runContext(a.cfg().Runs.Timeout())
 	lr := &liveRun{cancel: cancel, botID: req.BotID, chatID: req.ChatID, started: time.Now(), origin: req.Origin, inbox: make(chan inboxMsg, 32), done: make(chan struct{}), wake: make(chan string, 8), pySession: a.pySessionFor(req.ChatID)}
-	if req.Origin != nil && req.Origin.Automation != nil {
+	if kind.Fresh {
 		lr.pySession = runID
 	}
 	if !a.track(runID, lr) {
@@ -76,15 +66,17 @@ func (a *App) StartRun(req run.Request) (string, error) {
 	}
 	// A run is the person's whose chat it is in (only they write there);
 	// a background run is nobody's.
-	row := db.Run{ID: runID, BotID: req.BotID, ChatID: req.ChatID, ChannelID: channelID, Origin: origin, Status: "running", UserID: a.chatAuthor(req.ChatID), CreatedAt: time.Now()}
+	row := db.Run{ID: runID, BotID: req.BotID, ChatID: req.ChatID, ChannelID: channelID, Origin: kind.Origin, Status: "running", UserID: a.chatAuthor(req.ChatID), CreatedAt: lr.started,
+		Job: req.Job(), Trigger: req.Trigger(), Title: a.runTitle(req), Model: a.runModel(req.BotID, req.ChatID, req.Origin)}
 	if err := a.DB.Create(&row).Error; err != nil {
 		a.runExited(runID)
 		cancel()
 		close(lr.done)
 		return "", err
 	}
-	// A job's run needs no machine and is not what the Bot is "on".
-	if !req.Compact && profileOf(req.Origin) == nil {
+	// A run that needs no machine (a job, a compaction) is not what the Bot
+	// is "on" either.
+	if kind.Machine {
 		// Only touch the run fields: saving the whole row here could clobber a
 		// ContainerID/TokenHash that a concurrent ensureRunning just wrote.
 		task := req.Text
@@ -336,7 +328,7 @@ func (a *App) streamTurn(ctx context.Context, lr *liveRun, botID, chatID, runID 
 	defer stop()
 	lr.openTurn(stop)
 	defer lr.closeTurn()
-	stream, err := client.Stream(turnCtx, req)
+	stream, err := client.Stream(models.AsTurn(turnCtx), req)
 	if err != nil {
 		if lr.closeTurn() {
 			return turnResult{}, nil
@@ -512,7 +504,9 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 		defer origin.Working()()
 	}
 
-	profile := profileOf(origin)
+	kind, profile := req.Kind(), profileOf(origin)
+	// The model calls made for the run from here on are kept with it.
+	ctx = models.InRun(ctx, runID)
 	// label names the run's model calls in the LLM debug log.
 	label := "chat"
 	if profile != nil && profile.Name != "" {
@@ -545,7 +539,7 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 		if strings.TrimSpace(title) == "" && len(atts) > 0 {
 			title = "attached " + atts[0].GetName()
 		}
-		if !isSubagent(origin) && profile == nil {
+		if kind.Titled {
 			go a.nameChat(botID, chatID, runID, title)
 		}
 	}
@@ -554,7 +548,7 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 		a.settleInbox(lr)
 	}
 	var past replayed
-	if origin != nil && origin.Automation != nil {
+	if kind.Fresh {
 		// Each firing is independent: only this run is the model's history.
 		past = a.contextFromRuns([]db.Run{{ID: runID}})
 	} else {
@@ -614,7 +608,7 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 	// conversation names this history for a provider that keeps a session of
 	// its own: the chat, or the run when each run starts from nothing.
 	conversation := chatID
-	if origin != nil && origin.Automation != nil {
+	if kind.Fresh {
 		conversation = runID
 	}
 	for {
@@ -627,6 +621,7 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 		if m := a.runModel(botID, chatID, origin); m != modelID {
 			if c, pr, mo, e := a.Models.Observed(m, botID, label); e == nil {
 				modelID, client, provider, model = m, c, pr, mo
+				a.DB.Model(&db.Run{}).Where("id = ?", runID).Update("model", modelID)
 				settings = a.cfg().ProviderSettings(pr)
 				window = a.contextWindow(ctx, modelID)
 			}
@@ -800,7 +795,7 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 			// What the output filter has to say about results the tool's own
 			// code received goes first, where the cap cannot cut it.
 			out = a.takeNotices(botID, runID) + out
-			out = a.kept(botID, textx.Cap(a.Mask(botID).Apply(out), 12000))
+			out = a.kept(botID, textx.Cap(a.Mask(botID).Apply(out), resultMax(def)))
 			sameLook := img != "" && img == lastLook && isLookTool(tc.Name)
 			if sameLook {
 				out += " (screen unchanged since the last look)"
@@ -861,7 +856,7 @@ func (a *App) nameChat(botID, chatID, runID, userText string) {
 	if a.DB.First(&c, "id = ?", chatID).Error != nil || !chats.Untitled(c.Title) {
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	ctx, cancel := context.WithTimeout(models.InRun(context.Background(), runID), 45*time.Second)
 	defer cancel()
 	snippet := userText
 	if len(snippet) > 800 {
@@ -929,7 +924,8 @@ func (a *App) finish(botID, chatID, runID, st string) {
 	if lr := a.trackedRun(runID); lr != nil {
 		a.retire(runID, lr, false)
 	}
-	if a.DB.Model(&db.Run{}).Where("id = ? AND status = ?", runID, "running").Update("status", st).RowsAffected == 0 {
+	// How long it ran is written with the status, by whoever ends it first.
+	if a.DB.Model(&db.Run{}).Where("id = ? AND status = ?", runID, "running").Updates(map[string]any{"status": st, "duration_ms": runTook}).RowsAffected == 0 {
 		var r db.Run
 		if a.DB.Select("status").Where("id = ?", runID).Limit(1).Find(&r); r.Status != "" {
 			st = r.Status
@@ -937,9 +933,49 @@ func (a *App) finish(botID, chatID, runID, st string) {
 	}
 	a.dropNotices(runID)
 	a.Emit(botID, chatID, runID, "done", st, "")
+	a.Runlog.Keep(runID)
 	// The closing snapshot is a worker round trip; nothing waits for it.
 	go a.Changes.End(botID, runID)
 	a.afterRun(botID, chatID, runID, st)
+}
+
+// toolResultMax caps a tool result as the model reads it, in bytes.
+const toolResultMax = 12000
+
+// resultMax is the cap for one tool's result: its own, else the usual.
+func resultMax(def *tool.Def) int {
+	if def != nil && def.ResultMax > 0 {
+		return def.ResultMax
+	}
+	return toolResultMax
+}
+
+// runTook is how long a run has been going, for the row of one that ends.
+var runTook = gorm.Expr("GREATEST(0, (EXTRACT(EPOCH FROM (now() - created_at)) * 1000)::bigint)")
+
+// runTitleMax caps the line a run is listed by.
+const runTitleMax = 160
+
+// runTitle is one line of what a run was started for, as its row keeps it:
+// the automation's or the subagent's name, else the opening message.
+func (a *App) runTitle(req run.Request) string {
+	o := req.Origin
+	switch {
+	case req.Compact:
+		return ""
+	case req.Report != nil:
+		return "Subagents reported"
+	case o != nil && o.Subagent != nil:
+		return o.Subagent.Name
+	case o != nil && o.Automation != nil:
+		return o.Automation.Name
+	}
+	text := strings.TrimSpace(req.Text)
+	if text == "" && len(req.Extra.Files) > 0 {
+		text = "attached " + req.Extra.Files[0].GetName()
+	}
+	line, _, _ := strings.Cut(text, "\n")
+	return textx.CapRunes(a.kept(req.BotID, strings.TrimSpace(line)), runTitleMax)
 }
 
 // StartOrInject serializes the decision to either steer a live run or start a

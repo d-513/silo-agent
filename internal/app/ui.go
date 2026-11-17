@@ -454,6 +454,7 @@ func (a *App) dropBot(ctx context.Context, b *db.Bot) {
 	a.Drives.Drop(ctx, b.ID)
 	a.Egress.Drop(ctx, b.ID)
 	a.Spaces.DropBot(b.ID)
+	a.Runlog.Drop(b.ID)
 	a.DB.Delete(b)
 	if dir := a.cfg().DataDir; dir != "" {
 		_ = os.RemoveAll(filepath.Join(dir, "bots", b.ID))

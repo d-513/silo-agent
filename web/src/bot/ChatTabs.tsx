@@ -1,6 +1,6 @@
 import { useQuery } from "@connectrpc/connect-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Bot as BotGlyph, ChevronDown, LayoutGrid, MessageCircle, Plus, Trash2, X, type LucideIcon } from "lucide-react";
+import { Bot as BotGlyph, ChevronDown, LayoutGrid, ListTree, MessageCircle, Plus, Trash2, X, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ArmedButton } from "../Feedback";
@@ -207,6 +207,7 @@ export function ChatTabs({
         botId={id}
         closed={closed}
         team={team}
+        runs={bot.role === "manage"}
         onOpen={(c) => {
           if (c.mine && c.hidden) onHideChat(c.id, false);
           void navigate(chatLink(id, c.id));
@@ -314,8 +315,9 @@ function useHold(fire: (() => void) | null) {
 
 // ClosedMenu is the arrow at the end of the tabs: the chats you closed,
 // newest first, each a press from being a tab again or (armed) deleted; and
-// for a manager the Team's chats, which only open.
-function ClosedMenu({ botId, closed, team, onOpen, onDelete }: { botId: string; closed: Chat[]; team: Chat[]; onOpen: (c: Chat) => void; onDelete: (cid: string) => void }) {
+// for a manager the Team's chats, which only open, and at its foot the way to
+// everything the Bot did (Runs), which is theirs alone to review.
+function ClosedMenu({ botId, closed, team, runs, onOpen, onDelete }: { botId: string; closed: Chat[]; team: Chat[]; runs: boolean; onOpen: (c: Chat) => void; onDelete: (cid: string) => void }) {
   const [open, setOpen] = useState(false);
   const [find, setFind] = useState("");
   const trigger = useRef<HTMLButtonElement>(null);
@@ -406,6 +408,21 @@ function ClosedMenu({ botId, closed, team, onOpen, onDelete }: { botId: string; 
                     </>
                   ) : null}
                 </div>
+                {runs ? (
+                  <>
+                    <span aria-hidden className="mx-2 my-1 block h-px shrink-0 bg-line" />
+                    <Link
+                      to="/bots/$botId/runs"
+                      params={{ botId }}
+                      role="menuitem"
+                      onClick={() => setOpen(false)}
+                      className="flex h-9 shrink-0 items-center gap-2 rounded-sm px-2 text-row text-ink outline-offset-[-2px] transition-colors duration-[160ms] hover:bg-well"
+                    >
+                      <ListTree size={14} className="shrink-0 text-ink-3" />
+                      <span className="min-w-0 flex-1 truncate">{t("View all runs")}</span>
+                    </Link>
+                  </>
+                ) : null}
               </div>
             </div>,
             document.body,

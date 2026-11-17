@@ -115,7 +115,7 @@ func (s *Service) transcribeWith(ctx context.Context, botID, label, modelID stri
 	start := time.Now()
 	out, err := tr.Transcribe(ctx, model, audio)
 	out.Text = textx.ValidUTF8(strings.TrimSpace(out.Text))
-	s.models.Record(botID, label, llm.Record{
+	s.models.Record(ctx, botID, label, llm.Record{
 		Provider: provider,
 		Model:    model,
 		Messages: []llm.Message{{Role: llm.RoleUser, Text: fmt.Sprintf("[audio %s, %d bytes, %.1fs]", audio.MIME, len(audio.Data), out.Seconds)}},

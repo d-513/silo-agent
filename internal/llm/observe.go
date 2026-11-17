@@ -26,7 +26,9 @@ type Record struct {
 
 // Observer receives one Record per completed model call. It must not block the
 // caller for long; the engine invokes it synchronously when the stream ends.
-type Observer func(Record)
+// The context is the call's own, so an observer can tell what the call was
+// made for (the run it belongs to).
+type Observer func(context.Context, Record)
 
 // Observe wraps a Client so every Stream and Complete reports a Record to o.
 // It is the single instrumentation seam in the model engine: features get
@@ -49,10 +51,10 @@ func (c *observedClient) Stream(ctx context.Context, req Request) (Stream, error
 	start := time.Now()
 	s, err := c.inner.Stream(ctx, req)
 	if err != nil {
-		c.obs(c.record(req, Record{Error: err, Duration: time.Since(start)}))
+		c.obs(ctx, c.record(req, Record{Error: err, Duration: time.Since(start)}))
 		return nil, err
 	}
-	return &observedStream{inner: s, obs: c.obs, base: c.record(req, Record{}), start: start}, nil
+	return &observedStream{ctx: ctx, inner: s, obs: c.obs, base: c.record(req, Record{}), start: start}, nil
 }
 
 func (c *observedClient) Complete(ctx context.Context, req Request) (Response, error) {
@@ -62,7 +64,7 @@ func (c *observedClient) Complete(ctx context.Context, req Request) (Response, e
 		Text: res.Text, Reasoning: res.Reasoning, ToolCalls: res.ToolCalls,
 		Usage: res.Usage, Error: err, Duration: time.Since(start),
 	}
-	c.obs(c.record(req, rec))
+	c.obs(ctx, c.record(req, rec))
 	return res, err
 }
 
@@ -90,6 +92,7 @@ func (c *observedClient) record(req Request, rec Record) Record {
 // observedStream forwards the provider stream and assembles the response so
 // the record carries what the model actually said, not just the request.
 type observedStream struct {
+	ctx   context.Context
 	inner Stream
 	obs   Observer
 	base  Record
@@ -173,6 +176,6 @@ func (s *observedStream) finish(err error) {
 		for _, idx := range s.order {
 			rec.ToolCalls = append(rec.ToolCalls, *s.calls[idx])
 		}
-		s.obs(rec)
+		s.obs(s.ctx, rec)
 	})
 }

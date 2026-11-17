@@ -286,7 +286,7 @@ func (s *Service) syncFolder(ctx context.Context, f *db.KnowledgeFolder) (string
 		for i, c := range chunks {
 			texts[i] = c.EmbedText(rel(wf.Path))
 		}
-		vecs, err := s.embedBatches(ctx, texts)
+		vecs, err := s.embedBatches(ctx, f.BotID, texts)
 		if err != nil {
 			return "", models.ProviderError{Err: err}
 		}
@@ -317,14 +317,14 @@ func (s *Service) syncFolder(ctx context.Context, f *db.KnowledgeFolder) (string
 }
 
 // embedBatches embeds texts in batches of knowledgeEmbedBatch.
-func (s *Service) embedBatches(ctx context.Context, texts []string) ([]pgvector.Vector, error) {
+func (s *Service) embedBatches(ctx context.Context, botID string, texts []string) ([]pgvector.Vector, error) {
 	out := make([]pgvector.Vector, 0, len(texts))
 	for i := 0; i < len(texts); i += knowledgeEmbedBatch {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
 		end := min(i+knowledgeEmbedBatch, len(texts))
-		vecs, _, err := s.models.Embed(ctx, texts[i:end])
+		vecs, _, err := s.models.Embed(ctx, botID, texts[i:end])
 		if err != nil {
 			return nil, err
 		}

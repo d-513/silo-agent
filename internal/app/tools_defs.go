@@ -248,6 +248,9 @@ func (a *App) toolDefs() []tool.Def {
 			Params:      tool.Object(map[string]any{}),
 			Connector:   security.Bot, Action: "recall",
 			JobOnly: true,
+			// A batch is as much of the store as the keeper's model has room
+			// for (memory.Service.Room), and all of it has to arrive.
+			ResultMax: memory.ReviewRoomMax + 1000,
 			Run: text(func(_ context.Context, c *tool.Call) (string, error) {
 				return a.Memory.Review(c.Bot.ID, c.RunID)
 			}),

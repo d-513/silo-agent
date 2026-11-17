@@ -324,8 +324,9 @@ func TestTendTidiesWhenMemoriesPileUp(t *testing.T) {
 	}
 	var reviewed int64
 	h.DB.Model(&db.Memory{}).Where("bot_id = ? AND reviewed_at IS NOT NULL", bot).Count(&reviewed)
-	if reviewed != 10 {
-		t.Fatalf("one batch should look over ten, did %d", reviewed)
+	// The model has room for the whole store, so one batch is all of it.
+	if reviewed != 20 {
+		t.Fatalf("one batch should look over all twenty, did %d", reviewed)
 	}
 	if n := h.App.Memory.Tend(h.Ctx(), time.Now().Add(time.Hour)); n != 0 {
 		t.Fatal("tidied again within hours")
@@ -461,5 +462,77 @@ func TestOldWorkIsLookedOverAgain(t *testing.T) {
 	h.DB.Exec("UPDATE memories SET created_at = created_at - interval '31 days', reviewed_at = reviewed_at - interval '31 days' WHERE id = ?", old.ID)
 	if out, _ := h.App.Memory.Review(bot, "r3"); !strings.Contains(out, old.ID) || !strings.Contains(out, "untouched for over 30 days") {
 		t.Fatalf("old work should come up again, marked:\n%s", out)
+	}
+}
+
+// The keeper reads chats and tidies a pile-up by itself, whatever its
+// schedule says, and its row says so: "no schedule" must not read as "never
+// saves". With collecting off, it only reads when asked.
+func TestKeeperSaysItWorksOnItsOwn(t *testing.T) {
+	keeper := func(h *apptest.H) *v1.Automation {
+		bot := h.CreateBot("Keeper")
+		for _, a := range listAutomations(t, h, bot.GetId()) {
+			if a.GetKind() == "memory" {
+				return a
+			}
+		}
+		t.Fatal("no Memory automation")
+		return nil
+	}
+	if a := keeper(apptest.New(t)); !a.GetOnItsOwn() || a.GetSchedule() != "" {
+		t.Fatalf("the keeper of a new Bot: %+v", a)
+	}
+	off := apptest.New(t, apptest.WithYAML(apptest.DefaultYAML(t.TempDir())+"memory:\n  collect: false\n"))
+	if a := keeper(off); a.GetOnItsOwn() {
+		t.Fatalf("collecting is off, yet the keeper says it works on its own: %+v", a)
+	}
+	// A schedule is the automation's whole story for every other kind.
+	h := apptest.New(t)
+	bot := h.CreateBot("Plain")
+	if a := createAutomation(t, h, bot.GetId(), "Nightly", "sweep", ""); a.GetOnItsOwn() {
+		t.Fatalf("an ordinary automation: %+v", a)
+	}
+}
+
+// A review batch is what fits the room the keeper's model has, and only what
+// it showed counts as looked over: the rest is the next batch's.
+func TestReviewBatchFitsItsRoom(t *testing.T) {
+	dummy.Reset()
+	h := apptest.New(t)
+	bot := h.CreateBot("Roomy").GetId()
+	for i := range 120 {
+		if _, err := h.App.Memory.Save(h.Ctx(), memory.Entry{BotID: bot, Content: fmt.Sprintf("Fact number %d about topic%d, told at some length so that a hundred of them do not fit a small room", i, i)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reviewed := func() int64 {
+		var n int64
+		h.DB.Model(&db.Memory{}).Where("bot_id = ? AND reviewed_at IS NOT NULL", bot).Count(&n)
+		return n
+	}
+	// Saving folds a near-copy into the memory it repeats, so count what
+	// the store holds.
+	var all int64
+	h.DB.Model(&db.Memory{}).Where("bot_id = ?", bot).Count(&all)
+	// A small model: the least room there is.
+	h.App.Memory.Room = func() int { return 0 }
+	out, err := h.App.Memory.Review(bot, "small")
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := reviewed()
+	if first == 0 || first >= all || len(out) > memory.ReviewRoomMin+500 {
+		t.Fatalf("a small room showed %d of %d in %d bytes", first, all, len(out))
+	}
+	if want := fmt.Sprintf("%d to look over (%d more wait after these)", first, all-first); !strings.HasPrefix(out, want) {
+		t.Fatalf("the batch says %q, want %q", out[:min(len(out), 60)], want)
+	}
+	// A large one takes the rest at once.
+	h.App.Memory.Room = func() int { return memory.ReviewRoomMax }
+	if _, err := h.App.Memory.Review(bot, "large"); err != nil {
+		t.Fatal(err)
+	}
+	if got := reviewed(); got != all {
+		t.Fatalf("a large room left %d of %d unlooked-at", all-got, all)
 	}
 }

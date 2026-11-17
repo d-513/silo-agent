@@ -53,7 +53,9 @@ func newChat(t *testing.T, h *apptest.H, botID string) string {
 func kinds(evs []db.RunEvent) []string {
 	out := make([]string, 0, len(evs))
 	for _, e := range evs {
-		if e.Kind == "tool_args_chunk" || e.Kind == "chunk" || e.Kind == "thinking_chunk" {
+		// "side" is a model call beside the turns (a title, the compaction's
+		// own): kept for the managers' review, no part of what the run did.
+		if e.Kind == "tool_args_chunk" || e.Kind == "chunk" || e.Kind == "thinking_chunk" || e.Kind == "side" {
 			continue
 		}
 		out = append(out, e.Kind)

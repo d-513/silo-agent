@@ -14,12 +14,15 @@ export type PaneKind = (typeof paneKinds)[number];
 // Channels is the Bot's own page: what talks to it. It keeps its full width
 // (no docked pane). What a Bot shares with its Workspace (connectors, skills,
 // drives) is the Workspace's.
-export type Tab = "run" | SideTab | "channels" | SettingsTab | PaneKind;
+// Runs (everything the Bot did, for its managers) is on the conversation
+// side too, but nothing in the bar or the rail is lit for it: it opens from
+// the closed chats' menu.
+export type Tab = "run" | "runs" | SideTab | "channels" | SettingsTab | PaneKind;
 
 const has = (xs: readonly string[], t: Tab) => xs.includes(t);
 
 export function onChatSide(t: Tab) {
-  return t === "run" || has(sideTabs, t);
+  return t === "run" || t === "runs" || has(sideTabs, t);
 }
 
 export function onSettings(t: Tab) {

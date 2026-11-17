@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { eq } from "./testing.ts";
 import type { BotActivity } from "./gen/silo/v1/ui_pb";
-import { askPhase, botLook, botNow, crestState, channelLook, chatDoing, containerLook, containerMade, containerUp, driveSettling, finishedFailed, finishedLook, folderPhase, machineStarting, needsSignIn, offerPhase, pausedOnYou, powerWord, progress, reportMark, runLook } from "./statusLook.ts";
+import { askPhase, botLook, botNow, crestState, channelLook, chatDoing, containerLook, containerMade, containerUp, driveSettling, finishedFailed, finishedLook, folderPhase, machineStarting, needsSignIn, offerPhase, pausedOnYou, powerWord, progress, ranLook, reportMark, runLook, stillRunning } from "./statusLook.ts";
 
 // A QR login waiting to be scanned is not "Connected" and not an error: it
 // needs the owner, and says what for.
@@ -35,6 +35,10 @@ eq(runLook(row({ state: "needs_you", task: "Compare flights" })).word, "Needs yo
 eq(runLook(row({ state: "waiting", waitingOn: "ana@test.local" })).word, "Waiting on ana", "someone else's answer names them");
 eq(runLook(row({ state: "waiting" })).word, "Waiting for a manager", "a manager's answer");
 eq(runLook(row({ state: "waiting" })).lamp, "stopped", "paused on someone else is not working");
+
+// A listed run: at work, or how it ended.
+eq([ranLook("running").word, ranLook("done").word, ranLook("error").word, ranLook("stopped").word, ranLook("interrupted").word], ["Working", "Done", "Failed", "Stopped", "Interrupted"], "a listed run");
+eq([stillRunning("running"), stillRunning("done")], [true, false], "still running");
 
 eq(progress(row({ task: "x", taskDone: 2, taskTotal: 5 })), "2/5", "progress");
 eq(progress(row({ taskDone: 2, taskTotal: 5 })), "", "no task, no progress");

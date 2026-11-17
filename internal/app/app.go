@@ -42,6 +42,7 @@ import (
 	"silo.agent/internal/app/pause"
 	"silo.agent/internal/app/proactivity"
 	"silo.agent/internal/app/run"
+	"silo.agent/internal/app/runlog"
 	"silo.agent/internal/app/setup"
 	"silo.agent/internal/app/skill"
 	"silo.agent/internal/app/space"
@@ -258,6 +259,7 @@ type App struct {
 	// The domain services: each owns one slice of the UI service and of the
 	// Bot's tools. uiHandler promotes their RPCs.
 	Feed       *feed.Service
+	Runlog     *runlog.Service
 	Dashboard  *dashboard.Service
 	Tunnels    *tunnels.Service
 	Mail       *mailbox.Service
@@ -314,6 +316,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Changes = changes.New(a.DB, a.cfg, a.Workspace, a, a.Mask)
 	a.Automations = automation.New(a.DB, a, a)
 	a.Memory = memory.New(a.DB, a.cfg, a.Models, a.Automations)
+	a.Memory.Room = a.reviewRoom
 	a.Proactivity = proactivity.New(a.DB, a.Automations)
 	a.Skills = skill.New(a.DB, a.Hub, a.cfg, a.Workspace)
 	a.Artifacts = artifact.New(a.DB, a.cfg, a.Workspace, a.Skills, a)
@@ -333,6 +336,8 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		return a.Egress.StaleCA(st, "stdio", botID, connectorID)
 	}
 	a.Feed = feed.New(a.DB, a)
+	a.Runlog = runlog.New(a.DB)
+	a.Models.Seen = a.Runlog.Seen
 	a.Pause = pause.New(a.DB)
 	a.Spaces = space.New(a.DB, a.cfg, spaceHost{a})
 	a.Spaces.OnDelete(a.Skills.DropSpace)
@@ -849,7 +854,7 @@ func (a *App) cancelRuns(botID, chatID, runStatus string) {
 	}
 	a.mu.Unlock()
 	if len(ids) > 0 {
-		a.DB.Model(&db.Run{}).Where("id IN ? AND status = ?", ids, "running").Update("status", runStatus)
+		a.DB.Model(&db.Run{}).Where("id IN ? AND status = ?", ids, "running").Updates(map[string]any{"status": runStatus, "duration_ms": runTook})
 	}
 	aq := a.DB.Model(&db.Approval{}).Where("bot_id = ? AND status = ?", botID, "pending")
 	if chatID != "" {

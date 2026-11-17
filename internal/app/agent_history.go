@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"silo.agent/internal/app/quote"
+	"silo.agent/internal/app/runlog"
 	"silo.agent/internal/db"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/zone"
@@ -69,8 +70,9 @@ func (a *App) contextFromRuns(runs []db.Run) replayed {
 
 // streamedKinds are the live-only events: a turn's text, reasoning and
 // command output as they streamed, and its token counts. Replay reads none of
-// them, and they are most of a long conversation's rows.
-var streamedKinds = []string{"chunk", "thinking_chunk", "thinking", "tool_chunk", "usage"}
+// them, and they are most of a long conversation's rows. Nor does it read a
+// run's side calls, which are there for its managers.
+var streamedKinds = []string{"chunk", "thinking_chunk", "thinking", "tool_chunk", "usage", runlog.SideKind}
 
 // replayRows loads the events replay reads for runs, in one query, ordered by
 // run (as given) and then by seq.
@@ -141,7 +143,9 @@ const (
 	clearedKind = "cleared"
 )
 
-var internalKinds = []string{turnKind, seenKind, noteKind, clearedKind}
+// A run's side calls (runlog.SideKind) are kept in its log the same way: for
+// the managers' review, never for a thread or a model.
+var internalKinds = []string{turnKind, seenKind, noteKind, clearedKind, runlog.SideKind}
 
 type turnMeta struct {
 	Calls []turnCall `json:"calls"`

@@ -106,6 +106,9 @@ type Service struct {
 	// memory, and batches (bot id → batch) the review batches its run took.
 	tidied  sync.Map
 	batches sync.Map
+	// Room says how many bytes a review batch may fill, from what the
+	// keeper's model can hold; nil keeps batches small.
+	Room func() int
 }
 
 // New makes the service. jobs runs the keeper; nil leaves memory untended.
@@ -219,7 +222,7 @@ func (s *Service) Save(ctx context.Context, m Entry) (Saved, error) {
 	if m.Inferred && !s.cfg().Memory.Infer {
 		return Saved{}, errNoInfer
 	}
-	vecs, model, err := s.models.Embed(ctx, []string{content})
+	vecs, model, err := s.models.Embed(ctx, m.BotID, []string{content})
 	if err != nil {
 		return Saved{}, err
 	}
@@ -363,7 +366,7 @@ func (s *Service) Search(ctx context.Context, botID, query string, k int, tentat
 	if query == "" {
 		return nil, models.ErrNoQuery
 	}
-	vecs, _, err := s.models.Embed(ctx, []string{query})
+	vecs, _, err := s.models.Embed(ctx, botID, []string{query})
 	if err != nil {
 		return nil, err
 	}
@@ -396,7 +399,7 @@ ORDER BY f.score DESC, m.created_at DESC LIMIT ` + args.Add(k)
 // Closest is the bot's live memories nearest a long text by meaning alone:
 // what the keeper is shown beside a conversation.
 func (s *Service) Closest(ctx context.Context, botID, text string, k int) ([]Recalled, error) {
-	vecs, _, err := s.models.Embed(ctx, []string{text})
+	vecs, _, err := s.models.Embed(ctx, botID, []string{text})
 	if err != nil {
 		return nil, err
 	}

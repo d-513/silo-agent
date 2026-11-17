@@ -35,7 +35,7 @@ const (
 	// collectPerTick caps the chats one sweep reads, and collectWait how long
 	// it waits on one chat's runs.
 	collectPerTick = 5
-	collectWait    = 5 * time.Minute
+	collectWait    = 15 * time.Minute
 	// collectPauseFor holds the sweep back after a provider error.
 	collectPauseFor = 15 * time.Minute
 	// collectRest is how long a chat whose collection failed is skipped: the
@@ -44,13 +44,18 @@ const (
 	collectRest    = collectPauseFor
 	collectRestMax = 24 * time.Hour
 
-	// collectBudget is the excerpt size of one run in tokens; a larger delta
-	// is split into at most collectChunks runs and the oldest part dropped.
-	collectBudget = 12000
-	collectChunks = 3
+	// A keeper run is given as much as its model has room for, so a
+	// conversation is mostly read in one run: collectShare of the memory
+	// model's context window, in tokens (keeperBudget), between
+	// collectBudgetMin and collectBudgetMax. A larger delta is split into at
+	// most collectChunks runs and the oldest part dropped.
+	collectShare     = 0.4
+	collectBudgetMin = 12000
+	collectBudgetMax = 200000
+	collectChunks    = 3
 	// collectShown is how many existing memories each run is shown beside
 	// the excerpt.
-	collectShown = 15
+	collectShown = 40
 	// collectQueryRunes is the tail of the excerpt embedded to find them.
 	collectQueryRunes = 6000
 )
@@ -109,7 +114,8 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 	// move past each part once its run is done: a failure in a later part
 	// retries only that part, and the keeper never re-reads (and re-saves in
 	// other words) what it already took from an earlier one.
-	parts, dropped := splitEvents(evs, collectBudget, collectChunks)
+	budget := a.keeperBudget(ctx)
+	parts, dropped := splitEvents(evs, budget, collectChunks)
 
 	var res collectResult
 	for i, part := range parts {
@@ -124,7 +130,7 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 			continue
 		}
 		// A part with no place to cut keeps its newest budget's worth.
-		cut, over := chunkEntries(entries, collectBudget, 1)
+		cut, over := chunkEntries(entries, budget, 1)
 		chunk := cut[len(cut)-1]
 		note := ""
 		if len(parts) > 1 {
@@ -157,6 +163,21 @@ func (a *App) collectChat(ctx context.Context, chatID string) (collectResult, er
 		a.advanceMemorySeq(ch.ID, upTo)
 	}
 	return res, nil
+}
+
+// keeperBudget is how many tokens of work one keeper run is handed: a share
+// of the memory model's context window, the rest being its prompt, the
+// memories it is shown and what it writes.
+func (a *App) keeperBudget(ctx context.Context) int {
+	window := a.contextWindow(ctx, a.cfg().MemoryModel())
+	return min(max(int(float64(window)*collectShare), collectBudgetMin), collectBudgetMax)
+}
+
+// reviewRoom is the keeper's budget as the bytes of one review batch. A
+// tidy run takes up to three batches and keeps them all in its context, so
+// one batch gets a third of the budget, at about three bytes a token.
+func (a *App) reviewRoom() int {
+	return a.keeperBudget(context.Background())
 }
 
 // advanceMemorySeq moves a chat's watermark forward, never back.

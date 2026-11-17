@@ -21,6 +21,7 @@ import {
   FeedRoute,
   KnowledgeRoute,
   MemoriesRoute,
+  RunsRoute,
   RulesRoute,
   RunRoute,
   ScrollLayout,
@@ -63,7 +64,7 @@ import { SpaceIndex, SpaceLayout } from "./space/Workspace";
 //       connectors[/new|/$id]  skills  drives  audit  debug
 //     /bots/$botId                 BotPage: the tab bar, the right rail, what survives a page change
 //       _chat                      the conversations (the tabs) and the pages beside them (the rail)
-//         run[/new|/$chatId[/agent/$agentId]]  dashboard  automations[/new|/$id]  artifacts  memories  knowledge  feed
+//         run[/new|/$chatId[/agent/$agentId]]  dashboard  automations[/new|/$id]  artifacts  memories  knowledge  feed  runs
 //       channels[/new[/$adapter]|/$channelId[/setup]]
 //       _settings                  Settings and its tabs
 //         settings  people  rules  secrets  tunnels  container  audit
@@ -248,6 +249,7 @@ const artifacts = createRoute({ getParentRoute: () => chat, path: "artifacts", s
 const memories = createRoute({ getParentRoute: () => chat, path: "memories", staticData: { tab: "memories" }, component: MemoriesRoute });
 const knowledge = createRoute({ getParentRoute: () => chat, path: "knowledge", staticData: { tab: "knowledge" }, component: KnowledgeRoute });
 const feed = createRoute({ getParentRoute: () => chat, path: "feed", staticData: { tab: "feed" }, component: FeedRoute });
+const runs = createRoute({ getParentRoute: () => chat, path: "runs", staticData: { tab: "runs" }, component: RunsRoute });
 
 // The panes render nothing here: BotPage shows the same pane docked beside the
 // chat or, on these routes, as the page, and keeps it mounted (hidden) once
@@ -313,7 +315,7 @@ const routeTree = root.addChildren([
     admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminModels.addChildren([adminModelsIndex, adminModelsPage]), adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminContainers, adminAudit, adminDebug, adminElse]),
     bot.addChildren([
       botIndex,
-      chat.addChildren([run, runNew, runChat, runAgent, dashboard, automations.addChildren([automationsIndex, automationNew, automation]), artifacts, memories, knowledge, feed]),
+      chat.addChildren([run, runNew, runChat, runAgent, dashboard, automations.addChildren([automationsIndex, automationNew, automation]), artifacts, memories, knowledge, feed, runs]),
       channels.addChildren([channelsIndex, channelNew, channelAdd, channel, channelSetup]),
       settingsSection.addChildren([settings, botPeople, rules, secrets, tunnels, container, botAudit]),
       files,

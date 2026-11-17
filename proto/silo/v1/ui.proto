@@ -201,6 +201,12 @@ service UI {
   // replays only the newest turns and opens with an "earlier" event when
   // there is more.
   rpc ListChatEvents(ListChatEventsRequest) returns (ListChatEventsResponse);
+  // Everything a Bot did, for its managers: its runs, newest first, each in
+  // numbers; the model calls made for one run beside its turns; and the model
+  // calls made for no run at all, which are kept in memory only.
+  rpc ListRuns(ListRunsRequest) returns (ListRunsResponse);
+  rpc GetRunCalls(GetRunCallsRequest) returns (GetRunCallsResponse);
+  rpc ListBackground(ListBackgroundRequest) returns (ListBackgroundResponse);
   // ListCommands is the slash commands a chat's composer offers.
   rpc ListCommands(ListCommandsRequest) returns (ListCommandsResponse);
   rpc EditMessage(EditMessageRequest) returns (SendResponse);
@@ -1879,6 +1885,11 @@ message Automation {
   // "user" or "bot".
   string created_by = 13;
   string created_at = 14;
+  // The server also starts this automation's runs by itself when there is
+  // work for it, whatever its schedule and switch say: the Memory keeper
+  // reads a chat once it goes quiet. Its schedule is then only for the rest
+  // (tidying).
+  bool on_its_own = 15;
 }
 
 message ListAutomationsRequest {
@@ -3890,4 +3901,135 @@ message PutDriveSettingsRequest {
   string template = 1;
   // Set these values; an empty value clears the key from silo.yaml.
   map<string, string> values = 2;
+}
+
+// RunCount is how many times something named happened in a run.
+message RunCount {
+  string name = 1;
+  int32 count = 2;
+}
+
+// RunSummary is a run in numbers, worked out from its log.
+message RunSummary {
+  // Model turns, and what they cost.
+  int32 turns = 1;
+  int64 input = 2;
+  int64 output = 3;
+  int64 cache_read = 4;
+  int64 cache_write = 5;
+  // Model calls made for the run beside its turns (a title, a judge, a
+  // compaction, a decision), and what those cost.
+  int32 side_calls = 6;
+  int64 side_input = 7;
+  int64 side_output = 8;
+  // Tool calls the model made, by tool, and calls its code made, by
+  // connector.action.
+  repeated RunCount tools = 9;
+  repeated RunCount calls = 10;
+  int32 tool_errors = 11;
+  int32 errors = 12;
+  string last_error = 13;
+  // Approvals by how they were settled, and results the output filter did
+  // not pass clean, by verdict.
+  repeated RunCount approvals = 14;
+  repeated RunCount filtered = 15;
+  int32 compactions = 16;
+  // Times old tool results were cleared from the context.
+  int32 cleared = 17;
+}
+
+message RunRow {
+  string id = 1;
+  // chat, channel, automation, job, subagent, wake, compact, or one that asks
+  // no model: command, quote, voice.
+  string kind = 2;
+  // The housekeeping job of a "job" run ("memory").
+  string job = 3;
+  // What started it: message, spoken, mail, onboarding, lead, report,
+  // automation, manual. Empty on runs from before it was kept.
+  string trigger = 4;
+  string status = 5;
+  string title = 6;
+  string model = 7;
+  string created_at = 8;
+  // 0 while it runs and where it was not kept.
+  int64 duration_ms = 9;
+  // Where it ran: the conversation, and what that is ("main" for a person's
+  // main chat, "chat", "channel", "automation", "subagent") with its name.
+  string chat_id = 10;
+  string source_kind = 11;
+  string source_name = 12;
+  // Set for an automation's run and a subagent's (with its lead's chat).
+  string automation_id = 13;
+  string subagent_id = 14;
+  string lead_chat_id = 15;
+  // Whose run it is (email); empty for a background run.
+  string person = 16;
+  // Absent while the run is live.
+  RunSummary summary = 17;
+}
+
+message ListRunsRequest {
+  string bot_id = 1;
+  // The next field of the page before; empty for the newest.
+  string before = 2;
+  // Only these kinds; empty for all.
+  repeated string kinds = 3;
+}
+
+message ListRunsResponse {
+  // Live runs first (on the newest page only), then newest first.
+  repeated RunRow runs = 1;
+  // Empty when there is nothing older.
+  string next = 2;
+}
+
+// ModelCall is one model call beside a run's turns, or outside any run: what
+// it was for and what it cost, never what was said.
+message ModelCall {
+  string at = 1;
+  // title, compact, approval, filter, decide, memory, voice-talk, embed,
+  // speech, dictation, channel, ...
+  string label = 2;
+  string provider = 3;
+  string model = 4;
+  int64 input = 5;
+  int64 output = 6;
+  int64 duration_ms = 7;
+  // A judge's one-word answer.
+  string verdict = 8;
+  string error = 9;
+  // How many like calls this line stands for (background calls made in a
+  // burst are one line).
+  int32 count = 10;
+}
+
+// RunApproval is an approval a run raised and how it was settled.
+message RunApproval {
+  string action = 1;
+  string title = 2;
+  string status = 3;
+  bool auto = 4;
+  string created_at = 5;
+}
+
+message GetRunCallsRequest {
+  string bot_id = 1;
+  string run_id = 2;
+}
+
+message GetRunCallsResponse {
+  repeated ModelCall calls = 1;
+  repeated RunApproval approvals = 2;
+}
+
+message ListBackgroundRequest {
+  string bot_id = 1;
+}
+
+message ListBackgroundResponse {
+  // Newest first. Kept in memory: it starts empty when the server does.
+  repeated ModelCall calls = 1;
+  // When the server started keeping them.
+  string since = 2;
 }

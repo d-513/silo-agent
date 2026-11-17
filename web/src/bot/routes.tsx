@@ -17,6 +17,7 @@ const AutomationNew = lazyNamed(() => import("../Automations"), "AutomationNew")
 const AutomationLog = lazyNamed(() => import("../Automations"), "AutomationLog");
 const ArtifactsPane = lazyNamed(() => import("../Artifacts"), "ArtifactsPane");
 const MemoriesPane = lazyNamed(() => import("../Memories"), "MemoriesPane");
+const RunsPane = lazyNamed(() => import("../Runs"), "RunsPane");
 const KnowledgePane = lazyNamed(() => import("../Knowledge"), "KnowledgePane");
 const DashboardPane = lazyNamed(() => import("../dashboard/Dashboard"), "DashboardPane");
 const FeedPane = lazyNamed(() => import("../Feed"), "FeedPane");
@@ -149,6 +150,15 @@ export function MemoriesRoute() {
   return (
     <ScrollPane>
       <MemoriesPane bot={p.bot} onError={p.onError} />
+    </ScrollPane>
+  );
+}
+
+export function RunsRoute() {
+  const p = useBotPage();
+  return (
+    <ScrollPane>
+      <RunsPane bot={p.bot} onError={p.onError} />
     </ScrollPane>
   );
 }

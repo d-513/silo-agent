@@ -78,6 +78,14 @@ const en: Record<string, string> = {
   "{{count}} allowed_other": "{{count}} allowed",
   "used in {{count}} chats_one": "used in {{count}} chat",
   "used in {{count}} chats_other": "used in {{count}} chats",
+  "{{count}} tool calls_one": "{{count}} tool call",
+  "{{count}} tool calls_other": "{{count}} tool calls",
+  "compacted {{count}} times_one": "compacted once",
+  "compacted {{count}} times_other": "compacted {{count}} times",
+  "old results cleared {{count}} times_one": "old results cleared once",
+  "old results cleared {{count}} times_other": "old results cleared {{count}} times",
+  "Last of {{count}} errors_one": "Error",
+  "Last of {{count}} errors_other": "Last of {{count}} errors",
 };
 
 export default en;
