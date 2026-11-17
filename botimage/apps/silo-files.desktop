@@ -3,6 +3,6 @@ Type=Application
 Name=Files
 Comment=Workspace
 Exec=thunar /workspace
-Icon=system-file-manager
+Icon=org.xfce.thunar
 Terminal=false
 Categories=Utility;FileManager;

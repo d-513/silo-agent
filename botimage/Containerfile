@@ -115,7 +115,12 @@ RUN mkdir -p /tmp/ubol-src /opt/silo/ubol \
     && chown -R silo:silo /opt/silo/ubol
 
 # Every tool the prompt and the skills promise is here, or the build fails.
-RUN for c in tini sudo chromium xclip wmctrl python3 pip pipx uv uvx node npm npx pnpm \
+# The dock's launchers name the apps' own icons (Adwaita no longer draws the
+# old app icons), so each of those is checked here too.
+RUN for i in org.xfce.thunar org.xfce.terminal org.xfce.mousepad; do \
+      ls /usr/share/icons/hicolor/*/apps/"$i".* >/dev/null 2>&1 || { echo "missing icon: $i" >&2; exit 1; }; \
+    done \
+    && for c in tini sudo chromium xclip wmctrl python3 pip pipx uv uvx node npm npx pnpm \
         lightpanda pdftotext pdftoppm qpdf pandoc ocrmypdf tesseract catdoc antiword \
         convert rsvg-convert dot exiftool ffmpeg ffprobe sox curl wget jq yq sqlite3 \
         file less nano tree lsof rsync git rg fd zip unzip xz bzip2 zstd 7z make gcc \
