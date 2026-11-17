@@ -285,6 +285,8 @@ const (
 	UIDivergeChatProcedure = "/silo.v1.UI/DivergeChat"
 	// UICompactChatProcedure is the fully-qualified name of the UI's CompactChat RPC.
 	UICompactChatProcedure = "/silo.v1.UI/CompactChat"
+	// UIRetryRunProcedure is the fully-qualified name of the UI's RetryRun RPC.
+	UIRetryRunProcedure = "/silo.v1.UI/RetryRun"
 	// UICollectMemoriesProcedure is the fully-qualified name of the UI's CollectMemories RPC.
 	UICollectMemoriesProcedure = "/silo.v1.UI/CollectMemories"
 	// UIListSubagentsProcedure is the fully-qualified name of the UI's ListSubagents RPC.
@@ -685,6 +687,9 @@ type UIClient interface {
 	DeleteMessage(context.Context, *connect.Request[v1.DeleteMessageRequest]) (*connect.Response[v1.DeleteMessageResponse], error)
 	DivergeChat(context.Context, *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error)
 	CompactChat(context.Context, *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error)
+	// RetryRun answers a chat again after its last reply failed: a new run
+	// that reads the history as it stands, with nothing rewritten.
+	RetryRun(context.Context, *connect.Request[v1.RetryRunRequest]) (*connect.Response[v1.RetryRunResponse], error)
 	CollectMemories(context.Context, *connect.Request[v1.CollectMemoriesRequest]) (*connect.Response[v1.CollectMemoriesResponse], error)
 	ListSubagents(context.Context, *connect.Request[v1.ListSubagentsRequest]) (*connect.Response[v1.ListSubagentsResponse], error)
 	GetSubagent(context.Context, *connect.Request[v1.GetSubagentRequest]) (*connect.Response[v1.Subagent], error)
@@ -1582,6 +1587,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("CompactChat")),
 			connect.WithClientOptions(opts...),
 		),
+		retryRun: connect.NewClient[v1.RetryRunRequest, v1.RetryRunResponse](
+			httpClient,
+			baseURL+UIRetryRunProcedure,
+			connect.WithSchema(uIMethods.ByName("RetryRun")),
+			connect.WithClientOptions(opts...),
+		),
 		collectMemories: connect.NewClient[v1.CollectMemoriesRequest, v1.CollectMemoriesResponse](
 			httpClient,
 			baseURL+UICollectMemoriesProcedure,
@@ -2294,6 +2305,7 @@ type uIClient struct {
 	deleteMessage            *connect.Client[v1.DeleteMessageRequest, v1.DeleteMessageResponse]
 	divergeChat              *connect.Client[v1.DivergeChatRequest, v1.DivergeChatResponse]
 	compactChat              *connect.Client[v1.CompactChatRequest, v1.CompactChatResponse]
+	retryRun                 *connect.Client[v1.RetryRunRequest, v1.RetryRunResponse]
 	collectMemories          *connect.Client[v1.CollectMemoriesRequest, v1.CollectMemoriesResponse]
 	listSubagents            *connect.Client[v1.ListSubagentsRequest, v1.ListSubagentsResponse]
 	getSubagent              *connect.Client[v1.GetSubagentRequest, v1.Subagent]
@@ -3018,6 +3030,11 @@ func (c *uIClient) CompactChat(ctx context.Context, req *connect.Request[v1.Comp
 	return c.compactChat.CallUnary(ctx, req)
 }
 
+// RetryRun calls silo.v1.UI.RetryRun.
+func (c *uIClient) RetryRun(ctx context.Context, req *connect.Request[v1.RetryRunRequest]) (*connect.Response[v1.RetryRunResponse], error) {
+	return c.retryRun.CallUnary(ctx, req)
+}
+
 // CollectMemories calls silo.v1.UI.CollectMemories.
 func (c *uIClient) CollectMemories(ctx context.Context, req *connect.Request[v1.CollectMemoriesRequest]) (*connect.Response[v1.CollectMemoriesResponse], error) {
 	return c.collectMemories.CallUnary(ctx, req)
@@ -3706,6 +3723,9 @@ type UIHandler interface {
 	DeleteMessage(context.Context, *connect.Request[v1.DeleteMessageRequest]) (*connect.Response[v1.DeleteMessageResponse], error)
 	DivergeChat(context.Context, *connect.Request[v1.DivergeChatRequest]) (*connect.Response[v1.DivergeChatResponse], error)
 	CompactChat(context.Context, *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error)
+	// RetryRun answers a chat again after its last reply failed: a new run
+	// that reads the history as it stands, with nothing rewritten.
+	RetryRun(context.Context, *connect.Request[v1.RetryRunRequest]) (*connect.Response[v1.RetryRunResponse], error)
 	CollectMemories(context.Context, *connect.Request[v1.CollectMemoriesRequest]) (*connect.Response[v1.CollectMemoriesResponse], error)
 	ListSubagents(context.Context, *connect.Request[v1.ListSubagentsRequest]) (*connect.Response[v1.ListSubagentsResponse], error)
 	GetSubagent(context.Context, *connect.Request[v1.GetSubagentRequest]) (*connect.Response[v1.Subagent], error)
@@ -4599,6 +4619,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("CompactChat")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIRetryRunHandler := connect.NewUnaryHandler(
+		UIRetryRunProcedure,
+		svc.RetryRun,
+		connect.WithSchema(uIMethods.ByName("RetryRun")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uICollectMemoriesHandler := connect.NewUnaryHandler(
 		UICollectMemoriesProcedure,
 		svc.CollectMemories,
@@ -5433,6 +5459,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIDivergeChatHandler.ServeHTTP(w, r)
 		case UICompactChatProcedure:
 			uICompactChatHandler.ServeHTTP(w, r)
+		case UIRetryRunProcedure:
+			uIRetryRunHandler.ServeHTTP(w, r)
 		case UICollectMemoriesProcedure:
 			uICollectMemoriesHandler.ServeHTTP(w, r)
 		case UIListSubagentsProcedure:
@@ -6134,6 +6162,10 @@ func (UnimplementedUIHandler) DivergeChat(context.Context, *connect.Request[v1.D
 
 func (UnimplementedUIHandler) CompactChat(context.Context, *connect.Request[v1.CompactChatRequest]) (*connect.Response[v1.CompactChatResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CompactChat is not implemented"))
+}
+
+func (UnimplementedUIHandler) RetryRun(context.Context, *connect.Request[v1.RetryRunRequest]) (*connect.Response[v1.RetryRunResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RetryRun is not implemented"))
 }
 
 func (UnimplementedUIHandler) CollectMemories(context.Context, *connect.Request[v1.CollectMemoriesRequest]) (*connect.Response[v1.CollectMemoriesResponse], error) {

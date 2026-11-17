@@ -18,10 +18,10 @@ import (
 
 // compactHarness runs on a real silo.yaml so a test can shrink the context
 // window after measuring how big the dummy's requests are.
-func compactHarness(t *testing.T) *apptest.H {
+func compactHarness(t *testing.T, extra ...string) *apptest.H {
 	dir := t.TempDir()
 	path := dir + "/silo.yaml"
-	if err := os.WriteFile(path, []byte(apptest.DefaultYAML(dir)+"debug: true\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte(apptest.DefaultYAML(dir)+"debug: true\n"+strings.Join(extra, "")), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return apptest.New(t, apptest.WithConfigPath(path))
@@ -155,11 +155,12 @@ func TestManualCompaction(t *testing.T) {
 
 func TestCompactChatRefusedWhileReplyRuns(t *testing.T) {
 	dummy.Reset()
-	h := compactHarness(t)
+	h := compactHarness(t, apptest.ChatTools)
 	bot := h.CreateBot("Busy")
 	id := bot.GetId()
 	chat := h.FirstChat(id)
-	// The second message parks on an approval (create_automation is Ask by
+	// The second message parks on an approval (create_automation, offered as
+	// a chat tool here, is Ask by
 	// default), so the chat has history and a live run.
 	dummy.Script("Test_C5",
 		dummy.Turn{Text: "warm"},

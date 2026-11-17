@@ -220,7 +220,7 @@ func (b *systemPromptBuilder) Blocks() []llm.SystemBlock {
 		if t := strings.TrimSpace(b.bot.Soul); t != "" {
 			soul.WriteString(t)
 		} else {
-			soul.WriteString("(empty — write it with the soul tool.)")
+			soul.WriteString("(empty — write it with silo_runtime.soul.)")
 		}
 	}
 

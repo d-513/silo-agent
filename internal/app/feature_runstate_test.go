@@ -97,6 +97,8 @@ func TestStopBotKeepsInterrupted(t *testing.T) {
 	}
 }
 
+// askAutomation scripts a chat call that waits on the human: an automation
+// asks first by default (offered as a chat tool by the harness's option).
 func askAutomation(token string) {
 	dummy.Script(token,
 		dummy.Turn{ToolCalls: []llm.ToolCall{{Name: "create_automation", Arguments: `{"name":"Sweep","prompt":"x","schedule":"*/30 * * * *"}`}}},
@@ -119,7 +121,7 @@ func ruleCount(h *apptest.H, botID string) int64 {
 func TestApprovalIsSettledOnce(t *testing.T) {
 	dummy.Reset()
 	askAutomation("Test_rs_once")
-	h := apptest.New(t)
+	h := apptest.New(t, apptest.WithChatTools())
 	bot := h.CreateBot("Once")
 	chat := h.FirstChat(bot.GetId())
 	runID, _ := h.Send(bot.GetId(), chat, "Test_rs_once")
@@ -150,7 +152,7 @@ func TestApprovalIsSettledOnce(t *testing.T) {
 func TestStoppedApprovalCannotBeAnswered(t *testing.T) {
 	dummy.Reset()
 	askAutomation("Test_rs_stopap")
-	h := apptest.New(t)
+	h := apptest.New(t, apptest.WithChatTools())
 	bot := h.CreateBot("StopAp")
 	chat := h.FirstChat(bot.GetId())
 	runID, _ := h.Send(bot.GetId(), chat, "Test_rs_stopap")

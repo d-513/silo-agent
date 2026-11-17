@@ -196,10 +196,10 @@ func TestFeedPostFromPython(t *testing.T) {
 		t.Fatalf("posts %v", posts)
 	}
 
-	// Python only reaches feed on the bot connector; soul stays a chat tool.
-	res, err := wc.CallTool(h.Ctx(), connect.NewRequest(&v1.ToolReq{Connector: "bot", Action: "soul", ArgsJson: `{"content":"x"}`, RunId: run}))
+	// What only the chat loop does stays off the Python bus.
+	res, err := wc.CallTool(h.Ctx(), connect.NewRequest(&v1.ToolReq{Connector: "skills", Action: "load", ArgsJson: `{"name":"x"}`, RunId: run}))
 	if err != nil || !strings.Contains(res.Msg.GetError(), "not available from Python") {
-		t.Fatalf("bot.soul from python: %v %+v", err, res.Msg)
+		t.Fatalf("skills.load from python: %v %+v", err, res.Msg)
 	}
 
 	// The shared gate: a Deny rule blocks the Python path too.

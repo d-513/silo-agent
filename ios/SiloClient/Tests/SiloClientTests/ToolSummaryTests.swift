@@ -8,6 +8,16 @@ final class ToolSummaryTests: XCTestCase {
         XCTAssertNil(extractStringField(#"{"other":"x"}"#, "command"))
     }
 
+    func testDesktopReadsAsItsAction() {
+        XCTAssertEqual(toolAction(name: "desktop", args: #"{"action":"click","x":10,"y":20}"#), "click 10,20")
+        XCTAssertEqual(toolAction(name: "desktop", args: #"{"action":"key","text":"ctrl+l"}"#), "key ctrl+l")
+        XCTAssertEqual(toolAction(name: "desktop", args: #"{"action":"type","text":"hel"#), "type")
+        XCTAssertEqual(toolAction(name: "desktop", args: #"{"action":"chrome"}"#), "")
+        XCTAssertEqual(toolApp("desktop"), "Desktop")
+        XCTAssertEqual(toolSymbol("desktop"), "display")
+        XCTAssertEqual(activityStepApp("desktop"), "Desktop")
+    }
+
     func testActions() {
         XCTAssertEqual(toolAction(name: "terminal", args: #"{"command":"ls\npwd"}"#), "$ ls")
         XCTAssertEqual(toolAction(name: "read", args: #"{"path":"a/b.txt","offset":3}"#), "read a/b.txt")

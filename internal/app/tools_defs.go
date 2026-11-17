@@ -26,14 +26,19 @@ import (
 // each request and weighed on each turn, while a silo_runtime helper costs a
 // line of the prompt and can be looped, batched and filtered in one cell. A
 // tool is a completion tool only when it is the loop itself (files, shell,
-// Python, the desktop, memory), is chat-only by nature (soul, the agent
-// tools, sleep, switch_model), or asks the human by default: an approval can
-// take longer than the machine's command timeout, which a Python call sits
-// under. decide is both by choice: one judgment mid-turn should not cost a
-// cell, and it is in the list only while a decision model is allowed.
+// Python, present, the desktop, memory, skill), cannot be a call from code
+// (sleep, which a message or a finished subagent cuts short; spawn_agent,
+// after which the lead ends its turn), or is how the Bot hands the human
+// something in the thread (artifact, ask_owner, offer_setup). Anything rare,
+// or that code uses in loops (decide), is silo_runtime only. A call from code
+// may wait on an approval as long as it takes: the machine's command clock
+// stops while a cell waits on the control plane.
 //
 // A tool with ExposePython needs a silo_runtime helper of the same name (or
 // PyName) in botimage/silo_runtime.py; TestPythonToolsHaveHelpers checks it.
+// desktopActions are what the desktop chat tool can do: one Python tool each.
+var desktopActions = []string{"look", "click", "type", "key", "scroll"}
+
 func (a *App) toolDefs() []tool.Def {
 	// The handlers several tools share: a domain's own entry point takes the
 	// tool's name and decides (and gates) per action.
@@ -168,7 +173,7 @@ func (a *App) toolDefs() []tool.Def {
 			Connector: security.Bot, Action: "soul",
 			// Who the Bot is belongs to the agent that answers its owner,
 			// not to a helper working on one piece of a job.
-			ExposeCompletion: true, LeadOnly: true,
+			ExposePython: true, LeadOnly: true,
 			Run: doc,
 		},
 		{
@@ -309,8 +314,8 @@ func (a *App) toolDefs() []tool.Def {
 				"model": map[string]any{"type": "string", "description": "another allowed decision model, as silo_runtime.list_models() gives them; leave out for the operator's default"},
 			}, "state", "questions"),
 			Connector: security.Model, Action: "decide",
-			ExposeCompletion: true, ExposePython: true,
-			Enabled: func(string) bool { return a.Models.CanDecide() },
+			ExposePython: true,
+			Enabled:      func(string) bool { return a.Models.CanDecide() },
 			Run: text(func(ctx context.Context, c *tool.Call) (string, error) {
 				return a.Models.DecideTool(ctx, c.Bot.ID, c.Args)
 			}),
@@ -322,7 +327,7 @@ func (a *App) toolDefs() []tool.Def {
 				"model": map[string]any{"type": "string", "description": "provider/model id, as silo_runtime.list_models() gives them"},
 			}, "model"),
 			Connector: security.Model, Action: "switch",
-			ExposeCompletion: true, LeadOnly: true,
+			ExposePython: true, LeadOnly: true,
 			Run: text(func(_ context.Context, c *tool.Call) (string, error) {
 				return a.Models.SwitchTool(c.ChatID, c.Str("model"))
 			}),
@@ -343,11 +348,29 @@ func (a *App) toolDefs() []tool.Def {
 			}),
 		},
 		{
+			// One chat tool for the desktop; each action is still its own tool
+			// to code and its own rule (desktop.look, desktop.click, …).
+			Name:        "desktop",
+			Description: "Work the 1600×900 desktop, one action a call. look: screenshot it (you get the pixels; the human sees a collapsed row). click (x, y, button left|right|double) and scroll (x, y, dy wheel steps, negative up) take those pixels from the top-left, with no scale. type: text into the focused window (click a field first). key: a key or shortcut as text: Return, Tab, Escape, BackSpace, ctrl+l, ctrl+shift+t, alt+Tab. Never type a secret here: silo_runtime.type_text in Python.",
+			Params: tool.Object(map[string]any{
+				"action": map[string]any{"type": "string", "enum": desktopActions},
+				"x":      map[string]any{"type": "integer"},
+				"y":      map[string]any{"type": "integer"},
+				"button": map[string]any{"type": "string", "enum": []string{"left", "right", "double"}},
+				"text":   map[string]any{"type": "string", "description": "type: the characters; key: the key or shortcut"},
+				"dy":     map[string]any{"type": "integer"},
+			}, "action"),
+			Connector: security.Desktop, Dispatch: "action", Actions: desktopActions,
+			ExposeCompletion: true,
+			// A click or a key can save a file: a read after it runs again.
+			Writes: true,
+		},
+		{
 			Name:        "look",
 			Description: "Primary GUI: screenshot the 1600×900 desktop. Origin top-left. click(x,y) uses these pixels with no scale. Human sees a collapsed row; you get the pixels.",
 			Params:      tool.Object(nil),
 			Connector:   security.Desktop, Action: "look",
-			ExposeCompletion: true, ExposePython: true, Local: true,
+			ExposePython: true, Local: true,
 			Title: desktopTitle,
 			Run: a.onWorker(func(*tool.Call) *v1.Cmd {
 				return &v1.Cmd{Body: &v1.Cmd_Look{Look: &v1.LookCmd{}}}
@@ -364,7 +387,7 @@ func (a *App) toolDefs() []tool.Def {
 				"button": map[string]any{"type": "string", "enum": []string{"left", "right", "double"}},
 			}, "x", "y"),
 			Connector: security.Desktop, Action: "click",
-			ExposeCompletion: true, ExposePython: true, Local: true, Writes: true,
+			ExposePython: true, Local: true, Writes: true,
 			Gate: a.Pause.Gate, Check: checkPoint, Title: desktopTitle,
 			Run: a.onWorker(func(c *tool.Call) *v1.Cmd {
 				return &v1.Cmd{Body: &v1.Cmd_Click{Click: &v1.ClickCmd{X: int32(c.Int("x")), Y: int32(c.Int("y")), Button: c.Str("button")}}}
@@ -377,7 +400,7 @@ func (a *App) toolDefs() []tool.Def {
 				"text": map[string]any{"type": "string"},
 			}, "text"),
 			Connector: security.Desktop, Action: "type",
-			ExposeCompletion: true, ExposePython: true, PyName: "type_text", Local: true, Writes: true,
+			ExposePython: true, PyName: "type_text", Local: true, Writes: true,
 			Gate: a.Pause.Gate, Check: tool.Need("text"), Title: desktopTitle,
 			Run: a.onWorker(func(c *tool.Call) *v1.Cmd {
 				return &v1.Cmd{Body: &v1.Cmd_Type{Type: &v1.TypeCmd{Text: c.Str("text")}}}
@@ -390,10 +413,10 @@ func (a *App) toolDefs() []tool.Def {
 				"name": map[string]any{"type": "string"},
 			}, "name"),
 			Connector: security.Desktop, Action: "key",
-			ExposeCompletion: true, ExposePython: true, Local: true, Writes: true,
+			ExposePython: true, Local: true, Writes: true,
 			Gate: a.Pause.Gate, Check: needKey, Title: desktopTitle,
 			Run: a.onWorker(func(c *tool.Call) *v1.Cmd {
-				return &v1.Cmd{Body: &v1.Cmd_Key{Key: &v1.KeyCmd{Name: c.Str("name")}}}
+				return &v1.Cmd{Body: &v1.Cmd_Key{Key: &v1.KeyCmd{Name: keyName(c)}}}
 			}, nil),
 		},
 		{
@@ -405,7 +428,7 @@ func (a *App) toolDefs() []tool.Def {
 				"dy": map[string]any{"type": "integer"},
 			}, "x", "y", "dy"),
 			Connector: security.Desktop, Action: "scroll",
-			ExposeCompletion: true, ExposePython: true, Local: true,
+			ExposePython: true, Local: true,
 			Gate: a.Pause.Gate, Check: checkScroll, Title: desktopTitle,
 			Run: a.onWorker(func(c *tool.Call) *v1.Cmd {
 				return &v1.Cmd{Body: &v1.Cmd_Scroll{Scroll: &v1.ScrollCmd{X: int32(c.Int("x")), Y: int32(c.Int("y")), Dy: int32(c.Int("dy"))}}}
@@ -644,7 +667,7 @@ func (a *App) toolDefs() []tool.Def {
 				"public": map[string]any{"type": "boolean", "description": "open to anyone with the link, no sign-in; asks the human. Leave out unless they asked for a shareable link."},
 			}, "port"),
 			Connector: security.Tunnels, Action: "open",
-			ExposeCompletion: true, ExposePython: true, SelfGated: true,
+			ExposePython: true, SelfGated: true,
 			Enabled: tunnelsOn,
 			Run:     tunnel,
 		},
@@ -726,7 +749,7 @@ func (a *App) toolDefs() []tool.Def {
 				"enabled":  map[string]any{"type": "boolean", "description": "default true"},
 			}, "name", "prompt", "schedule"),
 			Connector: security.Automations, Action: "create",
-			ExposeCompletion: true, ExposePython: true, SelfGated: true, LeadOnly: true,
+			ExposePython: true, SelfGated: true, LeadOnly: true,
 			Run: automation,
 		},
 		{
@@ -740,7 +763,7 @@ func (a *App) toolDefs() []tool.Def {
 				"enabled":    map[string]any{"type": "boolean"},
 			}, "automation"),
 			Connector: security.Automations, Action: "update",
-			ExposeCompletion: true, ExposePython: true, SelfGated: true, LeadOnly: true,
+			ExposePython: true, SelfGated: true, LeadOnly: true,
 			Run: automation,
 		},
 		{
@@ -755,11 +778,12 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "spawn_agent",
-			Description: "Start a subagent: a named agent loop that works in the background on this Bot's machine, in parallel with you, from a fresh context. It sees only goal and context — not this chat — so make them self-contained (paths, constraints, what to report back). Put its tasks on the taskboard as `[NAME] …` first. Then end your turn: you are woken with its result when it finishes.",
+			Description: "Start a subagent: a named agent loop that works in the background on this Bot's machine, in parallel with you, from a fresh context. It sees only goal and context — not this chat — so make them self-contained (paths, constraints, what to report back). Then end your turn: you are woken with its result when it finishes. Check on, message or stop it from Python (silo_runtime.agent_status, message_agent, stop_agent).",
 			Params: tool.Object(map[string]any{
 				"name":    map[string]any{"type": "string", "description": "short unique name, letters/digits/-/_ (e.g. scout, writer-2)"},
 				"goal":    map[string]any{"type": "string", "description": "what it must achieve and what its final report should contain"},
 				"context": map[string]any{"type": "string", "description": "everything it needs to know: files, facts, decisions, which files are its own"},
+				"tasks":   map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "its steps, put on the taskboard assigned to it"},
 				"model":   map[string]any{"type": "string", "description": "provider/model id (silo_runtime.list_models()); omit for the operator's subagent default (a cheaper model when one is set)"},
 			}, "name", "goal"),
 			Connector: security.Agents, Action: "spawn",
@@ -774,7 +798,7 @@ func (a *App) toolDefs() []tool.Def {
 				"events": map[string]any{"type": "integer", "description": "how many recent steps to show (default 12, max 40)"},
 			}),
 			Connector: security.Agents, Action: "status",
-			ExposeCompletion: true, SelfGated: true, LeadOnly: true,
+			ExposePython: true, SelfGated: true, LeadOnly: true,
 			Run: agent,
 		},
 		{
@@ -785,7 +809,7 @@ func (a *App) toolDefs() []tool.Def {
 				"text": map[string]any{"type": "string"},
 			}, "name", "text"),
 			Connector: security.Agents, Action: "message",
-			ExposeCompletion: true, SelfGated: true, LeadOnly: true,
+			ExposePython: true, SelfGated: true, LeadOnly: true,
 			Run: agent,
 		},
 		{
@@ -795,7 +819,7 @@ func (a *App) toolDefs() []tool.Def {
 				"name": map[string]any{"type": "string"},
 			}, "name"),
 			Connector: security.Agents, Action: "stop",
-			ExposeCompletion: true, SelfGated: true, LeadOnly: true,
+			ExposePython: true, SelfGated: true, LeadOnly: true,
 			Run: agent,
 		},
 		{

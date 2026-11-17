@@ -56,7 +56,8 @@ func TestPausedDesktopRefusesTheBot(t *testing.T) {
 		name string
 		args map[string]any
 	}{
-		{"click", map[string]any{"x": 1, "y": 2}},
+		{"desktop", map[string]any{"action": "click", "x": 1, "y": 2}},
+		{"desktop", map[string]any{"action": "key", "text": "Return"}},
 		{"exec_python", map[string]any{"code": "from silo_runtime import chrome_page\npage = chrome_page()"}},
 	} {
 		d, ok := h.App.Tools.ByName(id, c.name)
@@ -91,5 +92,44 @@ func TestPauseIsTheOwners(t *testing.T) {
 	}
 	if h.App.Pause.Paused(bot.GetId()) {
 		t.Fatal("paused by a stranger")
+	}
+}
+
+// The model has one desktop tool; each action is still its own rule. A rule
+// on desktop.click stops a click and leaves a look alone, an action the
+// tool does not have is answered with the ones it has, and the thread keeps
+// the name the model used.
+func TestDesktopToolGatesEachAction(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_Desk1",
+		memCall("desktop", `{"action":"click","x":10,"y":20}`),
+		memCall("desktop", `{"action":"chrome"}`),
+		dummy.Turn{Text: "done"},
+	)
+	h := apptest.New(t)
+	bot := h.CreateBot("Desk")
+	id := bot.GetId()
+	if _, err := h.Client.SetRule(h.Ctx(), connect.NewRequest(&v1.SetRuleRequest{BotId: id, Connector: "desktop", Action: "click", Decision: "deny"})); err != nil {
+		t.Fatal(err)
+	}
+	run, _ := h.Send(id, h.FirstChat(id), "Test_Desk1_Input")
+	var results []string
+	for _, ev := range h.WaitRun(run) {
+		switch ev.Kind {
+		case "tool":
+			if ev.Tool != "desktop" {
+				t.Fatalf("tool event %q", ev.Tool)
+			}
+		case "tool_result":
+			results = append(results, ev.Body)
+		}
+	}
+	if len(results) != 2 || !strings.Contains(strings.ToLower(results[0]), "denied") || !strings.Contains(results[1], "action must be one of look, click, type, key, scroll") {
+		t.Fatalf("results %q", results)
+	}
+	var asked int64
+	h.DB.Model(&db.Approval{}).Where("bot_id = ?", id).Count(&asked)
+	if asked != 0 {
+		t.Fatalf("%d approvals", asked)
 	}
 }

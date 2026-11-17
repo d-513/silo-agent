@@ -111,6 +111,7 @@ const (
 	TriggerReport     = "report"
 	TriggerAutomation = "automation"
 	TriggerManual     = "manual"
+	TriggerRetry      = "retry"
 )
 
 // Trigger is what started the run the request describes.
@@ -118,6 +119,8 @@ func (r Request) Trigger() string {
 	switch {
 	case r.Compact:
 		return TriggerManual
+	case r.Resume:
+		return TriggerRetry
 	case r.Report != nil:
 		return TriggerReport
 	case r.From != "":

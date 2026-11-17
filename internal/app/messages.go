@@ -14,6 +14,7 @@ import (
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
+	"silo.agent/internal/llm"
 )
 
 // chatEvent is one persisted RunEvent together with its parent Run, used to
@@ -344,4 +345,68 @@ func (a *App) compactChat(botID, chatID string) (string, error) {
 		return "", connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	return runID, nil
+}
+
+// RetryRun answers a web chat again after its last reply failed.
+func (a *App) RetryRun(ctx context.Context, req *connect.Request[v1.RetryRunRequest]) (*connect.Response[v1.RetryRunResponse], error) {
+	b, err := a.bot(ctx, req.Msg.GetBotId(), access.Use)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := a.chat(ctx, b.ID, req.Msg.GetChatId(), access.Write)
+	if err != nil {
+		return nil, err
+	}
+	if err := writableChat(ch); err != nil {
+		return nil, err
+	}
+	runID, err := a.retryChat(b.ID, ch)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&v1.RetryRunResponse{RunId: runID}), nil
+}
+
+// retryChat starts a run that answers the history as it stands. Nothing is
+// written or taken back first, so the work the failed run did stays done
+// and the history only grows. It is refused unless the chat's last reply
+// failed (or the CP went down under it) and the history ends on something
+// to answer: a message, or the results of the calls the run had made.
+func (a *App) retryChat(botID string, ch *db.Chat) (string, error) {
+	if ch.ChannelID != "" {
+		// Its replies must go back over the channel, as the run it answers.
+		return "", connect.NewError(connect.CodeFailedPrecondition, errors.New("a channel conversation is answered from the channel"))
+	}
+	defer a.lockConv(ch.ID)()
+	if a.LiveRunID(botID, ch.ID) != "" {
+		return "", connect.NewError(connect.CodeFailedPrecondition, errors.New("a reply is running; wait for it or stop it first"))
+	}
+	if !a.lastReplyFailed(ch.ID) {
+		return "", connect.NewError(connect.CodeFailedPrecondition, errors.New("the last reply did not fail; there is nothing to retry"))
+	}
+	msgs := a.historyFromDB(ch.ID)
+	if n := len(msgs); n == 0 || (msgs[n-1].Role == llm.RoleAssistant && len(msgs[n-1].ToolCalls) == 0) {
+		return "", connect.NewError(connect.CodeFailedPrecondition, errors.New("there is nothing to answer; send a message instead"))
+	}
+	runID, err := a.StartRun(run.Request{BotID: botID, ChatID: ch.ID, Resume: true})
+	if err != nil {
+		return "", connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+	return runID, nil
+}
+
+// lastReplyFailed says the newest run in the chat that asked a model for a
+// reply ended in an error, or was cut by the CP going down. A compaction is
+// not a reply, and the rows a command or a quote writes ask no model.
+func (a *App) lastReplyFailed(chatID string) bool {
+	var runs []db.Run
+	a.DB.Select("origin, job, status").Where("chat_id = ?", chatID).Order("created_at DESC").Order("id DESC").Limit(50).Find(&runs)
+	for _, r := range runs {
+		k := run.KindOf(r.Origin, r.Job)
+		if !k.Model || k.Name == run.KindCompact {
+			continue
+		}
+		return r.Status == "error" || r.Status == "interrupted"
+	}
+	return false
 }

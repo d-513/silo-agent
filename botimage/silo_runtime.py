@@ -613,6 +613,25 @@ def list_models() -> dict:
     return call("model", "list", {})
 
 
+def switch_model(model: str) -> dict:
+    """Switch this conversation to another allowed model, from the next model call.
+
+    `model` is an id from list_models()["models"]; one that is not allowed
+    answers with the list.
+    """
+    return call("model", "switch", {"model": model})
+
+
+def soul(content: str | None = None, old_text: str | None = None, new_text: str | None = None) -> dict:
+    """Update this Bot's SOUL (identity, tone, hard rules); the lead only.
+
+    It is already in the system prompt, so there is nothing to read first.
+    Pass content to replace it whole, or old_text/new_text to change one
+    unique snippet. The next conversation reads the new SOUL.
+    """
+    return call("bot", "soul", {"content": content, "old_text": old_text, "new_text": new_text})
+
+
 def decide(state, questions: dict, model: str | None = None) -> dict:
     """Ask a decision model typed questions about `state`.
 
@@ -670,6 +689,26 @@ def task_done(ids: list[int] | int, note: str | None = None) -> dict:
 def task_reset() -> dict:
     """Clear the whole taskboard (the lead only)."""
     return call("tasks", "reset", {})
+
+
+def agent_status(name: str | None = None, events: int | None = None) -> dict:
+    """Your subagents (the lead only): without name, each one's status and
+    latest activity; with name, its goal, status, recent steps (events, default
+    12, max 40) and its final result once it has finished.
+    """
+    return call("agents", "status", {"name": name, "events": events})
+
+
+def message_agent(name: str, text: str) -> dict:
+    """Send one of your subagents a message: injected into its live run, or it
+    resumes a finished one with its history intact (the lead only).
+    """
+    return call("agents", "message", {"name": name, "text": text})
+
+
+def stop_agent(name: str) -> dict:
+    """Stop one of your subagents' current run; message_agent resumes it later."""
+    return call("agents", "stop", {"name": name})
 
 
 def call(connector: str, action: str, args: dict | None = None) -> dict:

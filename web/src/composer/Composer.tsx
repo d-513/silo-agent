@@ -31,6 +31,9 @@ export interface ComposerProps {
   onAttach: (files: FileList | null) => Promise<void> | void;
   onSend: () => void;
   onStop: () => void;
+  // onRetry answers again after the last reply failed (the send button,
+  // while nothing is typed).
+  onRetry?: () => void;
   sending: boolean;
   chatId?: string;
   // The empty chat a first message makes: it takes input without an id.
@@ -78,6 +81,7 @@ export function Composer({
   onAttach,
   onSend,
   onStop,
+  onRetry,
   sending,
   chatId,
   fresh,
@@ -234,6 +238,7 @@ export function Composer({
             sending={sending}
             canSend={input.canSend}
             onStop={onStop}
+            onRetry={onRetry}
           />
         </form>
       </div>

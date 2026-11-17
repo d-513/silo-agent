@@ -1,4 +1,5 @@
 import type { AgentLink } from "../links";
+import { RotateCcw } from "lucide-react";
 import type { ReactNode } from "react";
 import { ArtifactCard, ArtifactUpdateRow, type Artifact } from "../Artifact";
 import type { Attachment, Block, Quote } from "../fold";
@@ -7,7 +8,7 @@ import { LeadNote, Opened, Reply, RunMark, SubagentReport, UserBubble } from "./
 import { rowState, rowVerb } from "./FoldRow";
 import { isBotScratch, PresentFile, QuietPreview } from "./Present";
 import type { ConnectorMarks } from "./toolIcons";
-import { asStr, parseToolArgs, toolAction, toolMeta } from "./toolInfo";
+import { asDesktopAction, asStr, parseToolArgs, toolAction, toolMeta } from "./toolInfo";
 import { OfferGroup } from "../setup/OfferCard";
 import { ThreadCard } from "./ThreadCard";
 import { ToolInput, ToolResult, ToolRow } from "./ToolRow";
@@ -27,6 +28,10 @@ export type BlockCtx = {
   lastAssistantKey?: string;
   // Re-sends the last user message; offered on the last reply only.
   retry?: () => void;
+  // Answers again after the last reply failed; offered on its error row
+  // (failedKey).
+  failedKey?: string;
+  onRetryFailed?: () => void;
   agentHref?: (name: string) => AgentLink | undefined;
   onInspectArtifact?: (a: Artifact) => void;
   onSaveSkill?: (a: Artifact) => void;
@@ -39,7 +44,8 @@ type ToolBlock = Extract<Block, { type: "tool" }>;
 
 // One tool call: a Files/Desktop row, a presented file card, or a Python row
 // with the connector calls it made stacked above it.
-function renderTool(b: ToolBlock, c: BlockCtx): ReactNode {
+function renderTool(block: ToolBlock, c: BlockCtx): ReactNode {
+  const b = asDesktopAction(block);
   const { blocks, sending, botId, marks } = c;
   const state = rowState(b);
   const live = sending && !!b.running;
@@ -175,10 +181,22 @@ export function renderBlock(b: Block, c: BlockCtx): ReactNode {
   if (b.type === "assistant") {
     return <Reply text={b.text} bounds={b.bounds} streaming={b.streaming} onRetry={b.key === c.lastAssistantKey ? c.retry : undefined} speak={c.speech ? c.botId : undefined} />;
   }
+  const onRetry = b.key === c.failedKey ? c.onRetryFailed : undefined;
   return (
     <div role="alert" className="flex items-start gap-2 rounded-control bg-vermilion-pale px-3 py-2.5 text-small text-vermilion">
       <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-vermilion" />
-      <span className="min-w-0 break-words">{b.text}</span>
+      <span className="min-w-0 flex-1 break-words">{b.text}</span>
+      {onRetry ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          title={t("Retry the reply that failed")}
+          className="-my-1 -mr-1.5 flex h-7 shrink-0 items-center gap-1.5 rounded-control px-2 font-medium text-vermilion transition-colors duration-[160ms] ease-quiet hover:bg-surface active:scale-[.97] active:duration-[70ms]"
+        >
+          <RotateCcw size={13} />
+          <span>{t("Retry")}</span>
+        </button>
+      ) : null}
     </div>
   );
 }

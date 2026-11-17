@@ -21,9 +21,9 @@ func init() { claudetest.Main() }
 
 // claudeHarness is a control plane whose chat model is the Claude provider,
 // run by the fake binary, with its directory left at the default.
-func claudeHarness(t *testing.T) *apptest.H {
+func claudeHarness(t *testing.T, extra ...string) *apptest.H {
 	t.Helper()
-	yaml := apptest.DefaultYAML(t.TempDir())
+	yaml := apptest.DefaultYAML(t.TempDir()) + strings.Join(extra, "")
 	yaml = strings.Replace(yaml, "model: dummy/echo\n", "model: claude/opus\n", 1)
 	yaml = strings.Replace(yaml, "  - dummy/echo\n", "  - dummy/echo\n  - claude/opus\n", 1)
 	yaml = strings.Replace(yaml, "providers:\n", "providers:\n  claude:\n    binary: "+claudetest.Install(t)+"\n", 1)
@@ -49,7 +49,8 @@ func eventsOf(events []db.RunEvent, kind string) []db.RunEvent {
 // waits for the same approval and its result is what the engine made. The
 // binary executes nothing, so no rule can be skipped by choosing this provider.
 func TestClaudeProviderRunsSilosTools(t *testing.T) {
-	h := claudeHarness(t)
+	// soul is offered as a chat tool so a call with no worker can ask.
+	h := claudeHarness(t, apptest.ChatTools)
 	bot := h.CreateBot("Calm")
 	if _, err := h.Client.SetRule(h.Ctx(), connect.NewRequest(&v1.SetRuleRequest{BotId: bot.GetId(), Connector: "bot", Action: "soul", Decision: "ask"})); err != nil {
 		t.Fatal(err)

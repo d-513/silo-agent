@@ -239,10 +239,19 @@ func needPath(c *tool.Call) error {
 }
 
 func needKey(c *tool.Call) error {
-	if c.Str("name") == "" {
+	if keyName(c) == "" {
 		return errors.New("key required")
 	}
 	return nil
+}
+
+// keyName is the key a key call presses: name from Python, text from the
+// desktop chat tool.
+func keyName(c *tool.Call) string {
+	if n := c.Str("name"); n != "" {
+		return n
+	}
+	return c.Str("text")
 }
 
 func checkPoint(c *tool.Call) error {

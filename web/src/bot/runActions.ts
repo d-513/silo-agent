@@ -230,6 +230,21 @@ export function runActions(c: Ctx) {
     }
   }
 
+  // retryRun answers the chat again after its last reply failed, from the
+  // history as it stands (nothing is sent or taken back).
+  async function retryRun() {
+    if (!chatId) return;
+    onError("");
+    run.markSent();
+    try {
+      await ui.retryRun({ botId: id, chatId });
+      reloadBot(id);
+    } catch (ex) {
+      run.setSending(false);
+      onError(fail(ex));
+    }
+  }
+
   async function stopRun() {
     if (!chatId) return;
     onError("");
@@ -242,7 +257,7 @@ export function runActions(c: Ctx) {
     }
   }
 
-  return { send, sendCommand: (text: string) => void send(undefined, text), editMessage, deleteMessage, divergeChat, pickModel, pickThinking, compactChat, stopRun };
+  return { send, sendCommand: (text: string) => void send(undefined, text), editMessage, deleteMessage, divergeChat, pickModel, pickThinking, compactChat, retryRun, stopRun };
 }
 
 export type RunActions = ReturnType<typeof runActions>;

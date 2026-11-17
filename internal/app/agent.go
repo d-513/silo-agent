@@ -83,7 +83,10 @@ func (a *App) StartRun(req run.Request) (string, error) {
 		if req.Report != nil {
 			task = "Subagents reported"
 		}
-		a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Update("last_task", task)
+		// A retry is still on the task it failed at.
+		if !req.Resume {
+			a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Update("last_task", task)
+		}
 		// Always ensure the box: a message must start a stopped Bot, and a
 		// worker session can outlive a container that was removed out of band.
 		cp := b
@@ -532,6 +535,8 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 	case req.Report != nil:
 		a.emitReport(botID, chatID, runID, req.Report)
 		a.bumpChat(chatID)
+	case req.Resume:
+		// Nothing is written: the history already ends on what to answer.
 	case !req.Compact:
 		a.emitUser(botID, chatID, runID, userText, req.Extra, req.From)
 		a.bumpChat(chatID)
@@ -962,6 +967,8 @@ func (a *App) runTitle(req run.Request) string {
 	o := req.Origin
 	switch {
 	case req.Compact:
+		return ""
+	case req.Resume:
 		return ""
 	case req.Report != nil:
 		return "Subagents reported"

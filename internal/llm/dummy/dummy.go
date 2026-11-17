@@ -58,6 +58,28 @@ type Turn struct {
 	// message is the one with the scenario's token: once another message is
 	// in, the turn answers with its Text.
 	Fail string
+	// Fails, when set, fails the turn with Fail only the first Fails times
+	// it is asked, so a test can retry past a provider that recovered.
+	Fails int
+	// key names the scripted turn for Fails.
+	key string
+}
+
+// failures counts how often each scripted turn with Fails has failed.
+var failures = map[string]int{}
+
+// failNow says whether the turn fails this time, and counts it.
+func failNow(turn Turn) bool {
+	if turn.Fails == 0 {
+		return true
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if failures[turn.key] >= turn.Fails {
+		return false
+	}
+	failures[turn.key]++
+	return true
 }
 
 // CompactMarker is the heading the CP's compaction prompt starts with; a
@@ -96,6 +118,7 @@ func Reset() {
 	spoken = nil
 	liveOpened = 0
 	liveSaid = nil
+	failures = map[string]int{}
 }
 
 // streamed records every streamed request so tests can see what the agent
@@ -161,7 +184,7 @@ func (c *client) Stream(ctx context.Context, req llm.Request) (llm.Stream, error
 			return nil, ctx.Err()
 		}
 	}
-	if turn.Fail != "" && firstToken(lastUserText(req)) != "" {
+	if turn.Fail != "" && firstToken(lastUserText(req)) != "" && failNow(turn) {
 		return nil, errors.New(turn.Fail)
 	}
 	events := buildEvents(turn, size)
@@ -309,7 +332,9 @@ func resolveTurn(req llm.Request) Turn {
 	}
 	if ok {
 		if index < len(turns) {
-			return turns[index]
+			t := turns[index]
+			t.key = fmt.Sprintf("%s#%d", token, index)
+			return t
 		}
 		if len(turns) > 0 {
 			return Turn{Text: token + "_End"}

@@ -162,7 +162,7 @@ public func activityStepApp(_ step: String) -> String {
     case "exec_python": return "Python"
     case "terminal": return "Terminal"
     case "read", "write", "patch", "grep", "delete", "present": return "Files"
-    case "look", "click", "type", "key", "scroll": return "Desktop"
+    case "desktop", "look", "click", "type", "key", "scroll": return "Desktop"
     case "soul": return "SOUL"
     case "skill": return "Skills"
     case "artifact": return "Artifact"

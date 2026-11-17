@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { UI } from "./gen/silo/v1/ui_pb";
 import type { Artifact } from "./Artifact";
 import type { AgentLink } from "./links";
-import { foldEvents, type Attachment, type Block, type Ev, type Quote } from "./fold";
+import { foldEvents, lastReplyFailed, type Attachment, type Block, type Ev, type Quote } from "./fold";
 import { EmptyThread } from "./thread/EmptyThread";
 import type { State } from "./stack.ts";
 import { isBotScratch } from "./thread/Present";
@@ -46,6 +46,7 @@ export function Thread({
   onEditMessage,
   onDeleteMessage,
   onDivergeChat,
+  onRetryFailed,
   emptyState,
   userAs = "bubble",
   agentHref,
@@ -67,6 +68,8 @@ export function Thread({
   onEditMessage?: (eventId: string, text: string, attachments?: Attachment[], quotes?: Quote[]) => void;
   onDeleteMessage?: (eventId: string) => void;
   onDivergeChat?: (eventId: string) => void;
+  // Answers again after the last reply failed (Retry on its error row).
+  onRetryFailed?: () => void;
   // Replaces the empty thread.
   emptyState?: ReactNode;
   // "run" draws each user message as a run divider (automation logs, where the
@@ -122,6 +125,17 @@ export function Thread({
       ? () => onEditMessage(lastUser!.id!, lastUser!.text, lastUser!.attachments, lastUser!.quotes)
       : undefined;
 
+  // The failed reply's Retry sits on the last error it left.
+  let failedKey: string | undefined;
+  if (onRetryFailed && !sending && lastReplyFailed(events)) {
+    for (let i = blocks.length - 1; i >= 0; i--) {
+      if (blocks[i].type === "error") {
+        failedKey = blocks[i].key;
+        break;
+      }
+    }
+  }
+
   const ctx: BlockCtx = {
     botId,
     blocks,
@@ -133,6 +147,8 @@ export function Thread({
     lastUserKey: lastUser?.key,
     lastAssistantKey,
     retry,
+    failedKey,
+    onRetryFailed,
     agentHref,
     onInspectArtifact,
     onSaveSkill,

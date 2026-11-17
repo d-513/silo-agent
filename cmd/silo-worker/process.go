@@ -68,7 +68,7 @@ func (w *worker) runCmd(ctx context.Context, runID string, chunk func(string), n
 	if errors.As(err, &ee) {
 		fmt.Fprintf(&buf, "\nerror: %v", err)
 		if ctx.Err() != nil {
-			fmt.Fprintf(&buf, " (%v)", ctx.Err())
+			fmt.Fprintf(&buf, " (%v)", context.Cause(ctx))
 		}
 		return buf.String(), nil
 	}

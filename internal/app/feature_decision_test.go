@@ -406,11 +406,11 @@ func TestDecideTool(t *testing.T) {
 	}
 }
 
-// decide is also one of the model's own tools: a judgment or two mid-turn
-// should not cost a Python cell. The schema says how questions are shaped,
-// the arguments reach the decision model as the model wrote them, and the
-// typed answers come back as the tool result.
-func TestDecideIsAChatTool(t *testing.T) {
+// decide is for code, but an operator may offer it to the model again
+// (tools.expose_completion). The schema says how questions are shaped, the
+// arguments reach the decision model as the model wrote them, and the typed
+// answers come back as the tool result.
+func TestDecideAsAChatTool(t *testing.T) {
 	offered := func() (llm.Tool, bool) {
 		sent := dummy.Streamed()
 		for _, tl := range sent[len(sent)-1].Tools {
@@ -429,7 +429,7 @@ func TestDecideIsAChatTool(t *testing.T) {
 			`"tone":{"type":"score","instructions":"How pushy?","criteria":["calm","pushy"]}}}`),
 		dummy.Turn{Text: "done"},
 	)
-	h := apptest.New(t, apptest.WithYAML(decisionYAML(t, "")))
+	h := apptest.New(t, apptest.WithYAML(decisionYAML(t, apptest.ChatTools)))
 	bot := h.CreateBot("Decider")
 	run, _ := h.Send(bot.GetId(), h.FirstChat(bot.GetId()), "Test_ChatDecide_Input is this spam?")
 	var result string
@@ -495,8 +495,8 @@ func TestDecideIsAChatTool(t *testing.T) {
 	for _, blk := range sent[len(sent)-1].System {
 		prompt.WriteString(blk.Text)
 	}
-	if !strings.Contains(prompt.String(), "`decide` tool") {
-		t.Fatal("the prompt does not say decide is a tool the model can call")
+	if !strings.Contains(prompt.String(), "`silo_runtime.decide`") {
+		t.Fatal("the prompt does not say how to call decide")
 	}
 
 	// With no decision model allowed it is not offered at all.

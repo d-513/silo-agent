@@ -83,7 +83,7 @@ func (a *App) agentTool(ctx context.Context, bot *db.Bot, chatID, runID, name st
 	}
 	switch name {
 	case "spawn_agent":
-		return a.spawnAgent(ctx, bot, chatID, runID, str("name"), str("goal"), str("context"), str("model"))
+		return a.spawnAgent(ctx, bot, chatID, runID, str("name"), str("goal"), str("context"), str("model"), toolarg.Strings(args, "tasks"))
 	case "agent_status":
 		if _, err := a.AuthorizeAction(ctx, bot, runID, security.Agents, "status", slip(map[string]any{"name": str("name")}), ""); err != nil {
 			return "", err
@@ -163,7 +163,7 @@ func subagentBrief(goal, ctxText string) string {
 	return b.String()
 }
 
-func (a *App) spawnAgent(ctx context.Context, bot *db.Bot, leadChatID, runID, name, goal, ctxText, model string) (string, error) {
+func (a *App) spawnAgent(ctx context.Context, bot *db.Bot, leadChatID, runID, name, goal, ctxText, model string, tasks []string) (string, error) {
 	if !subagentNameRE.MatchString(name) {
 		return "", errors.New("name must be 1-24 letters, digits, - or _")
 	}
@@ -229,7 +229,32 @@ func (a *App) spawnAgent(ctx context.Context, bot *db.Bot, leadChatID, runID, na
 		return "", err
 	}
 	a.pingLead(bot.ID, leadChatID, "subagents")
-	return fmt.Sprintf("started subagent %s on %s. It works in the background. Unless you have your own work left, end your turn now: you are woken with its result when it finishes.", name, model), nil
+	started := fmt.Sprintf("started subagent %s on %s. It works in the background. Unless you have your own work left, end your turn now: you are woken with its result when it finishes.", name, model)
+	// Its steps go on the board as the lead's own task_add would put them:
+	// the subagent is already working, so a board that will not take them
+	// is said, not a failed spawn.
+	if board := assigned(name, tasks); len(board) > 0 {
+		if _, err := a.taskTool(ctx, bot, runID, "task_add", map[string]any{"tasks": board}, false); err != nil {
+			started += " Its tasks were not put on the taskboard: " + err.Error()
+		}
+	}
+	return started, nil
+}
+
+// assigned tags each of a subagent's tasks with its name, as task_add reads
+// an assignee.
+func assigned(name string, tasks []string) []any {
+	var out []any
+	for _, t := range tasks {
+		switch t = strings.TrimSpace(t); {
+		case t == "":
+		case strings.HasPrefix(t, "["): // already tagged
+			out = append(out, t)
+		default:
+			out = append(out, "["+name+"] "+t)
+		}
+	}
+	return out
 }
 
 // messageSubagent injects text into a live subagent run or resumes a finished

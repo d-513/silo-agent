@@ -52,7 +52,7 @@ public func parseToolArgs(_ raw: String) -> [String: String] {
         }
         return out
     }
-    for key in ["code", "command", "content", "path", "pattern", "old_text", "new_text", "include", "text", "query", "channel", "to", "chat", "name", "model"] {
+    for key in ["action", "code", "command", "content", "path", "pattern", "old_text", "new_text", "include", "text", "query", "channel", "to", "chat", "name", "model"] {
         if let value = extractStringField(raw, key) { out[key] = value }
     }
     return out
@@ -72,11 +72,20 @@ private func batch(_ raw: String, _ key: String) -> String {
     return items.count < 2 ? first : "\(first) +\(items.count - 1) more"
 }
 
+private let desktopActions: Set<String> = ["look", "click", "type", "key", "scroll"]
+
+/// The model's desktop is one tool whose `action` says what it did; its row reads as that action,
+/// the way older runs named each one. Web: `asDesktopAction`.
+public func desktopAction(_ name: String, args raw: String) -> String {
+    guard name == "desktop", let action = parseToolArgs(raw)["action"], desktopActions.contains(action) else { return name }
+    return action
+}
+
 /// The one-line subject of a tool row: the file, command, query, or agent it acted on.
 public func toolAction(name: String, args raw: String) -> String {
     let a = parseToolArgs(raw)
     let path = a["path"] ?? ""
-    switch name {
+    switch desktopAction(name, args: raw) {
     case "exec_python": return firstLine(a["code"] ?? "")
     case "terminal":
         let command = firstLine(a["command"] ?? "")
@@ -100,7 +109,8 @@ public func toolAction(name: String, args raw: String) -> String {
     case "task_list": return "read"
     case "task_reset": return "reset"
     case "click": return a["x"].map { "click \($0),\(a["y"] ?? "")" } ?? "click"
-    case "key": return "key \(a["name"] ?? "")".trimmingCharacters(in: .whitespaces)
+    // The desktop tool names the key in `text`, the older call in `name`.
+    case "key": return "key \(a["name"] ?? a["text"] ?? "")".trimmingCharacters(in: .whitespaces)
     default:
         // A connector tool the model called directly: `<slug>__<action>`.
         guard let range = name.range(of: "__"), range.lowerBound != name.startIndex, range.upperBound != name.endIndex else { return "" }
@@ -123,7 +133,7 @@ public func toolApp(_ name: String) -> String {
     case "exec_python": return "Python"
     case "terminal": return "Terminal"
     case "read", "write", "patch", "grep", "delete", "present": return "Files"
-    case "look", "click", "type", "key", "scroll": return "Desktop"
+    case "desktop", "look", "click", "type", "key", "scroll": return "Desktop"
     case "soul": return "SOUL"
     case "skill": return "Skills"
     case "artifact": return "Artifact"
@@ -149,7 +159,7 @@ public func toolSymbol(_ name: String) -> String {
     case "exec_python": return "chevron.left.forwardslash.chevron.right"
     case "terminal": return "terminal"
     case "read", "write", "patch", "delete", "grep", "present": return "doc.text"
-    case "look", "click", "type", "key", "scroll": return "display"
+    case "desktop", "look", "click", "type", "key", "scroll": return "display"
     case "web_search": return "globe"
     case "web_read": return "globe"
     case "soul": return "heart.text.square"

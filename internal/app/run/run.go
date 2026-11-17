@@ -90,6 +90,9 @@ type Request struct {
 	// Report opens a lead's wake run with its subagents' results instead of a
 	// user message.
 	Report *Report
+	// Resume opens with nothing: the run answers the history as it stands
+	// (Retry after a reply failed).
+	Resume bool
 }
 
 // The bare Request.From tags: who other than a human wrote a run's opening

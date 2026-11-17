@@ -98,6 +98,14 @@ type Def struct {
 	// keeper's review of the memory store) says how long.
 	ResultMax int
 
+	// Dispatch makes the tool one chat tool over several actions of its
+	// Connector: the argument it names picks one of Actions, and that
+	// action's own definition (a Python tool) runs the call as if it had been
+	// called itself: its gate, check, rule, handler and output rule. The
+	// desktop is one tool to the model and five to code and to the rules.
+	Dispatch string
+	Actions  []string
+
 	Run Handler
 }
 
@@ -228,11 +236,13 @@ func (e *Engine) Register(defs ...Def) {
 		switch {
 		case !validName(d.Name):
 			panic(fmt.Sprintf("tool %q: not a valid tool name", d.Name))
-		case d.Run == nil:
+		case d.Run == nil && d.Dispatch == "":
 			panic(fmt.Sprintf("tool %s: no handler", d.Name))
+		case d.Dispatch != "" && (d.Run != nil || d.ExposePython || d.SelfGated || d.Connector == "" || d.Action != "" || len(d.Actions) == 0):
+			panic(fmt.Sprintf("tool %s: a dispatching tool is a chat tool over its connector's actions, and nothing else", d.Name))
 		case !d.ExposeCompletion && !d.ExposePython && !d.JobOnly:
 			panic(fmt.Sprintf("tool %s: exposed nowhere", d.Name))
-		case (d.ExposePython || !d.SelfGated) && (d.Connector == "" || d.Action == ""):
+		case d.Dispatch == "" && (d.ExposePython || !d.SelfGated) && (d.Connector == "" || d.Action == ""):
 			panic(fmt.Sprintf("tool %s: needs a connector.action", d.Name))
 		case d.Local && !d.ExposePython:
 			panic(fmt.Sprintf("tool %s: local only means something from Python", d.Name))
@@ -253,6 +263,24 @@ func (e *Engine) Register(defs ...Def) {
 			}
 		}
 	}
+	for _, d := range e.defs {
+		for _, action := range d.Actions {
+			if i, ok := e.byKey[d.Connector+"."+action]; !ok || !e.defs[i].ExposePython || e.defs[i].Dispatch != "" {
+				panic(fmt.Sprintf("tool %s: %s.%s is not a Python tool", d.Name, d.Connector, action))
+			}
+		}
+	}
+}
+
+// dispatch is the action a dispatching tool's call names: that action's own
+// definition, which runs the call from here on.
+func (e *Engine) dispatch(d *Def, c *Call) (*Def, error) {
+	action := c.Str(d.Dispatch)
+	if !slices.Contains(d.Actions, action) {
+		return nil, fmt.Errorf("%s must be one of %s", d.Dispatch, strings.Join(d.Actions, ", "))
+	}
+	sub := e.defs[e.byKey[d.Connector+"."+action]]
+	return &sub, nil
 }
 
 // AddSource adds a per-Bot source of tools.
@@ -349,11 +377,18 @@ func (e *Engine) ByAction(botID, conn, action string) (*Def, error) {
 // human), and then the handler runs.
 func (e *Engine) Run(ctx context.Context, c *Call) (Result, error) {
 	d := c.Def
-	if d == nil || d.Run == nil {
+	if d == nil || (d.Run == nil && d.Dispatch == "") {
 		return Result{}, errors.New("unknown tool")
 	}
 	if !c.Picked && !e.exposed(d, c.Surface) {
 		return Result{}, fmt.Errorf("%s is not available here", d.Name)
+	}
+	if d.Dispatch != "" {
+		sub, err := e.dispatch(d, c)
+		if err != nil {
+			return Result{}, err
+		}
+		c.Def, d = sub, sub
 	}
 	// What is not offered cannot be called by name either: a subagent's
 	// model or code reaching a lead's tool, or a feature that is off.

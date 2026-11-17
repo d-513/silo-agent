@@ -18,6 +18,7 @@ import type { AgentLink } from "../links";
 import { SubagentTray } from "../SubagentTray";
 import { Taskboard } from "../Taskboard";
 import { Thread } from "../Thread";
+import { lastReplyFailed } from "../fold";
 import type { useRunStream } from "../useRunStream";
 import type { useSubagents } from "../useSubagents";
 import type { ChatPick, RunActions } from "./runActions";
@@ -96,6 +97,10 @@ export function RunPane({
   useEffect(() => {
     if (!staged) setTyping(false);
   }, [staged]);
+  // The last reply failed: Retry answers it again, from the error row or
+  // the send button. Only whoever writes in the chat retries.
+  const retry =
+    chatId && !run.sending && (chat?.mine ?? true) && lastReplyFailed(run.events) ? () => void actions.retryRun() : undefined;
   const composer = (
     <Composer
       text={draft.text}
@@ -109,6 +114,7 @@ export function RunPane({
       onAttach={draft.attach}
       onSend={() => void actions.send()}
       onStop={() => void actions.stopRun()}
+      onRetry={retry}
       sending={run.sending}
       chatId={chatId}
       fresh={fresh}
@@ -174,6 +180,7 @@ export function RunPane({
         onEditMessage={(eid, t, a, q) => void actions.editMessage(eid, t, a, q)}
         onDeleteMessage={(eid) => void actions.deleteMessage(eid)}
         onDivergeChat={(eid) => void actions.divergeChat(eid)}
+        onRetryFailed={retry}
         agentHref={agentHref}
         paging={run}
       />

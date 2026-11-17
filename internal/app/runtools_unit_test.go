@@ -28,12 +28,12 @@ const allChatTools = "tools:\n  expose_completion: [all]\n"
 func TestToolListIsLeanUnlessTheOperatorAsks(t *testing.T) {
 	a := newToolApp()
 	a.Store, _ = config.FromYAML([]byte("content:\n  host: t.example.com\n"))
-	for _, name := range []string{"exec_python", "read", "remember", "recall", "open_tunnel", "create_automation", "spawn_agent"} {
+	for _, name := range []string{"exec_python", "read", "remember", "recall", "ask_owner", "spawn_agent", "sleep"} {
 		if !offered(a, name) {
 			t.Errorf("%s is not offered by default", name)
 		}
 	}
-	for _, name := range []string{"web_search", "feed", "task_add", "list_tunnels", "list_automations", "chats", "forget"} {
+	for _, name := range []string{"web_search", "feed", "task_add", "list_tunnels", "list_automations", "chats", "forget", "open_tunnel", "create_automation", "soul", "switch_model", "agent_status", "decide"} {
 		if offered(a, name) {
 			t.Errorf("%s is offered by default", name)
 		}
@@ -41,9 +41,10 @@ func TestToolListIsLeanUnlessTheOperatorAsks(t *testing.T) {
 			t.Errorf("%s resolves as a chat tool by default", name)
 		}
 	}
-	// 30: the loop, plus the tools that hand the turn to the human in the
-	// chat (ask_owner, offer_setup, the approvals that outlive a cell).
-	if n := len(a.toolsFor("bot", nil)); n > 30 {
+	// 17: the loop, plus what hands the human something in the thread
+	// (artifact, ask_owner, offer_setup) and what cannot be a call from code
+	// (sleep, spawn_agent).
+	if n := len(a.toolsFor("bot", nil)); n > 17 {
 		t.Errorf("%d tools offered by default; the list was meant to stay small", n)
 	}
 

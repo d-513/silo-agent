@@ -242,7 +242,7 @@ func TestSubagentInspectedNeedsNoWake(t *testing.T) {
 		dummy.Turn{Text: "read it"},
 	)
 	dummy.Script("Test_SA3Sub", dummy.Turn{Text: "s3 findings"})
-	h := apptest.New(t)
+	h := apptest.New(t, apptest.WithChatTools())
 	bot := h.CreateBot("Inspector")
 	id := bot.GetId()
 	chat := h.FirstChat(id)
@@ -275,7 +275,7 @@ func TestSubagentMessageResumes(t *testing.T) {
 		dummy.Turn{Text: "all done"},
 	)
 	dummy.Script("Test_SA5Sub", dummy.Turn{Text: "first pass"})
-	h := apptest.New(t)
+	h := apptest.New(t, apptest.WithChatTools())
 	bot := h.CreateBot("Steer")
 	id := bot.GetId()
 	chat := h.FirstChat(id)
@@ -443,5 +443,29 @@ func TestSubagentDefaultModel(t *testing.T) {
 	}
 	if got["cheap"] != "dummy/cheap" || got["picked"] != "dummy/echo" {
 		t.Fatalf("models %v", got)
+	}
+}
+
+// spawn_agent puts the subagent's steps on the board assigned to it, so the
+// lead does not spend a Python cell on task_add before every spawn; a step
+// the lead already tagged is kept as written.
+func TestSpawnPutsItsTasksOnTheBoard(t *testing.T) {
+	dummy.Reset()
+	dummy.Script("Test_SA9",
+		memCall("spawn_agent", `{"name":"scout","goal":"Test_SA9Sub go","tasks":["read the docs"," ","[scout] write notes"]}`),
+		dummy.Turn{Text: "started"},
+	)
+	dummy.Script("Test_SA9Sub", dummy.Turn{Text: "scouted"})
+	h := apptest.New(t)
+	bot := h.CreateBot("Board")
+	chat := h.FirstChat(bot.GetId())
+	run, _ := h.Send(bot.GetId(), chat, "Test_SA9_Input")
+	if res := toolResult(h.WaitRun(run), "spawn_agent"); !strings.Contains(res, "started subagent scout") || strings.Contains(res, "not put on the taskboard") {
+		t.Fatalf("spawn_agent %q", res)
+	}
+	var items []db.TaskItem
+	h.DB.Where("chat_id = ?", chat).Order("n").Find(&items)
+	if len(items) != 2 || items[0].Assignee != "scout" || items[0].Text != "read the docs" || items[1].Assignee != "scout" || items[1].Text != "write notes" {
+		t.Fatalf("board %+v", items)
 	}
 }

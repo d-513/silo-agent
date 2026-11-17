@@ -53,13 +53,14 @@ func TestReconnectWaitUnauth(t *testing.T) {
 
 func TestCancelJob(t *testing.T) {
 	w := &worker{pending: map[string]*job{}, mask: masker.New()}
-	ctx, cancel := context.WithCancel(context.Background())
-	w.pending["a"] = &job{cancel: cancel}
+	ctx, j := newJob(context.Background(), "run-1", time.Hour)
+	defer j.end()
+	w.pending["a"] = j
 	if !w.cancelJob("a") {
 		t.Fatal("miss")
 	}
-	if ctx.Err() == nil {
-		t.Fatal("not canceled")
+	if context.Cause(ctx) != context.Canceled {
+		t.Fatalf("a stop reads as %v", context.Cause(ctx))
 	}
 	if w.cancelJob("missing") {
 		t.Fatal("ghost")

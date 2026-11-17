@@ -56,6 +56,8 @@ export function triggerWord(trigger: string): string {
       return msg("woken by a mail");
     case "onboarding":
       return msg("the interview");
+    case "retry":
+      return msg("a retry");
     default:
       return "";
   }

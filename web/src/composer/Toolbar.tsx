@@ -37,6 +37,7 @@ export function Toolbar({
   sending,
   canSend,
   onStop,
+  onRetry,
 }: {
   attCount: number;
   fileInputRef: RefObject<HTMLInputElement | null>;
@@ -61,6 +62,8 @@ export function Toolbar({
   sending: boolean;
   canSend: boolean;
   onStop: () => void;
+  // The send button is Retry while the last reply failed and nothing is typed.
+  onRetry?: () => void;
 }) {
   const currentModel = models?.find((m) => m.id === model) ?? models?.[0];
   const thinkingLevels = currentModel?.thinkingLevels ?? [];
@@ -115,7 +118,7 @@ export function Toolbar({
       <div className="flex shrink-0 items-center gap-1">
         <ConversationMenu usage={usage} onCompact={onCompact} compactBlocked={sending || !chatId} chatId={chatId} onCollect={onCollect} />
         {talk ? <TalkButton onTalk={talk} botName={botName ?? ""} /> : null}
-        <SendStop sending={sending} canSend={canSend} onStop={onStop} />
+        <SendStop sending={sending} canSend={canSend} onStop={onStop} onRetry={onRetry} />
       </div>
     </div>
   );

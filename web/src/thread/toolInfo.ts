@@ -41,7 +41,7 @@ export function parseToolArgs(raw: string): Record<string, unknown> {
     /* stream */
   }
   const out: Record<string, unknown> = {};
-  for (const key of ["code", "command", "content", "path", "pattern", "old_text", "new_text", "include", "text", "query", "channel", "to", "chat", "name"]) {
+  for (const key of ["action", "code", "command", "content", "path", "pattern", "old_text", "new_text", "include", "text", "query", "channel", "to", "chat", "name"]) {
     const v = extractStringField(raw, key);
     if (v !== undefined) out[key] = v;
   }
@@ -54,6 +54,23 @@ export function parseToolArgs(raw: string): Record<string, unknown> {
 
 export function asStr(v: unknown): string {
   return typeof v === "string" ? v : v == null ? "" : String(v);
+}
+
+const desktopActions = ["look", "click", "type", "key", "scroll"];
+
+// The model's desktop is one tool whose `action` says what it did. Its row is
+// drawn as that action, the way older runs named each one; a key's shortcut
+// is `text` there and `name` on the older call.
+export function asDesktopAction<T extends { name: string; args: string }>(b: T): T {
+  if (b.name !== "desktop") return b;
+  const { action, ...rest } = parseToolArgs(b.args);
+  const name = asStr(action);
+  if (!desktopActions.includes(name)) return b;
+  if (name === "key" && rest.name == null) {
+    rest.name = rest.text;
+    delete rest.text;
+  }
+  return { ...b, name, args: JSON.stringify(rest) };
 }
 
 // searches is the summary of a batch of web searches: the one query, or the
@@ -111,6 +128,7 @@ export function toolMeta(name: string): { app: string } {
     case "delete":
     case "present":
       return { app: t("Files") };
+    case "desktop":
     case "look":
     case "click":
     case "type":

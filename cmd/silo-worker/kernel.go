@@ -312,7 +312,7 @@ func (k *kernel) run(ctx context.Context, ks *kernels, session, runID, code stri
 				status, _ := strconv.Atoi(string(rest[:j]))
 				switch {
 				case interrupted:
-					fmt.Fprintf(&out, "\nerror: interrupted (%v)", ctx.Err())
+					fmt.Fprintf(&out, "\nerror: interrupted (%v)", context.Cause(ctx))
 				case status != 0:
 					fmt.Fprintf(&out, "\nerror: exit status %d", status)
 				}
@@ -333,7 +333,7 @@ func (k *kernel) run(ctx context.Context, ks *kernels, session, runID, code stri
 			}
 			emit(pend)
 			if killed {
-				fmt.Fprintf(&out, "\nerror: killed (%v); the Python session is gone", ctx.Err())
+				fmt.Fprintf(&out, "\nerror: killed (%v); the Python session is gone", context.Cause(ctx))
 			} else {
 				fmt.Fprintf(&out, "\nerror: the Python session ended (%s)", k.state)
 			}

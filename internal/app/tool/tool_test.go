@@ -228,14 +228,19 @@ func TestGateRefusesBeforeTheGrant(t *testing.T) {
 
 func TestRegisterRefusesAmbiguousDefinitions(t *testing.T) {
 	for name, defs := range map[string][]Def{
-		"no handler":       {{Name: "a", ExposeCompletion: true}},
-		"exposed nowhere":  {{Name: "a", Run: say("")}},
-		"same name":        {{Name: "a", ExposeCompletion: true, Run: say("")}, {Name: "a", ExposeCompletion: true, Run: say("")}},
-		"python, no key":   {{Name: "a", ExposePython: true, Run: say("")}},
-		"same python key":  {{Name: "a", Connector: "c", Action: "x", ExposePython: true, Run: say("")}, {Name: "b", Connector: "c", Action: "x", ExposePython: true, Run: say("")}},
-		"gated, no rule":   {{Name: "a", ExposeCompletion: true, Run: say("")}},
-		"bad chat name":    {{Name: "a b", Connector: "c", Action: "x", ExposeCompletion: true, Run: say("")}},
-		"local, no python": {{Name: "a", Connector: "c", Action: "x", ExposeCompletion: true, Local: true, Run: say("")}},
+		"no handler":          {{Name: "a", ExposeCompletion: true}},
+		"exposed nowhere":     {{Name: "a", Run: say("")}},
+		"same name":           {{Name: "a", ExposeCompletion: true, Run: say("")}, {Name: "a", ExposeCompletion: true, Run: say("")}},
+		"python, no key":      {{Name: "a", ExposePython: true, Run: say("")}},
+		"same python key":     {{Name: "a", Connector: "c", Action: "x", ExposePython: true, Run: say("")}, {Name: "b", Connector: "c", Action: "x", ExposePython: true, Run: say("")}},
+		"gated, no rule":      {{Name: "a", ExposeCompletion: true, Run: say("")}},
+		"bad chat name":       {{Name: "a b", Connector: "c", Action: "x", ExposeCompletion: true, Run: say("")}},
+		"local, no python":    {{Name: "a", Connector: "c", Action: "x", ExposeCompletion: true, Local: true, Run: say("")}},
+		"dispatch to nothing": {{Name: "a", Connector: "c", Dispatch: "action", Actions: []string{"x"}, ExposeCompletion: true}},
+		"dispatch to a chat tool": {{Name: "a", Connector: "c", Dispatch: "action", Actions: []string{"x"}, ExposeCompletion: true},
+			{Name: "b", Connector: "c", Action: "x", ExposeCompletion: true, Run: say("")}},
+		"dispatch with a handler": {{Name: "a", Connector: "c", Dispatch: "action", Actions: []string{"x"}, ExposeCompletion: true, Run: say("")},
+			{Name: "b", Connector: "c", Action: "x", ExposePython: true, Run: say("")}},
 	} {
 		func() {
 			defer func() {
@@ -342,5 +347,58 @@ func TestRunRefusesWhatIsNotOffered(t *testing.T) {
 	}
 	if _, err := e.Run(context.Background(), &Call{Surface: Python, Bot: bot, Def: off}); err == nil {
 		t.Fatal("a disabled tool ran from Python")
+	}
+}
+
+// A dispatching tool is one chat tool over several Python tools of its
+// connector: the action it names runs as if called itself, under its own
+// gate, check and rule, and only on the surface the dispatcher is on.
+func TestDispatchRunsTheNamedAction(t *testing.T) {
+	g := &gate{}
+	e := New(g)
+	paused := false
+	e.Register(
+		Def{Name: "desk", Connector: "desktop", Dispatch: "action", Actions: []string{"look", "click"}, ExposeCompletion: true},
+		Def{Name: "look", Connector: "desktop", Action: "look", ExposePython: true, Local: true, Run: say("screen")},
+		Def{Name: "click", Connector: "desktop", Action: "click", ExposePython: true, Local: true, Writes: true,
+			Gate: func(*Call) error {
+				if paused {
+					return errors.New("paused")
+				}
+				return nil
+			},
+			Check: Need("x"),
+			Run:   func(_ context.Context, c *Call) (Result, error) { return Result{Text: "clicked by " + c.Def.Name}, nil },
+		},
+		Def{Name: "chrome", Connector: "desktop", Action: "chrome", ExposePython: true, Local: true, Run: say("browser")},
+	)
+	d, _ := e.ByName("b", "desk")
+	run := func(args map[string]any) (Result, error) {
+		return e.Run(context.Background(), &Call{Surface: Completion, Bot: &db.Bot{}, Def: d, Args: args})
+	}
+	if res, err := run(map[string]any{"action": "click", "x": "1"}); err != nil || res.Text != "clicked by click" {
+		t.Fatalf("click: %q %v", res.Text, err)
+	}
+	if strings.Join(g.calls, " ") != "desktop.click/" {
+		t.Fatalf("asked %v, want the action's own rule", g.calls)
+	}
+	if _, err := run(map[string]any{"action": "click"}); err == nil || err.Error() != "x required" {
+		t.Fatalf("the action's own check: %v", err)
+	}
+	paused = true
+	if _, err := run(map[string]any{"action": "click", "x": "1"}); err == nil || err.Error() != "paused" {
+		t.Fatalf("the action's own gate: %v", err)
+	}
+	for _, action := range []any{"chrome", "", nil} {
+		if _, err := run(map[string]any{"action": action}); err == nil || !strings.Contains(err.Error(), "action must be one of look, click") {
+			t.Fatalf("action %v: %v", action, err)
+		}
+	}
+	// The dispatcher has no address from Python, and the actions none in chat.
+	if py, err := e.ByAction("b", "desktop", ""); err == nil && py != nil {
+		t.Fatal("the dispatcher is reachable from Python")
+	}
+	if _, ok := e.ByName("b", "click"); ok {
+		t.Fatal("an action is a chat tool of its own")
 	}
 }

@@ -54,10 +54,6 @@ func main() {
 	retryLoop("commands", func() error { return w.commands(client) })
 }
 
-type job struct {
-	cancel context.CancelFunc
-}
-
 type worker struct {
 	workspace string
 	mask      *masker.Masker
@@ -107,7 +103,7 @@ func (w *worker) cancelJob(id string) bool {
 	if j == nil {
 		return false
 	}
-	j.cancel()
+	j.cancel(nil)
 	return true
 }
 
@@ -147,10 +143,10 @@ func (w *worker) commands(client silov1connect.BotWorkerClient) error {
 }
 
 func (w *worker) run(st *connect.BidiStreamForClient[v1.CmdEvent, v1.Cmd], cmd *v1.Cmd) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+	ctx, j := newJob(context.Background(), cmd.GetRunId(), cmdTimeout)
+	defer j.end()
 	w.mu.Lock()
-	w.pending[cmd.GetId()] = &job{cancel: cancel}
+	w.pending[cmd.GetId()] = j
 	w.mu.Unlock()
 	defer func() {
 		w.mu.Lock()

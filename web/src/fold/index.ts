@@ -7,6 +7,7 @@ import * as tools from "./tools.ts";
 import type { Block, Ev } from "./types.ts";
 
 export * from "./types.ts";
+export { lastReplyFailed } from "./failed.ts";
 
 const handlers: Record<string, text.Handler> = {
   user: text.user,

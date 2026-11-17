@@ -213,6 +213,9 @@ service UI {
   rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse);
   rpc DivergeChat(DivergeChatRequest) returns (DivergeChatResponse);
   rpc CompactChat(CompactChatRequest) returns (CompactChatResponse);
+  // RetryRun answers a chat again after its last reply failed: a new run
+  // that reads the history as it stands, with nothing rewritten.
+  rpc RetryRun(RetryRunRequest) returns (RetryRunResponse);
   rpc CollectMemories(CollectMemoriesRequest) returns (CollectMemoriesResponse);
   rpc ListSubagents(ListSubagentsRequest) returns (ListSubagentsResponse);
   rpc GetSubagent(GetSubagentRequest) returns (Subagent);
@@ -2298,6 +2301,15 @@ message CompactChatRequest {
 }
 
 message CompactChatResponse {
+  string run_id = 1;
+}
+
+message RetryRunRequest {
+  string bot_id = 1;
+  string chat_id = 2;
+}
+
+message RetryRunResponse {
   string run_id = 1;
 }
 

@@ -17,7 +17,7 @@ import (
 )
 
 // TestLiveDecideToolCall offers the decide tool to real chat models, the way
-// a run does, and runs the call each one writes against a real decision
+// a run does when the operator exposes it (tools.expose_completion), and runs the call each one writes against a real decision
 // model. It is the check that the schema is one providers accept and models
 // fill in correctly, which no fake can make. A few cents at most; run it
 // after changing decide's schema, description or prompt section:
@@ -47,8 +47,8 @@ func TestLiveDecideToolCall(t *testing.T) {
 			def = d
 		}
 	}
-	if !def.ExposeCompletion {
-		t.Fatal("decide is not a chat tool")
+	if def.Name == "" {
+		t.Fatal("there is no decide tool")
 	}
 	client, err := llm.New(llm.OpenRouter, llm.Settings{"api_key": key})
 	if err != nil {

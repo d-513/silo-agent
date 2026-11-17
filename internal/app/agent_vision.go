@@ -43,7 +43,7 @@ func pruneLookImages(msgs []llm.Message) {
 // presented file. Python and terminal can take a look as a side effect.
 func isLookTool(name string) bool {
 	switch name {
-	case "look", "exec_python", "terminal":
+	case "desktop", "look", "exec_python", "terminal":
 		return true
 	default:
 		return false

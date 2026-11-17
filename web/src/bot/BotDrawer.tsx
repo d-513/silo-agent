@@ -194,7 +194,7 @@ export function RailSheet({ bot, tab, onStart, onStop }: { bot: Bot; tab: Tab; o
           </span>
           {bot.people.length > 1 ? <People people={bot.people} /> : null}
         </div>
-        <ActivityStrip bot={bot} className="mx-3 mb-2 bg-surface/60" />
+        <ActivityStrip bot={bot} className="mx-3 mb-2 rounded-control bg-surface/60 px-1 py-1" />
         <nav aria-label={t("Pages")} className="space-y-0.5 px-2">
           {railPages.map(({ tab: page, to, label, icon }) => (
             <SideLink key={page} to={to} botId={bot.id} on={tab === page} icon={icon} label={t(label)} badge={page === "feed" && tab !== page ? bot.feedUnread : 0} />

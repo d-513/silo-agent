@@ -468,7 +468,7 @@ func TestSwitchModelTool(t *testing.T) {
 		dummy.Turn{ToolCalls: []llm.ToolCall{{Name: "switch_model", Arguments: `{"model":"dummy/alt"}`}}},
 		dummy.Turn{Text: "switched"},
 	)
-	h := apptest.New(t, apptest.WithYAML(yaml))
+	h := apptest.New(t, apptest.WithYAML(yaml), apptest.WithChatTools())
 	bot := h.CreateBot("Switch")
 	chat := h.FirstChat(bot.GetId())
 	runID, _ := h.Send(bot.GetId(), chat, "Test_18_Input")

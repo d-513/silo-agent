@@ -131,7 +131,7 @@ function BotRow({ bot, on, air, canCall, onCall }: { bot: Bot; on: boolean; air:
           </span>
         </span>
       </Link>
-      {on ? <ActivityStrip bot={bot} className="mx-2 mb-2 bg-well" /> : null}
+      {on ? <ActivityStrip bot={bot} className="mr-2 mb-2 ml-[52px] border-t border-line pt-1.5" /> : null}
       {canCall ? <CallButton name={bot.name} air={air} lit={on} onCall={onCall} /> : null}
     </div>
   );

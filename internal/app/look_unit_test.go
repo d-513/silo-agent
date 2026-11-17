@@ -9,7 +9,7 @@ import (
 )
 
 func TestIsLookTool(t *testing.T) {
-	for _, name := range []string{"look", "exec_python", "terminal"} {
+	for _, name := range []string{"desktop", "look", "exec_python", "terminal"} {
 		if !isLookTool(name) {
 			t.Fatalf("%s should be a look tool", name)
 		}

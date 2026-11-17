@@ -85,6 +85,7 @@ func serveLocal(sock string, w *worker) {
 }
 
 func (w *worker) getSecret(ctx context.Context, name, runID string) (string, error) {
+	defer w.waitOnCP(runID)()
 	res, err := w.rpc.GetSecret(ctx, connect.NewRequest(&v1.SecretReq{Name: name, RunId: runID}))
 	if err != nil {
 		return "", err
@@ -96,6 +97,8 @@ func (w *worker) getSecret(ctx context.Context, name, runID string) (string, err
 }
 
 func (w *worker) callTool(ctx context.Context, connector, action, argsJSON, runID string) (string, error) {
+	// An approval can keep this call waiting longer than the cell may work.
+	defer w.waitOnCP(runID)()
 	res, err := w.rpc.CallTool(ctx, connect.NewRequest(&v1.ToolReq{
 		Connector: connector, Action: action, ArgsJson: argsJSON, RunId: runID,
 	}))

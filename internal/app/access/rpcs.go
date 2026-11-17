@@ -164,6 +164,7 @@ var RPCs = map[string]RPCNeed{
 	"DeleteMessage":            ChatWrite,
 	"DivergeChat":              ChatWrite,
 	"CompactChat":              ChatWrite,
+	"RetryRun":                 ChatWrite,
 	"CollectMemories":          ChatWrite,
 	"ListSubagents":            ChatRead,
 	"GetSubagent":              BotUse,
