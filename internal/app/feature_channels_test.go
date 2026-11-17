@@ -119,6 +119,53 @@ func TestChannelInboundStartsRunAndDeliversSections(t *testing.T) {
 	}
 }
 
+// A platform that answers in threads (Slack) names, on each message, where its
+// answer belongs; everything the conversation's runs deliver goes there until a
+// message names another place or none.
+func TestChannelAnswersGoWhereTheMessageAsked(t *testing.T) {
+	slug := apptest.UniqueSlug("threadchan")
+	adapter := apptest.NewFakeAdapter(slug)
+	channels.Register(adapter)
+	h := apptest.New(t)
+	bot := h.CreateBot("Threads")
+	ch := newInboundChannel(t, h, bot.GetId(), adapter, slug, "chat-7")
+	host := adapter.WaitHost(t)
+
+	dummy.Reset()
+	dummy.Script("Test_47",
+		dummy.Turn{Text: "in the thread<section_send />"},
+		dummy.Turn{Text: "at the top<section_send />"},
+	)
+	if err := host.DeliverInbound(context.Background(), &ch, channels.Inbound{ExternalID: "chat-7", Text: "Test_47_Input", ReplyTo: "1700.1"}); err != nil {
+		t.Fatal(err)
+	}
+	if out := waitSent(t, adapter, "in the thread"); out.ReplyTo != "1700.1" || out.ExternalID != "chat-7" {
+		t.Fatalf("answer went to %q/%q, want the thread the message asked for", out.ExternalID, out.ReplyTo)
+	}
+	waitIdle(t, h, ch.ID)
+	if err := host.DeliverInbound(context.Background(), &ch, channels.Inbound{ExternalID: "chat-7", Text: "Test_47_Input, at the top now"}); err != nil {
+		t.Fatal(err)
+	}
+	if out := waitSent(t, adapter, "at the top"); out.ReplyTo != "" {
+		t.Fatalf("answer went to thread %q after a message that named none", out.ReplyTo)
+	}
+}
+
+// waitIdle waits until no run of the channel's conversations is live.
+func waitIdle(t *testing.T, h *apptest.H, channelID string) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		var n int64
+		h.DB.Model(&db.Run{}).Where("channel_id = ? AND status = ?", channelID, "running").Count(&n)
+		if n == 0 {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatal("the channel's run never ended")
+}
+
 func TestChannelInboundIgnoredWhenSendOnlyOrUnbound(t *testing.T) {
 	slug := apptest.UniqueSlug("quietchan")
 	adapter := apptest.NewFakeAdapter(slug)

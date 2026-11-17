@@ -107,7 +107,7 @@ export function ChannelsList({ botId }: { botId: string }) {
             {loaded ? <Count n={channels.length} /> : null}
           </div>
           <p className="max-w-3xl text-small leading-relaxed text-ink-2">
-            {t("Channels let you talk to this Bot from chat apps like Telegram, WhatsApp or Discord. Each one binds an adapter to a single conversation: the Bot answers there, and can send to it from its tools.")}
+            {t("Channels let you talk to this Bot from chat apps like Telegram, WhatsApp, Discord or Slack. Each one binds an adapter to a single conversation: the Bot answers there, and can send to it from its tools.")}
           </p>
         </div>
 

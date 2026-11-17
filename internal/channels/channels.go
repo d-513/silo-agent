@@ -147,16 +147,25 @@ type Media struct {
 
 // Inbound is one message received from the outside. Text is what its sender
 // wrote, a caption when it carries Files.
+//
+// ReplyTo is where in the conversation the answer to this message belongs, for
+// a platform where that is not simply the conversation: a Slack thread. The host
+// hands the newest one back as Outbound.ReplyTo on everything a run in that
+// conversation delivers (sections, a command's reply), until a message names
+// another or none.
 type Inbound struct {
 	ExternalID string
 	Title      string
 	Author     string
 	Text       string
+	ReplyTo    string
 	Files      []Media
 	Raw        map[string]any
 }
 
-// Outbound is one message to deliver.
+// Outbound is one message to deliver. ReplyTo is the adapter's own reply
+// anchor (a Slack thread, a Discord message to reply to); empty posts to the
+// conversation itself, as the channel tool always does.
 type Outbound struct {
 	ExternalID string
 	Text       string

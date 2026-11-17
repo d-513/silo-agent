@@ -41,6 +41,7 @@ require (
 	github.com/pion/webrtc/v4 v4.2.26
 	github.com/refraction-networking/utls v1.8.2
 	github.com/robfig/cron/v3 v3.0.1
+	github.com/slack-go/slack v0.33.0
 	github.com/teambition/rrule-go v1.8.2
 	go.mau.fi/whatsmeow v0.0.0-20261113220833-ecc39170bc14
 	go.yaml.in/yaml/v3 v3.0.6

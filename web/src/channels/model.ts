@@ -7,6 +7,7 @@ const points: Record<string, string[]> = {
   telegram: [msg("Reads the chat's history"), msg("Groups: every message or only a mention"), msg("Files arrive as real uploads")],
   whatsapp: [msg("Links as a device on your own account"), msg("Message yourself to talk to the Bot"), msg("Use a spare number")],
   discord: [msg("Server channels and direct messages"), msg("Answers an @mention or a reply"), msg("Never pings @everyone")],
+  slack: [msg("Answers in a thread under the message"), msg("No public address needed"), msg("Never pings @here or @channel")],
 };
 
 export function adapterPoints(slug: string): string[] {

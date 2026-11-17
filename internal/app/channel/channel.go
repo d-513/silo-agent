@@ -30,6 +30,7 @@ import (
 
 	// Register built-in adapters.
 	_ "silo.agent/internal/channels/discord"
+	_ "silo.agent/internal/channels/slack"
 	_ "silo.agent/internal/channels/telegram"
 	_ "silo.agent/internal/channels/whatsapp"
 	"silo.agent/internal/db"
@@ -62,14 +63,16 @@ type Service struct {
 	states  map[string]channels.State
 	chatMu  sync.Mutex
 
-	lanes  lanes
-	typing typists
+	lanes   lanes
+	typing  typists
+	replies replies
 }
 
 func New(gdb *gorm.DB, cfg func() config.Config, e run.Engine, h Host, mask func(botID string) *masker.Masker, ws *workspace.Service, v *voice.Service) *Service {
 	return &Service{db: gdb, cfg: cfg, engine: e, host: h, mask: mask, ws: ws, voice: v,
 		workers: map[string]*worker{}, states: map[string]channels.State{},
-		lanes: lanes{busy: map[string][]func(){}}, typing: typists{every: typingEvery, max: typingMax, live: map[string]*typist{}}}
+		lanes: lanes{busy: map[string][]func(){}}, typing: typists{every: typingEvery, max: typingMax, live: map[string]*typist{}},
+		replies: replies{to: map[string]string{}}}
 }
 
 // adapterHost is what an adapter sees: channels.Host, backed by the Service.
@@ -515,6 +518,9 @@ func (s *Service) Origin(ch *db.Channel, external string) *run.Origin {
 			if msg.ExternalID == "" {
 				msg.ExternalID = external
 			}
+			if msg.ReplyTo == "" && msg.ExternalID == external {
+				msg.ReplyTo = s.replies.get(ch.ID, external)
+			}
 			return ad.Send(context.Background(), ch, s.channelConfig(ch), msg)
 		},
 		Working: func() func() { return s.showTyping(ch, external) },
@@ -557,6 +563,7 @@ func (s *Service) deliverInbound(ctx context.Context, ch *db.Channel, in channel
 // hand gives one message to the conversation: a command runs, anything else
 // joins the live run or starts one.
 func (s *Service) hand(ch *db.Channel, c *db.Chat, external string, in channels.Inbound) error {
+	s.replies.set(ch.ID, external, in.ReplyTo)
 	origin := s.Origin(ch, external)
 	if reply, ok := s.engine.Command(ch.BotID, c.ID, in.Text); ok {
 		if strings.TrimSpace(reply) != "" {
@@ -789,6 +796,7 @@ func (s *Service) Delete(ch *db.Channel) {
 	s.mu.Lock()
 	delete(s.states, ch.ID)
 	s.mu.Unlock()
+	s.replies.drop(ch.ID)
 }
 
 // removeSession lets an adapter end its own session before the channel goes

@@ -24,7 +24,7 @@ Competitor facts come from their release notes and press as of this date (links 
 | Drive providers | 15 | 15 |
 | Default skills | 6 | 6 |
 | LLM providers | OpenRouter, OpenAI, Anthropic, `local` | + TypeSafe; decision models on OpenRouter and TypeSafe |
-| Channels | Telegram, WhatsApp, Discord | same, plus inbound mail that can wake the Bot |
+| Channels | Telegram, WhatsApp, Discord | + Slack (Socket Mode), plus inbound mail that can wake the Bot |
 | Console languages | English | English, Polish, German |
 
 ## 2. The field
@@ -36,7 +36,7 @@ Competitor facts come from their release notes and press as of this date (links 
 | Install | Signed desktop apps (macOS, MS Store, Linux), first-run chat with no API key, one-click llama.cpp | Gateway + Tauri/Windows desktop apps, `doctor`, encrypted backups | App store | Invite | Docker/Podman + Postgres, operator config |
 | Where tools run | Seven backends (local, Docker, SSH, Modal, Daytona, Singularity, Vercel) | Host by default; Docker sandbox opt-in; cloud workers | Dedicated "Secure VM" per user | Hosted | One container per Bot, always |
 | Human takeover | **Bot Screen**: live desktop and takeover (v0.22) | – | – | – | VNC desktop, PTY console, Files |
-| Channels | 20+ (Telegram, Slack, Signal, Matrix, WhatsApp, Feishu, …) | ~25 incl. a new X (Twitter) channel | App, web, WhatsApp | iMessage, WhatsApp, email, **phone** | Telegram, WhatsApp, Discord (+ mail in) |
+| Channels | 20+ (Telegram, Slack, Signal, Matrix, WhatsApp, Feishu, …) | ~25 incl. a new X (Twitter) channel | App, web, WhatsApp | iMessage, WhatsApp, email, **phone** | Telegram, WhatsApp, Discord, Slack (+ mail in) |
 | Voice | Live transcription, voice-chat model | **Voice calls**: briefs, reports, live steering, voicemail detection; Discord realtime voice | Calls (testing) | **Concierge phone calls** | Speech to text only |
 | Credentials, payments | **Password-blind vault**: 1Password, Bitwarden or local; TOTP from a saved key | Secret masking (chunk-boundary aware) | **Stripe Link**; Shop Pay and 1Password "soon" | Acts in your name | Surrogate secrets swapped at the egress gateway; secret typing without the model seeing it |
 | Extensibility | ~600 reviewed plugins, plugin SDK, plugin OAuth, MCP | ClawHub skills and plugins, hooks | Connector submission; Muse builds custom connectors | – | MCP (HTTP/SSE/STDIO), skills, Go built-ins |
