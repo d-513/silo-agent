@@ -1,7 +1,8 @@
 import SiloClient
 import SwiftUI
 
-/// The pages pushed over the chat. The chat itself is the stack's root, never a route.
+/// A Bot's pages: the one the rail or the Dashboard tab opens in the chat's place (`AppModel.page`),
+/// and the ones pushed over it (`AppModel.path`). The chat itself is never a route.
 enum BotRoute: Hashable {
     case page(BotTab)
     /// The Settings list, as on the web sidebar.
@@ -38,6 +39,9 @@ enum BotTab: String, CaseIterable, Identifiable {
     case settings
 
     var id: String { rawValue }
+
+    /// The pages of Settings, in the web's order, then moving the Bot to another Workspace.
+    static let settingsTabs: [BotTab] = [.settings, .people, .rules, .secrets, .tunnels, .container, .audit, .workspace]
 
     var title: String {
         switch self {

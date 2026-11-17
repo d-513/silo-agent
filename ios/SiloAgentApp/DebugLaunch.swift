@@ -47,19 +47,20 @@ enum DebugLaunch {
             if step.hasPrefix("chat:"), let n = Int(step.dropFirst(5)), model.chats.indices.contains(n) {
                 model.showChat(model.chats[n].id)
             } else if step == "workspace" {
-                model.path.append(.workspace)
+                model.openWorkspace()
             } else if let tab = BotTab(rawValue: String(step)) {
-                model.path.append(.page(tab))
+                if model.page == nil { model.open(.page(tab)) } else { model.path.append(.page(tab)) }
             } else if step == "new" {
                 model.newChat()
             } else if step == "sidebar" {
                 model.sidebarOpen = true
-            } else if step == "machine" {
-                model.machineOpen = true
+            } else if step == "rail" || step == "machine" {
+                model.railOpen = true
             } else if step.hasPrefix("space:"), let tab = SpaceTab(rawValue: String(step.dropFirst(6))) {
-                model.path.append(.space(tab))
+                model.openWorkspace()
+                model.spacePath.append(.space(tab))
             } else if step == "settings-list" {
-                model.path.append(.settings)
+                model.open(.settings)
             } else if step == "call" {
                 model.call(chat: "new")
             } else if step == "gallery" {

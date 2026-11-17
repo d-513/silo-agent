@@ -3,7 +3,7 @@ import Observation
 import SiloClient
 
 /// The Workspaces the user is in and the one the app is in. The current one follows the open Bot;
-/// with no Bot open it is the one last used here, else the first. The sidebar's crests are its
+/// with no Bot open it is the one last used here, else the first. The sidebar lists its
 /// Bots, and switching opens its first Bot (or, with none, the Workspace page).
 @MainActor
 @Observable
@@ -71,9 +71,13 @@ final class SpaceModel {
     func open(_ id: String) {
         remember(id)
         app.sidebarOpen = false
-        let first = app.bots.first { $0.spaceID == id }
-        if first?.id != app.selectedBotID { app.selectedBotID = first?.id }
-        if first != nil { app.path = [] }
+        app.spacePath = []
+        if let first = app.bots.first(where: { $0.spaceID == id }) {
+            app.openBot(first.id)
+        } else {
+            app.workspaceOpen = false
+            app.selectedBotID = nil
+        }
     }
 
     /// After a Workspace is deleted or left: the first other one.

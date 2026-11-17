@@ -100,15 +100,22 @@ final class AppModel {
     /// The model and thinking level picked on a new chat; the first `send` carries them.
     private(set) var draftModel = ""
     private(set) var draftThinking = ""
-    /// Pages pushed over the chat (Feed, Files, Settings, …), so any code can navigate.
+    /// The Bot's page under its top bar and chat tabs: nil is the chat, else the Dashboard, a page
+    /// of the rail (Feed, Files, Settings, …). Set it with `open(_:)`.
+    private(set) var page: BotRoute?
+    /// Pages pushed over that page (a Settings section, a container), so any code can navigate.
     var path: [BotRoute] = []
+    /// The Workspace's own page is open in place of the Bot (the sidebar's gear), with what it pushed.
+    var workspaceOpen = false
+    var spacePath: [BotRoute] = []
 
     // Shell
     #if DEBUG
     var showGallery = false
     #endif
+    /// The two sheets at the screen's edges: the sidebar from the left, the Bot's rail from the right.
     var sidebarOpen = false
-    var machineOpen = false
+    var railOpen = false
 
     private(set) var client: SiloClient
     private var streamTask: Task<Void, Never>?
@@ -139,9 +146,11 @@ final class AppModel {
 
     /// Rings a Bot in your main chat from the Bot list, opening it first: the call is held there.
     func call(bot: Silo_V1_Bot, chat: String = "", screen: Bool = true) {
+        workspaceOpen = false
+        sidebarOpen = false
         if bot.id != selectedBotID {
+            page = nil
             path = []
-            sidebarOpen = false
             selectedBotID = bot.id
         }
         Task { await CallModel.shared.start(.init(id: bot.id, name: bot.name, crest: bot.crest), chat: chat, screen: screen, host: serverURL) }
@@ -305,9 +314,12 @@ final class AppModel {
         code = ""
         selectedBotID = nil
         selectedChatID = nil
+        page = nil
         path = []
+        workspaceOpen = false
+        spacePath = []
         sidebarOpen = false
-        machineOpen = false
+        railOpen = false
         loadedBotID = nil
         streamingChatID = nil
     }
@@ -347,6 +359,7 @@ final class AppModel {
                 chats = []
                 events = []
                 approvals = []
+                page = nil
                 path = []
             }
             return
@@ -356,6 +369,7 @@ final class AppModel {
             await loading?.value
             return
         }
+        page = nil
         path = []
         approvals = []
         usage = nil
@@ -482,9 +496,46 @@ final class AppModel {
 
     /// Back to the chat (closing any page over it) with this conversation open.
     func showChat(_ id: String) {
-        path = []
-        sidebarOpen = false
+        toChat()
         selectChat(id)
+    }
+
+    /// Opens a page of the open Bot in the chat's place, as the rail and the Dashboard tab do.
+    func open(_ route: BotRoute) {
+        workspaceOpen = false
+        sidebarOpen = false
+        railOpen = false
+        page = route
+        path = []
+    }
+
+    /// Opens a Bot from the sidebar where it opens: the last chat used with it, else its main chat.
+    /// The open one goes back to its chat.
+    func openBot(_ id: String) {
+        sidebarOpen = false
+        workspaceOpen = false
+        if id == selectedBotID {
+            page = nil
+            path = []
+        } else {
+            selectedBotID = id
+        }
+    }
+
+    /// The Workspace's page in place of the Bot, as the sidebar's gear opens it.
+    func openWorkspace() {
+        sidebarOpen = false
+        railOpen = false
+        spacePath = []
+        workspaceOpen = true
+    }
+
+    private func toChat() {
+        workspaceOpen = false
+        sidebarOpen = false
+        railOpen = false
+        page = nil
+        path = []
     }
 
     /// After `DeleteBot`: drop the row and open another Bot.
@@ -494,6 +545,7 @@ final class AppModel {
         selectedBotID = nil
         selectedChatID = nil
         loadedBotID = nil
+        page = nil
         path = []
         chats = []
         events = []
@@ -779,8 +831,7 @@ final class AppModel {
 
     /// A new chat: an empty thread and a working composer, no row until the first message.
     func newChat() {
-        path = []
-        sidebarOpen = false
+        toChat()
         startDraft()
     }
 

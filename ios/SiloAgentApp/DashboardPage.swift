@@ -115,7 +115,7 @@ struct DashboardPage: View {
                 Lamp(status: .working)
                 Text("\(name) is working on the board").lineLimit(1).shimmering()
                 if !board.automationID.isEmpty {
-                    Button("Watch") { model.path.append(.page(.automations)) }
+                    Button("Watch") { model.open(.page(.automations)) }
                         .font(.silo(12.5, .medium))
                         .foregroundStyle(Theme.ink2)
                         .buttonStyle(.press)
@@ -124,7 +124,7 @@ struct DashboardPage: View {
                 Text(board.curatedAt.isEmpty ? "Not curated yet" : "Curated \(When.run(board.curatedAt))").lineLimit(1)
                 if !board.automationID.isEmpty {
                     Text("·").accessibilityHidden(true)
-                    Button { model.path.append(.page(.automations)) } label: {
+                    Button { model.open(.page(.automations)) } label: {
                         Text(board.nextAt.isEmpty ? "no schedule" : "next \(When.next(board.nextAt))")
                             .foregroundStyle(Theme.ink2)
                             .underline(pattern: .dot, color: Theme.lineStrong)
@@ -326,7 +326,7 @@ private struct SinceLooked: View {
                 Text("Since you last looked").font(.silo(13, .medium)).foregroundStyle(Theme.ink).lineLimit(1)
                 Text(posts.count == 1 ? "1 post" : "\(posts.count) posts").font(.silo(12.5)).foregroundStyle(Theme.ink3).lineLimit(1)
                 Spacer(minLength: 8)
-                Button("All in Feed") { model.path.append(.page(.feed)) }
+                Button("All in Feed") { model.open(.page(.feed)) }
                     .font(.silo(12.5, .medium))
                     .foregroundStyle(Theme.cobalt)
                     .buttonStyle(.press)

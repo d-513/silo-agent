@@ -49,7 +49,7 @@ extension AppModel {
         switch link {
         case .needsYou:
             guard let bot = SiloStore.load().approvals.first?.botID else { return }
-            go(bot) { $0.path = [.page(.dashboard)] }
+            go(bot) { $0.open(.page(.dashboard)) }
         case .mainChat(let bot):
             go(bot) { $0.showMainChat() }
         case .chat(let bot, let chat):
@@ -57,9 +57,9 @@ extension AppModel {
         case .newChat(let bot):
             go(bot) { $0.newChat() }
         case .dashboard(let bot):
-            go(bot) { $0.path = [.page(.dashboard)] }
+            go(bot) { $0.open(.page(.dashboard)) }
         case .feed(let bot):
-            go(bot) { $0.path = [.page(.feed)] }
+            go(bot) { $0.open(.page(.feed)) }
         case .call(let bot):
             guard let row = SiloStore.load().bots.first(where: { $0.id == bot }) else { return }
             Task { await CallModel.shared.start(.init(id: row.id, name: row.name, crest: row.crest), screen: true, host: serverURL) }
@@ -76,7 +76,8 @@ extension AppModel {
     // Lands on a Bot, then does the rest once its chats are in.
     private func go(_ bot: String, then: @escaping (AppModel) -> Void) {
         sidebarOpen = false
-        machineOpen = false
+        railOpen = false
+        workspaceOpen = false
         selectedBotID = bot
         Task {
             await chooseBot(bot)

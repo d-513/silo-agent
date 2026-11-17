@@ -53,10 +53,12 @@ struct Lamp: View {
 struct StatusWord: View {
     let look: StatusLook
     var font: Font = .silo(12.5, .medium)
+    /// False where the lamp is already on the crest beside it.
+    var lamp = true
 
     var body: some View {
         HStack(spacing: 6) {
-            Lamp(status: look.lamp)
+            if lamp { Lamp(status: look.lamp) }
             Text(look.word)
                 .font(font)
                 .foregroundStyle(Theme.color(look.tone))

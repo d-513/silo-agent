@@ -2,11 +2,11 @@ import Observation
 import SiloClient
 import SwiftUI
 
-/// The signed-in app. It opens on a chat, as the web does: the Bot's sidebar (the Workspace's
-/// crests, its pages, chats, Channels, the Workspace and Settings) slides in from the left edge on
-/// a phone and stays as a column on an iPad; the machine (Files, Changes, Mail, Start/Stop) is a
-/// sheet off the status lamp. With no Bot open (a Workspace with none of the user's) it is the
-/// Workspace page.
+/// The signed-in app, laid out as the web lays it out below 960: the page under the Bot's top bar
+/// and its chat tabs, the sidebar (the Workspace and its Bots) as a sheet from the left, and the
+/// Bot's rail (its pages, the machine, Settings) as a sheet from the right; each column keeps the
+/// side it stands on. On an iPad the sidebar stays as a column. With no Bot open (a Workspace with
+/// none of the user's), or with the sidebar's gear pressed, the page is the Workspace's.
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(SpaceModel.self) private var spaces
@@ -49,137 +49,183 @@ struct RootView: View {
 
     @ViewBuilder
     private var shell: some View {
-        Group {
-            if model.selectedBot == nil {
-                SpaceHome()
-            } else if sizeClass == .regular {
-                HStack(spacing: 0) {
-                    BotSidebar().frame(width: 300)
-                    Theme.line.frame(width: 1).ignoresSafeArea()
-                    BotStack()
-                }
-            } else {
-                Drawer()
+        if sizeClass == .regular {
+            HStack(spacing: 0) {
+                Sidebar().frame(width: 300)
+                Theme.line.frame(width: 1).ignoresSafeArea()
+                EdgeSheets(left: false) { page }
             }
+        } else {
+            EdgeSheets(left: true) { page }
+        }
+    }
+
+    @ViewBuilder
+    private var page: some View {
+        if model.selectedBot == nil || model.workspaceOpen {
+            SpaceHome()
+        } else {
+            BotShell()
         }
     }
 }
 
-/// The phone shell: the chat stack, and the sidebar over it. A swipe from the left edge opens the
-/// sidebar while the chat is on top (on a pushed page that swipe is the system's Back).
-private struct Drawer: View {
+/// The two sheets at the screen's edges, over the page: the sidebar from the left (on a phone) and
+/// the open Bot's rail from the right. Each follows the finger and settles open or shut past a third
+/// of its width; a swipe in from its edge pulls it out. The left edge is the system's Back on a
+/// pushed page, so there it only opens at the root.
+private struct EdgeSheets<Content: View>: View {
     @Environment(AppModel.self) private var model
-    @State private var drag: CGFloat = 0
+    let left: Bool
+    @ViewBuilder let content: Content
+    @State private var leftDrag: CGFloat = 0
+    @State private var rightDrag: CGFloat = 0
+
+    private var bot: Silo_V1_Bot? { model.workspaceOpen ? nil : model.selectedBot }
+    private var atRoot: Bool { model.workspaceOpen || model.selectedBot == nil ? model.spacePath.isEmpty : model.path.isEmpty }
 
     var body: some View {
         GeometryReader { geometry in
             let width = min(330, geometry.size.width * 0.86)
-            let open = model.sidebarOpen
-            let offset = open ? min(0, drag) : -width + max(0, drag)
-            let shown = (offset + width) / width
+            let leftOpen = left && model.sidebarOpen
+            let rightOpen = bot != nil && model.railOpen
+            let leftOffset = leftOpen ? min(0, leftDrag) : -width + max(0, leftDrag)
+            let rightOffset = rightOpen ? max(0, rightDrag) : width + min(0, rightDrag)
+            let shown = max(left ? (leftOffset + width) / width : 0, bot != nil ? (width - rightOffset) / width : 0)
 
-            ZStack(alignment: .leading) {
-                BotStack()
+            ZStack {
+                content
 
                 Theme.canvas
                     .opacity(0.55 * shown)
                     .ignoresSafeArea()
-                    .allowsHitTesting(open)
-                    .onTapGesture { model.sidebarOpen = false }
+                    .allowsHitTesting(leftOpen || rightOpen)
+                    .onTapGesture {
+                        model.sidebarOpen = false
+                        model.railOpen = false
+                    }
 
-                BotSidebar()
-                    .frame(width: width)
-                    .background(Theme.well.ignoresSafeArea())
-                    .shadow(color: .black.opacity(0.08 * shown), radius: 18, x: 6)
-                    .offset(x: offset)
-                    .gesture(open ? closeGesture(width) : nil)
-
-                if !open && model.path.isEmpty {
-                    Color.clear
-                        .frame(width: 18)
-                        .contentShape(Rectangle())
-                        .gesture(openGesture(width))
-                        .ignoresSafeArea()
+                if left {
+                    Sidebar()
+                        .frame(width: width)
+                        .shadow(color: Theme.shade.opacity(0.08 * shown), radius: 18, x: 6)
+                        .offset(x: leftOffset)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .gesture(leftOpen ? drag($leftDrag, width: width, sign: -1) { if $0 { model.sidebarOpen = false } } : nil)
+                        .accessibilityHidden(!leftOpen)
                 }
+                if let bot {
+                    RailSheet(bot: bot)
+                        .frame(width: width)
+                        .shadow(color: Theme.shade.opacity(0.08 * shown), radius: 18, x: -6)
+                        .offset(x: rightOffset)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .gesture(rightOpen ? drag($rightDrag, width: width, sign: 1) { if $0 { model.railOpen = false } } : nil)
+                        .accessibilityHidden(!rightOpen)
+                }
+
+                // The edges that pull a sheet out, clear of the top bars and the composer.
+                HStack(spacing: 0) {
+                    if left && !leftOpen && !rightOpen && atRoot {
+                        edge.gesture(drag($leftDrag, width: width, sign: 1) { if $0 { model.sidebarOpen = true } })
+                    }
+                    Spacer(minLength: 0)
+                    if bot != nil && !leftOpen && !rightOpen {
+                        edge.gesture(drag($rightDrag, width: width, sign: -1) { if $0 { model.railOpen = true } })
+                    }
+                }
+                .padding(.top, 100)
+                .padding(.bottom, 130)
+                .ignoresSafeArea(edges: .horizontal)
             }
             .animation(Motion.quiet(0.32), value: model.sidebarOpen)
+            .animation(Motion.quiet(0.32), value: model.railOpen)
         }
     }
 
-    private func openGesture(_ width: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 8)
-            .onChanged { drag = min(width, max(0, $0.translation.width)) }
-            .onEnded { value in
-                let opens = value.translation.width > width / 3 || value.predictedEndTranslation.width > width / 2
-                drag = 0
-                model.sidebarOpen = opens
-            }
+    private var edge: some View {
+        Color.clear.frame(width: 16).contentShape(Rectangle())
     }
 
-    private func closeGesture(_ width: CGFloat) -> some Gesture {
+    /// A drag along the x axis in `sign`'s direction; past a third of the width (or flung past half)
+    /// it ends with true.
+    private func drag(_ value: Binding<CGFloat>, width: CGFloat, sign: CGFloat, ended: @escaping (Bool) -> Void) -> some Gesture {
         DragGesture(minimumDistance: 8)
-            .onChanged { drag = min(0, $0.translation.width) }
-            .onEnded { value in
-                let closes = value.translation.width < -width / 3 || value.predictedEndTranslation.width < -width / 2
-                drag = 0
-                if closes { model.sidebarOpen = false }
+            .onChanged { g in
+                let x = g.translation.width * sign
+                value.wrappedValue = max(0, min(width, x)) * sign
+            }
+            .onEnded { g in
+                let x = g.translation.width * sign
+                let p = g.predictedEndTranslation.width * sign
+                value.wrappedValue = 0
+                ended(x > width / 3 || p > width / 2)
             }
     }
 }
 
-/// The chat at the root and the Bot's pages pushed over it.
+/// A Bot: its top bar, its chat tabs, and under them the chat or the page the rail opened, with
+/// whatever that page pushed.
+private struct BotShell: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        if let bot = model.selectedBot {
+            VStack(spacing: 0) {
+                BotTopBar(bot: bot)
+                ChatTabsStrip(bot: bot)
+                BotStack()
+            }
+            .background(Theme.canvas.ignoresSafeArea())
+        }
+    }
+}
+
+/// The chat or the open page at the root, and the pages it pushes over it.
 struct BotStack: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         @Bindable var model = model
         NavigationStack(path: $model.path) {
-            ChatScreen()
+            root
                 .navigationDestination(for: BotRoute.self) { route in
                     switch route {
                     case .page(let tab): BotPage(tab: tab)
-                    case .settings: SectionPage(title: "Settings", tabs: [.settings, .people, .rules, .secrets, .tunnels, .container, .audit, .workspace])
+                    case .settings: SectionPage(title: "Settings", tabs: BotTab.settingsTabs)
                     case .workspace: SiloPage(title: "Workspace") { WorkspacePage() }
                     case .space(let tab): SpaceTabPage(tab: tab)
                     }
                 }
         }
         .id(model.selectedBotID)
-        .sheet(isPresented: $model.machineOpen) { MachineSheet() }
+    }
+
+    @ViewBuilder
+    private var root: some View {
+        switch model.page {
+        case .page(let tab)?: BotPage(tab: tab, back: false)
+        case .settings?: SectionPage(title: "Settings", tabs: BotTab.settingsTabs, back: false)
+        default: ChatScreen()
+        }
     }
 }
 
-/// No Bot open: the current Workspace's page at the root, with the Workspace switcher and the
-/// account in its head. A new Workspace, or one with none of the user's Bots, lands here.
+/// The current Workspace's page, in the Bot's place: its head, its tabs, and what they push. A new
+/// Workspace, or one with none of the user's Bots, lands here; the sidebar's gear opens it too.
 private struct SpaceHome: View {
     @Environment(AppModel.self) private var model
-    @Environment(SpaceModel.self) private var spaces
-    @State private var path: [BotRoute] = []
-    @State private var account = false
-    @State private var newSpace = false
 
     var body: some View {
-        NavigationStack(path: $path) {
-            SiloPage(title: spaces.current?.name ?? "Workspace", back: false) {
+        @Bindable var model = model
+        NavigationStack(path: $model.spacePath) {
+            SiloPage(title: "Workspace", back: false, menu: true) {
                 WorkspacePage()
-                    .pageActions {
-                        SpaceSwitcher(newSpace: { newSpace = true }) {
-                            Image(systemName: "chevron.up.chevron.down").font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(Theme.ink2).frame(width: 40, height: 40)
-                        }
-                        Button { account = true } label: {
-                            Image(systemName: "person.crop.circle")
-                        }
-                        .buttonStyle(.glyph)
-                        .accessibilityLabel(model.user?.email ?? "Account")
-                    }
             }
             .navigationDestination(for: BotRoute.self) { route in
                 if case .space(let tab) = route { SpaceTabPage(tab: tab) } else { SiloPage(title: "Workspace") { WorkspacePage() } }
             }
         }
-        .sheet(isPresented: $account) { AccountView(modal: true).siloSheet() }
-        .sheet(isPresented: $newSpace) { NewSpaceSheet().siloSheet() }
     }
 }
 
@@ -243,9 +289,10 @@ struct SectionPage: View {
     @Environment(AppModel.self) private var model
     let title: String
     let tabs: [BotTab]
+    var back = true
 
     var body: some View {
-        SiloPage(title: title) {
+        SiloPage(title: title, back: back) {
             PageScroll {
                 Panel {
                     ForEach(tabs) { tab in
@@ -266,9 +313,11 @@ struct SectionPage: View {
 /// A pushed Bot page in the page frame; each page puts its own actions in the head with `.pageActions`.
 struct BotPage: View {
     let tab: BotTab
+    /// False when the rail opened it in the chat's place, with nothing under it to go back to.
+    var back = true
 
     var body: some View {
-        SiloPage(title: tab == .settings ? "General" : tab.title) { content }
+        SiloPage(title: tab == .settings ? "General" : tab.title, back: back) { content }
     }
 
     @ViewBuilder
