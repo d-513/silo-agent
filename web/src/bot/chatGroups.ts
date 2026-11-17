@@ -1,9 +1,9 @@
 import { daysAgo } from "../format.ts";
 import { locale, msg, t } from "../i18n.ts";
 
-// The chats column groups a Bot's conversations by when they last moved:
-// Today, Yesterday, Previous 7 days, Previous 30 days, then one group per
-// month (the year is named only when it is not this one). The list already
+// Date groups for a list of things by when they last moved (the Memories
+// page): Today, Yesterday, Previous 7 days, Previous 30 days, then one group
+// per month (the year is named only when it is not this one). The list already
 // arrives newest first, so a group keeps its members in the order given.
 
 export type ChatGroup<T> = { key: string; label: string; chats: T[] };

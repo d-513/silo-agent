@@ -1,24 +1,29 @@
 import { Link } from "@tanstack/react-router";
-import { Menu, Phone, Plus, Power } from "lucide-react";
+import { PanelRight, Phone, Power, Settings } from "lucide-react";
 import { Clock } from "../call/CallBar";
 import type { Call } from "../call/useCall";
-import { useEffect, useRef, type ReactNode, type TouchEvent } from "react";
 import { Crest } from "../Crest";
-import type { Bot, Chat } from "../gen/silo/v1/ui_pb";
+import type { Bot } from "../gen/silo/v1/ui_pb";
 import { msg, t } from "../i18n.ts";
-import { Lamp } from "../Lamp";
-import { botLook, crestState, powerWord, machineStarting } from "../statusLook";
-import { Rail } from "../Shell";
-import { paneMeta } from "./MachineRail";
+import { Lamp, Status, StatusWord } from "../Lamp";
+import { NavButton } from "../nav/NavSheet";
+import { sourceLabel } from "../sources";
+import { botLook, crestState, machineStarting, pausedOnYou, powerWord } from "../statusLook";
+import { ActivityStrip } from "./ActivityStrip";
+import { People } from "./ChatTabs";
+import { useHeard } from "./heardStore";
+import { paneMeta, railPages } from "./MachineRail";
+import { SideLink } from "./SideNav";
 import { onSettings, paneKinds, type PaneKind, type Tab } from "./tabs";
 
-// The narrow layout's way around a Bot. A wide screen has the sidebar, the
-// page and the machine rail side by side; a phone has room for one, so the
-// page gets the screen and everything else waits in a drawer: one top bar
-// (the Bot, the page you are on, New chat) whose press slides it in.
+// The narrow layout's way around a Bot. A wide screen shows the sidebar, the
+// tab bar, the page and the right rail side by side; a phone shows the page
+// under one top bar and the tab strip, and keeps the two columns at its
+// edges: the menu (or a swipe in from the left) is the sidebar, the Bot's
+// name (or the rail glyph, or a swipe in from the right) its rail, each as a
+// sheet on the side it stands on from 960 up.
 
 const pageWords: Partial<Record<Tab, string>> = {
-  dashboard: msg("Dashboard"),
   automations: msg("Automations"),
   artifacts: msg("Artifacts"),
   memories: msg("Memories"),
@@ -27,12 +32,8 @@ const pageWords: Partial<Record<Tab, string>> = {
   channels: msg("Channels"),
 };
 
-/** What the top bar says you are looking at. */
-function pageLabel(tab: Tab, chat: Chat | undefined, fresh: boolean): string {
-  if (tab === "run") {
-    if (!chat) return fresh ? t("New chat") : "";
-    return chat.main ? t("Main chat") : chat.title || t("New chat");
-  }
+/** The page a top bar names, when the strip lights nothing. */
+function pageLabel(tab: Tab): string {
   if (onSettings(tab)) return t("Settings");
   const pane = paneKinds.find((k) => k === tab);
   if (pane) return t(paneMeta[pane].label);
@@ -40,59 +41,48 @@ function pageLabel(tab: Tab, chat: Chat | undefined, fresh: boolean): string {
   return word ? t(word) : "";
 }
 
+const square = "flex h-10 w-10 shrink-0 items-center justify-center rounded-control transition-[background-color,transform] duration-[160ms] ease-quiet active:scale-[.94] motion-reduce:active:scale-100";
+
 export function BotTopBar({
   bot,
   tab,
-  chat,
-  fresh,
-  attention,
-  open,
-  onOpen,
-  onNewChat,
+  railOpen,
+  onRail,
   call,
   onCall,
 }: {
   bot: Bot;
   tab: Tab;
-  chat?: Chat;
-  fresh: boolean;
-  // What waits in the drawer: an approval (needs you), or something new.
-  attention: "needs" | "new" | "";
-  open: boolean;
-  onOpen: () => void;
-  onNewChat: () => void;
+  railOpen: boolean;
+  onRail: () => void;
   // The Bot's call while calls are on; its button rings the main chat.
   call?: Call;
   onCall: () => void;
 }) {
-  const label = pageLabel(tab, chat, fresh);
-  const menu = t("Open {{name}} menu", { name: bot.name });
+  const heard = useHeard(bot.id);
+  const look = botLook(bot);
+  // On a conversation the line under the name is the Bot's own, the way a
+  // messenger says someone is typing; on any other page it names the page.
+  const label = tab === "run" || tab === "dashboard" ? "" : pageLabel(tab);
+  const railDot = bot.feedUnread + bot.auditUnseen > 0;
   return (
-    <header className="flex h-[calc(3rem+env(safe-area-inset-top))] shrink-0 items-center gap-1 bg-well pt-[env(safe-area-inset-top)] pr-1.5 pl-1 shadow-[inset_0_-1px_0_var(--color-line)] wide:hidden">
+    <header className="flex h-[calc(3rem+env(safe-area-inset-top))] shrink-0 items-center gap-0.5 bg-well pt-[env(safe-area-inset-top)] pr-1 pl-1 wide:hidden">
+      <NavButton activeBotId={bot.id} />
       <button
         type="button"
-        aria-label={menu}
+        aria-label={t("Pages and machine")}
         aria-haspopup="dialog"
-        aria-expanded={open}
-        onClick={onOpen}
-        className="flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-control pr-2 pl-2 text-left transition-[background-color,transform] duration-[160ms] ease-quiet active:scale-[.985] active:bg-pressed motion-reduce:active:scale-100"
+        aria-expanded={railOpen}
+        onClick={onRail}
+        className="flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-control pr-2 pl-1.5 text-left transition-[background-color,transform] duration-[160ms] ease-quiet active:scale-[.985] active:bg-pressed motion-reduce:active:scale-100"
       >
-        <span className="relative flex h-9 w-6 shrink-0 items-center justify-center text-ink-2">
-          <Menu size={20} />
-          {attention ? (
-            <span
-              aria-hidden
-              className={`absolute top-1 -right-1 h-2 w-2 rounded-full ring-2 ring-well ${attention === "needs" ? "bg-vermilion" : "bg-cobalt"}`}
-            />
-          ) : null}
+        <span className="relative flex h-8 w-8 shrink-0">
+          <Crest index={bot.crest} size={32} state={crestState(bot, heard)} />
+          <Lamp status={look.lamp} onCrest="well" className="absolute -top-0.5 -right-0.5" />
         </span>
-        <span className="relative flex h-7 w-7 shrink-0">
-          <Crest index={bot.crest} size={28} state={crestState(bot)} />
-          <Lamp status={botLook(bot).lamp} onCrest="well" className="absolute -top-0.5 -right-0.5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-body-lg leading-[18px] font-semibold text-ink">{bot.name}</span>
-          {label ? <span className="block truncate text-meta leading-4 text-ink-3">{label}</span> : null}
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-body-lg leading-[18px] font-semibold text-ink">{bot.name}</span>
+          {label ? <span className="truncate text-label leading-4 font-medium text-ink-3">{label}</span> : <StatusWord look={look} />}
         </span>
       </button>
       {call ? (
@@ -101,34 +91,31 @@ export function BotTopBar({
             type="button"
             aria-label={t("Back to the call")}
             onClick={onCall}
-            className="flex h-10 shrink-0 items-center gap-1.5 rounded-control bg-surface px-2.5 text-emerald shadow-card transition-transform duration-[160ms] ease-quiet active:scale-[.94] motion-reduce:active:scale-100"
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-surface px-3 text-emerald shadow-card transition-transform duration-[160ms] ease-quiet active:scale-[.94] motion-reduce:active:scale-100"
           >
-            <Phone size={15} strokeWidth={2.25} />
+            <Lamp status="online" />
             <Clock since={call.snap.startedAt} />
           </button>
         ) : (
-          <button
-            type="button"
-            title={t("Call")}
-            aria-label={t("Call {{name}}", { name: bot.name })}
-            onClick={onCall}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-ink text-on-ink transition-transform duration-[160ms] ease-quiet active:scale-[.94] motion-reduce:active:scale-100"
-          >
-            <Phone size={17} strokeWidth={2.25} />
+          <button type="button" title={t("Call")} aria-label={t("Call {{name}}", { name: bot.name })} onClick={onCall} className={`${square} text-ink active:bg-pressed`}>
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ink text-on-ink">
+              <Phone size={15} strokeWidth={2.25} />
+            </span>
           </button>
         )
       ) : null}
-      {tab === "run" && fresh && !chat ? null : (
-        <button
-          type="button"
-          title={t("New chat")}
-          aria-label={t("New chat")}
-          onClick={onNewChat}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-surface text-ink shadow-card transition-transform duration-[160ms] ease-quiet active:scale-[.94] motion-reduce:active:scale-100"
-        >
-          <Plus size={18} strokeWidth={2.25} />
-        </button>
-      )}
+      <button
+        type="button"
+        title={t("Pages and machine")}
+        aria-label={t("Pages and machine")}
+        aria-haspopup="dialog"
+        aria-expanded={railOpen}
+        onClick={onRail}
+        className={`relative ${square} text-ink-2 active:bg-pressed`}
+      >
+        <PanelRight size={19} />
+        {railDot ? <span aria-hidden className="absolute top-2 right-2 h-2 w-2 rounded-full bg-cobalt ring-2 ring-well" /> : null}
+      </button>
     </header>
   );
 }
@@ -142,18 +129,18 @@ const paneTo = {
 } as const;
 
 const tile =
-  "relative flex h-10 min-w-0 items-center gap-2 rounded-control px-2.5 text-small font-medium transition-[background-color,color,box-shadow] duration-[160ms] ease-quiet outline-offset-[-2px] disabled:opacity-50";
+  "relative flex h-[60px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-control text-label font-medium transition-[background-color,color,box-shadow,transform] duration-[160ms] ease-quiet outline-offset-[-2px] active:scale-[.96] motion-reduce:active:scale-100 disabled:opacity-50";
 
-// MachineTiles are the drawer's way to the machine: each pane as its own
+// MachineTiles are the sheet's way to the machine: each pane as its own
 // page (there is no room to dock one), and Start/Stop.
-export function MachineTiles({ bot, tab, onStart, onStop }: { bot: Bot; tab: Tab; onStart: () => void; onStop: () => void }) {
+function MachineTiles({ bot, tab, onStart, onStop }: { bot: Bot; tab: Tab; onStart: () => void; onStop: () => void }) {
   const starting = machineStarting(bot);
   const power = powerWord(bot);
   const kinds = paneKinds.filter((k) => k !== "mail" || bot.mailAddress || tab === "mail");
   return (
-    <section aria-label={t("Machine")} className="mt-4 px-2">
+    <section aria-label={t("Machine")} className="px-2">
       <h2 className="flex h-9 items-center px-3 text-section leading-4 text-ink-3">{t("Machine")}</h2>
-      <div className="grid grid-cols-3 gap-1">
+      <div className="grid grid-cols-3 gap-1.5 px-1">
         {kinds.map((k: PaneKind) => {
           const { icon: Icon } = paneMeta[k];
           const on = tab === k;
@@ -163,112 +150,63 @@ export function MachineTiles({ bot, tab, onStart, onStop }: { bot: Bot; tab: Tab
               to={paneTo[k]}
               params={{ botId: bot.id }}
               data-tab-on={on || undefined}
-              className={`${tile} ${on ? "bg-surface text-ink shadow-card" : "text-ink-2 hover:bg-pressed hover:text-ink"}`}
+              className={`${tile} ${on ? "bg-surface text-ink shadow-card" : "bg-surface/55 text-ink-2 hover:bg-pressed hover:text-ink"}`}
             >
-              <Icon size={16} className="shrink-0" />
-              <span className="truncate">{t(paneMeta[k].label)}</span>
+              <Icon size={18} className="shrink-0" />
+              <span className="max-w-full truncate px-1">{t(paneMeta[k].label)}</span>
             </Link>
           );
         })}
         <button
           type="button"
-          className={`${tile} ${bot.workerConnected ? "text-ink-2 hover:bg-pressed hover:text-ink" : "text-emerald hover:bg-pressed"}`}
+          className={`${tile} bg-surface/55 ${bot.workerConnected ? "text-ink-2 hover:bg-pressed hover:text-ink" : "text-emerald hover:bg-pressed"}`}
           disabled={!bot.workerConnected && starting}
           onClick={bot.workerConnected ? onStop : onStart}
         >
-          <Power size={15} className="shrink-0" />
-          <span className="truncate">{power}</span>
+          <Power size={17} className="shrink-0" />
+          <span className="max-w-full truncate px-1">{power}</span>
         </button>
       </div>
     </section>
   );
 }
 
-// BotDrawer slides in from the left over the page: the rail (Workspaces and
-// Bots) on top, then the Bot's sidebar. A press outside, Escape, a swipe back
-// to the left, or any move to another page puts it away.
-export function BotDrawer({ open, botId, label, onClose, children }: { open: boolean; botId: string; label: string; onClose: () => void; children: ReactNode }) {
-  const panel = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ x: number; y: number; dx: number; on: boolean | null } | null>(null);
-
-  const close = useRef(onClose);
-  close.current = onClose;
-  useEffect(() => {
-    if (!open) return;
-    panel.current?.focus({ preventScroll: true });
-  }, [open]);
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close.current();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
-  // A swipe toward the edge follows the finger and closes past a third of
-  // the way; a mostly vertical move is left to the scroll.
-  function onTouchStart(e: TouchEvent) {
-    // The rail's row of Bots scrolls sideways itself.
-    if (e.target instanceof Element && e.target.closest(".silo-scroll-x")) {
-      drag.current = null;
-      return;
-    }
-    const p = e.touches[0];
-    drag.current = { x: p.clientX, y: p.clientY, dx: 0, on: null };
-  }
-  function onTouchMove(e: TouchEvent) {
-    const d = drag.current;
-    const el = panel.current;
-    if (!d || !el) return;
-    const p = e.touches[0];
-    const dx = p.clientX - d.x;
-    const dy = p.clientY - d.y;
-    if (d.on === null) {
-      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-      d.on = Math.abs(dx) > Math.abs(dy) && dx < 0;
-    }
-    if (!d.on) return;
-    d.dx = Math.min(0, dx);
-    el.style.transition = "none";
-    el.style.transform = `translateX(${d.dx}px)`;
-  }
-  function onTouchEnd() {
-    const d = drag.current;
-    const el = panel.current;
-    drag.current = null;
-    if (!d?.on || !el) return;
-    el.style.transition = "";
-    el.style.transform = "";
-    if (-d.dx > el.offsetWidth / 3) onClose();
-  }
-
+// RailSheet is the right rail with room for words: who the Bot is and what
+// it is doing, its work with no tab of its own, the pages beside the
+// conversations, the machine, and Settings at the foot.
+export function RailSheet({ bot, tab, onStart, onStop }: { bot: Bot; tab: Tab; onStart: () => void; onStop: () => void }) {
+  const heard = useHeard(bot.id);
+  const look = botLook(bot);
+  const paused = bot.activity.find(pausedOnYou);
+  const where = paused ? sourceLabel(paused.kind, paused.title, t("New chat")) : "";
+  const settingsOn = onSettings(tab);
   return (
-    <div className={`fixed inset-0 z-40 wide:hidden ${open ? "" : "pointer-events-none"}`} inert={!open}>
-      <div
-        aria-hidden
-        onClick={onClose}
-        className={`absolute inset-0 bg-ink/30 transition-opacity duration-[280ms] ease-quiet ${open ? "opacity-100" : "opacity-0"}`}
-      />
-      <div
-        ref={panel}
-        role="dialog"
-        aria-modal="true"
-        aria-label={label}
-        tabIndex={-1}
-        data-drawer=""
-        data-bot={botId}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchEnd}
-        className={`absolute inset-y-0 left-0 flex w-[min(22rem,88vw)] flex-col bg-well pb-[env(safe-area-inset-bottom)] outline-none transition-transform duration-[320ms] ease-quiet motion-reduce:transition-none ${
-          open ? "translate-x-0 shadow-slip" : "-translate-x-full"
-        }`}
-      >
-        <Rail page="bots" activeBotId={botId} />
-        {children}
+    <>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3">
+        <div className="flex items-center gap-3 px-4 pt-4 pb-3">
+          <Crest index={bot.crest} size={44} state={crestState(bot, heard)} />
+          <span className="min-w-0 flex-1">
+            <h2 className="truncate text-card-title leading-6 text-ink">{bot.name}</h2>
+            <span className="flex min-w-0 items-center gap-1.5">
+              <Status look={look} className="shrink-0" />
+              {where ? <span className="min-w-0 truncate text-label leading-4 text-ink-3">{`· ${where}`}</span> : null}
+            </span>
+          </span>
+          {bot.people.length > 1 ? <People people={bot.people} /> : null}
+        </div>
+        <ActivityStrip bot={bot} className="mx-3 mb-2 bg-surface/60" />
+        <nav aria-label={t("Pages")} className="space-y-0.5 px-2">
+          {railPages.map(({ tab: page, to, label, icon }) => (
+            <SideLink key={page} to={to} botId={bot.id} on={tab === page} icon={icon} label={t(label)} badge={page === "feed" && tab !== page ? bot.feedUnread : 0} />
+          ))}
+        </nav>
+        <div className="mt-3">
+          <MachineTiles bot={bot} tab={tab} onStart={onStart} onStop={onStop} />
+        </div>
       </div>
-    </div>
+      <div className="shrink-0 px-2 py-2 shadow-[inset_0_1px_0_var(--color-line)]">
+        <SideLink to="/bots/$botId/settings" botId={bot.id} on={settingsOn} icon={Settings} label={t("Settings")} badge={settingsOn ? 0 : bot.auditUnseen} />
+      </div>
+    </>
   );
 }

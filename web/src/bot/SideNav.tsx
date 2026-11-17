@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { t } from "../i18n.ts";
 
 // The pages a Bot's sidebar opens: the conversation-side ones, Channels, the
-// first page of Settings, and (in the narrow drawer) the machine panes.
+// first page of Settings, and (in the narrow rail's sheet) the machine panes.
 type SideTo =
   | "/bots/$botId/dashboard"
   | "/bots/$botId/automations"

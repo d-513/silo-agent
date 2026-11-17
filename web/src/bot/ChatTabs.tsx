@@ -1,7 +1,7 @@
 import { useQuery } from "@connectrpc/connect-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Bot as BotGlyph, ChevronDown, LayoutGrid, MessageCircle, Plus, Trash2, X, type LucideIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ArmedButton } from "../Feedback";
 import { inputClass } from "../Field";
@@ -12,8 +12,9 @@ import { chatLink } from "../links";
 import { shortWhen } from "../nav/botOrder";
 import { Initials } from "../space/People";
 import { chatDoing, type Doing, runLook, started } from "../statusLook";
+import { Tip } from "../Tip";
 import { useDismiss } from "../useMenu";
-import { People } from "./BotSidebar";
+import { useWide } from "../useWide";
 import { afterClose, chatTabs, closedChats } from "./tabOrder";
 import { ChatTitleInput } from "./ChatTitleInput";
 import { FadeScroll } from "./FadeScroll";
@@ -49,12 +50,19 @@ const tabBox = "group/tab relative flex h-9 shrink-0 items-center self-end trans
 const tone = (on: boolean) => (on ? "text-ink" : "text-ink-2 hover:text-ink");
 
 // A standing tab: Dashboard, or the main chat. It cannot be closed.
-function PageTab({ on, icon: Icon, label, end, ...link }: { on: boolean; icon: LucideIcon; label: string; end?: ReactNode } & ({ to: "/bots/$botId/dashboard"; params: { botId: string } } | ReturnType<typeof chatLink>)) {
+function PageTab({
+  on,
+  icon: Icon,
+  label,
+  end,
+  bare = false,
+  ...link
+}: { on: boolean; icon: LucideIcon; label: string; end?: ReactNode; bare?: boolean } & ({ to: "/bots/$botId/dashboard"; params: { botId: string } } | ReturnType<typeof chatLink>)) {
   return (
-    <Link {...link} data-tab-on={on || undefined} className={`${tabBox} ${tone(on)} gap-2 rounded-t-control px-3 outline-offset-[-2px]`}>
+    <Link {...link} data-tab-on={on || undefined} title={bare ? label : undefined} className={`${tabBox} ${tone(on)} gap-2 rounded-t-control outline-offset-[-2px] ${bare ? "px-2.5" : "px-3"}`}>
       <TabGround on={on} />
       <Icon size={15} className="relative shrink-0" />
-      <span className="relative text-small font-medium whitespace-nowrap">{label}</span>
+      <span className={bare ? "sr-only" : "relative text-small font-medium whitespace-nowrap"}>{label}</span>
       {end ? <span className="relative flex shrink-0 items-center">{end}</span> : null}
     </Link>
   );
@@ -86,8 +94,8 @@ function dashMark(needs: number, fresh: number, curating: boolean): ReactNode {
   return curating ? <Lamp status="working" /> : null;
 }
 
-// ChatTabs heads every page of a Bot in the wide layout: its conversations as
-// tabs. Dashboard and the main chat stand first and stay; then your side
+// ChatTabs heads every page of a Bot: its conversations as tabs (below 960
+// the strip under the Bot's top bar). Dashboard and the main chat stand first and stay; then your side
 // chats, each closed with its ×, which only puts it away; + opens a new one;
 // the arrow lists the closed ones (and, for a manager, everyone else's) to
 // reopen or delete.
@@ -124,6 +132,9 @@ export function ChatTabs({
   onHideChat: (cid: string, hidden: boolean) => void;
 }) {
   const navigate = useNavigate();
+  // Below 960 the bar is the strip under the Bot's top bar: the Dashboard is
+  // its glyph, and the tabs are a little narrower.
+  const wide = useWide();
   const onRun = tab === "run";
   const main = chats.find((c) => c.main && c.mine);
   const tabs = useMemo(() => chatTabs(chats, onRun ? chatId : undefined), [chats, onRun, chatId]);
@@ -154,13 +165,14 @@ export function ChatTabs({
   }
 
   return (
-    <nav aria-label={t("Conversations")} className="relative flex h-11 shrink-0 items-end gap-1 bg-well pr-2 pl-2 shadow-[inset_0_-1px_0_var(--color-line)]">
+    <nav aria-label={t("Conversations")} className="relative flex h-11 shrink-0 items-end gap-1 bg-well pr-2 pl-2 shadow-[inset_0_-1px_0_var(--color-line)] max-wide:h-10 max-wide:pr-1 max-wide:pl-1.5">
       <PageTab
         to="/bots/$botId/dashboard"
         params={{ botId: id }}
         on={tab === "dashboard"}
         icon={LayoutGrid}
         label={t("Dashboard")}
+        bare={!wide}
         end={dashMark(pendingCount, tab === "dashboard" ? 0 : freshCount, !!dashQ.data?.curating)}
       />
       {main ? (
@@ -201,7 +213,7 @@ export function ChatTabs({
         }}
         onDelete={onDeleteChat}
       />
-      {bot.people.length > 1 ? (
+      {bot.people.length > 1 && wide ? (
         <span className="mb-1.5 ml-1 flex self-end">
           <People people={bot.people} />
         </span>
@@ -218,7 +230,7 @@ function CloseX({ on, onClick }: { on: boolean; onClick: () => void }) {
       aria-label={t("Close tab")}
       onClick={onClick}
       className={`absolute top-1/2 right-1.5 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-sm text-ink-3 transition-[opacity,background-color,color] duration-[160ms] ease-quiet hover:bg-pressed hover:text-ink focus-visible:opacity-100 ${
-        on ? "opacity-100" : "opacity-0 group-hover/tab:opacity-100"
+        on ? "opacity-100" : "opacity-0 group-hover/tab:opacity-100 [@media(hover:none)]:pointer-events-none"
       }`}
     >
       <X size={13} />
@@ -229,9 +241,10 @@ function CloseX({ on, onClick }: { on: boolean; onClick: () => void }) {
 // One side chat as a tab. A double-click on its name renames it in place.
 function ChatTab({ botId, chat, on, doing, rename, onClose }: { botId: string; chat: Chat; on: boolean; doing?: Doing; rename: ChatRename; onClose: () => void }) {
   const editing = rename.editing === chat.id;
+  const press = useHold(chat.mine ? () => rename.begin(chat) : null);
   const title = chat.main ? t("Main chat") : chat.title || t("New chat");
   return (
-    <div className={`${tabBox} ${tone(on)} max-w-[220px] min-w-[104px]`}>
+    <div className={`${tabBox} ${tone(on)} max-w-[220px] min-w-[104px] max-wide:max-w-[176px] max-wide:min-w-[92px]`}>
       <TabGround on={on} />
       {editing ? (
         <ChatTitleInput rename={rename} cid={chat.id} className={`${inputClass} relative mx-1.5 h-7 w-44 px-2 text-small`} />
@@ -245,7 +258,8 @@ function ChatTab({ botId, chat, on, doing, rename, onClose }: { botId: string; c
               e.preventDefault();
               if (chat.mine) rename.begin(chat);
             }}
-            className="relative flex h-full min-w-0 flex-1 items-center gap-2 rounded-t-control pr-8 pl-3 outline-offset-[-2px]"
+            {...press}
+            className="relative flex h-full min-w-0 flex-1 items-center gap-2 rounded-t-control pr-8 pl-3 outline-offset-[-2px] select-none [-webkit-touch-callout:none]"
           >
             {chat.mine ? null : chat.author ? <Initials email={chat.author} size={18} /> : <BotGlyph size={14} className="shrink-0 text-ink-3" aria-label={t("The Bot's own")} />}
             <span className="min-w-0 flex-1 truncate text-small font-medium">{title}</span>
@@ -256,6 +270,46 @@ function ChatTab({ botId, chat, on, doing, rename, onClose }: { botId: string; c
       )}
     </div>
   );
+}
+
+// useHold is a long press, for a finger, which has no double-click: it
+// renames a tab. The press that started it opens nothing.
+function useHold(fire: (() => void) | null) {
+  const st = useRef<{ timer: number; at: { x: number; y: number } | null; fired: boolean }>({ timer: 0, at: null, fired: false });
+  const go = useRef(fire);
+  go.current = fire;
+  useEffect(() => () => window.clearTimeout(st.current.timer), []);
+  const cancel = () => {
+    window.clearTimeout(st.current.timer);
+    st.current.at = null;
+  };
+  return {
+    onPointerDown: (e: PointerEvent) => {
+      st.current.fired = false;
+      if (e.pointerType !== "touch" || !go.current) return;
+      st.current.at = { x: e.clientX, y: e.clientY };
+      window.clearTimeout(st.current.timer);
+      st.current.timer = window.setTimeout(() => {
+        st.current.fired = true;
+        st.current.at = null;
+        navigator.vibrate?.(8);
+        go.current?.();
+      }, 480);
+    },
+    onPointerMove: (e: PointerEvent) => {
+      const at = st.current.at;
+      if (at && Math.hypot(e.clientX - at.x, e.clientY - at.y) > 8) cancel();
+    },
+    onPointerUp: cancel,
+    onPointerCancel: cancel,
+    onContextMenu: (e: MouseEvent) => {
+      if (st.current.at || st.current.fired) e.preventDefault();
+    },
+    onClick: (e: MouseEvent) => {
+      if (st.current.fired) e.preventDefault();
+      st.current.fired = false;
+    },
+  };
 }
 
 // ClosedMenu is the arrow at the end of the tabs: the chats you closed,
@@ -358,5 +412,30 @@ function ClosedMenu({ botId, closed, team, onOpen, onDelete }: { botId: string; 
           )
         : null}
     </>
+  );
+}
+
+// People is the faces of a Bot several people use: up to three, then +N,
+// with everyone and their role in a Tip.
+export function People({ people }: { people: Bot["people"] }) {
+  return (
+    <Tip
+      content={
+        <ul className="space-y-0.5 text-meta">
+          {people.map((p) => (
+            <li key={p.userId}>
+              {p.email} · {p.role === "manage" ? t("Can manage") : t("Can use")}
+            </li>
+          ))}
+        </ul>
+      }
+    >
+      <span tabIndex={0} className="flex shrink-0 items-center -space-x-1.5 outline-none">
+        {people.slice(0, 3).map((p) => (
+          <Initials key={p.userId} email={p.email} size={20} />
+        ))}
+        {people.length > 3 ? <span className="pl-2 text-micro text-ink-3">{`+${people.length - 3}`}</span> : null}
+      </span>
+    </Tip>
   );
 }

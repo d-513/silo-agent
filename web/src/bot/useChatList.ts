@@ -9,7 +9,7 @@ import { patch, recheck } from "../query";
 import type { Tab } from "./tabs";
 
 // Renaming a chat in place: the title being typed, and the one commit/cancel
-// contract both chat lists (the tab bar and the narrow drawer) share.
+// contract of the tab bar's rename.
 export type ChatRename = {
   editing: string;
   title: string;

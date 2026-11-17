@@ -19,13 +19,14 @@ import { botLook, botNow, crestState } from "../statusLook";
 import { Tip, TipTitle } from "../Tip";
 import { byLastMessage, shortWhen } from "./botOrder";
 import { AccountControls, hit, type Page } from "./chrome";
+import { closeNav } from "./navStore";
 
 // Sidebar is the wide layout's left column, on every signed-in page: Silo,
 // the Workspace the console is in (its name opens the switcher, the gear its
 // settings), that Workspace's Bots as a list of conversations (the newest
 // message first, each with its Call), and the account at the foot. Below 960
-// the Rail's top bar stands in for it.
-export function Sidebar({ page, activeBotId }: { page: Page; activeBotId?: string }) {
+// it is the left sheet (NavSheet), at the sheet's width.
+export function Sidebar({ page, activeBotId, className = "w-[280px]" }: { page: Page; activeBotId?: string; className?: string }) {
   const { bots, callEnabled } = useBots();
   const { space, spaces } = useCurrentSpace();
   const { pathname } = useLocation();
@@ -37,15 +38,16 @@ export function Sidebar({ page, activeBotId }: { page: Page; activeBotId?: strin
   // Call rings the Bot's own page, which holds the call: this one if it is
   // open, else the one the press opens.
   function call(botId: string) {
+    closeNav();
     ring(botId);
     if (botId !== activeBotId) void nav({ to: "/bots/$botId/run", params: { botId } });
   }
 
   return (
-    <aside className="flex w-[280px] shrink-0 flex-col bg-well" aria-label={"Silo"}>
+    <aside className={`flex shrink-0 flex-col bg-well ${className}`} aria-label={"Silo"}>
       <SidebarHead />
       <div className="flex shrink-0 items-center gap-1 px-2">
-        <SpaceSwitch space={space} spaces={spaces} row />
+        <SpaceSwitch space={space} spaces={spaces} />
         {space ? (
           <Link to="/w/$spaceId" params={{ spaceId: space.id }} title={t("Workspace settings")} aria-label={t("Workspace settings")} data-tab-on={page === "workspace" || undefined} className={hit(page === "workspace")}>
             <Settings2 size={17} />
@@ -112,7 +114,7 @@ function BotRow({ bot, on, air, canCall, onCall }: { bot: Bot; on: boolean; air:
         to="/bots/$botId/run"
         params={{ botId: bot.id }}
         aria-current={on ? "page" : undefined}
-        className={`blink flex min-w-0 items-center gap-3 rounded-control py-2 pl-3 outline-offset-[-2px] ${room}`}
+        className={`blink flex min-w-0 items-center gap-3 rounded-control py-2 pl-3 outline-offset-[-2px] in-data-drawer:py-2.5 ${room}`}
       >
         <span className="relative flex h-[36px] w-[36px] shrink-0">
           <Crest index={bot.crest} size={36} state={crestState(bot, heard)} />
@@ -158,8 +160,9 @@ function BotLine({ bot, now }: { bot: Bot; now: ReturnType<typeof botNow> }) {
 // CallButton rings the Bot in your main chat. It carries the call: a
 // breathing dot while it connects, then the call's clock, which leads back.
 function CallButton({ name, air, lit, onCall }: { name: string; air: OnAir | null; lit: boolean; onCall: () => void }) {
-  // Centered on the row's first 50px, so it stays put when the row grows.
-  const at = "absolute top-[11px] right-2.5";
+  // Centered on the row's first 50px (57px in the narrow sheet), so it stays
+  // put when the row grows.
+  const at = "absolute top-[11px] right-2.5 in-data-drawer:top-[14px]";
   if (air && !air.connecting) {
     return (
       <Tip content={t("Back to the call")}>

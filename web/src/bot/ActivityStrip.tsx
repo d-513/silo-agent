@@ -15,7 +15,7 @@ const elsewhere = (a: BotActivity) => a.kind === "automation" || a.kind === "cha
 // ActivityStrip is the Bot's work that has no tab of its own: automations
 // and channels with what they are on, a press away, its subagents counted on
 // one line. It shows only while there is some: under the open Bot's row in
-// the sidebar, and in the narrow drawer.
+// the sidebar, and in the narrow rail's sheet.
 export function ActivityStrip({ bot, className = "mx-2 mb-2 bg-surface/60" }: { bot: Bot; className?: string }) {
   const runs = bot.activity.filter(elsewhere);
   const agents = bot.activity.filter((a) => a.kind === "subagent");
