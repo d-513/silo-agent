@@ -173,10 +173,10 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "remember",
-			Description: "Save one memory: a durable fact, a preference of the human's, or a lesson about doing the work here. One per call. Saying again what is already there updates it; `replaces` retires the memories this one makes out of date. The result lists memories close to the new one.",
+			Description: "Save one memory: a durable fact, a preference of the human's, a lesson about doing the work here, or what you were working on and where. One per call. Saying again what is already there updates it; `replaces` retires the memories this one makes out of date. The result lists memories close to the new one.",
 			Params: tool.Object(map[string]any{
 				"content":  map[string]any{"type": "string", "description": "one self-contained sentence"},
-				"kind":     map[string]any{"type": "string", "enum": memory.Kinds, "description": "fact (the default), preference (how the human wants things done) or lesson (what works here); preferences and lessons are told at the start of every conversation"},
+				"kind":     map[string]any{"type": "string", "enum": memory.Kinds, "description": "fact (the default), preference (how the human wants things done), lesson (what works here) or work (what you worked on, where it lives and where it stands; one per piece of work, replaced as it goes on); preferences, lessons and the newest work are told at the start of every conversation"},
 				"inferred": map[string]any{"type": "boolean", "description": "true when the human did not say it and you worked it out: it is kept tentative, out of the prompt, until it is seen again"},
 				"replaces": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "ids of memories this one makes out of date"},
 			}, "content"),

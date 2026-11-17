@@ -6782,8 +6782,9 @@ type Memory struct {
 	Distance float64 `protobuf:"fixed64,5,opt,name=distance,proto3" json:"distance,omitempty"`
 	// Set when the memory keeper saved it from this chat.
 	ChatId string `protobuf:"bytes,7,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
-	// "fact", "preference" (how the human wants things done) or "lesson" (what
-	// works on this machine and these sites).
+	// "fact", "preference" (how the human wants things done), "lesson" (what
+	// works on this machine and these sites) or "work" (what the Bot was
+	// working on and where).
 	Kind string `protobuf:"bytes,8,opt,name=kind,proto3" json:"kind,omitempty"`
 	// "active" (the Bot is told it), "tentative" (worked out, waiting to be
 	// seen again) or "retired" (replaced or forgotten; kept for 30 days).

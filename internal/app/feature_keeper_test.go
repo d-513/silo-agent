@@ -398,3 +398,68 @@ func TestPromptTellsPreferencesAndLessonsFirst(t *testing.T) {
 		}
 	}
 }
+
+// What the Bot was working on, and where, is told as the newest few entries
+// after the facts. It is what happened, so it never waits as a guess, and a
+// later entry for the same work replaces the earlier one.
+func TestPromptTellsRecentWork(t *testing.T) {
+	dummy.Reset()
+	h := apptest.New(t)
+	bot := h.CreateBot("Worker").GetId()
+	save := func(e memory.Entry) memory.Saved {
+		t.Helper()
+		e.BotID = bot
+		s, err := h.App.Memory.Save(h.Ctx(), e)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+	save(memory.Entry{Content: "The human's sister is Ana"})
+	var made []memory.Saved
+	for i := range memory.WorkShown + 1 {
+		made = append(made, save(memory.Entry{
+			Content: fmt.Sprintf("Built report%d in /workspace/reports/job%d; charts still to add", i, i),
+			Kind:    memory.KindWork, Inferred: i == 1,
+		}))
+	}
+	if made[1].Status != memory.StatusActive {
+		t.Fatalf("work is what happened, not a guess: saved as %q", made[1].Status)
+	}
+	p := h.App.SystemPromptText(bot)
+	head := strings.Index(p, "Recent work")
+	if head < 0 || head < strings.Index(p, "sister is Ana") {
+		t.Fatalf("recent work should follow the facts:\n%s", p[max(0, len(p)-900):])
+	}
+	if strings.Contains(p, "job0;") || !strings.Contains(p, "job1;") || !strings.Contains(p, fmt.Sprintf("job%d;", memory.WorkShown)) {
+		t.Fatalf("want the newest %d entries only:\n%s", memory.WorkShown, p[head:])
+	}
+
+	save(memory.Entry{Content: "Finished report1 in /workspace/reports/job1 with its charts", Kind: memory.KindWork, Replaces: []string{made[1].ID}})
+	p = h.App.SystemPromptText(bot)
+	if strings.Contains(p, "job1;") || !strings.Contains(p, "Finished report1") {
+		t.Fatalf("the newer entry should stand in for the one it replaces:\n%s", p[strings.Index(p, "Recent work"):])
+	}
+}
+
+// Work that nobody touched for a month comes up for tidying again, marked,
+// so the keeper folds it into a fact or lets it go.
+func TestOldWorkIsLookedOverAgain(t *testing.T) {
+	dummy.Reset()
+	h := apptest.New(t)
+	bot := h.CreateBot("Aged").GetId()
+	old, err := h.App.Memory.Save(h.Ctx(), memory.Entry{BotID: bot, Content: "Set up the hiking site in /workspace/site on port 5180", Kind: memory.KindWork})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out, _ := h.App.Memory.Review(bot, "r1"); !strings.Contains(out, old.ID) || strings.Contains(out, "untouched") {
+		t.Fatalf("a new entry is looked over once, unmarked:\n%s", out)
+	}
+	if out, _ := h.App.Memory.Review(bot, "r2"); strings.Contains(out, old.ID) {
+		t.Fatalf("looked over twice:\n%s", out)
+	}
+	h.DB.Exec("UPDATE memories SET created_at = created_at - interval '31 days', reviewed_at = reviewed_at - interval '31 days' WHERE id = ?", old.ID)
+	if out, _ := h.App.Memory.Review(bot, "r3"); !strings.Contains(out, old.ID) || !strings.Contains(out, "untouched for over 30 days") {
+		t.Fatalf("old work should come up again, marked:\n%s", out)
+	}
+}

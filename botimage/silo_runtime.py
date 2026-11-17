@@ -523,8 +523,9 @@ def remember(
     """Save one memory (same as the `remember` tool).
 
     One self-contained sentence per call. `kind` is "fact" (the default),
-    "preference" (how the human wants things done) or "lesson" (what works
-    here). `inferred=True` marks what the human did not say: it is kept
+    "preference" (how the human wants things done), "lesson" (what works
+    here) or "work" (what you worked on, where it lives and where it stands:
+    one per piece of work, replaced as it goes on; never tentative). `inferred=True` marks what the human did not say: it is kept
     tentative until it is seen again. `replaces` retires the memories (by id)
     this one makes out of date. Saying again what is already there updates it.
     """

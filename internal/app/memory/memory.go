@@ -1,5 +1,6 @@
 // Package memory is what a Bot keeps across conversations: facts, the human's
-// preferences and lessons about the work, saved with remember, searched with
+// preferences, lessons about the work and what it was last working on, saved
+// with remember, searched with
 // recall, shown to its owner on the Memories page and tended in the
 // background by the keeper (keeper.go). Rows are in Postgres, per Bot, each
 // with a pgvector embedding and a keyword index.
@@ -37,10 +38,13 @@ const (
 	KindFact       = "fact"
 	KindPreference = "preference"
 	KindLesson     = "lesson"
+	// KindWork is what the Bot was working on and where: one entry per piece
+	// of work, replaced as the work goes on.
+	KindWork = "work"
 )
 
 // Kinds are the kinds a memory may be, in the order they are told.
-var Kinds = []string{KindPreference, KindLesson, KindFact}
+var Kinds = []string{KindPreference, KindLesson, KindFact, KindWork}
 
 // Where a memory stands.
 const (
@@ -207,6 +211,10 @@ func (s *Service) Save(ctx context.Context, m Entry) (Saved, error) {
 	}
 	if !slices.Contains(Kinds, kind) {
 		return Saved{}, fmt.Errorf("kind must be one of %s", strings.Join(Kinds, ", "))
+	}
+	if kind == KindWork {
+		// What was worked on is what happened, not a guess about the human.
+		m.Inferred = false
 	}
 	if m.Inferred && !s.cfg().Memory.Infer {
 		return Saved{}, errNoInfer
@@ -504,6 +512,9 @@ func describe(r Recalled) string {
 	}
 	if r.UseCount > 0 {
 		parts = append(parts, fmt.Sprintf("used %d×", r.UseCount))
+	}
+	if r.Kind == KindWork && time.Since(r.CreatedAt) > workStale {
+		parts = append(parts, fmt.Sprintf("untouched for over %d days", int(workStale.Hours()/24)))
 	}
 	return strings.Join(parts, ", ")
 }

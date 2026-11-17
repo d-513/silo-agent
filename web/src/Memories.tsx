@@ -186,7 +186,7 @@ export function MemoriesPane({ bot, onError }: { bot: Bot; onError: (s: string) 
         {live > 0 ? <Count n={live} /> : null}
       </div>
       <p className="mb-6 text-ink-2">
-        {t("What the Bot keeps across conversations: facts, how you want things done, and what it learned works. It is told your preferences and its lessons every time, and the facts in full while they are few, as a summary once they are many.")}
+        {t("What the Bot keeps across conversations: facts, how you want things done, what it learned works, and what it was last working on. It is told your preferences, its lessons and its most recent work every time, and the facts in full while they are few, as a summary once they are many.")}
       </p>
 
       {(all === null || all.length > 0 || searchMode) && (

@@ -19,8 +19,8 @@ import (
 // TestLiveCollect gives a real model the memory keeper's prompt and tools
 // over conversations, and checks what it does on its first turn: that it
 // keeps what was said, works out a preference and a lesson and marks them
-// inferred, replaces instead of copying, leaves a one-off alone, and takes
-// nothing from a tool result. Run it after touching MEMORY.md, MEMORY_INFER.md
+// inferred, notes the work that was done and where, replaces instead of
+// copying, leaves a one-off alone, and takes nothing from a tool result. Run it after touching MEMORY.md, MEMORY_INFER.md
 // or the memory tools' schemas:
 //
 //	SILO_CLAUDE_DIR=data/claude SILO_CLAUDE_BIN=tmp/claude-bin/package/claude \
@@ -100,6 +100,24 @@ func TestLiveCollect(t *testing.T) {
 					}
 				}
 				t.Errorf("want a lesson about the bank login marked inferred, got %+v", got)
+			},
+		},
+		{
+			name:    "work that was done, and where",
+			excerpt: "USER:\nMake me a small site listing my hiking routes from routes.csv.\n\nASSISTANT:\nTOOL CALL terminal {\"command\":\"cd /workspace && npm create vite@latest site -- --template react && cd site && npm install\"}\n\nTOOL RESULT:\nadded 212 packages in 9s\n\nASSISTANT:\nTOOL CALL write {\"path\":\"site/src/App.jsx\",\"content\":\"…\"}\n\nTOOL RESULT:\nwrote site/src/App.jsx\n\nASSISTANT:\nTOOL CALL terminal {\"command\":\"cd /workspace/site && nohup npm run dev -- --port 5180 &\"}\n\nTOOL RESULT:\nVITE ready on http://localhost:5180\n\nASSISTANT:\nThe site is in /workspace/site and running on port 5180: it lists the twelve routes from routes.csv with distance and region. The elevation column is not in yet, the CSV has no such data.\n\nUSER:\nGood, we will add elevation later.",
+			check: func(t *testing.T, got []saved) {
+				n := 0
+				for _, s := range got {
+					if s.Kind == memory.KindWork {
+						n++
+						if s.Inferred || !strings.Contains(s.Content, "/workspace/site") {
+							t.Errorf("want the work stated with where it lives, got %+v", s)
+						}
+					}
+				}
+				if n != 1 {
+					t.Errorf("want one work memory, got %d in %+v", n, got)
+				}
 			},
 		},
 		{

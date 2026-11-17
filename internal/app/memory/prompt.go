@@ -24,8 +24,10 @@ import (
 // word: they are few and they shape every answer. Facts are all there while
 // they are few; once they outgrow InjectMax a digest stands in for them, a
 // summary the sweep writes in the background and rewrites when the facts have
-// changed. The exact facts stay a `recall` away. Only active memories are
-// told: a tentative one waits to be seen again, a retired one is gone.
+// changed. The exact facts stay a `recall` away. Last comes what the Bot was
+// recently working on, the newest WorkShown entries: it changes most often,
+// so nothing stands behind it. Only active memories are told: a tentative
+// one waits to be seen again, a retired one is gone.
 const (
 	// InjectMax is the total size of fact text, in characters, up to which
 	// every fact is in the prompt.
@@ -33,6 +35,9 @@ const (
 	// GuideMax is the size up to which each of preferences and lessons is
 	// listed; past it the newest stay (the keeper merges them before that).
 	GuideMax = 3000
+	// WorkShown is how many work entries are told, the newest; the older ones
+	// are found with recall.
+	WorkShown = 6
 	// digestMax is the size the digest is asked to stay under.
 	digestMax = 3000
 	// digestInput caps what one digest call reads; a larger store is
@@ -62,12 +67,15 @@ func (s *Service) Prompt(botID string) string {
 		{KindPreference, "Preferences: how the human wants things done. Follow them unless told otherwise now."},
 		{KindLesson, "Lessons: what has worked here before, and what has not."},
 	} {
-		if rows := s.listed(botID, g.kind, GuideMax); len(rows) > 0 {
+		if rows := s.listed(botID, g.kind, GuideMax, 0); len(rows) > 0 {
 			parts = append(parts, g.head+"\n"+formatRecalled(rows))
 		}
 	}
 	if facts := s.facts(botID); facts != "" {
 		parts = append(parts, facts)
+	}
+	if rows := s.listed(botID, KindWork, GuideMax, WorkShown); len(rows) > 0 {
+		parts = append(parts, "Recent work: what this Bot was last working on and where, each as it stood on its date. Check the place before relying on one; `recall` finds older work.\n"+formatRecalled(rows))
 	}
 	return strings.Join(parts, "\n")
 }
@@ -85,7 +93,7 @@ func (s *Service) facts(botID string) string {
 	}
 	if st.Size <= InjectMax {
 		return "Facts, oldest first. Use an id with `forget` when one is wrong.\n" +
-			formatRecalled(s.listed(botID, KindFact, 0))
+			formatRecalled(s.listed(botID, KindFact, 0, 0))
 	}
 	var d db.MemoryDigest
 	s.db.Where("bot_id = ?", botID).Limit(1).Find(&d)
@@ -95,12 +103,13 @@ func (s *Service) facts(botID string) string {
 			strings.TrimSpace(d.Text)
 	}
 	return "Facts: too many to list. These are the newest; `recall` searches all of them by meaning and by their words.\n" +
-		formatRecalled(s.listed(botID, KindFact, InjectMax))
+		formatRecalled(s.listed(botID, KindFact, InjectMax, 0))
 }
 
 // listed is the Bot's active memories of one kind, oldest first. With a
-// budget it is the newest ones whose text fits it.
-func (s *Service) listed(botID, kind string, budget int) []Recalled {
+// budget it is the newest ones whose text fits it, at most `most` of them
+// (0 = as many as fit).
+func (s *Service) listed(botID, kind string, budget, most int) []Recalled {
 	var rows []Recalled
 	q := s.told(botID, kind).Select(recalledCols)
 	if budget <= 0 {
@@ -109,7 +118,7 @@ func (s *Service) listed(botID, kind string, budget int) []Recalled {
 	}
 	q.Order("created_at DESC, id DESC").Limit(200).Scan(&rows)
 	used, n := 0, 0
-	for n < len(rows) && used+len(rows[n].Content) <= budget {
+	for n < len(rows) && (most <= 0 || n < most) && used+len(rows[n].Content) <= budget {
 		used += len(rows[n].Content)
 		n++
 	}
@@ -129,7 +138,7 @@ func (s *Service) storeKey(botID string) string {
 	err := s.db.Raw(`SELECT encode(sha256(COALESCE(string_agg(
 			convert_to(id, 'UTF8') || '\x00'::bytea || convert_to(content, 'UTF8') || '\x00'::bytea,
 			''::bytea ORDER BY id), ''::bytea)), 'hex')
-		FROM memories WHERE bot_id = ?`, botID).Scan(&key).Error
+		FROM memories WHERE bot_id = ? AND status = ? AND kind = ?`, botID, StatusActive, KindFact).Scan(&key).Error
 	if err != nil || key == "" {
 		var rows []struct {
 			ID      string
@@ -199,7 +208,7 @@ func (s *Service) SweepDigests(ctx context.Context, now time.Time) int {
 
 // digest asks the memory model for the briefing of a Bot's memories.
 func (s *Service) digest(ctx context.Context, botID string) (string, error) {
-	rows := s.listed(botID, KindFact, digestInput)
+	rows := s.listed(botID, KindFact, digestInput, 0)
 	if len(rows) == 0 {
 		return "", fmt.Errorf("no memories")
 	}

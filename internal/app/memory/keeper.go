@@ -40,6 +40,9 @@ const (
 	reviewBatches  = 3
 	// tentativeStale is how long a guess waits before it is looked over again.
 	tentativeStale = 30 * 24 * time.Hour
+	// workStale is how long a work entry stands untouched before it is looked
+	// over again, to be folded into a fact or let go.
+	workStale = 30 * 24 * time.Hour
 	// tidyMin is how many memories must wait to be looked over before the
 	// keeper tidies unasked, and tidyEvery the least time between two tidies.
 	tidyMin   = 20
@@ -164,10 +167,12 @@ func Excerpt(shown []Recalled, excerpt, note string) string {
 }
 
 // unreviewed narrows a query to the memories waiting to be looked over: new
-// or reworded ones, and guesses nothing has supported for a while.
+// or reworded ones, guesses nothing has supported for a while, and work
+// nobody has touched for a while.
 func unreviewed(q *gorm.DB, now time.Time) *gorm.DB {
-	return q.Where("status <> ? AND (reviewed_at IS NULL OR (status = ? AND reviewed_at < ?))",
-		StatusRetired, StatusTentative, now.Add(-tentativeStale))
+	stale := now.Add(-workStale)
+	return q.Where("status <> ? AND (reviewed_at IS NULL OR (status = ? AND reviewed_at < ?) OR (kind = ? AND created_at < ? AND reviewed_at < ?))",
+		StatusRetired, StatusTentative, now.Add(-tentativeStale), KindWork, stale, stale)
 }
 
 // batch is how many review batches a keeper run has taken.

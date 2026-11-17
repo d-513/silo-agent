@@ -2256,8 +2256,9 @@ public nonisolated struct Silo_V1_Memory: Sendable {
   /// Set when the memory keeper saved it from this chat.
   public var chatID: String = String()
 
-  /// "fact", "preference" (how the human wants things done) or "lesson" (what
-  /// works on this machine and these sites).
+  /// "fact", "preference" (how the human wants things done), "lesson" (what
+  /// works on this machine and these sites) or "work" (what the Bot was
+  /// working on and where).
   public var kind: String = String()
 
   /// "active" (the Bot is told it), "tentative" (worked out, waiting to be

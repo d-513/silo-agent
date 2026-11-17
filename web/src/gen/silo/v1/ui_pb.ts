@@ -3321,8 +3321,9 @@ export type Memory = Message<"silo.v1.Memory"> & {
   chatId: string;
 
   /**
-   * "fact", "preference" (how the human wants things done) or "lesson" (what
-   * works on this machine and these sites).
+   * "fact", "preference" (how the human wants things done), "lesson" (what
+   * works on this machine and these sites) or "work" (what the Bot was
+   * working on and where).
    *
    * @generated from field: string kind = 8;
    */

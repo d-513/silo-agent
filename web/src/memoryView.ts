@@ -2,7 +2,7 @@ import { msg } from "./i18n.ts";
 
 // What the Memories page narrows its list to. "all" is what the Bot can be
 // told or may come to be told: the active memories and the noticed ones.
-export type Filter = "all" | "preference" | "lesson" | "fact" | "noticed" | "retired";
+export type Filter = "all" | "preference" | "lesson" | "fact" | "work" | "noticed" | "retired";
 
 type Row = { kind: string; status: string };
 
@@ -13,6 +13,7 @@ export const FILTERS: { key: Filter; label: string; always?: boolean }[] = [
   { key: "preference", label: msg("Preferences") },
   { key: "lesson", label: msg("Lessons") },
   { key: "fact", label: msg("Facts") },
+  { key: "work", label: msg("Work") },
   { key: "noticed", label: msg("Noticed") },
   { key: "retired", label: msg("Retired") },
 ];
@@ -37,5 +38,6 @@ export function shows(f: Filter, m: Row): boolean {
 export function kindWord(kind: string): string {
   if (kind === "preference") return msg("preference");
   if (kind === "lesson") return msg("lesson");
+  if (kind === "work") return msg("work");
   return "";
 }

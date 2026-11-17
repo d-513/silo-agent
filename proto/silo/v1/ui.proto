@@ -1185,8 +1185,9 @@ message Memory {
   reserved 6;
   // Set when the memory keeper saved it from this chat.
   string chat_id = 7;
-  // "fact", "preference" (how the human wants things done) or "lesson" (what
-  // works on this machine and these sites).
+  // "fact", "preference" (how the human wants things done), "lesson" (what
+  // works on this machine and these sites) or "work" (what the Bot was
+  // working on and where).
   string kind = 8;
   // "active" (the Bot is told it), "tentative" (worked out, waiting to be
   // seen again) or "retired" (replaced or forgotten; kept for 30 days).

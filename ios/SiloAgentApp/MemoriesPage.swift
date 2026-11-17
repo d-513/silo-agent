@@ -77,7 +77,7 @@ struct MemoriesPage: View {
 
     private func meta(_ memory: Silo_V1_Memory) -> some View {
         HStack(spacing: 6) {
-            if memory.kind == "preference" || memory.kind == "lesson" {
+            if ["preference", "lesson", "work"].contains(memory.kind) {
                 Text(memory.kind).foregroundStyle(Theme.ink2)
                 Text("·").accessibilityHidden(true)
             }

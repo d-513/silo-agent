@@ -1184,7 +1184,7 @@ func Migrate(gdb *gorm.DB) error {
 		"CREATE INDEX IF NOT EXISTS memories_tsv ON memories USING gin (tsv)",
 		// A database from before memories lost their first kind column still
 		// has it, nullable: whatever it holds that is no kind now is a fact.
-		"UPDATE memories SET kind = 'fact' WHERE kind IS NULL OR kind NOT IN ('fact', 'preference', 'lesson')",
+		"UPDATE memories SET kind = 'fact' WHERE kind IS NULL OR kind NOT IN ('fact', 'preference', 'lesson', 'work')",
 		// 'simple' keeps the keyword half language-neutral: names, part
 		// numbers and error codes match exactly in any language.
 		"ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', content)) STORED",
