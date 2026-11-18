@@ -124,21 +124,9 @@ private struct ShareCard: View {
         sending = true
         defer { sending = false }
         failure = nil
-        let client = SiloClient(host: state.server)
         do {
-            var attachments: [Silo_V1_Attachment] = []
-            for file in files {
-                let safe = file.name.replacingOccurrences(of: "/", with: "_")
-                let path = "tmp/\(safe)"
-                try await client.putFile(botID: bot, path: path, data: file.data)
-                var item = Silo_V1_Attachment()
-                item.name = safe
-                item.path = path
-                item.size = Int64(file.data.count)
-                attachments.append(item)
-            }
             let text = [note, shared].filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.joined(separator: "\n\n")
-            _ = try await client.send(botID: bot, chatID: "", text: text, attachments: attachments)
+            try await BotDelivery.send(botID: bot, text: text, files: files.map { .init(name: $0.name, data: $0.data) }, server: state.server)
             done()
         } catch {
             failure = (error as? SiloError)?.errorDescription ?? error.localizedDescription

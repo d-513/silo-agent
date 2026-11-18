@@ -13,6 +13,10 @@
 		000000000000000400000004 /* SiloClient in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000300000004 /* SiloClient */; };
 		000000000000000400000005 /* SiloWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 000000000000000000000121 /* SiloWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		000000000000000400000006 /* SiloShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 000000000000000000000122 /* SiloShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		000000000000000400000007 /* SiloClient in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000300000005 /* SiloClient */; };
+		000000000000000400000008 /* SiloClient in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000300000006 /* SiloClient */; };
+		000000000000000400000009 /* SiloWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 000000000000000000000124 /* SiloWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		00000000000000040000000A /* SiloWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 000000000000000000000123 /* SiloWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -30,6 +34,20 @@
 			remoteGlobalIDString = 000000000000000600000000;
 			remoteInfo = SiloShare;
 		};
+		000000000000000700000003 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 00000000000000A100000000;
+			remoteInfo = SiloWatch;
+		};
+		000000000000000700000004 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 00000000000000A200000000;
+			remoteInfo = SiloWatchWidgets;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -43,12 +61,32 @@
 			);
 			name = "Embed Foundation Extensions";
 		};
+		000000000000000160000000 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolder = Product;
+			files = (
+				00000000000000040000000A /* SiloWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+		};
+		00000000000000A150000000 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = PlugIns;
+			files = (
+				000000000000000400000009 /* SiloWatchWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* MyApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000121 /* SiloWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SiloWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000122 /* SiloShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SiloShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000123 /* SiloWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SiloWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000124 /* SiloWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SiloWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -58,6 +96,44 @@
 				SiloWidgetBundle.swift,
 			);
 			target = 000000000000000100000000 /* MyApp */;
+		};
+		000000000000000900000002 /* Exceptions for "SiloShared" folder in "SiloWatch" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				BotDelivery.swift,
+				CallActivity.swift,
+				Entities.swift,
+				Intents.swift,
+				Kit/Buttons.swift,
+				Kit/ExtraConversation.swift,
+				Kit/ExtraMachine.swift,
+				Kit/ExtraWorkspace.swift,
+				Kit/Overlays.swift,
+				Kit/Surfaces.swift,
+				ShortcutIntents.swift,
+				Snippets.swift,
+				WorkActivity.swift,
+			);
+			target = 00000000000000A100000000 /* SiloWatch */;
+		};
+		000000000000000900000003 /* Exceptions for "SiloShared" folder in "SiloWatchWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				BotDelivery.swift,
+				CallActivity.swift,
+				Entities.swift,
+				Intents.swift,
+				Kit/Buttons.swift,
+				Kit/ExtraConversation.swift,
+				Kit/ExtraMachine.swift,
+				Kit/ExtraWorkspace.swift,
+				Kit/Overlays.swift,
+				Kit/Surfaces.swift,
+				ShortcutIntents.swift,
+				Snippets.swift,
+				WorkActivity.swift,
+			);
+			target = 00000000000000A200000000 /* SiloWatchWidgets */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -69,6 +145,10 @@
 		};
 		000000000000000000000011 /* SiloShared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				000000000000000900000002 /* Exceptions for "SiloShared" folder in "SiloWatch" target */,
+				000000000000000900000003 /* Exceptions for "SiloShared" folder in "SiloWatchWidgets" target */,
+			);
 			path = SiloShared;
 			sourceTree = "<group>";
 		};
@@ -83,6 +163,16 @@
 		000000000000000000000013 /* SiloShare */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = SiloShare;
+			sourceTree = "<group>";
+		};
+		000000000000000000000014 /* SiloWatch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SiloWatch;
+			sourceTree = "<group>";
+		};
+		000000000000000000000015 /* SiloWatchWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SiloWatchWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -107,6 +197,18 @@
 				000000000000000400000004 /* SiloClient in Frameworks */,
 			);
 		};
+		00000000000000A130000000 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+				000000000000000400000007 /* SiloClient in Frameworks */,
+			);
+		};
+		00000000000000A230000000 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+				000000000000000400000008 /* SiloClient in Frameworks */,
+			);
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -117,6 +219,8 @@
 				000000000000000000000011 /* SiloShared */,
 				000000000000000000000012 /* SiloWidgets */,
 				000000000000000000000013 /* SiloShare */,
+				000000000000000000000014 /* SiloWatch */,
+				000000000000000000000015 /* SiloWatchWidgets */,
 				000000000000000000000020 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -127,6 +231,8 @@
 				000000000000000000000120 /* MyApp.app */,
 				000000000000000000000121 /* SiloWidgets.appex */,
 				000000000000000000000122 /* SiloShare.appex */,
+				000000000000000000000123 /* SiloWatch.app */,
+				000000000000000000000124 /* SiloWatchWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -142,12 +248,14 @@
 				000000000000000130000000 /* Frameworks */,
 				000000000000000140000000 /* Resources */,
 				000000000000000150000000 /* Embed Foundation Extensions */,
+				000000000000000160000000 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				000000000000000800000001 /* PBXTargetDependency */,
 				000000000000000800000002 /* PBXTargetDependency */,
+				000000000000000800000003 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				000000000000000000000010 /* SiloAgentApp */,
@@ -207,6 +315,54 @@
 			productReference = 000000000000000000000122 /* SiloShare.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		00000000000000A100000000 /* SiloWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 00000000000000A110000000 /* Build configuration list for PBXNativeTarget "SiloWatch" */;
+			buildPhases = (
+				00000000000000A120000000 /* Sources */,
+				00000000000000A130000000 /* Frameworks */,
+				00000000000000A140000000 /* Resources */,
+				00000000000000A150000000 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				000000000000000800000004 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				000000000000000000000011 /* SiloShared */,
+				000000000000000000000014 /* SiloWatch */,
+			);
+			name = SiloWatch;
+			packageProductDependencies = (
+				000000000000000300000005 /* SiloClient */,
+			);
+			productName = SiloWatch;
+			productReference = 000000000000000000000123 /* SiloWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		00000000000000A200000000 /* SiloWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 00000000000000A210000000 /* Build configuration list for PBXNativeTarget "SiloWatchWidgets" */;
+			buildPhases = (
+				00000000000000A220000000 /* Sources */,
+				00000000000000A230000000 /* Frameworks */,
+				00000000000000A240000000 /* Resources */,
+			);
+			buildRules = (
+			);
+			fileSystemSynchronizedGroups = (
+				000000000000000000000011 /* SiloShared */,
+				000000000000000000000015 /* SiloWatchWidgets */,
+			);
+			name = SiloWatchWidgets;
+			packageProductDependencies = (
+				000000000000000300000006 /* SiloClient */,
+			);
+			productName = SiloWatchWidgets;
+			productReference = 000000000000000000000124 /* SiloWatchWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -242,6 +398,8 @@
 				000000000000000100000000 /* MyApp */,
 				000000000000000500000000 /* SiloWidgets */,
 				000000000000000600000000 /* SiloShare */,
+				00000000000000A100000000 /* SiloWatch */,
+				00000000000000A200000000 /* SiloWatchWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -258,6 +416,16 @@
 			);
 		};
 		000000000000000640000000 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		00000000000000A140000000 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		00000000000000A240000000 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
 			);
@@ -280,6 +448,16 @@
 			files = (
 			);
 		};
+		00000000000000A120000000 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
+		00000000000000A220000000 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -292,6 +470,16 @@
 			isa = PBXTargetDependency;
 			target = 000000000000000600000000 /* SiloShare */;
 			targetProxy = 000000000000000700000002 /* PBXContainerItemProxy */;
+		};
+		000000000000000800000003 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 00000000000000A100000000 /* SiloWatch */;
+			targetProxy = 000000000000000700000003 /* PBXContainerItemProxy */;
+		};
+		000000000000000800000004 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 00000000000000A200000000 /* SiloWatchWidgets */;
+			targetProxy = 000000000000000700000004 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -444,6 +632,7 @@
 				INFOPLIST_FILE = "SiloApp-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Silo;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Reach a Silo on your own network, and its voice on a call.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Scan documents to send to your Bots.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Talk to your Bots on a call, and dictate messages to them.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -487,6 +676,7 @@
 				INFOPLIST_FILE = "SiloApp-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Silo;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Reach a Silo on your own network, and its voice on a call.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Scan documents to send to your Bots.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Talk to your Bots on a call, and dictate messages to them.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -636,6 +826,128 @@
 			};
 			name = Release;
 		};
+		00000000000000A111000000 /* Debug configuration for PBXNativeTarget "SiloWatch" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SiloApp.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SiloWatch-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Silo;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "devplaceholder.$(PROJECT_UNIQUE_VALUE:identifier).MyApp.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited) SILO_WATCH";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Debug;
+		};
+		00000000000000A112000000 /* Release configuration for PBXNativeTarget "SiloWatch" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SiloApp.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SiloWatch-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Silo;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "devplaceholder.$(PROJECT_UNIQUE_VALUE:identifier).MyApp.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SILO_WATCH";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		00000000000000A211000000 /* Debug configuration for PBXNativeTarget "SiloWatchWidgets" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = SiloApp.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SiloWatchWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Silo;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "devplaceholder.$(PROJECT_UNIQUE_VALUE:identifier).MyApp.watchkitapp.widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited) SILO_EXTENSION SILO_WATCH";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Debug;
+		};
+		00000000000000A212000000 /* Release configuration for PBXNativeTarget "SiloWatchWidgets" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = SiloApp.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SiloWatchWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Silo;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "devplaceholder.$(PROJECT_UNIQUE_VALUE:identifier).MyApp.watchkitapp.widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SILO_EXTENSION SILO_WATCH";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -671,6 +983,22 @@
 			);
 			defaultConfigurationName = Release;
 		};
+		00000000000000A110000000 /* Build configuration list for PBXNativeTarget "SiloWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000A111000000 /* Debug configuration for PBXNativeTarget "SiloWatch" */,
+				00000000000000A112000000 /* Release configuration for PBXNativeTarget "SiloWatch" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		00000000000000A210000000 /* Build configuration list for PBXNativeTarget "SiloWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000A211000000 /* Debug configuration for PBXNativeTarget "SiloWatchWidgets" */,
+				00000000000000A212000000 /* Release configuration for PBXNativeTarget "SiloWatchWidgets" */,
+			);
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -694,6 +1022,14 @@
 			productName = SiloClient;
 		};
 		000000000000000300000004 /* SiloClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SiloClient;
+		};
+		000000000000000300000005 /* SiloClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SiloClient;
+		};
+		000000000000000300000006 /* SiloClient */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SiloClient;
 		};

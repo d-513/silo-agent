@@ -13,6 +13,9 @@ struct ComposerView: View {
     @State private var photos: [PhotosPickerItem] = []
     @State private var importing = false
     @State private var picking = false
+    @State private var scanning = false
+    /// A file held over the composer: its edge lights up.
+    @State private var dropping = false
     @State private var dictation = Dictation()
     @FocusState private var focused: Bool
 
@@ -52,6 +55,15 @@ struct ComposerView: View {
             guard case .success(let urls) = result else { return }
             Task { for url in urls { await attachFile(url) } }
         }
+        .fullScreenCover(isPresented: $scanning) {
+            DocumentScanner { pdf in
+                scanning = false
+                guard let pdf else { return }
+                let stamp = Date().formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false).timeSeparator(.omitted))
+                Task { await model.attach(name: "scan-\(stamp).pdf", data: pdf) }
+            }
+            .ignoresSafeArea()
+        }
     }
 
     private var card: some View {
@@ -76,7 +88,12 @@ struct ComposerView: View {
         }
         .padding(6)
         .background(Theme.surface, in: shape)
-        .overlay(shape.stroke(focused ? Theme.lineStrong : Theme.line))
+        .overlay(shape.stroke(dropping ? Theme.cobalt : focused ? Theme.lineStrong : Theme.line, lineWidth: dropping ? 2 : 1))
+        .onDrop(of: [.item], isTargeted: $dropping) { providers in
+            guard !model.readOnly else { return false }
+            Task { for provider in providers { await attachDropped(provider) } }
+            return true
+        }
         .floatShadow()
         .animation(Motion.quiet(0.16), value: focused)
         .animation(Motion.state, value: dictation.state == .recording)
@@ -111,12 +128,23 @@ struct ComposerView: View {
                 Task { await model.stopRun() }
             }
         }
+        .background {
+            // ⌘↩ sends from a keyboard; Return alone stays a new line. Never Stop: that is ⌘.
+            Button("Send", action: send)
+                .keyboardShortcut(.return, modifiers: .command)
+                .disabled(model.isRunning || !canSend)
+                .opacity(0)
+                .accessibilityHidden(true)
+        }
     }
 
     private var attachMenu: some View {
         SiloMenu {
             MenuRow(title: "Photo library", symbol: "photo") { picking = true }
             MenuRow(title: "Files", symbol: "folder") { importing = true }
+            if DocumentScanner.isAvailable {
+                MenuRow(title: "Scan document", symbol: "doc.viewfinder") { scanning = true }
+            }
         } label: {
             Image(systemName: "paperclip").font(.system(size: 16)).foregroundStyle(Theme.ink2).frame(width: 36, height: 36)
         }
@@ -304,6 +332,23 @@ struct ComposerView: View {
             return
         }
         await model.attach(name: url.lastPathComponent, data: data)
+    }
+
+    /// Something dropped on the composer (iPad, or a drag from another app): a file keeps its
+    /// name, an image or text without one gets a made-up one.
+    private func attachDropped(_ provider: NSItemProvider) async {
+        guard let type = provider.registeredContentTypes.first(where: { $0.conforms(to: .data) || $0.conforms(to: .item) }) else { return }
+        let data: Data? = await withCheckedContinuation { done in
+            _ = provider.loadDataRepresentation(for: type) { data, _ in done.resume(returning: data) }
+        }
+        guard let data else {
+            model.attachError = "Could not read what was dropped"
+            return
+        }
+        let stamp = Int(Date().timeIntervalSince1970)
+        let ext = type.preferredFilenameExtension.map { ".\($0)" } ?? ""
+        let base = provider.suggestedName ?? "dropped-\(stamp)-\(Int.random(in: 100...999))"
+        await model.attach(name: base.hasSuffix(ext) ? base : base + ext, data: data)
     }
 
     // MARK: sending

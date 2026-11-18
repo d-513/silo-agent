@@ -79,4 +79,13 @@ final class WidgetsTests: XCTestCase {
         XCTAssertFalse(blocks[5].isControl, "a control with no name has nowhere to put its value")
         XCTAssertEqual(encodeAskValues(["go": .bool(false)]), #"{"go":false}"#)
     }
+
+    func testWidgetSpoken() {
+        XCTAssertEqual(widgetSpoken(kind: "stat", title: "Open issues", data: ["value": 12, "caption": "this week"]), "Open issues: 12 (this week)")
+        XCTAssertEqual(widgetSpoken(kind: "stat", title: "Disk", data: ["value": 81, "unit": "%"]), "Disk: 81 %")
+        XCTAssertEqual(widgetSpoken(kind: "progress", title: "Import", data: ["value": 3, "max": 10]), "Import: 3 of 10")
+        XCTAssertEqual(widgetSpoken(kind: "status", title: "", data: ["items": [["label": "API", "state": "ok"], ["label": "DB", "state": "down", "word": "Offline"]]]), "API: ok; DB: Offline")
+        XCTAssertEqual(widgetSpoken(kind: "checklist", title: "Today", data: ["items": [["id": "a", "text": "Milk"], ["id": "b", "text": "Bread"]]], checked: ["a"]), "Today: 1 of 2 done. Open: Bread")
+        XCTAssertEqual(widgetSpoken(kind: "list", title: "News", data: [:]), "News: nothing yet.")
+    }
 }

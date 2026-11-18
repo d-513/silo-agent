@@ -14,6 +14,15 @@ struct SiloEntry: TimelineEntry {
     var date = Date()
     var state: SharedState
     var bot: SharedBot?
+
+    /// The Smart Stack brings a widget up while it has something for you: waiting on you most,
+    /// a Bot at work a little, a quiet one not at all.
+    var relevance: TimelineEntryRelevance? {
+        let waiting = bot.map { $0.needs + $0.asks } ?? state.approvals.count
+        if waiting > 0 { return TimelineEntryRelevance(score: 100) }
+        if let bot, bot.look.lamp == .working { return TimelineEntryRelevance(score: 30) }
+        return TimelineEntryRelevance(score: 0)
+    }
 }
 
 struct BotProvider: AppIntentTimelineProvider {

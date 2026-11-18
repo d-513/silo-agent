@@ -1,4 +1,5 @@
 import ActivityKit
+import AppIntents
 import BackgroundTasks
 import CoreSpotlight
 import SiloClient
@@ -33,6 +34,7 @@ extension AppModel {
         }
         state.at = Date()
         guard SiloStore.save(state) else { return }
+        PhoneWatchLink.shared.push()
         WidgetCenter.shared.reloadAllTimelines()
         SiloSurfaces.quickActions(state)
         SiloSurfaces.index(state, chats: chats, botID: selectedBotID)
@@ -111,23 +113,23 @@ enum SiloSurfaces {
                                   icon: UIApplicationShortcutIcon(systemImageName: symbol))
     }
 
-    /// Bots and the open Bot's chats, for system search. The Bot's words stay on the server.
+    /// Bots and the open Bot's chats, for system search and Siri, as App Entities: a result opens
+    /// through `OpenBotEntityIntent`/`OpenChatIntent`, and Siri can name them. Only names are
+    /// indexed; what was said stays on the server.
     static func index(_ state: SharedState, chats: [Silo_V1_Chat], botID: String?) {
-        var items = state.bots.map { bot -> CSSearchableItem in
-            let set = CSSearchableItemAttributeSet(contentType: .text)
-            set.title = bot.name
-            set.contentDescription = bot.look.word
-            return CSSearchableItem(uniqueIdentifier: SiloLink.mainChat(bot: bot.id).url.absoluteString, domainIdentifier: "bots", attributeSet: set)
-        }
+        let bots = state.bots.map(BotEntity.init)
+        var found: [ChatEntity] = []
         if let botID, let bot = state.bots.first(where: { $0.id == botID }) {
-            items += chats.filter { $0.mine && !$0.main && !$0.title.isEmpty }.prefix(100).map { chat in
-                let set = CSSearchableItemAttributeSet(contentType: .text)
-                set.title = chat.title
-                set.contentDescription = "Chat with \(bot.name)"
-                return CSSearchableItem(uniqueIdentifier: SiloLink.chat(bot: botID, chat: chat.id).url.absoluteString, domainIdentifier: "chats", attributeSet: set)
-            }
+            found = chats.filter(ChatEntity.worthFinding).prefix(100).map { ChatEntity($0, bot: bot) }
         }
-        CSSearchableIndex.default().indexSearchableItems(items) { _ in }
+        Task {
+            let index = CSSearchableIndex.default()
+            // The plain items an older build indexed would show beside the entities.
+            try? await index.deleteSearchableItems(withDomainIdentifiers: ["bots", "chats"])
+            try? await index.indexAppEntities(bots)
+            if !found.isEmpty { try? await index.indexAppEntities(found) }
+            SiloShortcuts.updateAppShortcutParameters()
+        }
     }
 
     // MARK: notifications
@@ -210,6 +212,7 @@ final class SiloAppDelegate: NSObject, UIApplicationDelegate, UNUserNotification
         UNUserNotificationCenter.current().delegate = self
         SiloSurfaces.registerRefresh()
         SiloSurfaces.endLeftovers()
+        PhoneWatchLink.shared.activate()
         return true
     }
 

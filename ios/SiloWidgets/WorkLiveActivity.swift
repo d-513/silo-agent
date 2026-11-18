@@ -9,7 +9,7 @@ import WidgetKit
 struct WorkLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkActivityAttributes.self) { context in
-            LockWork(context: context)
+            WorkFamilies(context: context)
                 .activityBackgroundTint(Theme.hatch)
                 .activitySystemActionForegroundColor(Theme.onHatch)
         } dynamicIsland: { context in
@@ -42,6 +42,35 @@ struct WorkLiveActivity: Widget {
                 CrestView(index: context.attributes.crest, size: 20)
             }
             .widgetURL(SiloLink.chat(bot: context.attributes.botID, chat: context.attributes.chatID).url)
+        }
+        // The watch's Smart Stack and CarPlay draw the small family.
+        .supplementalActivityFamilies([.small])
+    }
+}
+
+/// The Lock Screen's card, or the small one a watch or a car shows: the face, the name and the
+/// line, with no buttons (an approval there opens the app on the phone).
+private struct WorkFamilies: View {
+    let context: ActivityViewContext<WorkActivityAttributes>
+    @Environment(\.activityFamily) private var family
+
+    var body: some View {
+        if family == .small {
+            HStack(spacing: 8) {
+                CrestView(index: context.attributes.crest, size: 26)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(context.attributes.botName).font(.silo(13, .semibold)).foregroundStyle(Theme.onHatch).lineLimit(1)
+                    if !context.state.approvalID.isEmpty {
+                        Text(context.state.approvalTitle).font(.silo(11.5)).foregroundStyle(Theme.vermilionOnHatch).lineLimit(2)
+                    } else {
+                        WorkLine(state: context.state, stale: context.isStale)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+        } else {
+            LockWork(context: context)
         }
     }
 }

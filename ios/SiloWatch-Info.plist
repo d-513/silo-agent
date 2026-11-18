@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+	<key>SiloAppGroup</key>
+	<string>$(SILO_APP_GROUP)</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Geist.ttf</string>
+		<string>GeistMono.ttf</string>
+		<string>SourceSerif4.ttf</string>
+	</array>
+	<key>WKApplication</key>
+	<true/>
+	<key>WKCompanionAppBundleIdentifier</key>
+	<string>devplaceholder.$(PROJECT_UNIQUE_VALUE:identifier).MyApp</string>
+</dict>
+</plist>

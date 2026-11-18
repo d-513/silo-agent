@@ -9,7 +9,7 @@ import WidgetKit
 struct CallLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: CallActivityAttributes.self) { context in
-            LockCall(context: context)
+            CallFamilies(context: context)
                 .activityBackgroundTint(Theme.hatch)
                 .activitySystemActionForegroundColor(Theme.onHatch)
         } dynamicIsland: { context in
@@ -64,6 +64,36 @@ struct CallLiveActivity: Widget {
             }
             .keylineTint(toneColor(state.tone))
             .widgetURL(SiloLink.call(bot: context.attributes.botID).url)
+        }
+        // The watch's Smart Stack and CarPlay draw the small family.
+        .supplementalActivityFamilies([.small])
+    }
+}
+
+/// The Lock Screen's card, or the small one a watch or a car shows: who, what is happening, how
+/// long. Mute and End stay on the phone and the Island.
+private struct CallFamilies: View {
+    let context: ActivityViewContext<CallActivityAttributes>
+    @Environment(\.activityFamily) private var family
+
+    var body: some View {
+        if family == .small {
+            let state = context.state
+            HStack(spacing: 8) {
+                CrestView(index: context.attributes.crest, size: 26)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(context.attributes.botName).font(.silo(13, .semibold)).foregroundStyle(Theme.onHatch).lineLimit(1)
+                    Text(state.words).font(.silo(11.5)).foregroundStyle(toneColor(state.tone)).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if !state.ended {
+                    Text(state.startedAt, style: .timer).font(.siloMono(11)).foregroundStyle(Theme.onHatch.opacity(0.8))
+                        .multilineTextAlignment(.trailing).frame(width: 40)
+                }
+            }
+            .padding(10)
+        } else {
+            LockCall(context: context)
         }
     }
 }

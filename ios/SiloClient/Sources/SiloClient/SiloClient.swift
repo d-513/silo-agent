@@ -18,6 +18,9 @@ public enum SiloError: LocalizedError, Sendable, Equatable {
     /// answered, a run already going.
     case precondition(String)
     case server(String)
+    /// The request never got an answer: offline, no such host, refused, timed out, a certificate
+    /// refused. `code` is the `URLError` code, which `reachProblem` words for people.
+    case network(code: Int, message: String)
 
     public var errorDescription: String? {
         switch self {
@@ -31,11 +34,19 @@ public enum SiloError: LocalizedError, Sendable, Equatable {
             return message
         case .server(let message):
             return message
+        case .network(_, let message):
+            return "Cannot reach the Control Plane. \(message)"
         }
     }
 
     static func wrap(_ error: ConnectError) -> SiloError {
-        wrap(code: error.code, message: error.message ?? "\(error.code)")
+        if let network = error.exception as? URLError {
+            return .network(code: network.errorCode, message: network.localizedDescription)
+        }
+        if let network = error.exception as NSError?, network.domain == NSURLErrorDomain {
+            return .network(code: network.code, message: network.localizedDescription)
+        }
+        return wrap(code: error.code, message: error.message ?? "\(error.code)")
     }
 
     static func wrap(code: Code, message: String) -> SiloError {
@@ -231,8 +242,11 @@ public final class SiloClient: Sendable {
                         } else {
                             // Keep the code: a signed-out session or a chat that is gone must not
                             // read as a dropped connection to reconnect to.
-                            let message = (error as? ConnectError)?.message ?? error?.localizedDescription ?? "\(code)"
-                            continuation.yield(.finished(.wrap(code: code, message: message)))
+                            if let connect = error as? ConnectError {
+                                continuation.yield(.finished(.wrap(connect)))
+                            } else {
+                                continuation.yield(.finished(.wrap(code: code, message: error?.localizedDescription ?? "\(code)")))
+                            }
                         }
                         continuation.finish()
                         return

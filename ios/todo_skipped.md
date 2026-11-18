@@ -53,4 +53,8 @@ Everything here compiles and was checked as far as a simulator goes; none of it 
 - The Dynamic Island's and Lock Screen's look (the views are in the debug gallery; the system accepts and renders the activity).
 - Widgets on the Home Screen, controls, the Action Button, quick actions, the share sheet, notifications with Allow and Deny, background refresh.
 - The crest drawn in code (`CrestView`, `Logic/Stack.swift`): it builds, `StackTests` pass, and it draws in the app on a simulator; the lock screen's circular widget (`cutout`) has not been looked at.
+- Siri and Spotlight on the new entities and snippet cards (Ask, Check on, Review approvals with its buttons), and the new Shortcuts actions; the metadata registers (8 phrases, 7 entities) and the app launches with them.
+- The document camera (the simulator has none), drag and drop onto the composer, the iPad menu bar and ⌘ shortcuts.
+- The small Live Activity on an Apple Watch and in CarPlay, and the Smart Stack picking up the Needs you widget.
+- The watch app and its complications have only been built, never run: this Mac has no watchOS simulator runtime (`xcodebuild -downloadPlatform watchOS`). Untried: the sign-in handoff, the watch reaching the server on its own (Wi-Fi, LTE, through the phone, over WireGuard), dictation, and each problem message on a real failure.
 - Signing: set a team, then check the App Group it derives.

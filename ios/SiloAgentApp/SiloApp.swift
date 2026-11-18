@@ -100,6 +100,7 @@ struct SiloApp: App {
                 model.open(.call(bot: bot))
             }
         }
+        .commands { SiloCommands(model: model, spaces: spaces) }
     }
 }
 

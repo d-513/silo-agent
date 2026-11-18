@@ -5,46 +5,6 @@ import SiloClient
 import UIKit
 #endif
 
-/// A Bot, as Shortcuts, Siri, widgets and controls know it.
-struct BotEntity: AppEntity, Identifiable, Hashable {
-    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Bot"
-    static let defaultQuery = BotQuery()
-
-    var id: String
-    var name: String
-    var crest: Int32
-
-    var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(name)") }
-
-    init(id: String, name: String, crest: Int32) {
-        self.id = id
-        self.name = name
-        self.crest = crest
-    }
-
-    init(_ bot: SharedBot) {
-        self.init(id: bot.id, name: bot.name, crest: bot.crest)
-    }
-}
-
-struct BotQuery: EntityStringQuery {
-    func entities(for identifiers: [String]) async throws -> [BotEntity] {
-        SiloStore.load().bots.filter { identifiers.contains($0.id) }.map(BotEntity.init)
-    }
-
-    func suggestedEntities() async throws -> [BotEntity] {
-        SiloStore.load().bots.map(BotEntity.init)
-    }
-
-    func entities(matching string: String) async throws -> [BotEntity] {
-        SiloStore.load().bots.filter { $0.name.localizedCaseInsensitiveContains(string) }.map(BotEntity.init)
-    }
-
-    func defaultResult() async -> BotEntity? {
-        SiloStore.load().lastBot.map(BotEntity.init)
-    }
-}
-
 /// Rings a Bot, without opening the app: the call lands on the Dynamic Island and the lock screen.
 /// This is the one for the Action Button and Control Center.
 struct CallBotIntent: AudioRecordingIntent, LiveActivityIntent {
@@ -124,7 +84,7 @@ struct AskBotIntent: AppIntent {
         Summary("Ask \(\.$bot) \(\.$message)")
     }
 
-    func perform() async throws -> some ReturnsValue<String> & ProvidesDialog {
+    func perform() async throws -> some ReturnsValue<String> & ProvidesDialog & ShowsSnippetIntent {
         let state = SiloStore.load()
         guard let id = bot?.id ?? state.lastBot?.id, !state.server.isEmpty else { throw IntentProblem.noBot }
         let client = SiloClient(host: state.server)
@@ -141,8 +101,14 @@ struct AskBotIntent: AppIntent {
             default: continue
             }
         }
-        let answer = reply.isEmpty ? "It is still working. The reply will be in the chat." : reply
-        return .result(value: answer, dialog: "\(answer)")
+        guard !reply.isEmpty else {
+            let still = "It is still working. The reply will be in the chat."
+            return .result(value: still, dialog: "\(still)", snippetIntent: ReplySnippet(botID: id, text: still))
+        }
+        // Siri says the reply; the card shows it under the Bot's face.
+        let name = state.bots.first { $0.id == id }?.name ?? "Your Bot"
+        return .result(value: reply, dialog: IntentDialog(full: "\(reply)", supporting: "\(name) replied."),
+                       snippetIntent: ReplySnippet(botID: id, text: reply))
     }
 }
 
@@ -153,18 +119,19 @@ struct BotStatusIntent: AppIntent {
 
     @Parameter(title: "Bot") var bot: BotEntity?
 
-    func perform() async throws -> some ReturnsValue<String> & ProvidesDialog {
+    func perform() async throws -> some ReturnsValue<String> & ProvidesDialog & ShowsSnippetIntent {
         let state = await SiloFeed.fresh()
+        SiloStore.save(state)
         guard let row = state.bots.first(where: { $0.id == bot?.id }) ?? state.lastBot else { throw IntentProblem.noBot }
         let line = "\(row.name): \(row.look.word)\(row.step.isEmpty ? "" : " \(row.step)")"
-        return .result(value: line, dialog: "\(line)")
+        return .result(value: line, dialog: "\(line)", snippetIntent: BotStatusSnippet(botID: row.id))
     }
 }
 
 /// Answers an approval in place: a widget, the Island, a notification. The server is told, and the
 /// widgets redraw from what it says.
 struct DecideApprovalIntent: LiveActivityIntent {
-    static let title: LocalizedStringResource = "Answer an approval"
+    static let title: LocalizedStringResource = "Decide an approval"
     static let isDiscoverable = false
 
     @Parameter(title: "Approval") var approvalID: String
@@ -182,16 +149,7 @@ struct DecideApprovalIntent: LiveActivityIntent {
         var next = await SiloFeed.fresh(state)
         next.approvals.removeAll { $0.id == approvalID }
         SiloStore.save(next)
+        ApprovalsSnippet.reload()
         return .result()
-    }
-}
-
-enum IntentProblem: Error, CustomLocalizedStringResourceConvertible {
-    case noBot
-
-    var localizedStringResource: LocalizedStringResource {
-        switch self {
-        case .noBot: return "Open Silo and sign in first."
-        }
     }
 }

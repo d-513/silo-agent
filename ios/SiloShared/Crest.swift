@@ -194,6 +194,8 @@ struct CrestView: View {
     }
 }
 
+#if !os(watchOS)
+// The pickers are the iPhone's; the watch only draws crests.
 struct CrestPicker: View {
     @Binding var value: Int32
 
@@ -288,4 +290,5 @@ struct CrestSelect: View {
         }
     }
 }
+#endif
 #endif

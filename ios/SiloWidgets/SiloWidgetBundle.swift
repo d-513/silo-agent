@@ -14,6 +14,7 @@ struct SiloWidgetBundle: WidgetBundle {
         CallLiveActivity()
         WorkLiveActivity()
         CallControlWidget()
+        OpenBotControlWidget()
         NewChatControlWidget()
         NeedsYouControlWidget()
     }

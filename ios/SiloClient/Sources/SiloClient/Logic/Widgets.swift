@@ -59,6 +59,50 @@ public enum WidgetJSON {
     }
 }
 
+/// A Dashboard widget's data as one line a person hears or a Shortcut passes on: Siri reads it,
+/// and "Get a Dashboard widget's value" returns it. Kinds that only make sense drawn (an app, a
+/// table) say what they are.
+public func widgetSpoken(kind: String, title: String, data: [String: Any], checked: Set<String> = []) -> String {
+    let items = WidgetJSON.items(data["items"])
+    let caption = WidgetJSON.text(data["caption"])
+    func join(_ parts: [String]) -> String { parts.filter { !$0.isEmpty }.joined(separator: " ") }
+    let body: String
+    switch kind {
+    case "stat":
+        body = join([WidgetJSON.display(data["value"]), WidgetJSON.text(data["unit"]), caption.isEmpty ? "" : "(\(caption))"])
+    case "progress":
+        let value = WidgetJSON.number(data["value"]), max = WidgetJSON.number(data["max"])
+        if let value, let max, max > 0 {
+            body = join(["\(WidgetJSON.format(value)) of \(WidgetJSON.format(max))", caption.isEmpty ? "" : "(\(caption))"])
+        } else { body = caption }
+    case "note":
+        body = WidgetJSON.text(data["text"])
+    case "chart":
+        let last = WidgetJSON.items(data["points"]).last
+        body = last.map { join([WidgetJSON.text($0["label"]) + ":", WidgetJSON.display($0["value"]), WidgetJSON.text(data["unit"])]) } ?? caption
+    case "list", "timeline", "ideas":
+        body = items.prefix(5).map { WidgetJSON.text($0["title"]) }.filter { !$0.isEmpty }.joined(separator: "; ")
+    case "status":
+        body = items.prefix(6).map { item in
+            let word = WidgetJSON.text(item["word"])
+            return "\(WidgetJSON.text(item["label"])): \(word.isEmpty ? WidgetJSON.text(item["state"]) : word)"
+        }.joined(separator: "; ")
+    case "checklist":
+        let done = items.filter { checked.contains(WidgetJSON.text($0["id"])) }.count
+        let open = items.filter { !checked.contains(WidgetJSON.text($0["id"])) }.prefix(5).map { WidgetJSON.text($0["text"]) }
+        body = join(["\(done) of \(items.count) done.", open.isEmpty ? "" : "Open: " + open.joined(separator: "; ")])
+    case "table":
+        body = "\((data["rows"] as? [Any])?.count ?? 0) rows"
+    case "app":
+        body = "An app; open the Dashboard to use it."
+    default:
+        body = caption
+    }
+    let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
+    if title.isEmpty { return trimmed.isEmpty ? "Nothing yet." : trimmed }
+    return trimmed.isEmpty ? "\(title): nothing yet." : "\(title): \(trimmed)"
+}
+
 /// "now", "4 m", "2 h", "3 d": how old a widget's data is.
 public func widgetAge(_ iso: String, now: Date = Date()) -> String {
     guard let date = parseISO(iso) else { return "" }

@@ -288,6 +288,7 @@ final class AppModel {
     func signOut() async {
         try? await client.signOut()
         SiloStore.save(SharedState())
+        PhoneWatchLink.shared.push()
         CallModel.shared.hangUp()
         stopStream()
         stopPolling()

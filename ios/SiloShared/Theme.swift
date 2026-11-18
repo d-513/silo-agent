@@ -8,9 +8,14 @@ import UIKit
 enum Theme {
     /// Picks `light` or `dark` by the current interface style.
     private static func adaptive(light: UInt32, dark: UInt32, alpha: (CGFloat, CGFloat) = (1, 1)) -> Color {
+        #if os(watchOS)
+        // A watch is always dark, and has no dynamic colors.
+        Color(uiColor: UIColor(hex: dark, alpha: alpha.1))
+        #else
         Color(UIColor { traits in
             traits.userInterfaceStyle == .dark ? UIColor(hex: dark, alpha: alpha.1) : UIColor(hex: light, alpha: alpha.0)
         })
+        #endif
     }
 
     static let cobalt = adaptive(light: 0x2B4FC7, dark: 0x8AA4FF)

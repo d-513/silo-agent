@@ -5,9 +5,14 @@ import SiloClient
 /// waits for you. A failure leaves the last state standing.
 enum SiloFeed {
     static func fresh(_ base: SharedState = SiloStore.load()) async -> SharedState {
+        (try? await load(base)) ?? base
+    }
+
+    /// The same, saying why it failed: the watch words the reason for its owner.
+    static func load(_ base: SharedState) async throws -> SharedState {
         guard !base.server.isEmpty else { return base }
         let client = SiloClient(host: base.server)
-        guard let bots = try? await client.listBots() else { return base }
+        let bots = try await client.listBots()
         var state = base
         var approvals: [SharedApproval] = []
         var rows: [SharedBot] = []

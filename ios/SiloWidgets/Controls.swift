@@ -20,6 +20,36 @@ struct CallControlWidget: ControlWidget {
         }
         .displayName("Call a Bot")
         .description("Starts a voice call. Works from the Action Button.")
+        .promptsForUserConfiguration()
+    }
+}
+
+struct OpenControlConfiguration: ControlConfigurationIntent {
+    static let title: LocalizedStringResource = "Open"
+    @Parameter(title: "Bot") var bot: BotEntity?
+    @Parameter(title: "Place", default: .chat) var place: OpenBotIntent.Place
+}
+
+/// Drops straight into one Bot: its main chat, a new chat, its Dashboard or what it waits on.
+struct OpenBotControlWidget: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        AppIntentControlConfiguration(kind: "silo.control.open", intent: OpenControlConfiguration.self) { configuration in
+            ControlWidgetButton(action: OpenBotIntent(bot: configuration.bot, place: configuration.place)) {
+                Label(configuration.bot?.name ?? "Your Bot", systemImage: Self.symbol(configuration.place))
+            }
+        }
+        .displayName("Open a Bot")
+        .description("Opens a Bot's chat, a new chat or its Dashboard. Works from the Action Button.")
+        .promptsForUserConfiguration()
+    }
+
+    private static func symbol(_ place: OpenBotIntent.Place) -> String {
+        switch place {
+        case .chat: return "bubble.left.fill"
+        case .newChat: return "plus.bubble.fill"
+        case .dashboard: return "square.grid.2x2.fill"
+        case .needsYou: return "hand.raised.fill"
+        }
     }
 }
 

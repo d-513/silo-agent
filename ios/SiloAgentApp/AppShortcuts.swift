@@ -28,6 +28,30 @@ struct SiloShortcuts: AppShortcutsProvider {
             shortTitle: "Open a Bot",
             systemImageName: "square.grid.2x2"
         )
+        AppShortcut(
+            intent: ReviewApprovalsIntent(),
+            phrases: ["What needs me in \(.applicationName)", "Review approvals in \(.applicationName)", "Answer my Bots in \(.applicationName)"],
+            shortTitle: "Review approvals",
+            systemImageName: "hand.raised"
+        )
+        AppShortcut(
+            intent: LatestFeedPostIntent(),
+            phrases: ["What's new from \(\.$bot) in \(.applicationName)", "Read my Bot's Feed in \(.applicationName)"],
+            shortTitle: "Latest Feed post",
+            systemImageName: "newspaper"
+        )
+        AppShortcut(
+            intent: RunAutomationIntent(),
+            phrases: ["Run \(\.$automation) in \(.applicationName)"],
+            shortTitle: "Run an automation",
+            systemImageName: "clock.arrow.circlepath"
+        )
+        AppShortcut(
+            intent: OpenChatIntent(),
+            phrases: ["Open \(\.$target) in \(.applicationName)"],
+            shortTitle: "Open a chat",
+            systemImageName: "bubble.left.and.text.bubble.right"
+        )
     }
 }
 
