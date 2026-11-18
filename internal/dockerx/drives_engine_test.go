@@ -95,9 +95,9 @@ func TestDriveEngine(t *testing.T) {
 	if bind == "" {
 		t.Fatal("prepare helper failed (is localhost/silo-drive:v1 built?)")
 	}
-	botC, err := e.cli.ContainerCreate(ctx, &container.Config{
+	botC, err := e.create(ctx, &container.Config{
 		Image: "docker.io/library/alpine:latest", Entrypoint: []string{"sleep", "600"},
-	}, &container.HostConfig{Binds: []string{bind}}, nil, nil, "silo-"+bot)
+	}, &container.HostConfig{Binds: []string{bind}}, nil, "silo-"+bot)
 	if err != nil {
 		t.Fatal(err)
 	}

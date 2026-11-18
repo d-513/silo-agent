@@ -203,8 +203,8 @@ clean: ## Remove build artifacts (bin/, web/dist)
 clean-images: ## Remove the local bot, STDIO, drive and egress images
 	-$(PODMAN) rmi -f $(BOT_IMAGE) $(STDIO_IMAGE) $(DRIVE_IMAGE) $(EGRESS_IMAGE)
 
-cleanup: ## Force-remove every silo-* container
-	@ids=$$($(PODMAN) ps -aq --filter name='^silo-' || true); \
+cleanup: ## Force-remove every container Silo made (named silo-* or labelled silo.managed)
+	@ids=$$({ $(PODMAN) ps -aq --filter name='^silo-'; $(PODMAN) ps -aq --filter label=silo.managed; } 2>/dev/null | sort -u); \
 	if [ -n "$$ids" ]; then \
 		$(PODMAN) rm -f $$ids; \
 	else \

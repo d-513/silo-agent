@@ -1,6 +1,7 @@
 package dockerx
 
 import (
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -140,5 +141,53 @@ func TestBotBoxIsNarrowed(t *testing.T) {
 	h = botHost(nil, config.BotLimits{})
 	if h.Memory != 0 || h.PidsLimit != nil {
 		t.Fatalf("zero limits set: memory %d pids %v", h.Memory, h.PidsLimit)
+	}
+}
+
+// Everything Silo makes carries ManagedLabel beside its role, so it can be told
+// from containers made by hand.
+func TestLabelsMarkSilo(t *testing.T) {
+	l := labels("bot", "silo.bot_id", "b1")
+	if l[ManagedLabel] != "true" || l["silo.role"] != "bot" || l["silo.bot_id"] != "b1" {
+		t.Fatalf("labels = %v", l)
+	}
+	if l := labels(""); len(l) != 1 || l[ManagedLabel] != "true" {
+		t.Fatalf("no-role labels = %v", l)
+	}
+	if !isSilo("whatever", labels("")) {
+		t.Fatal("a labelled container is not Silo's")
+	}
+}
+
+// Every container is made through Engine.create, which stamps ManagedLabel, and
+// every network with labels(): a new create site that skips them would leave
+// something on the engine nobody can tell from a hand-made one.
+func TestEveryCreateIsLabelled(t *testing.T) {
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") {
+			continue
+		}
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		src := string(b)
+		if n := strings.Count(src, "cli.ContainerCreate("); n > 0 && (f != "silo.go" || n != 1) {
+			t.Errorf("%s calls cli.ContainerCreate directly %d time(s); use e.create", f, n)
+		}
+		for i := 0; ; {
+			j := strings.Index(src[i:], "cli.NetworkCreate(")
+			if j < 0 {
+				break
+			}
+			i += j + 1
+			if !strings.Contains(src[i:min(i+600, len(src))], "labels(") {
+				t.Errorf("%s: a NetworkCreate without labels()", f)
+			}
+		}
 	}
 }

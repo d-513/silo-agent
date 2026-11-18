@@ -103,11 +103,11 @@ func (e *Engine) EgressUp(ctx context.Context, spec EgressSpec) (string, error) 
 	if spec.Primary != "" {
 		host.NetworkMode = container.NetworkMode(spec.Primary)
 	}
-	resp, err := e.cli.ContainerCreate(ctx, &container.Config{
+	resp, err := e.create(ctx, &container.Config{
 		Image:  spec.Image,
 		Env:    spec.Env,
-		Labels: map[string]string{"silo.role": "egress"},
-	}, host, nil, nil, EgressName())
+		Labels: labels("egress"),
+	}, host, nil, EgressName())
 	if err != nil {
 		return "", fmt.Errorf("egress create: %w", err)
 	}
@@ -176,7 +176,7 @@ func (e *Engine) EnsureNetwork(ctx context.Context, name, subnet, clientID strin
 		Driver:   "bridge",
 		Internal: true,
 		IPAM:     &network.IPAM{Config: []network.IPAMConfig{{Subnet: subnet}}},
-		Labels:   map[string]string{clientNetLabel: "client", clientIDLabel: clientID},
+		Labels:   labels("", clientNetLabel, "client", clientIDLabel, clientID),
 	})
 	if err != nil {
 		return fmt.Errorf("network create %s: %w", name, err)

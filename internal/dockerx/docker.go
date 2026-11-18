@@ -268,11 +268,12 @@ func (e *Engine) Create(ctx context.Context, botID, token string, net *ClientNet
 	if net != nil {
 		dns, ca = net.DNS, net.CA
 	}
-	resp, err := e.cli.ContainerCreate(ctx, &container.Config{
+	resp, err := e.create(ctx, &container.Config{
 		Image:    cfg.BotImage,
 		Env:      botEnv(cpURL, botID, token, dns, ca),
 		Hostname: "bot",
-	}, host, clientNetworkConfig(net), nil, Name(botID))
+		Labels:   labels("bot", "silo.bot_id", botID),
+	}, host, clientNetworkConfig(net), Name(botID))
 	if err != nil {
 		return "", fmt.Errorf("container create: %w", err)
 	}
@@ -383,15 +384,12 @@ func (e *Engine) CreateStdio(ctx context.Context, spec StdioSpec) (string, error
 			env = append(env, "SILO_EGRESS_DNS="+spec.Net.DNS)
 		}
 	}
-	resp, err := e.cli.ContainerCreate(ctx, &container.Config{
+	resp, err := e.create(ctx, &container.Config{
 		Image:    image,
 		Env:      env,
 		Hostname: "mcp",
-		Labels: map[string]string{
-			"silo.role":         "mcp-stdio",
-			"silo.connector_id": spec.ID,
-		},
-	}, host, clientNetworkConfig(spec.Net), nil, StdioName(spec.ID))
+		Labels:   labels("mcp-stdio", "silo.connector_id", spec.ID),
+	}, host, clientNetworkConfig(spec.Net), StdioName(spec.ID))
 	if err != nil {
 		return "", fmt.Errorf("stdio create: %w", err)
 	}

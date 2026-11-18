@@ -2,16 +2,48 @@ package dockerx
 
 import (
 	"context"
+	"maps"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 )
 
-// Everything Silo ever puts on the engine is named silo-… or carries a
-// silo.… label. The Admin Containers tab lists that and nothing else: the
-// engine may host things other tools made, and none of them are ours to
-// touch.
+// Everything Silo ever puts on the engine carries ManagedLabel (and is named
+// silo-… or carries another silo.… label). The Admin Containers tab lists that
+// and nothing else: the engine may host things other tools made, and none of
+// them are ours to touch. Boxes made before the label existed are still known
+// by their name.
+
+// ManagedLabel is on every container and network Silo creates, so they can be
+// told from ones made by hand: `podman ps -a --filter label=silo.managed`.
+const ManagedLabel = "silo.managed"
+
+// labels is the label set of something Silo creates: ManagedLabel, its
+// silo.role, and any further key/value pairs.
+func labels(role string, kv ...string) map[string]string {
+	l := map[string]string{ManagedLabel: "true"}
+	if role != "" {
+		l["silo.role"] = role
+	}
+	for i := 0; i+1 < len(kv); i += 2 {
+		l[kv[i]] = kv[i+1]
+	}
+	return l
+}
+
+// create is the one way a container is made: it stamps ManagedLabel on cfg
+// whatever the caller passed, so nothing Silo makes goes unlabelled
+// (TestEveryCreateIsLabelled).
+func (e *Engine) create(ctx context.Context, cfg *container.Config, host *container.HostConfig, net *network.NetworkingConfig, name string) (container.CreateResponse, error) {
+	c := *cfg
+	c.Labels = maps.Clone(cfg.Labels)
+	if c.Labels == nil {
+		c.Labels = map[string]string{}
+	}
+	c.Labels[ManagedLabel] = "true"
+	return e.cli.ContainerCreate(ctx, &c, host, net, nil, name)
+}
 
 // SiloContainer is one Silo container seen in one engine listing.
 type SiloContainer struct {

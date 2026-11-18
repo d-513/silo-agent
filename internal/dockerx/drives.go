@@ -106,15 +106,15 @@ func (e *Engine) driveHelper(ctx context.Context, image, script, root, botID str
 	if botID == "" || strings.ContainsAny(botID, "/.") {
 		return errors.New("bad bot id")
 	}
-	resp, err := e.cli.ContainerCreate(ctx, &container.Config{
+	resp, err := e.create(ctx, &container.Config{
 		Image:      image,
 		Entrypoint: []string{"sh", "-c", script, "silo-drive-prepare", root, botID},
-		Labels:     map[string]string{"silo.role": "drive-helper"},
+		Labels:     labels("drive-helper", "silo.bot_id", botID),
 	}, &container.HostConfig{
 		Privileged:  true,
 		PidMode:     "host",
 		SecurityOpt: []string{"label=disable"},
-	}, nil, nil, "")
+	}, nil, "")
 	if err != nil {
 		return fmt.Errorf("drive helper: %w", err)
 	}
@@ -174,14 +174,11 @@ func (e *Engine) CreateDrive(ctx context.Context, spec DriveSpec) (string, error
 		}
 		binds = append(binds, abs+":/cache")
 	}
-	resp, err := e.cli.ContainerCreate(ctx, &container.Config{
+	resp, err := e.create(ctx, &container.Config{
 		Image:    spec.Image,
 		Env:      spec.Env,
 		Hostname: "drives",
-		Labels: map[string]string{
-			"silo.role":   "drive",
-			"silo.bot_id": spec.BotID,
-		},
+		Labels:   labels("drive", "silo.bot_id", spec.BotID),
 	}, &container.HostConfig{
 		Binds:         binds,
 		CapAdd:        []string{"SYS_ADMIN"},
@@ -190,7 +187,7 @@ func (e *Engine) CreateDrive(ctx context.Context, spec DriveSpec) (string, error
 		Resources: container.Resources{Devices: []container.DeviceMapping{
 			{PathOnHost: "/dev/fuse", PathInContainer: "/dev/fuse", CgroupPermissions: "rwm"},
 		}},
-	}, nil, nil, DriveName(spec.BotID))
+	}, nil, DriveName(spec.BotID))
 	if err != nil {
 		return "", fmt.Errorf("drive sidecar create: %w", err)
 	}
