@@ -1,10 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import { PanelRight, Phone, Power, Settings } from "lucide-react";
+import { PanelRight, Phone, Power } from "lucide-react";
 import { Clock } from "../call/CallBar";
 import type { Call } from "../call/useCall";
 import { Crest } from "../Crest";
 import type { Bot } from "../gen/silo/v1/ui_pb";
-import { msg, t } from "../i18n.ts";
+import { t } from "../i18n.ts";
 import { Lamp, Status, StatusWord } from "../Lamp";
 import { NavButton } from "../nav/NavSheet";
 import { sourceLabel } from "../sources";
@@ -12,9 +12,11 @@ import { botLook, crestState, machineStarting, pausedOnYou, powerWord } from "..
 import { ActivityStrip } from "./ActivityStrip";
 import { People } from "./ChatTabs";
 import { useHeard } from "./heardStore";
-import { paneMeta, railPages } from "./MachineRail";
-import { SideLink } from "./SideNav";
-import { onSettings, paneKinds, type PaneKind, type Tab } from "./tabs";
+import { isPageKey, type PageKey } from "./layout";
+import { ActiveBar, UnreadBadge } from "./SideNav";
+import type { TabControl } from "./tabControl";
+import { keyLink, keyMeta } from "./tabMeta";
+import { onSettings, type Tab } from "./tabs";
 
 // The narrow layout's way around a Bot. A wide screen shows the sidebar, the
 // tab bar, the page and the right rail side by side; a phone shows the page
@@ -23,22 +25,10 @@ import { onSettings, paneKinds, type PaneKind, type Tab } from "./tabs";
 // name (or the rail glyph, or a swipe in from the right) its rail, each as a
 // sheet on the side it stands on from 960 up.
 
-const pageWords: Partial<Record<Tab, string>> = {
-  automations: msg("Automations"),
-  artifacts: msg("Artifacts"),
-  memories: msg("Memories"),
-  knowledge: msg("Knowledge"),
-  feed: msg("Feed"),
-  channels: msg("Channels"),
-};
-
-/** The page a top bar names, when the strip lights nothing. */
+/** The page a top bar names, when it is not a conversation. */
 function pageLabel(tab: Tab): string {
   if (onSettings(tab)) return t("Settings");
-  const pane = paneKinds.find((k) => k === tab);
-  if (pane) return t(paneMeta[pane].label);
-  const word = pageWords[tab];
-  return word ? t(word) : "";
+  return isPageKey(tab) ? t(keyMeta[tab].label) : "";
 }
 
 const square = "flex h-10 w-10 shrink-0 items-center justify-center rounded-control transition-[background-color,transform] duration-[160ms] ease-quiet active:scale-[.94] motion-reduce:active:scale-100";
@@ -120,40 +110,30 @@ export function BotTopBar({
   );
 }
 
-const paneTo = {
-  files: "/bots/$botId/files",
-  desktop: "/bots/$botId/desktop",
-  console: "/bots/$botId/console",
-  changes: "/bots/$botId/changes",
-  mail: "/bots/$botId/mail",
-} as const;
-
 const tile =
   "relative flex h-[60px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-control text-label font-medium transition-[background-color,color,box-shadow,transform] duration-[160ms] ease-quiet outline-offset-[-2px] active:scale-[.96] motion-reduce:active:scale-100 disabled:opacity-50";
 
-// MachineTiles are the sheet's way to the machine: each pane as its own
-// page (there is no room to dock one), and Start/Stop.
-function MachineTiles({ bot, tab, onStart, onStop }: { bot: Bot; tab: Tab; onStart: () => void; onStop: () => void }) {
+// MachineTiles are the sheet's way to the machine: each pane not pinned to
+// the strip as its own page (there is no room for a split), and Start/Stop.
+function MachineTiles({ bot, ctl, kinds, onStart, onStop }: { bot: Bot; ctl: TabControl; kinds: PageKey[]; onStart: () => void; onStop: () => void }) {
   const starting = machineStarting(bot);
   const power = powerWord(bot);
-  const kinds = paneKinds.filter((k) => k !== "mail" || bot.mailAddress || tab === "mail");
   return (
     <section aria-label={t("Machine")} className="px-2">
       <h2 className="flex h-9 items-center px-3 text-section leading-4 text-ink-3">{t("Machine")}</h2>
       <div className="grid grid-cols-3 gap-1.5 px-1">
-        {kinds.map((k: PaneKind) => {
-          const { icon: Icon } = paneMeta[k];
-          const on = tab === k;
+        {kinds.map((k) => {
+          const { icon: Icon } = keyMeta[k];
+          const on = ctl.current === k;
           return (
             <Link
               key={k}
-              to={paneTo[k]}
-              params={{ botId: bot.id }}
+              {...keyLink(k, bot.id, ctl.mainId)}
               data-tab-on={on || undefined}
               className={`${tile} ${on ? "bg-surface text-ink shadow-card" : "bg-surface/55 text-ink-2 hover:bg-pressed hover:text-ink"}`}
             >
               <Icon size={18} className="shrink-0" />
-              <span className="max-w-full truncate px-1">{t(paneMeta[k].label)}</span>
+              <span className="max-w-full truncate px-1">{t(keyMeta[k].label)}</span>
             </Link>
           );
         })}
@@ -171,15 +151,47 @@ function MachineTiles({ bot, tab, onStart, onStop }: { bot: Bot; tab: Tab; onSta
   );
 }
 
+// A page of the rail as a row of the sheet, with its words.
+function SheetRow({ bot, ctl, k, badge = 0 }: { bot: Bot; ctl: TabControl; k: PageKey; badge?: number }) {
+  const on = ctl.current === k;
+  const { icon: Icon, label } = keyMeta[k];
+  return (
+    <Link
+      {...keyLink(k, bot.id, ctl.mainId)}
+      data-tab-on={on || undefined}
+      className={`relative flex h-10 items-center gap-2.5 rounded-control px-3 text-row font-medium transition-[background-color,color] duration-[160ms] ease-quiet outline-offset-[-2px] ${
+        on ? "bg-surface text-ink" : "text-ink-2 hover:bg-pressed hover:text-ink"
+      }`}
+    >
+      <ActiveBar on={on} />
+      <Icon size={15} />
+      <span className="min-w-0 flex-1 truncate">{t(label)}</span>
+      {badge > 0 ? <UnreadBadge n={badge} /> : null}
+    </Link>
+  );
+}
+
 // RailSheet is the right rail with room for words: who the Bot is and what
-// it is doing, its work with no tab of its own, the pages beside the
-// conversations, the machine, and Settings at the foot.
-export function RailSheet({ bot, tab, onStart, onStop }: { bot: Bot; tab: Tab; onStart: () => void; onStop: () => void }) {
+// it is doing, its work with no tab of its own, the pages not pinned to the
+// strip, the machine, and Settings at the foot.
+export function RailSheet({
+  bot,
+  ctl,
+  rail,
+  onStart,
+  onStop,
+}: {
+  bot: Bot;
+  ctl: TabControl;
+  rail: { pages: PageKey[]; machine: PageKey[]; foot: PageKey[] };
+  onStart: () => void;
+  onStop: () => void;
+}) {
   const heard = useHeard(bot.id);
   const look = botLook(bot);
   const paused = bot.activity.find(pausedOnYou);
   const where = paused ? sourceLabel(paused.kind, paused.title, t("New chat")) : "";
-  const settingsOn = onSettings(tab);
+  const badge = (k: PageKey) => (ctl.current === k ? 0 : k === "feed" ? bot.feedUnread : k === "settings" ? bot.auditUnseen : 0);
   return (
     <>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-3">
@@ -195,18 +207,24 @@ export function RailSheet({ bot, tab, onStart, onStop }: { bot: Bot; tab: Tab; o
           {bot.people.length > 1 ? <People people={bot.people} /> : null}
         </div>
         <ActivityStrip bot={bot} className="mx-3 mb-2 rounded-control bg-surface/60 px-1 py-1" />
-        <nav aria-label={t("Pages")} className="space-y-0.5 px-2">
-          {railPages.map(({ tab: page, to, label, icon }) => (
-            <SideLink key={page} to={to} botId={bot.id} on={tab === page} icon={icon} label={t(label)} badge={page === "feed" && tab !== page ? bot.feedUnread : 0} />
-          ))}
-        </nav>
+        {rail.pages.length ? (
+          <nav aria-label={t("Pages")} className="space-y-0.5 px-2">
+            {rail.pages.map((k) => (
+              <SheetRow key={k} bot={bot} ctl={ctl} k={k} badge={badge(k)} />
+            ))}
+          </nav>
+        ) : null}
         <div className="mt-3">
-          <MachineTiles bot={bot} tab={tab} onStart={onStart} onStop={onStop} />
+          <MachineTiles bot={bot} ctl={ctl} kinds={rail.machine} onStart={onStart} onStop={onStop} />
         </div>
       </div>
-      <div className="shrink-0 px-2 py-2 shadow-[inset_0_1px_0_var(--color-line)]">
-        <SideLink to="/bots/$botId/settings" botId={bot.id} on={settingsOn} icon={Settings} label={t("Settings")} badge={settingsOn ? 0 : bot.auditUnseen} />
-      </div>
+      {rail.foot.length ? (
+        <div className="shrink-0 px-2 py-2 shadow-[inset_0_1px_0_var(--color-line)]">
+          {rail.foot.map((k) => (
+            <SheetRow key={k} bot={bot} ctl={ctl} k={k} badge={badge(k)} />
+          ))}
+        </div>
+      ) : null}
     </>
   );
 }

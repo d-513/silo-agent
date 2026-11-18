@@ -18,7 +18,7 @@ export function callPlace(a: {
   // The call screen rather than the bar.
   expanded: boolean;
   wide: boolean;
-  // A machine pane is docked beside the page.
+  // A tab stands in the split beside the page.
   docked: boolean;
 }): CallPlace {
   if (!a.call) return "";

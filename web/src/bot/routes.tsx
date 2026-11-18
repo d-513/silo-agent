@@ -4,14 +4,23 @@ import { lazyNamed } from "../lazyNamed";
 import { chatLink } from "../links";
 import { PaneFallback } from "../PaneFallback";
 import { useBotPage } from "./context";
+import { chatOf, type TabKey } from "./layout";
 import { RunPane } from "./RunPane";
 import { SecretsPane } from "./SecretsPane";
+import { Act, Grip, slotBox } from "./SidePane";
+import { SplitChat } from "./SplitChat";
+import { tabMenu, type TabControl } from "./tabControl";
+import { keyIcon, keyLabel } from "./tabMeta";
+import { onMenu } from "./TabMenu";
 import { patchChats } from "./useChatList";
+import { t } from "../i18n.ts";
+import { Maximize2, X } from "lucide-react";
 
 // The pages under /bots/$botId (router.tsx). Each is a thin adapter: it takes
 // what its pane needs from BotPage and renders the pane. Everything but the
-// chat is loaded the first time its page opens. Files, Desktop, Console and
-// Mail have no adapter: BotPage renders them itself, docked or as the page.
+// chat is loaded the first time its page opens. Files, Desktop, Console,
+// Changes and Mail have no adapter: BotPage renders them itself, as the page
+// or in the split. SplitPage shows any other tab in the split.
 const AutomationsList = lazyNamed(() => import("../Automations"), "AutomationsList");
 const AutomationNew = lazyNamed(() => import("../Automations"), "AutomationNew");
 const AutomationLog = lazyNamed(() => import("../Automations"), "AutomationLog");
@@ -286,5 +295,71 @@ export function AuditRoute() {
     <ScrollPane>
       <AuditPane botId={useBotPage().id} />
     </ScrollPane>
+  );
+}
+
+// The split's own view of a tab that is a page, not a pane: the same adapter
+// the route renders (a page with sub-pages shows its first; its links lead
+// the page there), or a chat with a stream of its own.
+function SplitBody({ k, mainId }: { k: TabKey; mainId?: string }) {
+  if (k === "main") return mainId ? <SplitChat key={mainId} chatId={mainId} /> : null;
+  const cid = chatOf(k);
+  if (cid) return <SplitChat key={cid} chatId={cid} />;
+  switch (k) {
+    case "dashboard":
+      return <DashboardRoute />;
+    case "automations":
+      return (
+        <ScrollPane>
+          <AutomationsRoute />
+        </ScrollPane>
+      );
+    case "artifacts":
+      return <ArtifactsRoute />;
+    case "memories":
+      return <MemoriesRoute />;
+    case "knowledge":
+      return <KnowledgeRoute />;
+    case "feed":
+      return <FeedRoute />;
+    case "channels":
+      return (
+        <ScrollPane>
+          <ChannelsRoute />
+        </ScrollPane>
+      );
+    case "settings":
+      return <SettingsRoute />;
+    case "runs":
+      return <RunsRoute />;
+  }
+  return null;
+}
+
+// SplitPage is a tab in the split beside the page: a head with its name (a
+// right-click is the tab's menu), the way to make it the page or to close
+// the split, and the tab under it. The edge on its left resizes it.
+export function SplitPage({ k, ctl, share }: { k: TabKey; ctl: TabControl; share: number }) {
+  const box = slotBox("side", share);
+  const label = keyLabel(k, ctl.chats);
+  const Icon = keyIcon(k);
+  return (
+    <section aria-label={t("Split view")} className={`${box.className} bg-canvas`} style={box.style}>
+      <Grip />
+      <header
+        onContextMenu={onMenu(label, () => tabMenu(k, ctl, "split"))}
+        className="flex h-9 shrink-0 items-center gap-2 pr-1.5 pl-3.5 shadow-[inset_0_-1px_0_var(--color-line)]"
+      >
+        <Icon size={14} className="shrink-0 text-ink-3" />
+        <span className="min-w-0 flex-1 truncate text-small font-medium text-ink">{label}</span>
+        <Act label={t("Open as the page")} icon={Maximize2} onClick={() => ctl.open(k)} />
+        <Act label={t("Close split view")} icon={X} onClick={ctl.unsplit} />
+      </header>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <Suspense fallback={<PaneFallback />}>
+          <SplitBody k={k} mainId={ctl.mainId} />
+        </Suspense>
+      </div>
+    </section>
   );
 }

@@ -23,17 +23,17 @@ test.beforeEach(({ page }) => {
 });
 test.afterEach(() => expect(thrown).toEqual([]));
 
-// Whatever is lit carries data-tab-on: a conversation tab and a section tab
-// by their label, a right-rail item (a page or a machine pane) by its title.
+// Whatever is lit carries data-tab-on: a tab of the bar (every page of a Bot
+// opens as one) and a section tab by their label.
 const lit = (page: Page, name: string) => page.locator(`[data-tab-on][title="${name}"], [data-tab-on]:has-text("${name}")`).first();
 
 const pages: [path: string, lit: string[]][] = [
-  // A machine pane as a page of its own lights its rail button.
+  // A machine pane as a page of its own is a tab.
   ["desktop", ["Desktop"]],
   ["console", ["Console"]],
   ["files", ["Files"]],
   ["changes", ["Changes"]],
-  // Channels lights its rail item; Settings its rail item and the open tab.
+  // Channels is a tab; Settings is one, and lights its open section tab.
   ["channels", ["Channels"]],
   ["settings", ["Settings", "General"]],
   ["people", ["Settings", "People"]],
@@ -41,14 +41,14 @@ const pages: [path: string, lit: string[]][] = [
   ["secrets", ["Settings", "Secrets"]],
   ["tunnels", ["Settings", "Tunnels & Links"]],
   ["container", ["Settings", "Containers"]],
-  // The pages beside the conversations light their own rail item.
+  // The pages beside the conversations are tabs too.
   ["automations", ["Automations"]],
   ["artifacts", ["Artifacts"]],
   ["memories", ["Memories"]],
   ["knowledge", ["Knowledge"]],
   ["feed", ["Feed"]],
-  // Runs opens from the closed chats' menu and lights nothing.
-  ["runs", []],
+  // Runs opens from the closed chats' menu, as a tab.
+  ["runs", ["Runs"]],
 ];
 
 test("every route loads, stays put, and lights its place", async ({ page }) => {
@@ -185,7 +185,7 @@ test("sign-in carries on to a tunnel handoff", async ({ page }) => {
   expect(new URL((await handoff).url()).searchParams.get("name")).toBe("nope");
 });
 
-// Moving around by clicking: the conversation tabs, the right rail, the
+// Moving around by clicking: the tabs, the right rail, the split, the
 // sidebar, and back to the open chat.
 test("tabs and chats navigate by click", async ({ page }) => {
   await page.goto("/new");
@@ -203,8 +203,9 @@ test("tabs and chats navigate by click", async ({ page }) => {
     await expect(page.getByPlaceholder(/Ask /)).toBeEnabled();
     const second = page.url();
 
+    const rail = page.getByRole("complementary", { name: "Pages and machine" });
     // Settings, one of its tabs, and back: the tabs stay over every page.
-    await page.getByRole("link", { name: "Settings", exact: true }).click();
+    await rail.getByRole("button", { name: "Settings", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${bot}/settings$`));
     await page.getByRole("link", { name: "Rules" }).click();
     await expect(page).toHaveURL(new RegExp(`${bot}/rules$`));
@@ -213,28 +214,35 @@ test("tabs and chats navigate by click", async ({ page }) => {
     await expect(page).toHaveURL(first);
     await page.getByRole("button", { name: "New chat", exact: true }).first().click();
     await expect(page).toHaveURL(second);
-    // The empty chat is a tab of its own; closing it goes back to the main chat.
-    await page.getByRole("button", { name: "Close tab" }).click();
+    // The empty chat is a tab of its own; closing it opens its neighbour, the
+    // Settings tab the rail opened before it.
+    await page.locator("[data-tab-on]").getByRole("button", { name: "Close tab" }).click();
+    await expect(page).toHaveURL(new RegExp(`${bot}/settings$`));
+    await page.locator("[data-tab-on]").getByRole("button", { name: "Close tab" }).click();
     await expect(page).toHaveURL(first);
     await page.getByRole("link", { name: /^Dashboard/ }).first().click();
     await expect(page).toHaveURL(new RegExp(`${bot}/dashboard$`));
     await expect(lit(page, "Dashboard")).toBeVisible();
     await page.goto(second);
 
-    // A machine pane docks beside the chat without leaving it, and opens as
-    // a page of its own.
-    await page.getByRole("button", { name: "Files", exact: true }).click();
-    await expect(page).toHaveURL(second);
-    await expect(lit(page, "Files")).toBeVisible();
-    await page.getByRole("button", { name: "Open as a page" }).click();
+    // A machine pane opens as a tab, moves into the split beside the chat,
+    // swaps back by its tab, and leaves the split.
+    await rail.getByRole("button", { name: "Files", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${bot}/files$`));
-    await page.getByRole("button", { name: "Dock beside the chat" }).click();
-    await expect(page).toHaveURL(second);
-    await page.getByRole("button", { name: "Close" }).click();
-    await expect(lit(page, "Files")).toHaveCount(0);
+    await expect(lit(page, "Files")).toBeVisible();
+    await page.getByRole("button", { name: "Open in split view" }).first().click();
+    await expect(page).not.toHaveURL(new RegExp(`${bot}/files$`));
+    const split = page.getByRole("region", { name: "Split view" });
+    await expect(split).toBeVisible();
+    await page.getByRole("link", { name: "Files", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${bot}/files$`));
+    await expect(split).toBeVisible();
+    await split.getByRole("button", { name: "Close split view" }).click();
+    await expect(split).toHaveCount(0);
+    await page.goto(second);
 
-    // A page beside the conversations lights its rail item.
-    await page.getByRole("link", { name: "Memories" }).first().click();
+    // A page beside the conversations opens as a tab from the rail.
+    await rail.getByRole("button", { name: "Memories" }).click();
     await expect(page).toHaveURL(new RegExp(`${bot}/memories$`));
     await expect(lit(page, "Memories")).toBeVisible();
     await page.goto(second);

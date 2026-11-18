@@ -33,15 +33,19 @@ type Props = {
   children: ReactElement<Record<string, unknown>>;
   // Close the tip when the control is clicked (its state is about to change).
   closeOnClick?: boolean;
+  // Where the card sits: above the control (below with no room), or to its
+  // left, for a control on the right edge of the screen (the Bot's rail).
+  side?: "above" | "left";
 };
 
-export function Tip({ content, children, closeOnClick = true }: Props) {
+export function Tip({ content, children, closeOnClick = true, side = "above" }: Props) {
   const id = useId();
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{
     left: number;
     top: number;
     below: boolean;
+    beside?: boolean;
   } | null>(null);
   const anchor = useRef<HTMLElement | null>(null);
   const card = useRef<HTMLDivElement>(null);
@@ -73,12 +77,17 @@ export function Tip({ content, children, closeOnClick = true }: Props) {
     const a = anchor.current?.getBoundingClientRect();
     const c = card.current?.getBoundingClientRect();
     if (!a || !c) return;
+    if (side === "left") {
+      const middle = a.top + a.height / 2 - c.height / 2;
+      setPos({ left: Math.max(EDGE, a.left - GAP - c.width), top: Math.max(EDGE, Math.min(middle, window.innerHeight - EDGE - c.height)), below: false, beside: true });
+      return;
+    }
     const below = a.top - GAP - c.height < EDGE;
     const top = below ? a.bottom + GAP : a.top - GAP - c.height;
     const center = a.left + a.width / 2 - c.width / 2;
     const left = Math.max(EDGE, Math.min(center, window.innerWidth - EDGE - c.width));
     setPos({ left, top, below });
-  }, [open, content]);
+  }, [open, content, side]);
 
   useEffect(() => {
     if (!open) return;
@@ -127,7 +136,7 @@ export function Tip({ content, children, closeOnClick = true }: Props) {
               style={pos ? { left: pos.left, top: pos.top } : { left: -9999, top: -9999 }}
             >
               <div
-                className={`rounded-control bg-surface px-3 py-2.5 text-label leading-[18px] text-ink-2 shadow-slip ${pos ? (pos.below ? "tip-in-below" : "tip-in") : "opacity-0"}`}
+                className={`rounded-control bg-surface px-3 py-2.5 text-label leading-[18px] text-ink-2 shadow-slip ${pos ? (pos.beside ? "tip-in-left" : pos.below ? "tip-in-below" : "tip-in") : "opacity-0"}`}
               >
                 {content}
               </div>

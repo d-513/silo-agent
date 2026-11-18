@@ -1,10 +1,10 @@
-import { Maximize2, Minimize2, X, type LucideIcon } from "lucide-react";
-import { Suspense, useEffect, useRef, useState, type PointerEvent, type RefObject } from "react";
+import { Columns2, Maximize2, X, type LucideIcon } from "lucide-react";
+import { Suspense, useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import type { Bot } from "../gen/silo/v1/ui_pb";
 import { lazyNamed } from "../lazyNamed";
 import { PaneFallback } from "../PaneFallback";
-import { clampShare, setShare } from "./paneStore";
-import type { PaneKind } from "./tabs";
+import { clampShare, setShare } from "./layoutStore";
+import { paneKinds, type PaneKind } from "./tabs";
 import { msg, t } from "../i18n.ts";
 
 const MachinePane = lazyNamed(() => import("./MachinePane"), "MachinePane");
@@ -12,8 +12,24 @@ const FilesPane = lazyNamed(() => import("../Files"), "FilesPane");
 const MailPane = lazyNamed(() => import("../Mail"), "MailPane");
 const ChangesPane = lazyNamed(() => import("../Changes"), "ChangesPane");
 
-// The docked pane's share is a share of the row it splits with the page.
+// The split's share is a share of the row it divides with the page.
 const widthOf = (share: number) => `${share * 100}%`;
+
+// Where something stands in the Bot page's row: the page, the split beside
+// it, or nowhere (kept, hidden).
+export type Slot = "main" | "side" | "";
+
+/** The flex item a slot is: the page fills the row, the split takes its share. */
+export function slotBox(slot: Slot, share: number): { className: string; style?: CSSProperties } {
+  if (slot === "main") return { className: "relative order-1 flex min-h-0 min-w-0 flex-1 flex-col" };
+  if (slot === "side") {
+    return {
+      className: "relative order-3 flex min-h-0 max-w-[calc(100%-360px)] min-w-[320px] shrink-0 flex-col shadow-[inset_1px_0_0_var(--color-line)]",
+      style: { width: widthOf(share) },
+    };
+  }
+  return { className: "hidden" };
+}
 
 const captions: Record<PaneKind, string> = {
   desktop: msg("Same browser the Bot uses. You can type and click."),
@@ -23,7 +39,7 @@ const captions: Record<PaneKind, string> = {
   mail: msg("What arrives at the Bot's address. It only receives."),
 };
 
-function Act({ dark, label, icon: Icon, onClick }: { dark: boolean; label: string; icon: LucideIcon; onClick: () => void }) {
+export function Act({ dark = false, label, icon: Icon, onClick }: { dark?: boolean; label: string; icon: LucideIcon; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -39,14 +55,16 @@ function Act({ dark, label, icon: Icon, onClick }: { dark: boolean; label: strin
   );
 }
 
-// The edge between the chat and the docked pane: a hairline that takes the
-// drag. The width follows the pointer on the element itself and is saved once
-// on release, so a drag never re-renders the thread. Double-click evens it.
-function Grip({ pane }: { pane: RefObject<HTMLElement | null> }) {
+// The edge between the page and the split: a hairline that takes the drag.
+// It sizes the split it stands in (its parent): the width follows the pointer
+// on the element itself and is saved once on release, so a drag never
+// re-renders the thread. Double-click evens it.
+export function Grip() {
+  const self = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState(false);
   const last = useRef(0);
   function move(e: PointerEvent) {
-    const el = pane.current;
+    const el = self.current?.parentElement;
     const room = el?.parentElement?.getBoundingClientRect().width ?? 0;
     if (!el || room <= 0) return;
     last.current = clampShare((el.getBoundingClientRect().right - e.clientX) / room);
@@ -59,9 +77,10 @@ function Grip({ pane }: { pane: RefObject<HTMLElement | null> }) {
   }
   return (
     <div
+      ref={self}
       role="separator"
       aria-orientation="vertical"
-      aria-label={t("Resize the pane")}
+      aria-label={t("Resize the split")}
       className="group/grip absolute inset-y-0 left-0 z-10 w-2 cursor-col-resize touch-none"
       onPointerDown={(e) => {
         e.preventDefault();
@@ -90,99 +109,111 @@ function Grip({ pane }: { pane: RefObject<HTMLElement | null> }) {
   );
 }
 
-// SidePane is the Bot's machine in the page: Files, the Desktop, the Console or
-// what changed in the workspace (and Mail, which needs no machine).
-// Docked, it shares the row with the chat and its left edge drags; as its own
-// page (`max`) it takes the row. Either way it is this one element, so going
-// between the two keeps the desktop's connection and the files' place, and a
-// pane stays mounted (hidden) once opened so a trip elsewhere does too.
-export function SidePane({
+/** What a pane's head offers: from the split, to be the page or to leave; as the page, to move to the split. */
+export function slotActions(slot: Slot, dark: boolean, a: { onMain: () => void; onSplit?: () => void; onClose: () => void }): ReactNode {
+  if (slot === "side") {
+    return (
+      <>
+        <Act dark={dark} label={t("Open as the page")} icon={Maximize2} onClick={a.onMain} />
+        <Act dark={dark} label={t("Close split view")} icon={X} onClick={a.onClose} />
+      </>
+    );
+  }
+  return a.onSplit ? <Act dark={dark} label={t("Open in split view")} icon={Columns2} onClick={a.onSplit} /> : null;
+}
+
+// Panes are the Bot's machine in the page: Files, the Desktop, the Console,
+// what changed in the workspace, and Mail (which needs no machine). Each is
+// one element in the Bot page's row for as long as the page lives: it stands
+// as the page, in the split, or hidden (kept once opened), so moving it
+// between those keeps the desktop's connection and the files' place, and two
+// of them can be open at once.
+export function Panes({
   bot,
-  kind,
-  max,
+  main,
+  side,
   share,
   openAt,
-  canDock,
+  wide,
   onStart,
-  onMax,
-  onDock,
-  onClose,
+  onOpen,
+  onSplit,
+  onUnsplit,
   onError,
 }: {
   bot: Bot;
-  // The pane showing now; "" shows none.
-  kind: PaneKind | "";
-  max: boolean;
+  // The pane that is the page, and the one in the split ("" for none).
+  main: PaneKind | "";
+  side: PaneKind | "";
   share: number;
   // The folder Files opens in (Drives → Open in Files).
   openAt: string;
-  // There is room to sit beside the chat (the wide layout).
-  canDock: boolean;
+  // There is room for a split.
+  wide: boolean;
   onStart: () => void;
-  onMax: () => void;
-  onDock: () => void;
-  onClose: () => void;
+  onOpen: (k: PaneKind) => void;
+  onSplit: (k: PaneKind) => void;
+  onUnsplit: () => void;
   onError: (s: string) => void;
 }) {
-  const ref = useRef<HTMLElement>(null);
   const [kept, setKept] = useState<ReadonlySet<PaneKind>>(new Set());
   useEffect(() => {
-    if (kind) setKept((s) => (s.has(kind) ? s : new Set(s).add(kind)));
-  }, [kind]);
-  const has = (k: PaneKind) => kind === k || kept.has(k);
+    const add = [main, side].filter((k): k is PaneKind => !!k);
+    if (add.length) setKept((s) => (add.every((k) => s.has(k)) ? s : new Set([...s, ...add])));
+  }, [main, side]);
   const online = bot.workerConnected;
-
-  const actions = (dark: boolean) =>
-    max ? (
-      canDock ? <Act dark={dark} label={t("Dock beside the chat")} icon={Minimize2} onClick={onDock} /> : null
-    ) : (
-      <>
-        <Act dark={dark} label={t("Open as a page")} icon={Maximize2} onClick={onMax} />
-        <Act dark={dark} label={t("Close")} icon={X} onClick={onClose} />
-      </>
-    );
-
-  const machine = (k: "desktop" | "console") =>
-    has(k) ? (
-      <div className={`min-h-0 flex-1 flex-col p-3 ${kind === k ? "flex" : "hidden"}`}>
-        <MachinePane bot={bot} onStart={onStart} visible={kind === k} kind={k} actions={actions(true)} onError={onError} />
-        {max ? <p className="mt-2 text-meta text-ink-2">{t(captions[k])}</p> : null}
-      </div>
-    ) : null;
+  const slotOf = (k: PaneKind): Slot => (k === main ? "main" : k === side ? "side" : "");
 
   return (
-    <aside
-      ref={ref}
-      aria-label={kind ? t("Side pane") : undefined}
-      className={`relative min-h-0 min-w-0 flex-col ${kind ? "flex" : "hidden"} ${max ? "flex-1" : "max-w-[calc(100%-360px)] min-w-[320px] shrink-0"}`}
-      style={max ? undefined : { width: widthOf(share) }}
-    >
-      {max ? null : <Grip pane={ref} />}
-      <Suspense fallback={<PaneFallback />}>
-        {machine("desktop")}
-        {machine("console")}
-        {has("files") ? (
-          <div className={`min-h-0 flex-1 flex-col ${online ? "" : "p-3"} ${kind === "files" ? "flex" : "hidden"}`}>
-            <FilesPane bot={bot} visible={kind === "files"} onStart={onStart} openAt={openAt} actions={actions(false)} />
-          </div>
-        ) : null}
-        {/* Changes keeps its header when the Bot is stopped: the drive journal
-            reads without the machine. */}
-        {has("changes") ? (
-          <div className={`min-h-0 flex-1 flex-col ${kind === "changes" ? "flex" : "hidden"}`}>
-            <ChangesPane bot={bot} visible={kind === "changes"} onStart={onStart} onError={onError} actions={actions(false)} />
-          </div>
-        ) : null}
-        {/* Mail needs no machine: it shows whether the Bot is up or not. */}
-        {has("mail") ? (
-          <div className={`min-h-0 flex-1 flex-col ${kind === "mail" ? "flex" : "hidden"}`}>
-            <MailPane bot={bot} onError={onError} actions={actions(false)} />
-            {max ? <p className="mt-2 px-3 pb-3 text-meta text-ink-2">{captions.mail}</p> : null}
-          </div>
-        ) : null}
-      </Suspense>
-      {/* A stopped Bot has no pane header to carry these. Mail and Changes have their own. */}
-      {kind && kind !== "mail" && kind !== "changes" && !online ? <div className="absolute top-5 right-5 flex items-center gap-0.5">{actions(false)}</div> : null}
-    </aside>
+    <Suspense fallback={null}>
+      {paneKinds
+        .filter((k) => kept.has(k) || k === main || k === side)
+        .map((k) => {
+          const slot = slotOf(k);
+          const box = slotBox(slot, share);
+          const actions = (dark: boolean) => slotActions(slot, dark, { onMain: () => onOpen(k), onSplit: wide ? () => onSplit(k) : undefined, onClose: onUnsplit });
+          const visible = slot !== "";
+          const caption = slot === "main" && captions[k] ? <p className="mt-2 text-meta text-ink-2">{t(captions[k])}</p> : null;
+          let body: ReactNode;
+          if (k === "desktop" || k === "console") {
+            body = (
+              <div className="flex min-h-0 flex-1 flex-col p-3">
+                <MachinePane bot={bot} onStart={onStart} visible={visible} kind={k} actions={actions(true)} onError={onError} />
+                {caption}
+              </div>
+            );
+          } else if (k === "files") {
+            body = (
+              <div className={`flex min-h-0 flex-1 flex-col ${online ? "" : "p-3"}`}>
+                <FilesPane bot={bot} visible={visible} onStart={onStart} openAt={openAt} actions={actions(false)} />
+              </div>
+            );
+          } else if (k === "changes") {
+            // Changes keeps its header when the Bot is stopped: the drive
+            // journal reads without the machine.
+            body = (
+              <div className="flex min-h-0 flex-1 flex-col">
+                <ChangesPane bot={bot} visible={visible} onStart={onStart} onError={onError} actions={actions(false)} />
+              </div>
+            );
+          } else {
+            // Mail needs no machine: it shows whether the Bot is up or not.
+            body = (
+              <div className="flex min-h-0 flex-1 flex-col">
+                <MailPane bot={bot} onError={onError} actions={actions(false)} />
+                {caption ? <div className="px-3 pb-3">{caption}</div> : null}
+              </div>
+            );
+          }
+          return (
+            <section key={k} aria-label={slot === "side" ? t("Split view") : undefined} className={box.className} style={box.style}>
+              {slot === "side" ? <Grip /> : null}
+              <Suspense fallback={<PaneFallback />}>{body}</Suspense>
+              {/* A stopped Bot has no pane header to carry these. Mail and Changes have their own. */}
+              {visible && k !== "mail" && k !== "changes" && !online ? <div className="absolute top-5 right-5 flex items-center gap-0.5">{actions(false)}</div> : null}
+            </section>
+          );
+        })}
+    </Suspense>
   );
 }
