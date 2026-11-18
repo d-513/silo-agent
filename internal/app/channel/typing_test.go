@@ -90,7 +90,7 @@ func TestCleanName(t *testing.T) {
 		}
 	}
 	long := cleanName(strings.Repeat("a", 200) + ".png")
-	if len([]rune(long)) != maxNameRunes || long[len(long)-4:] != ".png" {
+	if len([]rune(long)) != 80 || long[len(long)-4:] != ".png" {
 		t.Errorf("a long name kept %q", long)
 	}
 }

@@ -100,7 +100,7 @@ export function RunPane({
   // The last reply failed: Retry answers it again, from the error row or
   // the send button. Only whoever writes in the chat retries.
   const retry =
-    chatId && !run.sending && (chat?.mine ?? true) && lastReplyFailed(run.events) ? () => void actions.retryRun() : undefined;
+    chatId && !run.sending && (chat?.mine ?? true) && !chat?.fromBot && lastReplyFailed(run.events) ? () => void actions.retryRun() : undefined;
   const composer = (
     <Composer
       text={draft.text}
@@ -206,12 +206,14 @@ export function RunPane({
           {t("{{name}}'s managers can read this chat. What you tell {{name}}, it may remember for everyone who uses it.", { name: bot.name })}
         </p>
       ) : null}
-      {chat && !chat.mine ? (
+      {chat && (!chat.mine || chat.fromBot) ? (
         <div className="mx-auto mb-4 flex w-full max-w-[760px] items-center gap-3 rounded-card bg-well px-4 py-3">
           <p className="min-w-0 flex-1 text-small leading-5 text-ink-3">
-            {chat.author
-              ? t("{{who}}'s chat. You can read it and stop it; only {{who}} writes in it.", { who: chat.author })
-              : t("{{name}}'s own chat. You can read it and stop it.", { name: bot.name })}
+            {chat.fromBot
+              ? t("{{bot}} hands {{name}} work here, and gets its replies. You can read it and stop it; only {{bot}} writes in it.", { bot: chat.fromBot, name: bot.name })
+              : chat.author
+                ? t("{{who}}'s chat. You can read it and stop it; only {{who}} writes in it.", { who: chat.author })
+                : t("{{name}}'s own chat. You can read it and stop it.", { name: bot.name })}
           </p>
           {run.sending ? (
             <Btn kind="secondary" size="sm" onClick={() => void actions.stopRun()}>

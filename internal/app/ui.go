@@ -34,31 +34,32 @@ import (
 
 func (a *App) protoBot(b *db.Bot, machine string) *v1.Bot {
 	return &v1.Bot{
-		Id:              b.ID,
-		SpaceId:         b.SpaceID,
-		Name:            b.Name,
-		Machine:         machine,
-		LastTask:        b.LastTask,
-		Crest:           int32(b.Crest),
-		WorkerConnected: machine == machineOnline,
-		Description:     b.Description,
-		Soul:            b.Soul,
-		AutoApprove:     b.AutoApprove,
-		OutputPolicy:    b.OutputPolicy,
-		Model:           b.Model,
-		DashboardAsks:   a.Dashboard.Open(b.ID),
-		DashboardUrgent: a.Dashboard.Urgent(b.ID),
-		DesktopPaused:   a.Pause.Paused(b.ID),
-		Proactivity:     b.Proactivity,
-		HeartbeatCustom: a.Proactivity.Custom(b.ID, b.Proactivity),
-		AuditUnseen:     int32(b.AuditUnseen),
-		MailAddress:     a.Mail.Address(b.ID),
-		TimeZone:        zone.Resolve(b.TimeZone).String(),
-		TimeZonePinned:  b.TimeZonePinned,
-		Language:        lang.Bot(b.Language),
-		SpeechModel:     b.SpeechModel,
-		Voice:           b.Voice,
-		SpeechSpeed:     b.SpeechSpeed,
+		Id:                b.ID,
+		SpaceId:           b.SpaceID,
+		Name:              b.Name,
+		Machine:           machine,
+		LastTask:          b.LastTask,
+		Crest:             int32(b.Crest),
+		WorkerConnected:   machine == machineOnline,
+		Description:       b.Description,
+		Soul:              b.Soul,
+		AutoApprove:       b.AutoApprove,
+		OutputPolicy:      b.OutputPolicy,
+		Model:             b.Model,
+		DashboardAsks:     a.Dashboard.Open(b.ID),
+		DashboardUrgent:   a.Dashboard.Urgent(b.ID),
+		DesktopPaused:     a.Pause.Paused(b.ID),
+		Proactivity:       b.Proactivity,
+		AcceptBotMessages: b.AcceptBotMessages,
+		HeartbeatCustom:   a.Proactivity.Custom(b.ID, b.Proactivity),
+		AuditUnseen:       int32(b.AuditUnseen),
+		MailAddress:       a.Mail.Address(b.ID),
+		TimeZone:          zone.Resolve(b.TimeZone).String(),
+		TimeZonePinned:    b.TimeZonePinned,
+		Language:          lang.Bot(b.Language),
+		SpeechModel:       b.SpeechModel,
+		Voice:             b.Voice,
+		SpeechSpeed:       b.SpeechSpeed,
 	}
 }
 
@@ -277,6 +278,9 @@ func (a *App) UpdateBot(ctx context.Context, req *connect.Request[v1.UpdateBotRe
 	if req.Msg.TimeZonePinned != nil {
 		b.TimeZonePinned = req.Msg.GetTimeZonePinned()
 	}
+	if req.Msg.AcceptBotMessages != nil {
+		b.AcceptBotMessages = req.Msg.GetAcceptBotMessages()
+	}
 	if req.Msg.Language != nil {
 		if err := lang.Check(req.Msg.GetLanguage()); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -314,6 +318,9 @@ func (a *App) UpdateBot(ctx context.Context, req *connect.Request[v1.UpdateBotRe
 	}
 	if req.Msg.Language != nil {
 		cols = append(cols, "language")
+	}
+	if req.Msg.AcceptBotMessages != nil {
+		cols = append(cols, "accept_bot_messages")
 	}
 	if err := a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Select(cols).Updates(b).Error; err != nil {
 		return nil, err
@@ -437,6 +444,7 @@ func (a *App) dropBot(ctx context.Context, b *db.Bot) {
 	_ = a.Pause.Drop(b.ID)
 	a.DB.Where("chat_id IN (?)", a.DB.Model(&db.Chat{}).Select("id").Where("bot_id = ?", b.ID)).Delete(&db.TaskItem{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Subagent{})
+	a.DB.Where("from_bot_id = ? OR to_bot_id = ?", b.ID, b.ID).Delete(&db.BotMessage{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Secret{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Rule{})
 	var bcs []db.BotConnector
@@ -702,6 +710,7 @@ func (a *App) threadEvent(r *db.RunEvent, chatID string) *v1.RunEvent {
 	switch {
 	case r.Kind == "user":
 		out.Spoken = v1Spoken(meta)
+		out.Author = threadAuthor(r.Author, meta)
 	case voice.IsCallKind(r.Kind):
 		out.Spoken = voice.SpokenProto(r.Meta)
 	case r.Kind == dashboard.CardKind:
@@ -777,8 +786,9 @@ func (a *App) ListChatEvents(ctx context.Context, req *connect.Request[v1.ListCh
 // lastActive is when each Bot's newest run started.
 func (a *App) lastActive(botID string) time.Time {
 	var at *time.Time
-	a.DB.Model(&db.Run{}).Select("max(created_at)").Where("bot_id = ?", botID).Scan(&at)
-	if at == nil {
+	// Row().Scan is database/sql's, which stores a NULL (a Bot with no runs)
+	// as a nil pointer; GORM's Scan refuses it and logs an error per read.
+	if err := a.DB.Model(&db.Run{}).Select("max(created_at)").Where("bot_id = ?", botID).Row().Scan(&at); err != nil || at == nil {
 		return time.Time{}
 	}
 	return *at

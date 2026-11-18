@@ -39,7 +39,7 @@ func TestDriveSystemValues(t *testing.T) {
 		t.Fatalf("typo accepted: %v", err)
 	}
 	c := s.Config()
-	if c.DriveImage() != DefaultDriveImage || c.Drives.CacheMaxSize != "10G" || c.DriveMountRoot() == "" {
+	if c.DriveImage() != DefaultDriveImage() || c.Drives.CacheMaxSize != "10G" || c.DriveMountRoot() == "" {
 		t.Fatalf("drive defaults: %q %q %q", c.DriveImage(), c.Drives.CacheMaxSize, c.DriveMountRoot())
 	}
 }

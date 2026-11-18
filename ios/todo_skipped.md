@@ -38,6 +38,7 @@ Not decisions, just not done yet:
 - Dashboard: Look again, Arrange, the inline ask form.
 - Automations: Stop, Edit and live state in the log.
 - Subagents: the Taskboard page.
+- Messages between Bots: the Settings switch, the From other Bots group, the read-only notice in such a conversation, and a Bot's message drawn as a note (`Chat.from_bot`, a `user` event with tool `bot`, a report label with `@` names).
 - Artifacts: Share and Save skill.
 - Memories: the filters (Preferences, Lessons, Facts, Noticed, Retired), Keep on a noticed one, and the retired ones with Put back. A row names its kind and says when it is only noticed.
 - Offer cards: the provider's mark.

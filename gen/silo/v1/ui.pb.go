@@ -2135,8 +2135,11 @@ type Bot struct {
 	// DashboardUrgent counts the open asks the Bot marked urgent: while there
 	// is one, status is needs_you for everyone on the Bot.
 	DashboardUrgent int32 `protobuf:"varint,37,opt,name=dashboard_urgent,json=dashboardUrgent,proto3" json:"dashboard_urgent,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Other Bots of its Workspace may message it (message_bot). On by default;
+	// a manager turns it off in Settings → General.
+	AcceptBotMessages bool `protobuf:"varint,38,opt,name=accept_bot_messages,json=acceptBotMessages,proto3" json:"accept_bot_messages,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Bot) Reset() {
@@ -2419,6 +2422,13 @@ func (x *Bot) GetDashboardUrgent() int32 {
 		return x.DashboardUrgent
 	}
 	return 0
+}
+
+func (x *Bot) GetAcceptBotMessages() bool {
+	if x != nil {
+		return x.AcceptBotMessages
+	}
+	return false
 }
 
 // Space is a Workspace as the caller sees it.
@@ -5753,9 +5763,11 @@ type UpdateBotRequest struct {
 	// off | quiet | active; it also puts the Heartbeat on that level's schedule.
 	Proactivity *string `protobuf:"bytes,12,opt,name=proactivity,proto3,oneof" json:"proactivity,omitempty"`
 	// color * 8 + shape. Optional, so a save of the other fields leaves it alone.
-	Crest         *int32 `protobuf:"varint,13,opt,name=crest,proto3,oneof" json:"crest,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Crest *int32 `protobuf:"varint,13,opt,name=crest,proto3,oneof" json:"crest,omitempty"`
+	// Optional, so a save of the other fields leaves it alone.
+	AcceptBotMessages *bool `protobuf:"varint,14,opt,name=accept_bot_messages,json=acceptBotMessages,proto3,oneof" json:"accept_bot_messages,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *UpdateBotRequest) Reset() {
@@ -5870,6 +5882,13 @@ func (x *UpdateBotRequest) GetCrest() int32 {
 		return *x.Crest
 	}
 	return 0
+}
+
+func (x *UpdateBotRequest) GetAcceptBotMessages() bool {
+	if x != nil && x.AcceptBotMessages != nil {
+		return *x.AcceptBotMessages
+	}
+	return false
 }
 
 type GetBotRequest struct {
@@ -6002,7 +6021,11 @@ type BotContainer struct {
 	MemUsed    int64   `protobuf:"varint,8,opt,name=mem_used,json=memUsed,proto3" json:"mem_used,omitempty"`
 	MemLimit   int64   `protobuf:"varint,9,opt,name=mem_limit,json=memLimit,proto3" json:"mem_limit,omitempty"`
 	// One line of context: "3 drives", "stdio · npx @modelcontextprotocol/…".
-	Detail        string `protobuf:"bytes,10,opt,name=detail,proto3" json:"detail,omitempty"`
+	Detail string `protobuf:"bytes,10,opt,name=detail,proto3" json:"detail,omitempty"`
+	// Made from an older image, or another way, than Silo would make it now (a
+	// new release, a rebuilt tag): it is made again when it next starts, or a
+	// Reset makes it again now.
+	Outdated      bool `protobuf:"varint,11,opt,name=outdated,proto3" json:"outdated,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6107,6 +6130,13 @@ func (x *BotContainer) GetDetail() string {
 	return ""
 }
 
+func (x *BotContainer) GetOutdated() bool {
+	if x != nil {
+		return x.Outdated
+	}
+	return false
+}
+
 type BotContainers struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Containers    []*BotContainer        `protobuf:"bytes,1,rep,name=containers,proto3" json:"containers,omitempty"`
@@ -6171,7 +6201,9 @@ type AdminContainer struct {
 	// One line of context: "3 drives", "stdio · npx …", "leftover sidecar".
 	Detail string `protobuf:"bytes,10,opt,name=detail,proto3" json:"detail,omitempty"`
 	// The networks the container is attached to, by name.
-	Networks      []string `protobuf:"bytes,11,rep,name=networks,proto3" json:"networks,omitempty"`
+	Networks []string `protobuf:"bytes,11,rep,name=networks,proto3" json:"networks,omitempty"`
+	// As BotContainer.outdated. The egress gateway is made again on its own.
+	Outdated      bool `protobuf:"varint,12,opt,name=outdated,proto3" json:"outdated,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6281,6 +6313,13 @@ func (x *AdminContainer) GetNetworks() []string {
 		return x.Networks
 	}
 	return nil
+}
+
+func (x *AdminContainer) GetOutdated() bool {
+	if x != nil {
+		return x.Outdated
+	}
+	return false
 }
 
 // AdminNetwork is one network the CP carved for an egress client.
@@ -12940,7 +12979,11 @@ type Chat struct {
 	Hidden bool `protobuf:"varint,10,opt,name=hidden,proto3" json:"hidden,omitempty"`
 	// When it was made (RFC 3339): the order its tab keeps, whatever moves it
 	// in the list by activity.
-	CreatedAt     string `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	CreatedAt string `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// from_bot names the Bot whose messages this conversation answers: one
+	// conversation per sending Bot and person (message_bot). It is read-only to
+	// people. "" for every other chat.
+	FromBot       string `protobuf:"bytes,12,opt,name=from_bot,json=fromBot,proto3" json:"from_bot,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -13048,6 +13091,13 @@ func (x *Chat) GetHidden() bool {
 func (x *Chat) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *Chat) GetFromBot() string {
+	if x != nil {
+		return x.FromBot
 	}
 	return ""
 }
@@ -30470,7 +30520,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x10CheckOIDCRequest\"b\n" +
 	"\x11CheckOIDCResponse\x12\x16\n" +
 	"\x06issuer\x18\x01 \x01(\tR\x06issuer\x125\n" +
-	"\x16authorization_endpoint\x18\x02 \x01(\tR\x15authorizationEndpoint\"\xad\t\n" +
+	"\x16authorization_endpoint\x18\x02 \x01(\tR\x15authorizationEndpoint\"\xdd\t\n" +
 	"\x03Bot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -30509,7 +30559,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\flast_message\x18\" \x01(\tR\vlastMessage\x12&\n" +
 	"\x0flast_message_at\x18# \x01(\tR\rlastMessageAt\x12*\n" +
 	"\x11last_message_mine\x18$ \x01(\bR\x0flastMessageMine\x12)\n" +
-	"\x10dashboard_urgent\x18% \x01(\x05R\x0fdashboardUrgentJ\x04\b\t\x10\n" +
+	"\x10dashboard_urgent\x18% \x01(\x05R\x0fdashboardUrgent\x12.\n" +
+	"\x13accept_bot_messages\x18& \x01(\bR\x11acceptBotMessagesJ\x04\b\t\x10\n" +
 	"\"\x9e\x01\n" +
 	"\x05Space\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -30742,7 +30793,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\n" +
 	"skills_off\x18\t \x03(\tR\tskillsOff\x12\x19\n" +
 	"\buser_ids\x18\n" +
-	" \x03(\tR\auserIds\"\xe5\x03\n" +
+	" \x03(\tR\auserIds\"\xb2\x04\n" +
 	"\x10UpdateBotRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -30756,14 +30807,16 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	" \x01(\tH\x02R\blanguage\x88\x01\x01\x12(\n" +
 	"\routput_policy\x18\v \x01(\tH\x03R\foutputPolicy\x88\x01\x01\x12%\n" +
 	"\vproactivity\x18\f \x01(\tH\x04R\vproactivity\x88\x01\x01\x12\x19\n" +
-	"\x05crest\x18\r \x01(\x05H\x05R\x05crest\x88\x01\x01B\f\n" +
+	"\x05crest\x18\r \x01(\x05H\x05R\x05crest\x88\x01\x01\x123\n" +
+	"\x13accept_bot_messages\x18\x0e \x01(\bH\x06R\x11acceptBotMessages\x88\x01\x01B\f\n" +
 	"\n" +
 	"_time_zoneB\x13\n" +
 	"\x11_time_zone_pinnedB\v\n" +
 	"\t_languageB\x10\n" +
 	"\x0e_output_policyB\x0e\n" +
 	"\f_proactivityB\b\n" +
-	"\x06_crestJ\x04\b\x05\x10\x06\"\x1f\n" +
+	"\x06_crestB\x16\n" +
+	"\x14_accept_bot_messagesJ\x04\b\x05\x10\x06\"\x1f\n" +
 	"\rGetBotRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"~\n" +
 	"\tContainer\x12\x18\n" +
@@ -30771,7 +30824,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\vcpu_percent\x18\x02 \x01(\x01R\n" +
 	"cpuPercent\x12\x19\n" +
 	"\bmem_used\x18\x03 \x01(\x03R\amemUsed\x12\x1b\n" +
-	"\tmem_limit\x18\x04 \x01(\x03R\bmemLimit\"\x88\x02\n" +
+	"\tmem_limit\x18\x04 \x01(\x03R\bmemLimit\"\xa4\x02\n" +
 	"\fBotContainer\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -30785,11 +30838,12 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\bmem_used\x18\b \x01(\x03R\amemUsed\x12\x1b\n" +
 	"\tmem_limit\x18\t \x01(\x03R\bmemLimit\x12\x16\n" +
 	"\x06detail\x18\n" +
-	" \x01(\tR\x06detail\"F\n" +
+	" \x01(\tR\x06detail\x12\x1a\n" +
+	"\boutdated\x18\v \x01(\bR\boutdated\"F\n" +
 	"\rBotContainers\x125\n" +
 	"\n" +
 	"containers\x18\x01 \x03(\v2\x15.silo.v1.BotContainerR\n" +
-	"containers\"\xa6\x02\n" +
+	"containers\"\xc2\x02\n" +
 	"\x0eAdminContainer\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -30804,7 +30858,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\tmem_limit\x18\t \x01(\x03R\bmemLimit\x12\x16\n" +
 	"\x06detail\x18\n" +
 	" \x01(\tR\x06detail\x12\x1a\n" +
-	"\bnetworks\x18\v \x03(\tR\bnetworks\"q\n" +
+	"\bnetworks\x18\v \x03(\tR\bnetworks\x12\x1a\n" +
+	"\boutdated\x18\f \x01(\bR\boutdated\"q\n" +
 	"\fAdminNetwork\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06subnet\x18\x02 \x01(\tR\x06subnet\x12\x1e\n" +
@@ -31302,7 +31357,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x02id\x18\x02 \x01(\tR\x02id\"G\n" +
 	"\x15RunAutomationResponse\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x17\n" +
-	"\achat_id\x18\x02 \x01(\tR\x06chatId\"\x8b\x02\n" +
+	"\achat_id\x18\x02 \x01(\tR\x06chatId\"\xa6\x02\n" +
 	"\x04Chat\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06bot_id\x18\x02 \x01(\tR\x05botId\x12\x14\n" +
@@ -31317,7 +31372,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x06hidden\x18\n" +
 	" \x01(\bR\x06hidden\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\v \x01(\tR\tcreatedAt\"\xd6\x01\n" +
+	"created_at\x18\v \x01(\tR\tcreatedAt\x12\x19\n" +
+	"\bfrom_bot\x18\f \x01(\tR\afromBot\"\xd6\x01\n" +
 	"\vModelOption\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x14\n" +

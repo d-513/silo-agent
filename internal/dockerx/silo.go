@@ -34,7 +34,8 @@ func labels(role string, kv ...string) map[string]string {
 
 // create is the one way a container is made: it stamps ManagedLabel on cfg
 // whatever the caller passed, so nothing Silo makes goes unlabelled
-// (TestEveryCreateIsLabelled).
+// (TestEveryCreateIsLabelled), records how it was made (SpecLabel), and
+// fetches the image first when it is missing (EnsureImage).
 func (e *Engine) create(ctx context.Context, cfg *container.Config, host *container.HostConfig, net *network.NetworkingConfig, name string) (container.CreateResponse, error) {
 	c := *cfg
 	c.Labels = maps.Clone(cfg.Labels)
@@ -42,6 +43,12 @@ func (e *Engine) create(ctx context.Context, cfg *container.Config, host *contai
 		c.Labels = map[string]string{}
 	}
 	c.Labels[ManagedLabel] = "true"
+	if spec := specOf(c.Labels["silo.role"], e.store.Config()); spec != "" {
+		c.Labels[SpecLabel] = spec
+	}
+	if err := e.EnsureImage(ctx, c.Image); err != nil {
+		return container.CreateResponse{}, err
+	}
 	return e.cli.ContainerCreate(ctx, &c, host, net, nil, name)
 }
 

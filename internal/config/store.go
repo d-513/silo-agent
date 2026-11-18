@@ -23,13 +23,14 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("data_dir", "./data")
 	_ = k.Set("database_url", DefaultDatabaseURL)
 	_ = k.Set("cp_url", "http://host.containers.internal:8080")
-	_ = k.Set("bot_image", "localhost/silo-bot:v1")
-	_ = k.Set("mcp_stdio_image", DefaultMCPStdioImage)
+	_ = k.Set("bot_image", DefaultBotImage())
+	_ = k.Set("mcp_stdio_image", DefaultMCPStdioImage())
+	_ = k.Set("images.pull", PullMissing)
 	_ = k.Set("bot_limits.pids", DefaultBotPids)
-	_ = k.Set("drives.image", DefaultDriveImage)
+	_ = k.Set("drives.image", DefaultDriveImage())
 	_ = k.Set("drives.cache_max_size", "10G")
 	_ = k.Set("egress.enabled", true)
-	_ = k.Set("egress.image", DefaultEgressImage)
+	_ = k.Set("egress.image", DefaultEgressImage())
 	_ = k.Set("egress.subnet_pool", DefaultEgressPool)
 	_ = k.Set("tunnels.enabled", true)
 	_ = k.Set("mail.enabled", true)
@@ -132,6 +133,7 @@ func FromYAML(raw []byte) (*Store, error) {
 	if c.DockerHost == "" {
 		c.DockerHost = os.Getenv("DOCKER_HOST")
 	}
+	c.fillImages()
 	s.yaml = y
 	s.env = koanf.New(".")
 	s.merged = m
@@ -168,6 +170,7 @@ func (s *Store) reloadLocked() error {
 	if c.DockerHost == "" {
 		c.DockerHost = os.Getenv("DOCKER_HOST")
 	}
+	c.fillImages()
 	s.yaml = y
 	s.env = e
 	s.merged = m
@@ -342,7 +345,7 @@ func (s *Store) Patch(fields map[string]string) error {
 		return err
 	}
 	for k, v := range fields {
-		if v == "" && isModelRole(k) {
+		if v == "" && (isModelRole(k) || isImageKey(k)) {
 			deleteNodeKey(node, k)
 			continue
 		}

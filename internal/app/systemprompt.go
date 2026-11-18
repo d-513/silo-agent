@@ -55,6 +55,8 @@ type promptContext struct {
 	memories string
 	// subagent is set when this run is a subagent's.
 	subagent *db.Subagent
+	// peer is set when this run answers another Bot's message.
+	peer *db.BotMessage
 	// drives are the Bot's saved drives (mounted under /workspace/drives).
 	drives []db.Drive
 	// knowledge are the Bot's indexed folders (search_docs).
@@ -82,6 +84,7 @@ func (a *App) promptProviders() []promptProvider {
 		a.mailSections,
 		a.automationSections,
 		a.subagentSections,
+		a.botMessageSections,
 	}
 }
 
@@ -313,6 +316,7 @@ func (a *App) promptContext(botID string, bot *db.Bot, origin *run.Origin) promp
 		pc.channel = origin.Channel
 		pc.automation = origin.Automation
 		pc.subagent = origin.Subagent
+		pc.peer = origin.Peer
 	}
 	return pc
 }

@@ -13,6 +13,7 @@ import { fmtBytes } from "./format";
 import { Lamp, Status } from "./Lamp";
 import { containerLook, machineLook, containerUp, containerMade } from "./statusLook";
 import { msg, t } from "./i18n.ts";
+import { UpdateChip } from "./UpdateChip";
 import { recheck } from "./query";
 
 // AdminContainers is the admin's view of the container engine: every user's
@@ -169,6 +170,7 @@ function ContainerRow({ c, busy, now, onAct }: { c: AdminContainer; busy: string
           <div className="flex flex-wrap items-center gap-2">
             <span className="min-w-0 truncate text-body font-medium text-ink">{c.label}</span>
             <span className="rounded-sm bg-well px-1.5 py-0.5 text-micro font-medium text-ink-3">{t(kindChip[kind.chip])}</span>
+            {c.outdated ? <UpdateChip kind={c.kind} /> : null}
           </div>
           {c.detail ? <div className="mt-0.5 truncate text-meta text-ink-2">{c.detail}</div> : null}
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-meta">

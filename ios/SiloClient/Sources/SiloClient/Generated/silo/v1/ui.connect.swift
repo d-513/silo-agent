@@ -434,6 +434,18 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `listChatEvents`(request: Silo_V1_ListChatEventsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListChatEventsResponse>
 
+    /// Everything a Bot did, for its managers: its runs, newest first, each in
+    /// numbers; the model calls made for one run beside its turns; and the model
+    /// calls made for no run at all, which are kept in memory only.
+    @available(iOS 13, *)
+    func `listRuns`(request: Silo_V1_ListRunsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListRunsResponse>
+
+    @available(iOS 13, *)
+    func `getRunCalls`(request: Silo_V1_GetRunCallsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_GetRunCallsResponse>
+
+    @available(iOS 13, *)
+    func `listBackground`(request: Silo_V1_ListBackgroundRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListBackgroundResponse>
+
     /// ListCommands is the slash commands a chat's composer offers.
     @available(iOS 13, *)
     func `listCommands`(request: Silo_V1_ListCommandsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListCommandsResponse>
@@ -449,6 +461,11 @@ public protocol Silo_V1_UiClientInterface: Sendable {
 
     @available(iOS 13, *)
     func `compactChat`(request: Silo_V1_CompactChatRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_CompactChatResponse>
+
+    /// RetryRun answers a chat again after its last reply failed: a new run
+    /// that reads the history as it stands, with nothing rewritten.
+    @available(iOS 13, *)
+    func `retryRun`(request: Silo_V1_RetryRunRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_RetryRunResponse>
 
     @available(iOS 13, *)
     func `collectMemories`(request: Silo_V1_CollectMemoriesRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_CollectMemoriesResponse>
@@ -1373,6 +1390,21 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `listRuns`(request: Silo_V1_ListRunsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListRunsResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListRuns", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `getRunCalls`(request: Silo_V1_GetRunCallsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_GetRunCallsResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/GetRunCalls", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `listBackground`(request: Silo_V1_ListBackgroundRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListBackgroundResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListBackground", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `listCommands`(request: Silo_V1_ListCommandsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListCommandsResponse> {
         return await self.client.unary(path: "/silo.v1.UI/ListCommands", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -1395,6 +1427,11 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     @available(iOS 13, *)
     public func `compactChat`(request: Silo_V1_CompactChatRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_CompactChatResponse> {
         return await self.client.unary(path: "/silo.v1.UI/CompactChat", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `retryRun`(request: Silo_V1_RetryRunRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_RetryRunResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/RetryRun", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
     @available(iOS 13, *)
@@ -2001,11 +2038,15 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let stopRun = Connect.MethodSpec(name: "StopRun", service: "silo.v1.UI", type: .unary)
             public static let streamRun = Connect.MethodSpec(name: "StreamRun", service: "silo.v1.UI", type: .serverStream)
             public static let listChatEvents = Connect.MethodSpec(name: "ListChatEvents", service: "silo.v1.UI", type: .unary)
+            public static let listRuns = Connect.MethodSpec(name: "ListRuns", service: "silo.v1.UI", type: .unary)
+            public static let getRunCalls = Connect.MethodSpec(name: "GetRunCalls", service: "silo.v1.UI", type: .unary)
+            public static let listBackground = Connect.MethodSpec(name: "ListBackground", service: "silo.v1.UI", type: .unary)
             public static let listCommands = Connect.MethodSpec(name: "ListCommands", service: "silo.v1.UI", type: .unary)
             public static let editMessage = Connect.MethodSpec(name: "EditMessage", service: "silo.v1.UI", type: .unary)
             public static let deleteMessage = Connect.MethodSpec(name: "DeleteMessage", service: "silo.v1.UI", type: .unary)
             public static let divergeChat = Connect.MethodSpec(name: "DivergeChat", service: "silo.v1.UI", type: .unary)
             public static let compactChat = Connect.MethodSpec(name: "CompactChat", service: "silo.v1.UI", type: .unary)
+            public static let retryRun = Connect.MethodSpec(name: "RetryRun", service: "silo.v1.UI", type: .unary)
             public static let collectMemories = Connect.MethodSpec(name: "CollectMemories", service: "silo.v1.UI", type: .unary)
             public static let listSubagents = Connect.MethodSpec(name: "ListSubagents", service: "silo.v1.UI", type: .unary)
             public static let getSubagent = Connect.MethodSpec(name: "GetSubagent", service: "silo.v1.UI", type: .unary)

@@ -61,6 +61,7 @@ func (a *App) fillAdminContainer(ctx context.Context, c *v1.AdminContainer, box 
 	}
 	c.Image = st.Image
 	c.Networks = st.Networks
+	c.Outdated = a.Docker.Outdated(ctx, st, box.role, box.image) != ""
 	if !st.Running {
 		c.State = "stopped"
 		return
@@ -223,6 +224,9 @@ func (a *App) ListAdminContainers(ctx context.Context, req *connect.Request[v1.L
 			case kind == "egress" || e.Role == "egress":
 				c.Kind = "egress"
 				c.Label = "Egress gateway"
+				if st, err := a.Docker.Inspect(ctx, e.ID); err == nil {
+					c.Outdated = a.Docker.Outdated(ctx, st, "egress", a.cfg().EgressImage()) != ""
+				}
 				out.System.Containers = append(out.System.Containers, c)
 			case kind == "mcp" && links[id].ID != "":
 				link := links[id]

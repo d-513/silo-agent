@@ -136,8 +136,11 @@ export function ChatTabs({
   // their glyphs, and the tabs are a little narrower.
   const wide = useWide();
   const openChatId = current === "main" ? ctl.mainId : chatOf(current);
-  const closed = chats.filter((c) => c.mine && !c.main && c.hidden && !ctl.pinned.includes(`chat:${c.id}`));
-  const team = chats.filter((c) => !c.mine);
+  // A conversation answering another Bot is its own group: it is read-only,
+  // and nobody here deletes it.
+  const closed = chats.filter((c) => c.mine && !c.main && c.hidden && !c.fromBot && !ctl.pinned.includes(`chat:${c.id}`));
+  const team = chats.filter((c) => !c.mine && !c.fromBot);
+  const fromBots = chats.filter((c) => c.fromBot);
   const dash = useDashFresh(bot);
   const doing = (cid: string | undefined): Doing | undefined =>
     chatDoing(bot, cid) ?? (sending && cid && cid === openChatId ? started : cid && cid === callChat ? { ...started, state: "on_call" } : undefined);
@@ -244,6 +247,7 @@ export function ChatTabs({
         botId={id}
         closed={closed}
         team={team}
+        fromBots={fromBots}
         runs={bot.role === "manage"}
         onOpen={(c) => {
           if (c.mine && c.hidden) onHideChat(c.id, false);
@@ -311,7 +315,9 @@ function BarTab({
   const closable = !pinned;
   const Icon = keyIcon(k);
   const glyph = side ? (
-    chat && !chat.mine ? (
+    chat?.fromBot ? (
+      <BotGlyph size={14} className="shrink-0 text-ink-3" aria-label={t("From the Bot {{name}}", { name: chat.fromBot })} />
+    ) : chat && !chat.mine ? (
       chat.author ? (
         <Initials email={chat.author} size={18} />
       ) : (
@@ -345,13 +351,13 @@ function BarTab({
             // that as the route moves, so a plain link is enough.
             onClick={press.onClick}
             data-tab-on={on || undefined}
-            title={bare ? label : chat?.mine && !chat.main ? `${label} · ${t("Double-click to rename")}` : label}
+            title={bare ? label : chat?.mine && !chat.main && !chat.fromBot ? `${label} · ${t("Double-click to rename")}` : label}
             aria-label={label}
             draggable
             onDragStart={(e) => dragStart(e, k)}
             onDragEnd={dragEnd}
             onDoubleClick={(e) => {
-              if (!chat?.mine || chat.main) return;
+              if (!chat?.mine || chat.main || chat.fromBot) return;
               e.preventDefault();
               rename.begin(chat);
             }}
@@ -417,7 +423,23 @@ function useHold(fire: (at: { x: number; y: number }) => void) {
 // newest first, each a press from being a tab again or (armed) deleted; and
 // for a manager the Team's chats, which only open, and at its foot the way to
 // everything the Bot did (Runs), which is theirs alone to review.
-function ClosedMenu({ botId, closed, team, runs, onOpen, onDelete }: { botId: string; closed: Chat[]; team: Chat[]; runs: boolean; onOpen: (c: Chat) => void; onDelete: (cid: string) => void }) {
+function ClosedMenu({
+  botId,
+  closed,
+  team,
+  fromBots,
+  runs,
+  onOpen,
+  onDelete,
+}: {
+  botId: string;
+  closed: Chat[];
+  team: Chat[];
+  fromBots: Chat[];
+  runs: boolean;
+  onOpen: (c: Chat) => void;
+  onDelete: (cid: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [find, setFind] = useState("");
   const trigger = useRef<HTMLButtonElement>(null);
@@ -438,7 +460,8 @@ function ClosedMenu({ botId, closed, team, runs, onOpen, onDelete }: { botId: st
   const match = (c: Chat) => !q || (c.title || "").toLowerCase().includes(q) || c.author.toLowerCase().includes(q);
   const mine = closed.filter(match);
   const theirs = team.filter(match);
-  const total = closed.length + team.length;
+  const bots = fromBots.filter((c) => !q || c.fromBot.toLowerCase().includes(q) || match(c));
+  const total = closed.length + team.length + fromBots.length;
   const label = t("Closed chats");
   const row = "group/row relative flex h-9 items-center rounded-sm transition-colors duration-[160ms] hover:bg-well";
   const pick = (c: Chat) => {
@@ -501,6 +524,22 @@ function ClosedMenu({ botId, closed, team, runs, onOpen, onDelete }: { botId: st
                           <button type="button" role="menuitem" onClick={() => pick(c)} className="flex h-full min-w-0 flex-1 items-center gap-2 rounded-sm px-2 text-left outline-offset-[-2px]">
                             {c.author ? <Initials email={c.author} size={18} /> : <BotGlyph size={14} className="shrink-0 text-ink-3" aria-label={t("The Bot's own")} />}
                             <span className="min-w-0 flex-1 truncate text-row text-ink">{c.main ? t("Main chat") : c.title || t("New chat")}</span>
+                            <span className="shrink-0 text-micro text-ink-3 tabular-nums">{shortWhen(c.updatedAt, new Date(), locale())}</span>
+                          </button>
+                        </div>
+                      ))}
+                    </>
+                  ) : null}
+                  {bots.length ? (
+                    <>
+                      <span aria-hidden className="mx-2 my-1 block h-px bg-line" />
+                      <div className="px-2 pt-1.5 pb-1 text-section text-ink-3">{t("From other Bots")}</div>
+                      {bots.map((c) => (
+                        <div key={c.id} className={row}>
+                          <button type="button" role="menuitem" onClick={() => pick(c)} className="flex h-full min-w-0 flex-1 items-center gap-2 rounded-sm px-2 text-left outline-offset-[-2px]">
+                            <BotGlyph size={14} className="shrink-0 text-ink-3" aria-hidden />
+                            <span className="min-w-0 flex-1 truncate text-row text-ink">{c.fromBot}</span>
+                            {!c.mine && c.author ? <span className="max-w-[40%] shrink-0 truncate text-micro text-ink-3">{c.author}</span> : null}
                             <span className="shrink-0 text-micro text-ink-3 tabular-nums">{shortWhen(c.updatedAt, new Date(), locale())}</span>
                           </button>
                         </div>

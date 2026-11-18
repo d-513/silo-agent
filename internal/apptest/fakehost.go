@@ -13,6 +13,7 @@ import (
 	"context"
 	"net/netip"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -57,6 +58,11 @@ type FakeHost struct {
 	botNet   map[string]*dockerx.ClientNet
 	egress   *egressState
 	runtimeS string
+
+	// images is the image id each role's image resolves to now (SetImage);
+	// a container records the one it was made from.
+	images     map[string]string
+	prefetched []string
 
 	EgressUps    atomic.Int32
 	NetworkMade  atomic.Int32
@@ -125,7 +131,7 @@ func (f *FakeHost) Create(_ context.Context, botID, token string, net *dockerx.C
 	// Mirror Docker: the container carries SILO_BOT_TOKEN, so EnvTokenHash
 	// reports the hash of the token it was created with.
 	f.envHash[id] = ids.Hash(token)
-	st := dockerx.State{ID: id, Running: true}
+	st := dockerx.State{ID: id, Running: true, Role: "bot", ImageID: f.imageLocked("bot")}
 	if net != nil {
 		st.Networks = []string{net.Network}
 		st.CAHash = caHash(net.CA)
@@ -172,9 +178,9 @@ func (f *FakeHost) Start(_ context.Context, id string) error {
 		return f.StartErr
 	}
 	f.mu.Lock()
-	defer f.mu.Unlock()
 	st, ok := f.inspect[id]
 	if !ok {
+		f.mu.Unlock()
 		return dockerx.ErrNotFound
 	}
 	for k, v := range f.inspect {
@@ -183,6 +189,23 @@ func (f *FakeHost) Start(_ context.Context, id string) error {
 			f.inspect[k] = v
 		}
 	}
+	// A drive sidecar's guest runs again, as its process would.
+	var launch func()
+	if bot, ok := strings.CutPrefix(st.ID, "drive-"); ok && st.Role == "drive" && f.DriveLaunch != nil && f.driveStops[bot] == nil {
+		if spec, ok := f.driveSpecs[bot]; ok {
+			run := f.DriveLaunch
+			launch = func() {
+				stop := run(spec)
+				f.mu.Lock()
+				f.driveStops[bot] = stop
+				f.mu.Unlock()
+			}
+		}
+	}
+	f.mu.Unlock()
+	if launch != nil {
+		launch()
+	}
 	return nil
 }
 
@@ -190,7 +213,7 @@ func (f *FakeHost) Stop(_ context.Context, id string) error {
 	f.during("stop")
 	f.Stops.Add(1)
 	f.mu.Lock()
-	defer f.mu.Unlock()
+	var halt func()
 	if st, ok := f.inspect[id]; ok {
 		for k, v := range f.inspect {
 			if v.ID == st.ID {
@@ -198,6 +221,16 @@ func (f *FakeHost) Stop(_ context.Context, id string) error {
 				f.inspect[k] = v
 			}
 		}
+		// A stopped drive sidecar's guest stops too: a stopped container
+		// holds no session with the control plane.
+		if bot, ok := strings.CutPrefix(st.ID, "drive-"); ok && st.Role == "drive" {
+			halt = f.driveStops[bot]
+			delete(f.driveStops, bot)
+		}
+	}
+	f.mu.Unlock()
+	if halt != nil {
+		halt()
 	}
 	return nil
 }
@@ -235,7 +268,7 @@ func (f *FakeHost) CreateStdio(_ context.Context, spec dockerx.StdioSpec) (strin
 	}
 	id := "mcp-" + spec.ID
 	f.mu.Lock()
-	st := dockerx.State{ID: id, Running: true}
+	st := dockerx.State{ID: id, Running: true, Role: "mcp-stdio", Image: spec.Image, ImageID: f.imageLocked("mcp-stdio")}
 	if spec.Net != nil {
 		st.Networks = []string{spec.Net.Network}
 		st.CAHash = caHash(spec.Net.CA)
@@ -410,7 +443,7 @@ func (f *FakeHost) CreateDrive(_ context.Context, spec dockerx.DriveSpec) (strin
 	}
 	id := "drive-" + spec.BotID
 	f.mu.Lock()
-	st := dockerx.State{ID: id, Running: true}
+	st := dockerx.State{ID: id, Running: true, Role: "drive", Image: spec.Image, ImageID: f.imageLocked("drive")}
 	f.inspect[id] = st
 	f.inspect[dockerx.DriveName(spec.BotID)] = st
 	if f.driveSpecs == nil {
@@ -507,7 +540,7 @@ func (f *FakeHost) EgressUp(_ context.Context, spec dockerx.EgressSpec) (string,
 	e := f.egressState()
 	if e.containerID == "" {
 		e.containerID = "egress"
-		f.inspect[e.containerID] = dockerx.State{ID: e.containerID, Running: true}
+		f.inspect[e.containerID] = dockerx.State{ID: e.containerID, Running: true, Role: "egress", Image: spec.Image, ImageID: f.imageLocked("egress")}
 	}
 	e.env = spec.Env
 	return e.containerID, nil
@@ -680,4 +713,50 @@ func (f *FakeHost) NetworkSubnet(name string) string {
 		return n.subnet
 	}
 	return ""
+}
+
+// SetImage makes a role's image ("bot", "mcp-stdio", "drive", "egress")
+// resolve to another image id, as a new release or a rebuilt tag would:
+// containers made before it are Outdated from then on.
+func (f *FakeHost) SetImage(role, id string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.images == nil {
+		f.images = map[string]string{}
+	}
+	f.images[role] = id
+}
+
+func (f *FakeHost) imageLocked(role string) string {
+	if id := f.images[role]; id != "" {
+		return id
+	}
+	return "sha256:" + role + "-1"
+}
+
+// Outdated compares the image a container was made from with what its role's
+// image resolves to now (SetImage). The fake has no spec.
+func (f *FakeHost) Outdated(_ context.Context, st dockerx.State, role, _ string) string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if st.ID == "" || st.ImageID == "" {
+		return ""
+	}
+	if st.ImageID != f.imageLocked(role) {
+		return "image"
+	}
+	return ""
+}
+
+// Prefetched lists what Prefetch was asked for, in order.
+func (f *FakeHost) Prefetched() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.prefetched...)
+}
+
+func (f *FakeHost) Prefetch(_ context.Context, refs []string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.prefetched = append(f.prefetched, refs...)
 }

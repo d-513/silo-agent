@@ -20,6 +20,7 @@ func TestRequestKind(t *testing.T) {
 		{Request{Origin: &Origin{Automation: au, Profile: &Profile{Name: "memory"}}}, KindJob, TriggerAutomation},
 		{Request{Origin: &Origin{Subagent: sa}, From: FromLead}, KindSubagent, TriggerLead},
 		{Request{Report: &Report{}}, KindWake, TriggerReport},
+		{Request{Origin: &Origin{Peer: &db.BotMessage{}}, From: FromBot}, KindBot, TriggerBot},
 		// A lead woken on a channel answers there: it is that channel's run.
 		{Request{Report: &Report{}, Origin: &Origin{Channel: ch}}, KindChannel, TriggerReport},
 		{Request{Compact: true}, KindCompact, TriggerManual},

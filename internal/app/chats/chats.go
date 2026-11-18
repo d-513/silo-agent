@@ -23,12 +23,25 @@ import (
 // puts every answer straight in its chat list, so the same chat must read the
 // same from every RPC.
 func Proto(ctx context.Context, gdb *gorm.DB, c *db.Chat) *v1.Chat {
-	return &v1.Chat{
+	out := &v1.Chat{
 		Id: c.ID, BotId: c.BotID, Title: c.Title, Model: c.Model, Thinking: c.Thinking,
 		UpdatedAt: c.UpdatedAt.Format(time.RFC3339), Main: c.Main,
 		Mine: c.UserID == access.User(ctx).ID, Author: access.Email(gdb, c.UserID), Hidden: c.Hidden,
 		CreatedAt: c.CreatedAt.Format(time.RFC3339),
 	}
+	if c.PeerBotID != "" {
+		out.FromBot = botName(gdb, c.PeerBotID)
+	}
+	return out
+}
+
+// botName is a Bot's name; a Bot since deleted reads as "another Bot".
+func botName(gdb *gorm.DB, botID string) string {
+	var b db.Bot
+	if gdb.Select("name").Where("id = ?", botID).Limit(1).Find(&b); b.Name == "" {
+		return "another Bot"
+	}
+	return b.Name
 }
 
 // MainTitle is the main chat's title; it is not renamed.
@@ -147,6 +160,8 @@ func Source(gdb *gorm.DB, chatID string) (kind, name string) {
 		return "channel", ch.Name
 	case c.SubagentID != "":
 		return "subagent", c.Title
+	case c.PeerBotID != "":
+		return "bot", botName(gdb, c.PeerBotID)
 	}
 	title := c.Title
 	if Untitled(title) {
@@ -167,6 +182,8 @@ func SourceLabel(kind, name string) string {
 		return "chat “" + name + "”"
 	case "subagent":
 		return "subagent “" + name + "”"
+	case "bot":
+		return "the Bot “" + name + "”"
 	}
 	return ""
 }

@@ -13,6 +13,7 @@ import (
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/access"
+	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/ids"
 )
@@ -26,7 +27,7 @@ func BotImage() string {
 	if v := strings.TrimSpace(os.Getenv("SILO_BOT_IMAGE")); v != "" {
 		return v
 	}
-	return "localhost/silo-bot:v1"
+	return config.DefaultBotImage()
 }
 
 // ContainersEnabled reports whether the container tier can run. It honors

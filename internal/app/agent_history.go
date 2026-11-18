@@ -251,7 +251,7 @@ func replayEvents(evs []db.RunEvent) replayed {
 			continue
 		case subagentReportKind:
 			flushTools()
-			text := stampUserText(subagentReportText(ev.Body), ev.CreatedAt, ev.Zone)
+			text := stampUserText(subagentReportText(ev.Body, ev.Tool), ev.CreatedAt, ev.Zone)
 			if n := len(msgs); n > 0 && msgs[n-1].Role == llm.RoleUser {
 				msgs[n-1].Text += "\n\n" + text
 			} else {

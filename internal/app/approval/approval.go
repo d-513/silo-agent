@@ -49,9 +49,11 @@ func New(gdb *gorm.DB, cfg func() config.Config, m *models.Service) *Service {
 // The places an action can come from. Only a conversation has a human whose
 // words can be shown to the gate.
 const (
-	OriginChat       = "chat"
-	OriginChannel    = "channel"
-	OriginSubagent   = "subagent"
+	OriginChat     = "chat"
+	OriginChannel  = "channel"
+	OriginSubagent = "subagent"
+	// OriginBot is a conversation answering another Bot's message.
+	OriginBot        = "bot"
 	OriginAutomation = "automation"
 	OriginUnknown    = "unknown"
 )
@@ -194,6 +196,15 @@ func (s *Service) Source(chatID string) Source {
 		if sa.ParentChatID != "" {
 			src.Human = s.lastHuman(sa.ParentChatID)
 		}
+	case "bot":
+		// It answers another Bot, for the human whose conversation the
+		// request started in: what they asked there is what this serves.
+		src.Origin, src.Name = OriginBot, name
+		var m db.BotMessage
+		s.db.Select("root_chat_id").Where("to_chat_id = ?", chatID).Order("created_at desc").Limit(1).Find(&m)
+		if m.RootChatID != "" {
+			src.Human = s.lastHuman(m.RootChatID)
+		}
 	case "automation":
 		src.Origin, src.Name = OriginAutomation, name
 	}
@@ -230,6 +241,8 @@ func (r Source) From() string {
 		origin = "a conversation on the channel" + name
 	case OriginSubagent:
 		origin = "the subagent" + name + ", working for a conversation with the human"
+	case OriginBot:
+		origin = "a request from the Bot" + name + ", which works for a conversation with the human"
 	case OriginAutomation:
 		return "Automations: the automation" + name + ", which runs on a schedule with nobody watching. No human message asked for this."
 	default:

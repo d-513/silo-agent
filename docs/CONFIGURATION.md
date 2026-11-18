@@ -110,11 +110,12 @@ Audio is never kept: what is said on a call is written into its chat as text, an
 | `docker_host` | `$DOCKER_HOST` | `SILO_DOCKER_HOST` | Docker/Podman socket. Empty falls back to the `DOCKER_HOST` env |
 | `public_url` | (request origin) | `SILO_PUBLIC_URL` | Browser origin for OAuth redirects (`{public_url}/oauth/callback`). Dev: `http://127.0.0.1:5173` |
 | `cp_url` | `http://host.containers.internal:8080` | `SILO_CP_URL` | URL Bot containers and STDIO sidecars use to dial the CP |
-| `bot_image` | `localhost/silo-bot:v1` | `SILO_BOT_IMAGE` | Image tag `StartBot` / create use |
-| `bot_limits.memory_mb` | `0` (none) | `SILO_BOT_LIMITS__MEMORY_MB` | Memory cap of each Bot's machine in MB, Chromium and all it runs included (`0`, or at least 512). Taken when a machine is created, so reset a container to apply it to an existing Bot |
-| `bot_limits.pids` | `4096` | `SILO_BOT_LIMITS__PIDS` | Processes and threads each Bot's machine may hold at once (`0`, or at least 256): a runaway build or a fork bomb stops there instead of starving the host. Taken when a machine is created |
-| `mcp_stdio_image` | `localhost/silo-mcp-stdio:v1` | `SILO_MCP_STDIO_IMAGE` | Default image for STDIO MCP sidecars. A connector may override with `stdio_image` (admin) |
-| `drives.image` | `localhost/silo-drive:v1` | `SILO_DRIVES__IMAGE` | The rclone drive sidecar (`make drive-image`) |
+| `bot_image` | this build's (see Images) | `SILO_BOT_IMAGE` | A Bot's machine. Leave unset to follow the release |
+| `bot_limits.memory_mb` | `0` (none) | `SILO_BOT_LIMITS__MEMORY_MB` | Memory cap of each Bot's machine in MB, Chromium and all it runs included (`0`, or at least 512). Taken when a machine is created; a stopped machine made under another limit is made again at its next start |
+| `bot_limits.pids` | `4096` | `SILO_BOT_LIMITS__PIDS` | Processes and threads each Bot's machine may hold at once (`0`, or at least 256): a runaway build or a fork bomb stops there instead of starving the host. Taken like `memory_mb` |
+| `mcp_stdio_image` | this build's | `SILO_MCP_STDIO_IMAGE` | Default image for STDIO MCP sidecars. A connector may override with `stdio_image` (admin) |
+| `drives.image` | this build's | `SILO_DRIVES__IMAGE` | The rclone drive sidecar |
+| `images.pull` | `missing` | `SILO_IMAGES__PULL` | When an image is fetched from its registry: `missing`, `always` (at start, every hour and before a create, at most every 10 minutes per image) or `never`. See Images |
 | `drives.mount_root` | `<data_dir>/drives-mnt`; on macOS `/var/tmp/silo-drives` | `SILO_DRIVES__MOUNT_ROOT` | Where drive mounts live, as a path the container engine sees. It must be able to carry mount propagation, so on podman machine it is inside the VM, not the virtiofs `data/` share |
 | `drives.cache_max_size` | `10G` | `SILO_DRIVES__CACHE_MAX_SIZE` | rclone VFS cache cap per drive, kept in `data/drives/<bot>/cache` |
 | `content.host` | derived (see Content host & tunnels) | `SILO_CONTENT__HOST` | Domain suffix Bot-made content is served under, `host[:port]`: tunnels at `tunnel-<name>.<host>`, live app artifacts at `app-<name>.<host>`, and public shares at `share-<name>.<host>`. Lower-cased; no scheme, path or wildcard. Must differ from the `public_url` host |
@@ -268,6 +269,60 @@ What it leaves alone:
 - **What a Bot's own machine, a STDIO connector's sidecar or a drive's sidecar can reach.** Those are containers; limit them with your container engine's network or a firewall.
 - **Requests through `HTTP_PROXY`/`HTTPS_PROXY`.** With a proxy set in the control plane's environment, the proxy does the resolving and the connecting: filter there.
 
+## Images
+
+Silo runs four images: the Bot's machine (`silo-bot`), the STDIO sidecar (`silo-mcp-stdio`), the drive sidecar (`silo-drive`) and the network filter's gateway (`silo-egress`). A control plane names the images of the build it is (`internal/version`), so leave the four keys unset unless you mean to pin one:
+
+| Build | Images |
+|---|---|
+| `go build`, `make build-cp`, `make dev` | `localhost/silo-*:dev`, built by `make images` and never pulled |
+| `make release VERSION=v0.4.2` | `ghcr.io/d-513/silo-*:v0.4.2` |
+| `make nightly` | `ghcr.io/d-513/silo-*:master-<sha>` |
+
+`silo version` prints the build. With `images.pull: missing` the control plane fetches a release's images as it starts and before it makes a container from one it does not have; a release's tag never moves, so nothing more is needed. `always` is for a pinned tag that does move (`:master`, `:latest`).
+
+A container made from an older image, or made another way (a new `bot_limits`), is made again by the rule for its kind; Settings → Containers and Admin → Containers mark it **Update waiting** until then:
+
+| Container | Made again |
+|---|---|
+| Bot's machine | When it next starts from stopped. A running machine holds what the Bot has open, so it is never replaced under it: Stop, then Start (the workspace, drives and connectors stay) |
+| Drive sidecar | With its machine: it stops with the Bot and is made again at the next start |
+| STDIO sidecar | When the control plane next opens a session to it (after a restart, or the next use once a session ended) |
+| Network filter gateway | Within a minute, running or not. It keeps its address on every Bot's network; the Bots lose their way out for the seconds it takes to start |
+
+## Running the control plane in a container
+
+`make cp-image` builds `cpimage/Containerfile` as `silo:<version>` (`make release` pushes it with the others). It holds the control plane only: Postgres is yours to run, and the web UI is not in it. The builder needs about 4 GB of memory.
+
+The control plane makes every other container through the engine's socket, so the container needs four things:
+
+- **The socket** at `/run/docker.sock` (the image's `DOCKER_HOST`). Whoever holds a rootful engine's socket is root on the host; running as uid 1000 inside is a second line, not the wall.
+- **Its directory at the same path as on the host**: `-v /var/lib/silo:/var/lib/silo`. It holds `silo.yaml` (Admin → Settings writes it) and `data/`. The control plane hands the engine paths under `data/` to bind into the Bots' machines, and the engine reads them on the host, so a different path, or a named volume, points every Bot's workspace at nothing. Give it to uid 1000: `chown 1000:1000 /var/lib/silo`.
+- **Its ports published**: 8080 (the Bots' machines dial it at `cp_url`, by default `host.containers.internal:8080`; put TLS in front for people), 3479 UDP and TCP for calls, and 25 → 2525 for mail.
+- **The database**: `SILO_DATABASE_URL`.
+
+```sh
+# Docker (rootful): the socket's group is added to the control plane's user.
+docker run -d --name silo --restart unless-stopped \
+  -v /var/run/docker.sock:/run/docker.sock \
+  --group-add "$(stat -c %g /var/run/docker.sock)" \
+  -v /var/lib/silo:/var/lib/silo \
+  -p 8080:8080 -p 3479:3479/udp -p 3479:3479/tcp -p 25:2525 \
+  -e SILO_DATABASE_URL=postgres://… -e SILO_PUBLIC_URL=https://silo.example.com \
+  ghcr.io/d-513/silo:v0.4.2
+
+# Podman (rootless): keep-id makes the container's uid 1000 the user who owns the socket.
+podman run -d --name silo --restart unless-stopped \
+  --userns=keep-id:uid=1000,gid=1000 --security-opt label=disable \
+  -v "$XDG_RUNTIME_DIR/podman/podman.sock:/run/docker.sock" \
+  -v /var/lib/silo:/var/lib/silo \
+  -p 8080:8080 -p 3479:3479/udp -p 3479:3479/tcp -p 25:2525 \
+  -e SILO_DATABASE_URL=postgres://… -e SILO_PUBLIC_URL=https://silo.example.com \
+  ghcr.io/d-513/silo:v0.4.2
+```
+
+Do not name the container `silo-…`: that prefix is the control plane's own containers, which `make cleanup` removes and Admin → Containers lists. The image has a `HEALTHCHECK` (`silo healthcheck`, which asks `/healthz`), stops on SIGTERM, and runs under `tini`. The network filter needs Podman (see Network filter); on Docker it is off.
+
 ## Network filter
 
 Every Bot's machine sits on a network of its own, with a small **gateway** as its only way out. So one Bot cannot reach another, and no Bot can reach your LAN. The gateway watches DNS, HTTP, HTTPS and raw SOCKS connections; it sees the host, the method and the number of bytes, never the content of a connection it lets through. What it blocks, flags, or thinks a human should look at lands on the Bot's **Audit** tab and at `/admin/audit`.
@@ -275,7 +330,7 @@ Every Bot's machine sits on a network of its own, with a small **gateway** as it
 ```yaml
 egress:
   # enabled: true
-  # image: localhost/silo-egress:v1
+  # image: …                    # unset follows the release (see Images)
   # block: bad.example.com, *.tracker.example.com, 203.0.113.7, 203.0.113.0/24
   # trust: registry.npmjs.org     # reached even where a rule would check it
   # pass: chat.example.com        # forwarded untouched (websockets, odd TLS)
@@ -407,8 +462,6 @@ http_addr: ":8080"
 data_dir: ./data
 docker_host: unix:///run/user/1000/podman/podman.sock
 cp_url: http://host.containers.internal:8080
-bot_image: localhost/silo-bot:v1
-mcp_stdio_image: localhost/silo-mcp-stdio:v1
 model: openrouter/openai/gpt-5.6-luna
 
 models:

@@ -4,8 +4,10 @@
 package workspace
 
 import (
+	"path"
 	"path/filepath"
 	"strings"
+	"unicode"
 )
 
 // Rel strips a redundant /workspace or workspace/ prefix so present(" /workspace/foo.md")
@@ -34,4 +36,27 @@ func IsScratch(p string) bool {
 func IsUpload(p string) bool {
 	p = Rel(p)
 	return p == "tmp" || strings.HasPrefix(p, "tmp/")
+}
+
+// nameRunes caps a file name CleanName keeps.
+const nameRunes = 80
+
+// CleanName is a file name someone else chose (a channel's sender, another
+// Bot) made safe to be a path and to be read by a model: letters, digits and
+// a little punctuation, no way out of the folder.
+func CleanName(name string) string {
+	name = path.Base(strings.ReplaceAll(strings.TrimSpace(name), "\\", "/"))
+	name = strings.TrimLeft(strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '.' || r == '-' || r == '_' {
+			return r
+		}
+		return '_'
+	}, name), ".")
+	if runes := []rune(name); len(runes) > nameRunes {
+		name = string(runes[len(runes)-nameRunes:]) // the end holds the extension
+	}
+	if strings.Trim(name, "_") == "" {
+		return "file"
+	}
+	return name
 }

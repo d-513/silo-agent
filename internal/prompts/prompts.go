@@ -105,6 +105,12 @@ var MemoryDigest string
 //go:embed SUBAGENT.md
 var Subagent string
 
+// BotMessage is the per-run note for a run that answers another Bot's
+// message. {{FROM}} is the sending Bot's name, {{FOR}} whom it asks for.
+//
+//go:embed BOT_MESSAGE.md
+var BotMessage string
+
 // Mail is the system-prompt section for a Bot that has a mailbox; {address}
 // is its address.
 //

@@ -12,6 +12,7 @@ import (
 
 	"silo.agent/internal/llm"
 	"silo.agent/internal/search"
+	"silo.agent/internal/version"
 )
 
 const YAMLName = "silo.yaml"
@@ -266,7 +267,16 @@ func (r Runs) Timeout() time.Duration {
 
 const DefaultModel = "openrouter/openai/gpt-5.6-luna"
 
-const DefaultMCPStdioImage = "localhost/silo-mcp-stdio:v1"
+// The images a default config runs are this build's own (version.Image): a
+// dev build's are the local ones `make images` tags, a prod build's are in
+// the registry it was released to, at its own tag. An operator who names one
+// in silo.yaml pins it across upgrades.
+
+// DefaultBotImage is a Bot's machine.
+func DefaultBotImage() string { return version.Image("silo-bot") }
+
+// DefaultMCPStdioImage runs a STDIO connector's sidecar.
+func DefaultMCPStdioImage() string { return version.Image("silo-mcp-stdio") }
 
 // DefaultEmbeddingModel embeds memories. Its vectors must be
 // llm.EmbedDims wide (text-embedding-3 honours the dimensions parameter).
@@ -350,6 +360,8 @@ type Config struct {
 	Tools  Tools  `koanf:"tools"`
 	// BotLimits caps each Bot's box (memory, processes).
 	BotLimits BotLimits `koanf:"bot_limits"`
+	// Images says when container images are pulled.
+	Images Images `koanf:"images"`
 	// AutoenableConnectors names library connectors (by identifier) that every
 	// new Bot gets, on top of the ones flagged in the library itself.
 	AutoenableConnectors []string `koanf:"autoenable_connectors"`
@@ -494,7 +506,7 @@ type Onboarding struct {
 }
 
 // DefaultDriveImage is the rclone sidecar that mounts a Bot's drives.
-const DefaultDriveImage = "localhost/silo-drive:v1"
+func DefaultDriveImage() string { return version.Image("silo-drive") }
 
 // Drives configures rclone-backed drives.
 type Drives struct {
@@ -532,7 +544,7 @@ func (c Config) DriveImage() string {
 	if i := strings.TrimSpace(c.Drives.Image); i != "" {
 		return i
 	}
-	return DefaultDriveImage
+	return DefaultDriveImage()
 }
 
 // ProviderSettings returns the engine settings for a provider id.
@@ -689,6 +701,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "bot_limits.memory_mb"},
 	{Key: "bot_limits.pids"},
 	{Key: "mcp_stdio_image"},
+	{Key: "images.pull"},
 	{Key: "drives.image"},
 	{Key: "drives.mount_root"},
 	{Key: "drives.cache_max_size"},

@@ -48,7 +48,7 @@ export function tabMenu(k: TabKey, c: TabControl, where: "bar" | "rail" | "split
     );
   }
   items.push("sep");
-  if (chat?.mine && !chat.main) items.push({ label: t("Rename"), icon: Pencil, onSelect: () => c.rename(chat) });
+  if (chat?.mine && !chat.main && !chat.fromBot) items.push({ label: t("Rename"), icon: Pencil, onSelect: () => c.rename(chat) });
   if (where === "bar" && !pinned) items.push({ label: t("Close tab"), icon: X, onSelect: () => c.close(k) });
   return items;
 }

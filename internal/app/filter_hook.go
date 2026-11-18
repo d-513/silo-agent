@@ -57,7 +57,7 @@ func (a *App) FilterResult(ctx context.Context, c *tool.Call, res tool.Result, e
 			}
 		}
 	}
-	if d.Connector == "" || d.Action == "" || !a.cfg().Filter.Enabled || ctx.Err() != nil {
+	if d.Connector == "" || d.Action == "" || d.OwnResult || !a.cfg().Filter.Enabled || ctx.Err() != nil {
 		return res, err
 	}
 	mode := a.ruleOutput(c.Bot.ID, d.Connector, d.Action, d.OutMode)

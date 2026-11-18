@@ -72,7 +72,7 @@ func TestBuiltinToolExposure(t *testing.T) {
 	}
 	want := map[string]string{
 		"chat": "delete desktop exec_python grep patch present read skill sleep spawn_agent terminal write",
-		"python": "agent_status channel chats chrome click close_tunnel create_automation decide delete_automation feed forget key list_automations list_dashboard list_mail list_models list_secrets list_tunnels look message_agent open_tunnel put_widget read_mail remove_dashboard_card remove_widget scroll search_docs " +
+		"python": "agent_status channel chats chrome click close_tunnel create_automation decide delete_automation feed forget key list_automations list_bots list_dashboard list_mail list_models list_secrets list_tunnels look message_agent message_bot open_tunnel put_widget read_mail remove_dashboard_card remove_widget scroll search_docs " +
 			"set_proactivity set_timezone set_widget soul stop_agent switch_model task_add task_done task_list task_reset transcribe type update_automation upsert_dashboard_card web_read web_search",
 		"both": "artifact ask_owner offer_setup recall remember",
 		// Offered to no chat and no code: only a job's run that names them.
@@ -96,7 +96,7 @@ func TestLeadOnlyTools(t *testing.T) {
 		}
 	}
 	sort.Strings(got)
-	want := "agent_status ask_owner channel create_automation delete_automation list_automations message_agent offer_setup set_proactivity set_timezone soul spawn_agent stop_agent switch_model task_reset update_automation"
+	want := "agent_status ask_owner channel create_automation delete_automation list_automations list_bots message_agent message_bot offer_setup set_proactivity set_timezone soul spawn_agent stop_agent switch_model task_reset update_automation"
 	if strings.Join(got, " ") != want {
 		t.Fatalf("lead-only tools: %s", strings.Join(got, " "))
 	}

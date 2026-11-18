@@ -711,6 +711,22 @@ def stop_agent(name: str) -> dict:
     return call("agents", "stop", {"name": name})
 
 
+def list_bots() -> dict:
+    """The other Bots of your Workspace: name, id, what each is for, and
+    whether you may message it for the person you work for here (`reachable`,
+    and `why` not)."""
+    return call("bots", "list", {})
+
+
+def message_bot(bot: str, text: str, files: list[str] | None = None) -> dict:
+    """Hand work to another Bot of your Workspace, by name or id. It answers in
+    its own conversation for you; its final reply comes back and wakes you, so
+    end your turn after sending. files are workspace paths copied into its
+    workspace (at most 10, 32 MB each); files it presents come back into your
+    tmp/. It sees only text and the files, not this chat."""
+    return call("bots", "message", {"bot": bot, "text": text, "files": files})
+
+
 def call(connector: str, action: str, args: dict | None = None) -> dict:
     clean = {k: v for k, v in (args or {}).items() if v is not None}
     body = {"connector": connector, "action": action, "args": clean}

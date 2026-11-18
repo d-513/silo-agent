@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"path"
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	v1 "silo.agent/gen/silo/v1"
 	"silo.agent/internal/app/workspace"
@@ -22,7 +20,6 @@ const (
 	mediaTimeout = 3 * time.Minute
 	// maxInboundFiles is how many files of one message are read.
 	maxInboundFiles = 20
-	maxNameRunes    = 80
 )
 
 // readFiles turns what came with a message into what the Bot is told: the
@@ -106,24 +103,8 @@ func tooLarge(name string) string {
 	return fmt.Sprintf("[attachment: %s is too large, over %d MB]", name, workspace.PutMax>>20)
 }
 
-// cleanName is a sender's file name made safe to be a path and to be read by a
-// model: letters, digits and a little punctuation, no way out of the folder.
-func cleanName(name string) string {
-	name = path.Base(strings.ReplaceAll(strings.TrimSpace(name), "\\", "/"))
-	name = strings.TrimLeft(strings.Map(func(r rune) rune {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '.' || r == '-' || r == '_' {
-			return r
-		}
-		return '_'
-	}, name), ".")
-	if runes := []rune(name); len(runes) > maxNameRunes {
-		name = string(runes[len(runes)-maxNameRunes:]) // the end holds the extension
-	}
-	if strings.Trim(name, "_") == "" {
-		return "file"
-	}
-	return name
-}
+// cleanName is a sender's file name made safe (workspace.CleanName).
+func cleanName(name string) string { return workspace.CleanName(name) }
 
 // lanes runs a conversation's slow messages one at a time, in arrival order.
 type lanes struct {

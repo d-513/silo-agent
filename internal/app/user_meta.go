@@ -35,6 +35,15 @@ type userMeta struct {
 	Files  []eventAttachment `json:"files,omitempty"`
 	Quotes []eventQuote      `json:"quotes,omitempty"`
 	Spoken *spokenMeta       `json:"spoken,omitempty"`
+	Bot    *botFromMeta      `json:"bot,omitempty"`
+}
+
+// botFromMeta marks a message another Bot sent (run.BotFrom): its name and
+// the person it asks for. Frozen on the event, so a rename never rewrites
+// what the receiving Bot was told.
+type botFromMeta struct {
+	Name string `json:"name"`
+	For  string `json:"for,omitempty"`
 }
 
 // spokenMeta marks a turn said on a voice call (run.Spoken).
@@ -76,11 +85,14 @@ func (a *App) userMeta(botID string, ex run.Extra) userMeta {
 	if sp := ex.Spoken; sp != nil {
 		um.Spoken = &spokenMeta{CallID: sp.CallID, Interrupted: a.kept(botID, textx.CapRunes(sp.Interrupted, maxInterrupted))}
 	}
+	if f := ex.Bot; f != nil {
+		um.Bot = &botFromMeta{Name: a.kept(botID, f.Name), For: f.For}
+	}
 	return um
 }
 
 func (um userMeta) encode() string {
-	if len(um.Files) == 0 && len(um.Quotes) == 0 && um.Spoken == nil {
+	if len(um.Files) == 0 && len(um.Quotes) == 0 && um.Spoken == nil && um.Bot == nil {
 		return ""
 	}
 	b, err := json.Marshal(um)
@@ -181,6 +193,15 @@ func capRunes(s string, n int) string {
 // live run both build the turn here, so the bytes are the same.
 func userTurnText(text string, um userMeta) string {
 	var b strings.Builder
+	// Another Bot's message says whose it is, so it is never read as the
+	// human's (prompts/BOT_MESSAGE.md says what to do with it).
+	if f := um.Bot; f != nil {
+		if f.For != "" {
+			b.WriteString("[Message from the Bot \u201c" + f.Name + "\u201d, asking for " + f.For + "]\n")
+		} else {
+			b.WriteString("[Message from the Bot \u201c" + f.Name + "\u201d]\n")
+		}
+	}
 	// What was said aloud is a transcript, and the reply will be heard: the
 	// marker says both (prompts/VOICE.md tells the model what it means).
 	if sp := um.Spoken; sp != nil {
@@ -239,4 +260,14 @@ func quoteHead(q eventQuote) string {
 		head += fmt.Sprintf(": a region of it, saved as %s — present it to see it", q.Image)
 	}
 	return head + "]"
+}
+
+// threadAuthor is who the thread says wrote a user message: the person, or
+// for another Bot's message that Bot's name. Only the thread is told; the
+// model reads the sender from the turn's own opening line (userTurnText).
+func threadAuthor(author string, um userMeta) string {
+	if um.Bot != nil {
+		return um.Bot.Name
+	}
+	return author
 }

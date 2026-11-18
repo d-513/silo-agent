@@ -46,10 +46,8 @@ drain:
 	if len(lr.inbox) > 0 {
 		return "woke at once: a new message is waiting", nil
 	}
-	var unread int64
-	a.DB.Model(&db.Subagent{}).Where("parent_chat_id = ? AND reported = ? AND status <> ?", chatID, false, "running").Count(&unread)
-	if unread > 0 {
-		return "woke at once: a subagent already finished — check agent_status", nil
+	if a.unreadResults(chatID) > 0 {
+		return "woke at once: a subagent finished or a Bot replied — check agent_status, or end your turn to read a Bot's reply", nil
 	}
 	start := time.Now()
 	t := time.NewTimer(time.Duration(secs) * time.Second)

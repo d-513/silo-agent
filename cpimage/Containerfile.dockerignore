@@ -1,0 +1,15 @@
+# The control plane image's context: the Go module and nothing else. Docker
+# finds this file beside the Containerfile; podman is handed it with
+# --ignorefile (`make cp-image`). data/ (the Bots' workspaces), silo.yaml
+# (keys), bin/, web/, ios/, node_modules and .git never reach the builder.
+*
+!go.mod
+!go.sum
+!gen
+!internal
+!cmd/silo
+# A test run's leftovers and the tests themselves are not built.
+internal/app/data
+**/*_test.go
+**/testdata
+**/.DS_Store

@@ -5,10 +5,14 @@ database_url: postgres://silo:silo@localhost:5433/silo?sslmode=disable
 docker_host: unix:///run/user/1000/podman/podman.sock
 cp_url: http://host.containers.internal:8080
 public_url: http://127.0.0.1:5173
-bot_image: localhost/silo-bot:v1
-mcp_stdio_image: localhost/silo-mcp-stdio:v1
+# The images follow the build (localhost/silo-*:dev for a dev build, the
+# release's own on ghcr.io for a release). Name one only to pin it:
+# bot_image: ghcr.io/d-513/silo-bot:v0.4.2
+# images:
+#   pull: missing   # missing | always | never
 # What one Bot's machine may take from the host (0 is no limit). Applies when
-# a machine is created: reset a container to apply it to an existing Bot.
+# a machine is made: a stopped one under another limit is made again at its
+# next start.
 bot_limits:
   memory_mb: 0
   pids: 4096

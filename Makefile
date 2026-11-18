@@ -16,12 +16,32 @@ DEV_COMPOSE := $(COMPOSE) -f docker-compose.dev.yml
 PG_CONTAINER ?= silodb-postgres
 CONTAINER_ARCH ?= $(shell $(PODMAN) info --format '{{.Host.Arch}}' 2>/dev/null || $(GO) env GOARCH)
 
-BOT_IMAGE   ?= localhost/silo-bot:v1
-STDIO_IMAGE ?= localhost/silo-mcp-stdio:v1
-DRIVE_IMAGE ?= localhost/silo-drive:v1
-EGRESS_IMAGE ?= localhost/silo-egress:v1
+# The release a build is (internal/version). Every target builds dev: local
+# images (localhost/silo-*:dev, made by `make images`) that are never pulled.
+# Only `make release` and `make nightly` set VERSION and REGISTRY, which bakes
+# the registry and tag into the binaries, so a prod control plane always runs
+# the images of the commit it was built from. Set them on the command line
+# only (the environment does not reach these two).
+VERSION       := dev
+REGISTRY      :=
+PROD_REGISTRY := ghcr.io/d-513
+IMAGE_REPO     = $(or $(REGISTRY),localhost)
+BOT_IMAGE    ?= $(IMAGE_REPO)/silo-bot:$(VERSION)
+STDIO_IMAGE  ?= $(IMAGE_REPO)/silo-mcp-stdio:$(VERSION)
+DRIVE_IMAGE  ?= $(IMAGE_REPO)/silo-drive:$(VERSION)
+EGRESS_IMAGE ?= $(IMAGE_REPO)/silo-egress:$(VERSION)
+# The control plane's own image (cpimage/), which runs the four above.
+CP_IMAGE     ?= $(IMAGE_REPO)/silo:$(VERSION)
+# Packages the control plane image compiles at once (go build -p); empty is
+# one per CPU. Its builder needs about 4 GB of memory whatever this says.
+CP_BUILD_JOBS ?=
 # The commit an image is built from, for its org.opencontainers.image.revision label.
 REVISION    ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)$(shell git diff --quiet HEAD 2>/dev/null || echo -dirty)
+LDFLAGS      = -X silo.agent/internal/version.Version=$(VERSION) \
+               -X silo.agent/internal/version.Commit=$(REVISION) \
+               -X silo.agent/internal/version.Registry=$(REGISTRY)
+GOBUILD      = $(GO) build -ldflags '$(LDFLAGS)'
+IMAGE_ARGS   = --build-arg REVISION=$(REVISION) --build-arg VERSION=$(VERSION)
 
 # tmux session name used by `make dev`.
 SESSION ?= silo
@@ -49,7 +69,7 @@ WATCH_OPTS  := \
 
 .PHONY: help claude-bin install deps web-install brand build build-cp build-worker \
 	build-bridge build-drive build-egress build-all images bot-image stdio-image drive-image egress-image run run-control \
-	run-frontend watch-control dev attach test test-fast test-containers \
+	run-frontend watch-control dev attach release nightly publish cp-image test test-fast test-containers \
 	test-integration e2e fmt vet tidy proto rebuild \
 	clean clean-images cleanup reset-data db-up db-down db-psql db-reset \
 	db-check
@@ -81,35 +101,69 @@ web-install: ## Install frontend dependencies
 ## --- build -----------------------------------------------------------------
 
 build-cp: ## Build the control plane to bin/silo
-	$(GO) build -o bin/silo ./cmd/silo
+	$(GOBUILD) -o bin/silo ./cmd/silo
 
 build-worker: ## Cross-build the in-container worker to bin/silo-worker
-	CGO_ENABLED=0 GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GO) build -o bin/silo-worker ./cmd/silo-worker
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GOBUILD) -o bin/silo-worker ./cmd/silo-worker
 
 build-bridge: ## Cross-build the STDIO MCP bridge to bin/silo-mcp-bridge
-	CGO_ENABLED=0 GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GO) build -o bin/silo-mcp-bridge ./cmd/silo-mcp-bridge
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GOBUILD) -o bin/silo-mcp-bridge ./cmd/silo-mcp-bridge
 
 build-drive: ## Cross-build the drive sidecar to bin/silo-drive
-	CGO_ENABLED=0 GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GO) build -o bin/silo-drive ./cmd/silo-drive
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GOBUILD) -o bin/silo-drive ./cmd/silo-drive
 
 build-egress: ## Cross-build the network filter gateway to bin/silo-egress
-	CGO_ENABLED=0 GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GO) build -o bin/silo-egress ./cmd/silo-egress
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GOBUILD) -o bin/silo-egress ./cmd/silo-egress
 
 build-all: build-cp build-worker build-bridge bot-image stdio-image drive-image egress-image ## Build control plane, worker, bridge, drive sidecar, egress gateway
 
 images: bot-image stdio-image drive-image egress-image ## Build all container images
 
+## --- release ---------------------------------------------------------------
+# Needs `podman login ghcr.io` with a token that may write packages. Builds
+# for this machine's architecture (CONTAINER_ARCH) only.
+
+release: ## Publish a release: make release VERSION=v0.4.2 (images on ghcr.io/d-513, :latest too, and a bin/silo that runs them)
+	@case "$(VERSION)" in v[0-9]*) ;; *) echo "make release needs VERSION=vX.Y.Z"; exit 1 ;; esac
+	@git diff --quiet HEAD || { echo "make release needs a clean tree"; exit 1; }
+	$(MAKE) publish VERSION=$(VERSION) REGISTRY=$(PROD_REGISTRY) MOVING=latest
+
+nightly: ## Publish a nightly: images tagged master-<sha> (and :master) on ghcr.io/d-513, and a bin/silo that runs them
+	@git diff --quiet HEAD || { echo "make nightly needs a clean tree"; exit 1; }
+	$(MAKE) publish VERSION=master-$(shell git rev-parse --short HEAD) REGISTRY=$(PROD_REGISTRY) MOVING=master
+
+# publish builds every image and the control plane for VERSION/REGISTRY,
+# pushes the images under that tag (never moved afterwards), then under
+# MOVING, a tag for people to follow. Binaries never name MOVING.
+publish: images cp-image build-cp
+	@test -n "$(REGISTRY)" || { echo "publish needs REGISTRY: use make release or make nightly"; exit 1; }
+	@for img in $(BOT_IMAGE) $(STDIO_IMAGE) $(DRIVE_IMAGE) $(EGRESS_IMAGE) $(CP_IMAGE); do \
+		$(PODMAN) push $$img || exit 1; \
+		if [ -n "$(MOVING)" ]; then \
+			moving=$${img%:*}:$(MOVING); \
+			$(PODMAN) tag $$img $$moving && $(PODMAN) push $$moving || exit 1; \
+		fi; \
+	done
+	./bin/silo version
+
 bot-image: build-worker ## Build the local bot image
-	$(PODMAN) build --pull=newer --build-arg REVISION=$(REVISION) -t $(BOT_IMAGE) -f botimage/Containerfile .
+	$(PODMAN) build --pull=newer $(IMAGE_ARGS) -t $(BOT_IMAGE) -f botimage/Containerfile .
 
 stdio-image: build-bridge ## Build the local STDIO MCP sidecar image
-	$(PODMAN) build --pull=newer --build-arg REVISION=$(REVISION) -t $(STDIO_IMAGE) -f mcpimage/Containerfile .
+	$(PODMAN) build --pull=newer $(IMAGE_ARGS) -t $(STDIO_IMAGE) -f mcpimage/Containerfile .
 
 drive-image: build-drive ## Build the local drive (rclone) sidecar image
-	$(PODMAN) build --pull=newer --build-arg REVISION=$(REVISION) -t $(DRIVE_IMAGE) -f driveimage/Containerfile .
+	$(PODMAN) build --pull=newer $(IMAGE_ARGS) -t $(DRIVE_IMAGE) -f driveimage/Containerfile .
+
+# The control plane is built inside the image (cgo against the image's glibc),
+# from the Go module only: cpimage/Containerfile.dockerignore stands in for the
+# root .containerignore. Docker format, so HEALTHCHECK is kept.
+cp-image: ## Build the control plane image (cpimage/; runs the bot, STDIO, drive and egress images of the same VERSION)
+	$(PODMAN) build --pull=newer --format docker $(IMAGE_ARGS) --build-arg REGISTRY=$(REGISTRY) --build-arg BUILD_JOBS=$(CP_BUILD_JOBS) \
+		--ignorefile cpimage/Containerfile.dockerignore -t $(CP_IMAGE) -f cpimage/Containerfile .
 
 egress-image: build-egress ## Build the local network filter gateway image
-	$(PODMAN) build --pull=newer --build-arg REVISION=$(REVISION) -t $(EGRESS_IMAGE) -f egressimage/Containerfile .
+	$(PODMAN) build --pull=newer $(IMAGE_ARGS) -t $(EGRESS_IMAGE) -f egressimage/Containerfile .
 
 ## --- run -------------------------------------------------------------------
 
@@ -120,7 +174,7 @@ run-frontend: web-install ## Run the Vite dev server on :5173
 	$(PNPM) --dir web dev
 
 watch-control: ## Run the control plane under watchexec (auto-rebuild on change)
-	watchexec $(WATCH_OPTS) -- '$(GO) build -o bin/silo ./cmd/silo && exec ./bin/silo'
+	watchexec $(WATCH_OPTS) -- "$(GOBUILD) -o bin/silo ./cmd/silo && exec ./bin/silo"
 
 dev: ## Start the watchexec CP + Vite in a tmux session
 	@command -v tmux >/dev/null || { echo "tmux not found" >&2; exit 1; }
@@ -201,7 +255,7 @@ clean: ## Remove build artifacts (bin/, web/dist)
 	rm -rf bin web/dist
 
 clean-images: ## Remove the local bot, STDIO, drive and egress images
-	-$(PODMAN) rmi -f $(BOT_IMAGE) $(STDIO_IMAGE) $(DRIVE_IMAGE) $(EGRESS_IMAGE)
+	-$(PODMAN) rmi -f $(BOT_IMAGE) $(STDIO_IMAGE) $(DRIVE_IMAGE) $(EGRESS_IMAGE) $(CP_IMAGE)
 
 cleanup: ## Force-remove every container Silo made (named silo-* or labelled silo.managed)
 	@ids=$$({ $(PODMAN) ps -aq --filter name='^silo-'; $(PODMAN) ps -aq --filter label=silo.managed; } 2>/dev/null | sort -u); \

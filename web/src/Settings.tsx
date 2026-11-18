@@ -1,4 +1,5 @@
 import { ProactivitySettings } from "./Proactivity";
+import { BotMessagesSetting } from "./BotMessages";
 import { CrestSelect } from "./Crest";
 import { RotateCcw, Trash2 } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
@@ -210,6 +211,7 @@ export function SettingsPane({
           </SettingRow>
           <ProactivitySettings bot={bot} onError={onError} />
           <TimeZoneSettings bot={bot} onError={onError} />
+          <BotMessagesSetting bot={bot} onError={onError} />
         </SettingGroup>
 
         <SettingGroup title={t("SOUL")} note={t("Injected into the system prompt every run. The Bot can rewrite it.")}>

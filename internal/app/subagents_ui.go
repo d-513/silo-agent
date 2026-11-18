@@ -23,6 +23,21 @@ func (a *App) subagentSections(pc promptContext) []promptSection {
 	return []promptSection{{title: "This run", body: body, trailing: true}}
 }
 
+// botMessageSections adds the note for a run answering another Bot. It names
+// the sender and the person, which the conversation keeps for good, so the
+// note is the same on every run there.
+func (a *App) botMessageSections(pc promptContext) []promptSection {
+	if pc.peer == nil {
+		return nil
+	}
+	who := ""
+	if e := access.Email(a.DB, pc.peer.UserID); e != "" {
+		who = ", on behalf of " + e
+	}
+	body := strings.NewReplacer("{{FROM}}", a.botName(pc.peer.FromBotID), "{{FOR}}", who).Replace(strings.TrimSpace(prompts.BotMessage))
+	return []promptSection{{title: "This run", body: body, trailing: true}}
+}
+
 // --- RPC ---
 
 func (a *App) protoSubagent(sa *db.Subagent) *v1.Subagent {

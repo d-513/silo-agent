@@ -1,0 +1,87 @@
+# syntax=docker/dockerfile:1
+#
+# The Silo control plane. It drives the container engine whose socket it is
+# given (DOCKER_HOST, /run/docker.sock here) to make every Bot's box and
+# sidecar; see docs/CONFIGURATION.md § Running the control plane in a
+# container for the volumes, ports and users it needs.
+#
+# Build from the repository root with this folder's ignore file (`make
+# cp-image`): the root .containerignore lets only the sidecar images' folders
+# through. Bases are pinned by digest: move them on purpose.
+
+# --- build ------------------------------------------------------------------
+# cgo is on (libopus for calls, opened with dlopen at run time), so the binary
+# links glibc: it is built on the same Debian release it runs on.
+FROM docker.io/library/golang:1.26.10-trixie@sha256:fd9a91f0ece5664556f4851d06dce5e5b505a71166dffd385a03ba9d200b6983 AS build
+ENV CGO_ENABLED=1 GOTOOLCHAIN=local GOFLAGS=-trimpath
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/root/go/pkg/mod \
+    go mod download
+COPY gen gen
+COPY internal internal
+COPY cmd/silo cmd/silo
+# The release this build is (internal/version). Unset, it is a dev build that
+# runs localhost/silo-*:dev; `make release` and `make nightly` set all three.
+ARG VERSION=dev
+ARG REVISION=unknown
+ARG REGISTRY=
+# How many packages compile at once (go build -p; empty is one per CPU). The
+# builder needs about 4 GB: the biggest packages (gotd's Telegram schema, the
+# generated clients) take over a gigabyte each to compile, which podman
+# machine's default 2 GB VM does not have.
+ARG BUILD_JOBS=
+RUN --mount=type=cache,target=/root/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build ${BUILD_JOBS:+-p ${BUILD_JOBS}} -ldflags "-s -w \
+      -X silo.agent/internal/version.Version=${VERSION} \
+      -X silo.agent/internal/version.Commit=${REVISION} \
+      -X silo.agent/internal/version.Registry=${REGISTRY}" \
+      -o /out/silo ./cmd/silo
+
+# --- run --------------------------------------------------------------------
+FROM docker.io/library/debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2
+# ca-certificates: providers, OAuth, registries. tzdata: the Bots' time zones
+# are IANA names. libopus0: a call's voice. tini: PID 1, reaping what the
+# control plane starts (the Claude Code binary, a sign-in's terminal) and
+# handing it the engine's signals.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates \
+      libopus0 \
+      tini \
+      tzdata \
+    && rm -rf /var/lib/apt/lists/*
+# uid 1000 is the Bot box's own `silo` user: the files a box writes into its
+# workspace bind are then the control plane's too, so deleting a Bot can
+# remove them. /var/lib/silo holds silo.yaml (Admin → Settings writes it) and
+# data/; mount it at the same path on the host (see the docs), so the binds
+# the control plane hands the engine name real host paths.
+RUN groupadd --gid 1000 silo \
+    && useradd --uid 1000 --gid 1000 --home-dir /var/lib/silo --no-create-home --shell /usr/sbin/nologin silo \
+    && install -d -o 1000 -g 1000 -m 0700 /var/lib/silo
+COPY --from=build /out/silo /usr/local/bin/silo
+
+ENV SILO_HTTP_ADDR=:8080 \
+    SILO_DATA_DIR=/var/lib/silo/data \
+    DOCKER_HOST=unix:///run/docker.sock
+WORKDIR /var/lib/silo
+USER 1000:1000
+# HTTP (put TLS in front), the mail listener, and a call's audio (UDP, with
+# TCP for networks that drop UDP).
+EXPOSE 8080/tcp 2525/tcp 3479/udp 3479/tcp
+# No VOLUME: an anonymous volume would sit at a path the host does not have,
+# and every bind the control plane asks for would point nowhere.
+STOPSIGNAL SIGTERM
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD ["/usr/local/bin/silo", "healthcheck"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/silo"]
+
+# Last, so a new commit does not rebuild anything above.
+ARG REVISION=unknown
+ARG VERSION=dev
+LABEL org.opencontainers.image.title="silo" \
+      org.opencontainers.image.description="The Silo control plane" \
+      org.opencontainers.image.source="https://github.com/d-513/silo-agent" \
+      org.opencontainers.image.version="$VERSION" \
+      org.opencontainers.image.revision="$REVISION" \
+      org.opencontainers.image.base.name="docker.io/library/debian:trixie-slim"

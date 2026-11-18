@@ -8,6 +8,7 @@ import (
 	"github.com/knadh/koanf/v2"
 
 	"silo.agent/internal/egress"
+	"silo.agent/internal/version"
 )
 
 // Egress configures the network filter: one silo-egress gateway per container
@@ -40,9 +41,10 @@ type EgressFeed struct {
 	Format string `koanf:"format"`
 }
 
+// DefaultEgressImage is the gateway container image.
+func DefaultEgressImage() string { return version.Image("silo-egress") }
+
 const (
-	// DefaultEgressImage is the gateway container image.
-	DefaultEgressImage = "localhost/silo-egress:v1"
 	// DefaultEgressPool is the pool the CP carves a /24 per client from.
 	DefaultEgressPool = "10.213.0.0/16"
 	// EgressSubnetBits is the size of one client's network: a /24.
@@ -64,7 +66,7 @@ func (c Config) EgressImage() string {
 	if s := strings.TrimSpace(c.Egress.Image); s != "" {
 		return s
 	}
-	return DefaultEgressImage
+	return DefaultEgressImage()
 }
 
 // EgressPool is the prefix the CP carves client subnets from.

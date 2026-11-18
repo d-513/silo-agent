@@ -32,6 +32,7 @@ const (
 	KindJob        = "job"
 	KindSubagent   = "subagent"
 	KindWake       = "wake"
+	KindBot        = "bot"
 	KindCompact    = "compact"
 	KindCommand    = "command"
 	KindQuote      = "quote"
@@ -46,8 +47,10 @@ var Kinds = []Kind{
 	// A domain's housekeeping (Profile): its own prompt, tools and model.
 	{Name: KindJob, Origin: "automation", Model: true, Fresh: true},
 	{Name: KindSubagent, Origin: "subagent", Model: true, Machine: true},
-	// A lead woken by its subagents' results.
+	// A lead woken by its subagents' results or the Bots it messaged.
 	{Name: KindWake, Origin: "subagents", Model: true, Machine: true},
+	// Answering another Bot's message, in this Bot's conversation for it.
+	{Name: KindBot, Origin: "bot", Model: true, Machine: true},
 	// A manual compaction: a model turn follows only if a message comes in.
 	{Name: KindCompact, Origin: "compact", Model: true},
 	{Name: KindCommand, Origin: "command"},
@@ -76,6 +79,8 @@ func (r Request) Kind() Kind {
 		return kind(KindCompact)
 	case o.Subagent != nil:
 		return kind(KindSubagent)
+	case o.Peer != nil:
+		return kind(KindBot)
 	case o.Profile != nil:
 		return kind(KindJob)
 	case o.Automation != nil:
@@ -108,6 +113,7 @@ const (
 	TriggerMail       = "mail"
 	TriggerOnboarding = "onboarding"
 	TriggerLead       = "lead"
+	TriggerBot        = "bot"
 	TriggerReport     = "report"
 	TriggerAutomation = "automation"
 	TriggerManual     = "manual"

@@ -97,6 +97,10 @@ type Def struct {
 	// loop's usual cap. A tool whose whole point is one long listing (the
 	// keeper's review of the memory store) says how long.
 	ResultMax int
+	// OwnResult says the result is Silo's own words (an acknowledgement), so
+	// the action's output rule does not apply to it: it governs what arrives
+	// later instead (message_bot: the other Bot's reply).
+	OwnResult bool
 
 	// Dispatch makes the tool one chat tool over several actions of its
 	// Connector: the argument it names picks one of Actions, and that

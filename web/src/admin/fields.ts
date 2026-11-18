@@ -55,6 +55,7 @@ export const LABELS: Record<string, string> = {
   docker_host: msg("Docker host"),
   bot_image: msg("Bot image"),
   mcp_stdio_image: msg("STDIO MCP image"),
+  "images.pull": msg("Pull images"),
   "bot_limits.memory_mb": msg("Memory per Bot (MB)"),
   "bot_limits.pids": msg("Processes per Bot"),
   "drives.image": msg("Drive sidecar image"),
@@ -91,8 +92,8 @@ export const LABELS: Record<string, string> = {
 };
 
 export const HINTS: Record<string, string> = {
-  "bot_limits.memory_mb": msg("The most memory one Bot's machine may use, Chromium included. 0 is no limit; at least 512. Applies when a machine is next created."),
-  "bot_limits.pids": msg("The most processes and threads one Bot's machine may run at once, which stops a runaway build or a fork bomb. 0 is no limit. Applies when a machine is next created."),
+  "bot_limits.memory_mb": msg("The most memory one Bot's machine may use, Chromium included. 0 is no limit; at least 512. Applies when a machine next starts."),
+  "bot_limits.pids": msg("The most processes and threads one Bot's machine may run at once, which stops a runaway build or a fork bomb. 0 is no limit. Applies when a machine next starts."),
   "context.window": msg("Tokens, used when the provider does not report one (OpenRouter does). Per-model overrides go in silo.yaml under context.windows."),
   "context.compact_at": msg("Fraction of the window (0.1–0.98) at which a run summarizes its history before the next model call."),
   "changes.max_file_mb": msg("A bigger file is recorded by its size only, never its content. 1 to 100."),
@@ -118,7 +119,11 @@ export const HINTS: Record<string, string> = {
   "drives.cache_max_size": msg("The most one drive may cache on disk, such as 10G."),
   "outbound.block_private":
     msg("Refuses loopback, private (10.x, 172.16-31.x, 192.168.x), link-local and other internal addresses, and names that resolve to one, for everything Silo itself connects to because a user typed it: a connector's URL and sign-in, an Email or Calendar account, a skill's download address."),
-  "egress.image": msg("The image every Bot's gateway runs as. Changing it takes effect the next time a Bot's machine starts."),
+  "egress.image": msg("The image the network filter's gateway runs as. Empty follows this Silo release. A change makes the gateway again within a minute."),
+  bot_image: msg("The image every Bot's machine runs as. Empty follows this Silo release; a value here stays across upgrades. A running machine moves to a new image when it next starts."),
+  mcp_stdio_image: msg("The image STDIO connectors run in, unless a connector names its own. Empty follows this Silo release."),
+  "drives.image": msg("The image of each Bot's drive sidecar. Empty follows this Silo release."),
+  "images.pull": msg("missing (the default) fetches an image from its registry only when the engine does not have it; always asks again every hour, for a tag that moves; never leaves loading images to you. Images built here (localhost/…) are never fetched."),
   "egress.subnet_pool": msg("One /24 is carved from this pool for each Bot's own network. Enough addresses for 256 Bots without overlap."),
   "egress.block":
     msg("Hosts no Bot may reach, one per line or comma-separated: example.com, *.example.com, an IP or a CIDR. A Bot's owner can add to this list from the Bot's Rules page, but never remove it."),
@@ -250,7 +255,7 @@ export function groupOf(key: string) {
   if (key.startsWith("changes.")) return "changes";
   if (key.startsWith("filter.")) return "filter";
   if (key.startsWith("rules.")) return "rules";
-  if (key.startsWith("drives.") || key === "docker_host" || key === "bot_image" || key === "mcp_stdio_image" || key.startsWith("bot_limits.")) return "containers";
+  if (key.startsWith("drives.") || key.startsWith("images.") || key === "docker_host" || key === "bot_image" || key === "mcp_stdio_image" || key.startsWith("bot_limits.")) return "containers";
   if (key.startsWith("providers.")) return "providers";
   if (key.startsWith("search.")) return "search";
   if (key.startsWith("reader.")) return "reader";

@@ -93,7 +93,7 @@ func TestDriveEngine(t *testing.T) {
 	// The Bot side: exactly the bind Engine.Create adds.
 	bind := e.botDriveBind(ctx, bot)
 	if bind == "" {
-		t.Fatal("prepare helper failed (is localhost/silo-drive:v1 built?)")
+		t.Fatal("prepare helper failed (is localhost/silo-drive:dev built? make drive-image)")
 	}
 	botC, err := e.create(ctx, &container.Config{
 		Image: "docker.io/library/alpine:latest", Entrypoint: []string{"sleep", "600"},

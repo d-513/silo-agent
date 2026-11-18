@@ -200,25 +200,50 @@ export function Opened({ text, source, quoted, createdAt }: { text: string; sour
 
 // LeadNote is a message a subagent got from its lead: the brief it started
 // from, or a later interjection. Set off like a quote, labeled with the sender.
-export function LeadNote({ text, createdAt }: { text: string; createdAt?: string }) {
+export function LeadNote({ text, createdAt, from, attachments }: { text: string; createdAt?: string; from?: string; attachments?: Attachment[] }) {
   const when = runWhen(createdAt);
+  // from names another Bot that sent this; without it, the lead did.
+  const who = from ? t("From {{name}}", { name: from }) : t("From the lead");
   return (
     <figure className="min-w-0 rounded-card bg-well px-4 py-3 shadow-[inset_3px_0_0_var(--color-ink-3)]">
       <figcaption className="mb-1.5 flex items-center gap-1.5 text-label leading-4 text-ink-3">
         <Bot size={12} className="shrink-0" />
-        <span className="truncate">{[t("From the lead"), when].filter(Boolean).join(" · ")}</span>
+        <span className="truncate">{[who, when].filter(Boolean).join(" · ")}</span>
       </figcaption>
       <div className="silo-reply">
         <Md text={text} />
       </div>
+      {attachments?.length ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {attachments.map((a) => (
+            <span key={a.path} title={a.path} className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-surface px-2.5 py-1 text-label text-ink shadow-card">
+              <Paperclip size={12} className="shrink-0 text-ink-2" />
+              <span className="max-w-[180px] truncate font-medium">{a.name}</span>
+              <span className="shrink-0 font-mono text-micro text-ink-3">{fmtBytes(a.size)}</span>
+            </span>
+          ))}
+        </div>
+      ) : null}
     </figure>
   );
 }
 
 
 // SubagentReport opens a lead's wake run: which subagents finished, each a
-// link to its page, with the report the lead was handed folded underneath.
+// link to its page, and which Bots it messaged replied ("@Name" in the
+// label), with the report the lead was handed folded underneath.
 export function SubagentReport({ text, agents, href }: { text: string; agents: { name: string; status: string }[]; href?: (name: string) => AgentLink | undefined }) {
+  const bots = agents.filter((ag) => ag.name.startsWith("@")).length;
+  const title =
+    bots === 0
+      ? agents.length === 1
+        ? t("Subagent finished")
+        : t("Subagents finished")
+      : bots === agents.length
+        ? bots === 1
+          ? t("Bot replied")
+          : t("Bots replied")
+        : t("Handed-off work came back");
   return (
     <FoldRow
       lead={
@@ -226,14 +251,15 @@ export function SubagentReport({ text, agents, href }: { text: string; agents: {
           <Bot size={14} strokeWidth={1.75} />
         </span>
       }
-      title={<span className="shrink-0 font-medium text-ink-2">{agents.length === 1 ? t("Subagent finished") : t("Subagents finished")}</span>}
+      title={<span className="shrink-0 font-medium text-ink-2">{title}</span>}
       tail={
         <span className="flex min-w-0 items-center gap-1.5 truncate">
           {agents.map((ag, i) => {
-            const to = href?.(ag.name);
+            const bot = ag.name.startsWith("@");
+            const to = bot ? undefined : href?.(ag.name);
             const label = (
               <>
-                <span className="font-mono text-meta text-ink">{ag.name}</span>
+                <span className={bot ? "text-meta font-medium text-ink" : "font-mono text-meta text-ink"}>{bot ? ag.name.slice(1) : ag.name}</span>
                 <span className={`text-label ${reportMark(ag.status).tone}`}>{reportMark(ag.status).mark}</span>
               </>
             );

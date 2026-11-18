@@ -39,12 +39,23 @@ func (s *Service) ensureStdio(ctx context.Context, row *db.BotConnector, c *db.C
 	if strings.TrimSpace(s.cfg().DataDir) == "" {
 		return errors.New("data_dir required for stdio")
 	}
-	if row.ContainerID != "" && s.StaleCA != nil {
-		// The network filter's certificate was rotated since this sidecar was
-		// made: its HTTPS fails until it is made again with the current one.
-		if st, err := s.docker.Inspect(ctx, row.ContainerID); err == nil && s.StaleCA(st, row.BotID, row.ID) {
-			log.Printf("connector=%s: the network filter's certificate changed; recreating its sidecar", row.ID)
-			s.dropStdio(row, false)
+	if row.ContainerID != "" {
+		// A sidecar is made again, even with its bridge connected, when the
+		// network filter's certificate was rotated since it was made (its
+		// HTTPS fails until then) or when it is outdated (a new release, a
+		// rebuilt tag). It holds nothing but its MCP server's session, so
+		// the call that brought us here simply waits for the new one.
+		if st, err := s.docker.Inspect(ctx, row.ContainerID); err == nil {
+			why := ""
+			if s.StaleCA != nil && s.StaleCA(st, row.BotID, row.ID) {
+				why = "the network filter's certificate changed"
+			} else if o := s.docker.Outdated(ctx, st, "mcp-stdio", s.stdioImage(c)); o != "" {
+				why = "outdated (" + o + ")"
+			}
+			if why != "" {
+				log.Printf("connector=%s: %s; recreating its sidecar", row.ID, why)
+				s.dropStdio(row, false)
+			}
 		}
 	}
 	if b := s.lookupBridge(row.ID); b != nil {
@@ -80,6 +91,15 @@ func (s *Service) ensureStdio(ctx context.Context, row *db.BotConnector, c *db.C
 	return s.awaitBridge(ctx, row)
 }
 
+// stdioImage is the image c's sidecar runs: the connector's own (a curated
+// preset's) or the operator's default.
+func (s *Service) stdioImage(c *db.Connector) string {
+	if image := strings.TrimSpace(c.StdioImage); image != "" {
+		return image
+	}
+	return s.cfg().MCPStdioImage
+}
+
 func (s *Service) awaitBridge(ctx context.Context, row *db.BotConnector) error {
 	if _, err := s.waitBridge(ctx, row.ID, stdioInitWait); err != nil {
 		s.dropStdio(row, false)
@@ -93,10 +113,7 @@ func (s *Service) startStdio(ctx context.Context, row *db.BotConnector, c *db.Co
 	if err != nil {
 		return err
 	}
-	image := strings.TrimSpace(c.StdioImage)
-	if image == "" {
-		image = s.cfg().MCPStdioImage
-	}
+	image := s.stdioImage(c)
 	net, err := s.clientNet(ctx, row.BotID, row.ID, c.Name)
 	if err != nil {
 		return err

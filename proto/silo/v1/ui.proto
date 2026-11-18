@@ -654,6 +654,9 @@ message Bot {
   // DashboardUrgent counts the open asks the Bot marked urgent: while there
   // is one, status is needs_you for everyone on the Bot.
   int32 dashboard_urgent = 37;
+  // Other Bots of its Workspace may message it (message_bot). On by default;
+  // a manager turns it off in Settings → General.
+  bool accept_bot_messages = 38;
 }
 
 // Space is a Workspace as the caller sees it.
@@ -1069,6 +1072,8 @@ message UpdateBotRequest {
   optional string proactivity = 12;
   // color * 8 + shape. Optional, so a save of the other fields leaves it alone.
   optional int32 crest = 13;
+  // Optional, so a save of the other fields leaves it alone.
+  optional bool accept_bot_messages = 14;
 }
 
 message GetBotRequest {
@@ -1100,6 +1105,10 @@ message BotContainer {
   int64 mem_limit = 9;
   // One line of context: "3 drives", "stdio · npx @modelcontextprotocol/…".
   string detail = 10;
+  // Made from an older image, or another way, than Silo would make it now (a
+  // new release, a rebuilt tag): it is made again when it next starts, or a
+  // Reset makes it again now.
+  bool outdated = 11;
 }
 
 message BotContainers {
@@ -1126,6 +1135,8 @@ message AdminContainer {
   string detail = 10;
   // The networks the container is attached to, by name.
   repeated string networks = 11;
+  // As BotContainer.outdated. The egress gateway is made again on its own.
+  bool outdated = 12;
 }
 
 // AdminNetwork is one network the CP carved for an egress client.
@@ -1959,6 +1970,10 @@ message Chat {
   // When it was made (RFC 3339): the order its tab keeps, whatever moves it
   // in the list by activity.
   string created_at = 11;
+  // from_bot names the Bot whose messages this conversation answers: one
+  // conversation per sending Bot and person (message_bot). It is read-only to
+  // people. "" for every other chat.
+  string from_bot = 12;
 }
 
 message ModelOption {

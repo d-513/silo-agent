@@ -47,7 +47,7 @@ export function TransportFields({
           <TextRow label={t("Command")} mono value={value.stdioCommand} onChange={(e) => set("stdioCommand", e.target.value)} placeholder={"npx"} required={!fromCatalog} />
           <ArgsEditor value={value} set={set} />
           {allowStdioImage && (
-            <TextRow label={t("Image", { context: "container" })} mono value={value.stdioImage} onChange={(e) => set("stdioImage", e.target.value)} placeholder={"localhost/silo-mcp-stdio:v1"} />
+            <TextRow label={t("Image", { context: "container" })} mono value={value.stdioImage} onChange={(e) => set("stdioImage", e.target.value)} placeholder={"localhost/silo-mcp-stdio:dev"} />
           )}
         </>
       ) : (

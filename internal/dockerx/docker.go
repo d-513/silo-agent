@@ -33,7 +33,14 @@ func IsNotFound(err error) bool {
 type State struct {
 	ID      string
 	Running bool
+	// Image is the reference the container was made from (as given, so a
+	// tag); ImageID the image it runs, which a rebuilt or re-pulled tag no
+	// longer resolves to.
 	Image   string
+	ImageID string
+	// Role is the silo.role label and Spec the silo.spec one (specOf).
+	Role string
+	Spec string
 	// StartedAt is when the container last started; zero if never.
 	StartedAt time.Time
 	// Networks names the networks the container is attached to.
@@ -84,6 +91,11 @@ type Host interface {
 	NetworkAddr(ctx context.Context, containerID, networkName string) (string, error)
 	ListClientNetworks(ctx context.Context) ([]NetworkInfo, error)
 	Runtime(ctx context.Context) (string, error)
+	// Outdated says why a container is not what Silo would make for role
+	// from image now ("image", "spec"), or "" when it is (or cannot tell).
+	Outdated(ctx context.Context, st State, role, image string) string
+	// Prefetch pulls images ahead of need, as images.pull says.
+	Prefetch(ctx context.Context, refs []string)
 }
 
 type StdioSpec struct {
@@ -106,6 +118,7 @@ type StdioContainer struct {
 type Engine struct {
 	cli   *client.Client
 	store *config.Store
+	pulls pulls
 }
 
 func New(store *config.Store) (*Engine, error) {
@@ -133,9 +146,11 @@ func (e *Engine) Inspect(ctx context.Context, id string) (State, error) {
 		return State{}, err
 	}
 	run := c.State != nil && c.State.Running
-	st := State{ID: c.ID, Running: run}
+	st := State{ID: c.ID, Running: run, ImageID: c.Image}
 	if c.Config != nil {
 		st.Image = c.Config.Image
+		st.Role = c.Config.Labels["silo.role"]
+		st.Spec = c.Config.Labels[SpecLabel]
 		for _, e := range c.Config.Env {
 			if v, ok := strings.CutPrefix(e, "SILO_EGRESS_CA="); ok && v != "" {
 				st.CAHash = ids.Hash(v)

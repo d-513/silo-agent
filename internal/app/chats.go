@@ -33,6 +33,9 @@ func writableChat(c *db.Chat) error {
 	if c.SubagentID != "" {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("a subagent log is read-only; only its lead talks to it"))
 	}
+	if c.PeerBotID != "" {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("this conversation answers another Bot and is read-only; only that Bot writes in it"))
+	}
 	return nil
 }
 
@@ -119,8 +122,12 @@ func (a *App) SetChatHidden(ctx context.Context, req *connect.Request[v1.SetChat
 	if err != nil {
 		return nil, err
 	}
-	if err := writableChat(c); err != nil {
-		return nil, err
+	// A conversation answering another Bot is read-only, but whether it is a
+	// tab is its reader's choice.
+	if c.PeerBotID == "" {
+		if err := writableChat(c); err != nil {
+			return nil, err
+		}
 	}
 	if c.Main {
 		return nil, errMainChat

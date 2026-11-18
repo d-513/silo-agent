@@ -255,6 +255,11 @@ type App struct {
 	// wakeTimers debounce waking a lead chat when its subagents finish.
 	wakeMu     sync.Mutex
 	wakeTimers map[string]*time.Timer
+	// peerMu guards making a Bot's conversation for another Bot, and
+	// peerFiles: what runs answering one presented, by chat, to go back with
+	// the reply.
+	peerMu    sync.Mutex
+	peerFiles map[string][]string
 
 	// The domain services: each owns one slice of the UI service and of the
 	// Bot's tools. uiHandler promotes their RPCs.
@@ -378,8 +383,33 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		// The SMTP listener follows mail.* without a restart.
 		a.Mail.Sync()
 		go tickLoop(a.stopAutomations, mailbox.Tick, func(time.Time) { a.Mail.Sync() })
+		go a.prefetchImages()
+		go tickLoop(a.stopAutomations, imageTick, func(time.Time) {
+			if a.cfg().PullPolicy() == config.PullAlways {
+				a.prefetchImages()
+			}
+		})
 	}
 	return a
+}
+
+// imageTick is how often images.pull: always asks the registry for a moved
+// tag. What it fetches reaches the gateway on its next Reconcile and the
+// other containers when each is next made (see dropStale).
+const imageTick = time.Hour
+
+// prefetchImages pulls the images this config runs, so the first start after
+// an upgrade does not wait on a download (dockerx.Engine.Prefetch).
+func (a *App) prefetchImages() {
+	if a.Docker == nil {
+		return
+	}
+	cfg := a.cfg()
+	refs := []string{cfg.BotImage, cfg.MCPStdioImage, cfg.DriveImage()}
+	if cfg.Egress.Enabled {
+		refs = append(refs, cfg.EgressImage())
+	}
+	a.Docker.Prefetch(context.Background(), refs)
 }
 
 // tickLoop calls fn on every tick until stop is closed: the shape of each
@@ -455,6 +485,7 @@ func (a *App) recoverOrphans() {
 		log.Printf("interrupted %d orphaned runs", len(runs))
 	}
 	a.DB.Model(&db.Subagent{}).Where("status = ?", "running").Updates(map[string]any{"status": "interrupted", "reported": true})
+	a.DB.Model(&db.BotMessage{}).Where("status IN ?", []string{"running", "replying"}).Updates(map[string]any{"status": "interrupted", "reported": true})
 	res := a.DB.Model(&db.Approval{}).Where("status = ?", "pending").Update("status", "interrupted")
 	if res.RowsAffected > 0 {
 		log.Printf("interrupted %d orphaned approvals", res.RowsAffected)
@@ -805,6 +836,12 @@ func (a *App) trackedRun(runID string) *liveRun {
 func (a *App) cancelBot(botID string) {
 	// Its subagents stop with it; they must not wake a lead on the way down.
 	a.quietSubagents("interrupted", "bot_id = ?", botID)
+	// So does what it is waiting on from other Bots.
+	var waiting []string
+	a.DB.Model(&db.BotMessage{}).Distinct().Where("from_bot_id = ? AND status = ?", botID, "running").Pluck("from_chat_id", &waiting)
+	for _, chatID := range waiting {
+		a.stopBotMessages(chatID)
+	}
 	a.cancelRuns(botID, "", "interrupted")
 }
 

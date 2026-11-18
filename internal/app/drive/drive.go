@@ -364,6 +364,16 @@ func (s *driveSession) push(m *v1.DriveDown) bool {
 type driveHub struct {
 	mu   sync.Mutex
 	live map[string]*driveSession
+	// dials counts the sessions each Bot's sidecar has opened, so a waiter
+	// sees one that came and went between two of its looks.
+	dials map[string]uint64
+}
+
+// dialed is how many sessions botID's sidecar has opened so far.
+func (h *driveHub) dialed(botID string) uint64 {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.dials[botID]
 }
 
 func (s *Service) driveHub() *driveHub { return s.hub }
@@ -387,6 +397,10 @@ func (h *driveHub) put(s *driveSession) {
 	h.mu.Lock()
 	old := h.live[s.botID]
 	h.live[s.botID] = s
+	if h.dials == nil {
+		h.dials = map[string]uint64{}
+	}
+	h.dials[s.botID]++
 	h.mu.Unlock()
 	if old != nil {
 		old.close()
@@ -632,6 +646,9 @@ func (s *Service) ensureDrives(ctx context.Context, botID string, force bool) (*
 	}
 	var host db.DriveHost
 	s.db.Where("bot_id = ?", botID).Limit(1).Find(&host)
+	// Counted before the sidecar can dial, so the wait below sees a session
+	// however briefly it lived.
+	dialed := h.dialed(botID)
 	cfg := s.cfg()
 	if err := s.docker.PrepareDriveDir(ctx, cfg.DriveImage(), cfg.DriveMountRoot(), botID); err != nil {
 		return nil, fmt.Errorf("drives are not available on this host: %w", err)
@@ -642,6 +659,13 @@ func (s *Service) ensureDrives(ctx context.Context, botID string, force bool) (*
 		switch {
 		case err == nil && st.Running:
 			started = true
+		case err == nil && s.docker.Outdated(ctx, st, "drive", cfg.DriveImage()) != "":
+			// Stopped with its Bot and outdated (a new release, a rebuilt
+			// tag): made again rather than started. A running one is left
+			// alone, since dropping it unmounts the drives under the Bot; it
+			// is stopped with the box and updated at the next start.
+			log.Printf("drives bot=%s: the sidecar is outdated; recreating it", botID)
+			s.docker.DropDrive(ctx, botID, st.ID)
 		case err == nil:
 			if s.docker.Start(ctx, st.ID) == nil {
 				started = true
@@ -658,7 +682,7 @@ func (s *Service) ensureDrives(ctx context.Context, botID string, force bool) (*
 			return nil, err
 		}
 	}
-	return s.waitDriveSession(ctx, botID)
+	return s.waitDriveSession(ctx, botID, dialed)
 }
 
 func (s *Service) startDriveSidecar(ctx context.Context, botID string) error {
@@ -687,11 +711,18 @@ func (s *Service) startDriveSidecar(ctx context.Context, botID string) error {
 	return s.db.Save(&db.DriveHost{BotID: botID, ContainerID: cid, TokenHash: ids.Hash(token)}).Error
 }
 
-func (s *Service) waitDriveSession(ctx context.Context, botID string) (*driveSession, error) {
+// waitDriveSession waits for the sidecar to dial in after the dialed-th
+// session. One that dialed in and is gone again (the Bot stopped meanwhile)
+// ends the wait too: holding the sidecar lock for driveWait would keep the
+// next start from making the sidecar.
+func (s *Service) waitDriveSession(ctx context.Context, botID string, dialed uint64) (*driveSession, error) {
 	deadline := time.Now().Add(driveWait)
 	for {
 		if sess := s.driveHub().get(botID); sess != nil {
 			return sess, nil
+		}
+		if s.driveHub().dialed(botID) != dialed {
+			return nil, errors.New("the drive sidecar connected and went away again")
 		}
 		if time.Now().After(deadline) {
 			return nil, errors.New("the drive sidecar did not connect to the control plane")
@@ -789,11 +820,14 @@ func (s *Service) listDrive(ctx context.Context, d *db.Drive, path string) (*v1.
 // Stop stops the sidecar with the Bot (Stop Bot). Its container and
 // cache stay; the next start mounts again.
 func (s *Service) Stop(ctx context.Context, botID string) {
-	if sess := s.driveHub().get(botID); sess != nil {
-		s.driveHub().remove(sess)
-	}
+	// The container first, then its session: a sidecar still running when
+	// its session is dropped dials straight back in, and that session would
+	// outlive the stop and keep the next start from starting the sidecar.
 	if s.docker != nil {
 		_ = s.docker.Stop(ctx, dockerx.DriveName(botID))
+	}
+	if sess := s.driveHub().get(botID); sess != nil {
+		s.driveHub().remove(sess)
 	}
 	if s.db != nil {
 		s.db.Model(&db.BotDrive{}).Where("bot_id = ? AND state IN ?", botID,

@@ -68,7 +68,7 @@ provider. No tokens are spent.
   a stray shell variable cannot perturb a test.
 
 ### 3. Container tests (`internal/app`, real Podman)
-Same API path, but with a real `dockerx.Engine`, the real `localhost/silo-bot:v1`
+Same API path, but with a real `dockerx.Engine`, the real `localhost/silo-bot:dev`
 image, and a worker inside the box dialing the CP through
 `host.containers.internal`. They boot a bot, wait for its heartbeat, round-trip
 a tool, and assert lifecycle semantics.
@@ -131,7 +131,7 @@ machine):
 
 ```sh
 GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go test -c -o /tmp/worker.test ./cmd/silo-worker
-podman run --rm -v /tmp/worker.test:/worker.test:ro localhost/silo-bot:v1 \
+podman run --rm -v /tmp/worker.test:/worker.test:ro localhost/silo-bot:dev \
   /worker.test -test.run 'Extract|Walk|OCR' -test.v
 ```
 

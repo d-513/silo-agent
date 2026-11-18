@@ -12,6 +12,7 @@ import { Lamp } from "../Lamp";
 import { containerLook, machineStarting, containerUp, containerMade } from "../statusLook";
 import { setBot } from "../query";
 import { msg, t } from "../i18n.ts";
+import { UpdateChip } from "../UpdateChip";
 
 function n64(v: bigint | number | undefined) {
   if (typeof v === "bigint") return Number(v);
@@ -105,6 +106,7 @@ export function ContainersPane({ bot, onStart, onStop }: { bot: Bot; onStart: ()
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-card-title text-ink">{b.label}</span>
                       <span className="rounded-sm bg-well px-1.5 py-0.5 text-micro font-medium text-ink-3">{t(kind.chip)}</span>
+                      {b.outdated ? <UpdateChip kind={b.kind} /> : null}
                     </div>
                     <div className="mt-0.5 truncate text-meta text-ink-2">{b.detail}</div>
                     <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-meta">

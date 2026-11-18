@@ -79,7 +79,11 @@ make images        # bot, STDIO, drive and egress images
 
 `make images` builds the worker, bridge, drive and egress binaries first; the Containerfiles copy them from `bin/`. `CONTAINER_ARCH` comes from `podman info`.
 
-Image tags must match `bot_image` / `mcp_stdio_image` in `silo.yaml` (defaults `localhost/silo-bot:v1`, `localhost/silo-mcp-stdio:v1`). `make bot-image` builds the worker then the bot image; `make stdio-image` the bridge then the sidecar image; `make drive-image` and `make egress-image` likewise; `make images` does all four. None of them remove containers (`make cleanup` does).
+Every build is a dev build unless it says otherwise: its binaries are `version.Version=dev` with no registry, and the images it runs are the `localhost/silo-*:dev` tags these targets make. Leave `bot_image`, `mcp_stdio_image`, `drives.image` and `egress.image` out of `silo.yaml` so the control plane follows the build. `make bot-image` builds the worker then the bot image; `make stdio-image` the bridge then the sidecar image; `make drive-image` and `make egress-image` likewise; `make images` does all four. None of them remove containers (`make cleanup` does), but a stopped Bot's machine built from an older image is made again at its next start (docs/CONFIGURATION.md § Images).
+
+### Releases
+
+`make release VERSION=v0.4.2` (a clean tree, after `podman login ghcr.io`) builds the four images as `ghcr.io/d-513/silo-*:v0.4.2`, pushes them and `:latest`, and builds `bin/silo` with that registry and tag baked in (`-ldflags -X silo.agent/internal/version.…`), so that control plane runs exactly those images and pulls them on a new host. `make nightly` does the same as `master-<sha>`, plus `:master`. A binary never names a moving tag. Both build for this machine's architecture only.
 
 ## Run
 
@@ -127,14 +131,14 @@ Mail sent this way is always *not verified* (no DKIM, and loopback has no SPF), 
 | Go (CP only)                 | `make watch-control` (or `make build-cp` and restart)                                 |
 | `internal/prompts/SYSTEM.md` | same — it is `go:embed`’d                                                              |
 | `internal/catalog/*`         | same — presets/skills are `go:embed`’d; restart to seed new keys                      |
-| Go (worker)                  | `make bot-image`, recreate the Bot container                                           |
+| Go (worker)                  | `make bot-image`, then Stop/Start the Bot                                           |
 | `botimage/*`                 | same                                                                                  |
 | `internal/toolsgen/*`        | same — the worker writes `/opt/silo/tools` with it                                    |
 | Go (stdio bridge)            | `make stdio-image`, Refresh the connector                                              |
 | `mcpimage/*`                 | same                                                                                  |
 | `proto/**`                   | `make proto`, then rebuild CP and worker (and the image if the worker stub changed)   |
 | `internal/channels/**`       | restart the CP; sessions live under `data/channels/<id>/`                             |
-| `botimage/silo_runtime.py`   | `make bot-image`, recreate the Bot container                                           |
+| `botimage/silo_runtime.py`   | `make bot-image`, then Stop/Start the Bot                                           |
 | `web/**`                     | Vite reloads. `pnpm build` is the production bundle only                              |
 | `brand/**`                   | `make brand` rewrites the icons, `web/src/crestArt.ts` and iOS `Logic/StackArt.swift`  |
 

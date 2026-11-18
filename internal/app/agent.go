@@ -81,7 +81,7 @@ func (a *App) StartRun(req run.Request) (string, error) {
 		// ContainerID/TokenHash that a concurrent ensureRunning just wrote.
 		task := req.Text
 		if req.Report != nil {
-			task = "Subagents reported"
+			task = reportTitle(req.Report)
 		}
 		// A retry is still on the task it failed at.
 		if !req.Resume {
@@ -822,7 +822,9 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 				a.record(runID, seenKind, later, tc.Name, "")
 				shown = append(shown, llm.Message{Role: llm.RoleUser, Text: itype, Images: []llm.Image{vimg}})
 			}
-			if origin != nil && origin.Channel != nil && err == nil {
+			// A channel gets the file itself; a Bot being answered gets it
+			// back with the reply.
+			if origin != nil && (origin.Channel != nil || origin.Peer != nil) && err == nil {
 				a.deliverTool(ctx, botID, chatID, runID, origin, tc.Name, tc.Arguments, img)
 			}
 		}
@@ -971,7 +973,7 @@ func (a *App) runTitle(req run.Request) string {
 	case req.Resume:
 		return ""
 	case req.Report != nil:
-		return "Subagents reported"
+		return reportTitle(req.Report)
 	case o != nil && o.Subagent != nil:
 		return o.Subagent.Name
 	case o != nil && o.Automation != nil:

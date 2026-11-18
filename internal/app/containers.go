@@ -29,12 +29,16 @@ const (
 type botBox struct {
 	kind, name, label, detail string
 	id                        string // last known container id; "" means look up by name
+	// role is its silo.role and image what Silo would make it from now, for
+	// dockerx.Outdated.
+	role, image string
 }
 
 // botBoxes lists what a Bot owns: the machine, the drive sidecar when it has
 // drives (or one is left over), and a sidecar per STDIO connector.
 func (a *App) botBoxes(b *db.Bot) []botBox {
-	out := []botBox{{kind: boxBot, name: dockerx.Name(b.ID), label: "Machine", detail: "Desktop, files, Python, and the worker", id: b.ContainerID}}
+	cfg := a.cfg()
+	out := []botBox{{kind: boxBot, name: dockerx.Name(b.ID), label: "Machine", detail: "Desktop, files, Python, and the worker", id: b.ContainerID, role: "bot", image: cfg.BotImage}}
 
 	var host db.DriveHost
 	a.DB.Where("bot_id = ?", b.ID).Limit(1).Find(&host)
@@ -43,7 +47,7 @@ func (a *App) botBoxes(b *db.Bot) []botBox {
 		if n == 0 {
 			detail = "No drives left"
 		}
-		out = append(out, botBox{kind: boxDrive, name: dockerx.DriveName(b.ID), label: "Drives", detail: detail, id: host.ContainerID})
+		out = append(out, botBox{kind: boxDrive, name: dockerx.DriveName(b.ID), label: "Drives", detail: detail, id: host.ContainerID, role: "drive", image: cfg.DriveImage()})
 	}
 
 	var links []db.BotConnector
@@ -54,7 +58,11 @@ func (a *App) botBoxes(b *db.Bot) []botBox {
 			continue
 		}
 		cmd := strings.TrimSpace(c.StdioCommand + " " + strings.Join(mcpbridge.ParseArgs(c.StdioArgsJSON), " "))
-		out = append(out, botBox{kind: boxMCP, name: dockerx.StdioName(l.ID), label: c.Name, detail: "MCP · " + textx.ClipRunes(cmd, 80), id: l.ContainerID})
+		image := strings.TrimSpace(c.StdioImage)
+		if image == "" {
+			image = cfg.MCPStdioImage
+		}
+		out = append(out, botBox{kind: boxMCP, name: dockerx.StdioName(l.ID), label: c.Name, detail: "MCP · " + textx.ClipRunes(cmd, 80), id: l.ContainerID, role: "mcp-stdio", image: image})
 	}
 	return out
 }
@@ -85,6 +93,7 @@ func (a *App) ListBotContainers(ctx context.Context, req *connect.Request[v1.Get
 				return
 			}
 			c.Image = st.Image
+			c.Outdated = a.Docker.Outdated(ctx, st, box.role, box.image) != ""
 			if !st.Running {
 				c.State = "stopped"
 				return

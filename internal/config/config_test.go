@@ -68,7 +68,7 @@ func TestLoadSearchEngineDefault(t *testing.T) {
 	if c.Search.Engine != "builtin" {
 		t.Fatalf("search.engine %q", c.Search.Engine)
 	}
-	if c.MCPStdioImage != DefaultMCPStdioImage {
+	if c.MCPStdioImage != DefaultMCPStdioImage() {
 		t.Fatalf("mcp_stdio_image %q", c.MCPStdioImage)
 	}
 	if c.Model != DefaultModel {

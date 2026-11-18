@@ -1,16 +1,28 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"os"
 
 	"silo.agent/internal/app"
 	"silo.agent/internal/auth"
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
+	"silo.agent/internal/version"
 )
 
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "version", "--version":
+			fmt.Println("silo", version.String())
+			return
+		case "healthcheck":
+			os.Exit(healthcheck())
+		}
+	}
 	store, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
@@ -31,7 +43,8 @@ func main() {
 		log.Fatal(err)
 	}
 	a := app.New(store, gdb, eng)
-	log.Printf("silo listening %s docker=%s cp_url=%s", cfg.HTTPAddr, cfg.DockerHost, cfg.CPURL)
+	log.Printf("silo %s listening %s docker=%s cp_url=%s", version.String(), cfg.HTTPAddr, cfg.DockerHost, cfg.CPURL)
+	log.Printf("silo images: bot=%s stdio=%s drive=%s egress=%s pull=%s", cfg.BotImage, cfg.MCPStdioImage, cfg.DriveImage(), cfg.EgressImage(), cfg.PullPolicy())
 	if err := app.ListenAndServe(&cfg, a.Handler(), a.Shutdown); err != nil {
 		log.Fatal(err)
 	}

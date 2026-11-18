@@ -99,18 +99,37 @@ func unheldToken() string {
 	return ids.Hash(ids.Token())
 }
 
-// dropStaleCA removes a box that trusts a network filter certificate the
-// gateway no longer signs with (the CA was rotated since it was made), so the
-// rest of ensureRunning makes it again with the current one, as a Container
-// reset would: the workspace, drives and caches live outside the box. Runs are
-// left alone; their worker-backed tools wait for the new box. Callers hold
-// lockBot.
-func (a *App) dropStaleCA(ctx context.Context, b *db.Bot) {
+// dropStale removes a box that is not what Silo would make now, so the rest
+// of ensureRunning makes it again, as a Container reset would: the workspace,
+// drives and caches live outside the box. Runs are left alone; their
+// worker-backed tools wait for the new box. Callers hold lockBot.
+//
+//   - A box that trusts a network filter certificate the gateway no longer
+//     signs with (the CA was rotated since it was made) goes even while it
+//     runs: every HTTPS call it makes fails until it is made again.
+//   - A box on an older image or made another way (dockerx.Outdated: a new
+//     release, a rebuilt tag, new bot_limits) goes only while it is stopped.
+//     A running box holds what the Bot has open (its desktop, Python
+//     sessions, servers, what it installed outside /workspace), so it is
+//     updated at its next start, never under it; the Containers tab says an
+//     update is waiting.
+func (a *App) dropStale(ctx context.Context, b *db.Bot) {
 	st, err := a.inspectBot(ctx, b)
-	if err != nil || !a.Egress.StaleCA(st, "bot", b.ID, "") {
+	if err != nil {
 		return
 	}
-	log.Printf("bot=%s: the network filter's certificate changed; recreating its box", b.ID)
+	switch {
+	case a.Egress.StaleCA(st, "bot", b.ID, ""):
+		log.Printf("bot=%s: the network filter's certificate changed; recreating its box", b.ID)
+	case st.Running:
+		return
+	default:
+		why := a.Docker.Outdated(ctx, st, "bot", a.cfg().BotImage)
+		if why == "" {
+			return
+		}
+		log.Printf("bot=%s: its box is outdated (%s); recreating it", b.ID, why)
+	}
 	a.Hub.Drop(b.ID)
 	a.Docker.Drop(ctx, b.ID, st.ID)
 	a.setContainer(b, "")
@@ -142,7 +161,7 @@ func (a *App) ensureRunning(ctx context.Context, b *db.Bot) (err error) {
 	// Another ensure/start may have created a box since this row was loaded;
 	// reload so the token-hash check and the writes below do not undo it.
 	a.reloadBot(b)
-	a.dropStaleCA(ctx, b)
+	a.dropStale(ctx, b)
 	if a.Hub.Connected(b.ID) {
 		// A worker session can outlive its container (removed out of band, a
 		// daemon restart, a failed recreate). Confirm the box with Docker

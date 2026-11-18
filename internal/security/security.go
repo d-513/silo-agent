@@ -49,6 +49,9 @@ const (
 	// Mailbox is the Bot's receive-only address: listing and reading the mail
 	// that arrived for it. There is no send action; nothing leaves.
 	Mailbox = "mailbox"
+	// Bots are the other Bots of the Workspace: messaging one hands it work
+	// on behalf of whoever this run is for, and its reply comes back.
+	Bots = "bots"
 )
 
 type Field struct {
@@ -84,7 +87,7 @@ type spec struct {
 
 var reserved = map[string]bool{
 	Python: true, Terminal: true, Files: true, Desktop: true, Bot: true, Secrets: true, Skills: true, Web: true, Artifact: true,
-	Channels: true, Chats: true, Model: true, Automations: true, Agents: true, Tasks: true, Tunnels: true, Mailbox: true,
+	Channels: true, Chats: true, Model: true, Automations: true, Agents: true, Tasks: true, Tunnels: true, Mailbox: true, Bots: true,
 	// Drives are mounted folders, not a connector; keep the name free of MCP slugs.
 	"drives": true,
 }
@@ -129,6 +132,8 @@ var catalog = map[string]spec{
 	"agents.status":        {title: "Check subagents", mode: Allow, summary: want("check on its subagents")},
 	"agents.message":       {title: "Message subagent", mode: Allow, summary: agentSummary("message"), fields: agentFields},
 	"agents.stop":          {title: "Stop subagent", mode: Allow, summary: agentSummary("stop")},
+	"bots.list":            {title: "List Bots", mode: Allow, summary: want("see which Bots of the Workspace it can message")},
+	"bots.message":         {title: "Message another Bot", mode: Auto, output: OutCheck, summary: botMessageSummary, fields: botMessageFields},
 	"tasks.read":           {title: "Read taskboard", mode: Allow, summary: want("read the taskboard")},
 	"tasks.add":            {title: "Add tasks", mode: Allow, summary: want("add tasks to the taskboard")},
 	"tasks.done":           {title: "Complete tasks", mode: Allow, summary: want("mark taskboard tasks done")},
@@ -251,6 +256,24 @@ func agentFields(args map[string]string) []Field {
 	return out
 }
 
+func botMessageSummary(args map[string]string) string {
+	if name := strings.TrimSpace(args["bot"]); name != "" {
+		return "This Bot wants to hand work to the Bot “" + name + "”, which answers with its own connections and files."
+	}
+	return "This Bot wants to hand work to another Bot."
+}
+
+func botMessageFields(args map[string]string) []Field {
+	var out []Field
+	if v := strings.TrimSpace(args["text"]); v != "" {
+		out = append(out, Field{Label: "Message", Value: v})
+	}
+	if v := strings.TrimSpace(args["files"]); v != "" {
+		out = append(out, Field{Label: "Files", Value: v})
+	}
+	return out
+}
+
 func channelSummary(args map[string]string) string {
 	if name := strings.TrimSpace(args["channel"]); name != "" {
 		return "This Bot wants to send a message to the “" + name + "” channel."
@@ -320,6 +343,8 @@ func BuiltinRows() []Row {
 		{Agents, "status", "Check subagents"},
 		{Agents, "message", "Message subagent"},
 		{Agents, "stop", "Stop subagent"},
+		{Bots, "list", "List Bots"},
+		{Bots, "message", "Message another Bot"},
 		{Tasks, "read", "Read taskboard"},
 		{Tasks, "add", "Add tasks"},
 		{Tasks, "done", "Complete tasks"},

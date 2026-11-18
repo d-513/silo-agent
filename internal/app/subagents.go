@@ -131,10 +131,13 @@ func (a *App) stopSubagents(botID, leadChatID string) {
 		a.quietSubagents("stopped", "id = ?", sa.ID)
 		a.stopChat(botID, sa.ChatID)
 	}
+	// What it is waiting on from other Bots is withdrawn the same way.
+	a.stopBotMessages(leadChatID)
 	a.pingLead(botID, leadChatID, "subagents")
 }
 
-// dropSubagents deletes a lead chat's subagents, their logs, and its board.
+// dropSubagents deletes a lead chat's subagents, their logs, and its board,
+// and forgets what it sent other Bots.
 func (a *App) dropSubagents(botID, leadChatID string) {
 	for _, sa := range a.subagentsOf(leadChatID) {
 		a.quietSubagents("stopped", "id = ?", sa.ID)
@@ -143,6 +146,7 @@ func (a *App) dropSubagents(botID, leadChatID string) {
 		a.DB.Delete(&db.Subagent{}, "id = ?", sa.ID)
 	}
 	a.clearBoard(leadChatID)
+	a.dropBotMessages(leadChatID)
 }
 
 // --- finishing and waking ---
@@ -160,6 +164,9 @@ func (a *App) afterRun(botID, chatID, runID, st string) {
 	if st == "done" || st == "error" {
 		a.scheduleWake(botID, chatID)
 	}
+	// A conversation answering another Bot sends its reply back once
+	// nothing is left in hand.
+	a.peerRunEnded(botID, chatID, runID, st)
 }
 
 func (a *App) subagentFinished(sa *db.Subagent, runID, st string) {

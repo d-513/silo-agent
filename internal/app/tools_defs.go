@@ -823,6 +823,26 @@ func (a *App) toolDefs() []tool.Def {
 			Run: agent,
 		},
 		{
+			Name:        "list_bots",
+			Description: "The other Bots of your Workspace: each one's name, what it is for, and whether you may message it for the person you work for here (and why not).",
+			Params:      tool.Object(map[string]any{}),
+			Connector:   security.Bots, Action: "list",
+			ExposePython: true, SelfGated: true, LeadOnly: true,
+			Run: text(a.botTool),
+		},
+		{
+			Name:        "message_bot",
+			Description: "Hand work to another Bot of your Workspace (list_bots): it works on your message in its own conversation for you, with its own machine, files and connections, and its final reply comes back to you. Files you name are copied into its workspace; files it presents come back into yours (tmp/). It sees only the message and the files, not this chat. Then end your turn: you are woken with its reply. A second message to the same Bot continues that conversation.",
+			Params: tool.Object(map[string]any{
+				"bot":   map[string]any{"type": "string", "description": "its name or id"},
+				"text":  map[string]any{"type": "string", "description": "what you need, what to send back, and where the task ends"},
+				"files": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "workspace paths to hand over (at most 10, 32 MB each)"},
+			}, "bot", "text"),
+			Connector: security.Bots, Action: "message",
+			ExposePython: true, SelfGated: true, LeadOnly: true, OwnResult: true,
+			Run: text(a.botTool),
+		},
+		{
 			Name:        "sleep",
 			Description: "Pause this run for a short wait. Returns early when a message arrives for you or (for a lead) when a subagent finishes. A lead should not sleep just to wait for its subagents: end the turn instead, and you are woken with their results. Sleep only when you need a result before your own next step.",
 			Params: tool.Object(map[string]any{

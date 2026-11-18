@@ -32,6 +32,9 @@ type Origin struct {
 	// Subagent is set when the run is a subagent's work in its own log chat.
 	// Its runs are not delivered anywhere and get the subagent tool set.
 	Subagent *db.Subagent
+	// Peer is set when the run answers another Bot's message in this Bot's
+	// conversation for that Bot (message_bot). Its final reply goes back.
+	Peer *db.BotMessage
 }
 
 // Profile narrows a run to one background job: a prompt of its own in place
@@ -65,6 +68,16 @@ type Extra struct {
 	Files  []*v1.Attachment
 	Quotes []*v1.Quote
 	Spoken *Spoken
+	// Bot marks a message another Bot sent (message_bot): who sent it and for
+	// whom.
+	Bot *BotFrom
+}
+
+// BotFrom is the sender of a message from another Bot: its name, and the
+// person (email) it asks for, "" for the sending Bot's own work.
+type BotFrom struct {
+	Name string
+	For  string
 }
 
 // Spoken marks a message the human said on a voice call: the call, and the
@@ -104,6 +117,8 @@ const (
 	FromMail = "mail"
 	// FromLead is a subagent's brief or a message from its lead.
 	FromLead = "lead"
+	// FromBot is a message from another Bot of the Workspace (message_bot).
+	FromBot = "bot"
 )
 
 // ErrBusy is what StartIfIdle returns when the conversation already has a live

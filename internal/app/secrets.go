@@ -374,6 +374,8 @@ func (a *App) approvalSource(runID string) string {
 		return "Channel · " + name
 	case "subagent":
 		return "Subagent · " + name
+	case "bot":
+		return "From Bot · " + name
 	case "chat":
 		return "Chat · " + name
 	}

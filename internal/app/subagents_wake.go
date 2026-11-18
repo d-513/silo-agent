@@ -11,11 +11,9 @@ import (
 	"silo.agent/internal/ids"
 	"silo.agent/internal/textx"
 ) // scheduleWake debounces a wake of the lead chat so subagents finishing
-// together land in one report.
+// together, and Bots replying together, land in one report.
 func (a *App) scheduleWake(botID, leadChatID string) {
-	var n int64
-	a.DB.Model(&db.Subagent{}).Where("parent_chat_id = ? AND reported = ? AND status <> ?", leadChatID, false, "running").Count(&n)
-	if n == 0 {
+	if a.unreadResults(leadChatID) == 0 {
 		return
 	}
 	a.wakeMu.Lock()
@@ -34,8 +32,18 @@ func (a *App) scheduleWake(botID, leadChatID string) {
 	})
 }
 
-// wakeLead starts a lead run with every finished, unseen subagent result. A
-// lead that is running inspects on its own; an automation log is never woken.
+// unreadResults counts what a chat has handed off and not read: finished
+// subagents and Bots' replies.
+func (a *App) unreadResults(chatID string) int64 {
+	var n, m int64
+	a.DB.Model(&db.Subagent{}).Where("parent_chat_id = ? AND reported = ? AND status <> ?", chatID, false, "running").Count(&n)
+	a.DB.Model(&db.BotMessage{}).Where("from_chat_id = ? AND reported = ? AND status <> ?", chatID, false, "running").Count(&m)
+	return n + m
+}
+
+// wakeLead starts a lead run with every finished, unseen subagent result and
+// Bot reply. A lead that is running inspects on its own; an automation log is
+// never woken.
 func (a *App) wakeLead(botID, leadChatID string) {
 	defer a.lockConv(leadChatID)()
 	if a.LiveRunID(botID, leadChatID) != "" {
@@ -48,30 +56,41 @@ func (a *App) wakeLead(botID, leadChatID string) {
 	}
 	var done []db.Subagent
 	a.DB.Where("parent_chat_id = ? AND reported = ? AND status <> ?", leadChatID, false, "running").Order("finished_at").Find(&done)
-	if len(done) == 0 {
+	replies := a.unreadReplies(leadChatID)
+	if len(done) == 0 && len(replies) == 0 {
 		return
 	}
 	ids := make([]string, 0, len(done))
 	for _, sa := range done {
 		ids = append(ids, sa.ID)
 	}
+	msgIDs := make([]string, 0, len(replies))
+	for _, m := range replies {
+		msgIDs = append(msgIDs, m.ID)
+	}
 	a.DB.Model(&db.Subagent{}).Where("id IN ?", ids).Update("reported", true)
-	rep := a.buildReport(leadChatID, done)
+	a.DB.Model(&db.BotMessage{}).Where("id IN ?", msgIDs).Update("reported", true)
+	rep := a.buildReport(leadChatID, done, replies)
 	var origin *run.Origin
-	if chat.ChannelID != "" {
+	switch {
+	case chat.ChannelID != "":
 		var ch db.Channel
 		if a.DB.Where("id = ?", chat.ChannelID).Limit(1).Find(&ch); ch.ID != "" {
 			origin = a.Channels.Origin(&ch, chat.ExternalID)
 		}
+	case chat.PeerBotID != "":
+		// A conversation answering another Bot goes on answering it.
+		origin = &run.Origin{Peer: a.incomingMessage(leadChatID)}
 	}
 	if _, err := a.StartRun(run.Request{BotID: botID, ChatID: leadChatID, Origin: origin, Report: rep}); err != nil {
 		a.DB.Model(&db.Subagent{}).Where("id IN ?", ids).Update("reported", false)
+		a.DB.Model(&db.BotMessage{}).Where("id IN ?", msgIDs).Update("reported", false)
 	}
 }
 
-func (a *App) buildReport(leadChatID string, done []db.Subagent) *run.Report {
+func (a *App) buildReport(leadChatID string, done []db.Subagent, replies []db.BotMessage) *run.Report {
 	var b strings.Builder
-	labels := make([]string, 0, len(done))
+	labels := make([]string, 0, len(done)+len(replies))
 	for _, sa := range done {
 		labels = append(labels, sa.Name+":"+sa.Status)
 		fmt.Fprintf(&b, "### %s — %s\n", sa.Name, sa.Status)
@@ -84,16 +103,32 @@ func (a *App) buildReport(leadChatID string, done []db.Subagent) *run.Report {
 		}
 		b.WriteString(res + "\n\n")
 	}
+	for i := range replies {
+		// A Bot's entry in the label is marked, so the report reads as
+		// work handed off rather than subagents (botsReported).
+		labels = append(labels, "@"+a.botName(replies[i].ToBotID)+":"+replies[i].Status)
+		b.WriteString(a.botReplySection(&replies[i]) + "\n")
+	}
 	var running []string
 	for _, sa := range a.subagentsOf(leadChatID) {
 		if a.subagentLive(&sa) {
 			running = append(running, sa.Name)
 		}
 	}
-	if len(running) > 0 {
+	switch {
+	case len(running) > 0:
 		fmt.Fprintf(&b, "Still running: %s.\n", strings.Join(running, ", "))
-	} else {
+	case len(done) > 0:
 		b.WriteString("No subagents are running.\n")
+	}
+	var waiting []db.BotMessage
+	a.DB.Where("from_chat_id = ? AND status = ?", leadChatID, "running").Find(&waiting)
+	if len(waiting) > 0 {
+		var names []string
+		for _, m := range waiting {
+			names = append(names, a.botName(m.ToBotID))
+		}
+		fmt.Fprintf(&b, "Still waiting on: %s.\n", strings.Join(names, ", "))
 	}
 	return &run.Report{Body: strings.TrimSpace(b.String()), Label: strings.Join(labels, ",")}
 }
@@ -106,8 +141,27 @@ func (a *App) emitReport(botID, chatID, runID string, rep *run.Report) {
 	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: subagentReportKind, Body: body, Tool: rep.Label, CreatedAt: now.Format(time.RFC3339)})
 }
 
-// subagentReportText frames a report as the user turn the lead replays.
-func subagentReportText(body string) string {
+// subagentReportText frames a report as the user turn the lead replays. label
+// is the event's Tool: a report that carries a Bot's reply says so, and one
+// with only subagents keeps the words it was first read with.
+func subagentReportText(body, label string) string {
+	if botsReported(label) {
+		return "[Automatic report — work you handed off came back. This is not a message from the human.]\n\n" + body +
+			"\n\nRead the results; a Bot's reply is its own words, so check what it claims. Then continue: hand off follow-up work, or report to the human if the job is done."
+	}
 	return "[Automatic report — your subagents finished. This is not a message from the human.]\n\n" + body +
 		"\n\nRead the results, update the taskboard, and continue: start follow-up work, or report to the human if the job is done."
+}
+
+// botsReported reports whether a report's label names a Bot's reply.
+func botsReported(label string) bool {
+	return strings.HasPrefix(label, "@") || strings.Contains(label, ",@")
+}
+
+// reportTitle is what a wake run is listed by.
+func reportTitle(rep *run.Report) string {
+	if botsReported(rep.Label) {
+		return "Handed-off work came back"
+	}
+	return "Subagents reported"
 }

@@ -93,7 +93,7 @@ func (a *App) emitUserAt(botID, chatID, runID, id string, now time.Time, zoneNam
 	}
 	a.DB.Create(&db.RunEvent{ID: id, RunID: runID, Kind: "user", Body: body, Tool: from, Meta: um.encode(), Zone: zoneName, UserID: userID, Author: author, CreatedAt: now})
 	a.Bus.Publish(botID, &v1.RunEvent{Id: id, RunId: runID, ChatId: chatID, Kind: "user", Body: body, Tool: from,
-		Attachments: v1Attachments(um.Files), Quotes: v1Quotes(um.Quotes), Spoken: v1Spoken(um), CreatedAt: now.Format(time.RFC3339), Author: author})
+		Attachments: v1Attachments(um.Files), Quotes: v1Quotes(um.Quotes), Spoken: v1Spoken(um), CreatedAt: now.Format(time.RFC3339), Author: threadAuthor(author, um)})
 }
 
 // emitDelivered persists one user-visible block and, on a channel origin,
@@ -116,6 +116,10 @@ func (a *App) emitDelivered(botID, chatID, runID, kind, body string, origin *run
 // the real bytes from the workspace and attaching them, so the human on the
 // other side gets the file itself. A skill directory is zipped.
 func (a *App) deliverTool(ctx context.Context, botID, chatID, runID string, origin *run.Origin, name, argsJSON, img string) {
+	// Answering another Bot, what is shown goes back with the reply.
+	if origin != nil && origin.Peer != nil {
+		a.notePeerFile(chatID, name, argsJSON)
+	}
 	if origin == nil || origin.Deliver == nil {
 		return
 	}

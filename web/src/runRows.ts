@@ -13,6 +13,7 @@ export const KINDS: { key: string; label: string }[] = [
   { key: "job", label: msg("Housekeeping") },
   { key: "subagent", label: msg("Subagents") },
   { key: "wake", label: msg("Subagent reports") },
+  { key: "bot", label: msg("From other Bots") },
   { key: "compact", label: msg("Compactions") },
   { key: "command", label: msg("Commands") },
   { key: "quote", label: msg("Quotes") },
@@ -34,6 +35,8 @@ export function kindWord(kind: string, job: string): string {
       return msg("Subagent");
     case "wake":
       return msg("Subagent report");
+    case "bot":
+      return msg("From another Bot");
     case "compact":
       return msg("Compaction");
     case "command":

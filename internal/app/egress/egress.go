@@ -207,6 +207,14 @@ func (s *Service) ensureGateway(ctx context.Context) (string, error) {
 	if id != "" {
 		st, err := s.docker.Inspect(ctx, id)
 		switch {
+		case err == nil && s.docker.Outdated(ctx, st, "egress", s.cfg().EgressImage()) != "":
+			// A new release or a rebuilt tag: the gateway is made again at
+			// once, running or not. It keeps .2 on every client network
+			// (GatewayAddr), so the boxes lose their way out only for the
+			// seconds the new one takes to start and dial in.
+			log.Printf("egress: the gateway is outdated; recreating it")
+			s.docker.DropEgress(ctx, id)
+			id = ""
 		case err == nil && st.Running:
 		case err == nil:
 			if s.docker.Start(ctx, st.ID) == nil {

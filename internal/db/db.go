@@ -195,6 +195,9 @@ type Bot struct {
 	// OtherProtocols lets this Bot's box open connections that are not HTTP
 	// (or TLS): the network filter offers SOCKS5 for them. Off by default.
 	OtherProtocols bool `gorm:"not null;default:false"`
+	// AcceptBotMessages lets other Bots of its Workspace message it
+	// (message_bot). On by default.
+	AcceptBotMessages bool `gorm:"not null;default:true"`
 	// AuditUnseen counts lines the network filter or the output filter flagged
 	// for a human that the owner has not opened the Audit tab over yet.
 	AuditUnseen int    `gorm:"not null;default:0"`
@@ -277,6 +280,10 @@ type Chat struct {
 	// SubagentID marks the hidden Chat that holds one subagent's work log.
 	// Web chat lists and Send skip these too.
 	SubagentID string `gorm:"index;default:''"`
+	// PeerBotID marks the conversation that answers another Bot's messages:
+	// one per sending Bot and person (UserID, "" for the sending Bot's own
+	// runs). People read it; only the sending Bot writes in it.
+	PeerBotID string `gorm:"index;not null;default:''"`
 	// Main marks a person's main chat on the Bot (one each): where its page
 	// opens for them, where replies to what the Bot made go when they press
 	// them, and where it asks things while it has one person. It cannot be
@@ -886,6 +893,43 @@ type Subagent struct {
 	FinishedAt   *time.Time
 }
 
+// BotMessage is one request a Bot sent another Bot of its Workspace with
+// message_bot. It is answered in ToChatID, the receiving Bot's conversation
+// for the sender (Chat.PeerBotID), and its reply wakes FromChatID like a
+// subagent's result. UserID is the person the request is made for: the
+// receiving run is theirs ("" for the sending Bot's own runs). Hops counts
+// Bots from the human's conversation (1 for a Bot the human's Bot asked);
+// Chain is the ids of the Bots before the receiver, so a request never comes
+// back round. Reported flips true once the sender has read the reply.
+type BotMessage struct {
+	ID         string `gorm:"primaryKey"`
+	FromBotID  string `gorm:"index"`
+	FromChatID string `gorm:"index"`
+	FromRunID  string
+	// RootChatID is the human's conversation the chain started from: the
+	// auto-approval gate on every Bot down the chain reads what was asked there.
+	RootChatID string
+	ToBotID    string `gorm:"index"`
+	ToChatID   string `gorm:"index"`
+	UserID     string `gorm:"not null;default:''"`
+	Text       string
+	// Files are the sender's workspace paths it handed over; ReplyFiles the
+	// paths in the sender's workspace the reply's files were copied to (JSON
+	// lists).
+	Files      string `gorm:"not null;default:''"`
+	ReplyFiles string `gorm:"not null;default:''"`
+	Hops       int    `gorm:"not null;default:1"`
+	Chain      string `gorm:"not null;default:''"`
+	Status     string
+	Result     string
+	// Verdict is the sender's output filter on the reply: "" when it passed
+	// untouched, else flagged, withheld or unchecked.
+	Verdict    string `gorm:"not null;default:''"`
+	Reported   bool
+	CreatedAt  time.Time
+	FinishedAt *time.Time
+}
+
 // TaskItem is one line on a chat's Taskboard. The board belongs to the lead
 // chat and is shared with its subagents; Assignee is the [NAME] prefix.
 type TaskItem struct {
@@ -1097,7 +1141,7 @@ func Models() []any {
 		&User{}, &Session{}, &Invite{}, &RecoveryCode{}, &Space{}, &SpaceMember{}, &SpaceInvite{}, &SpaceRule{}, &BotAccess{}, &SpaceSkill{}, &Bot{}, &Secret{}, &Rule{}, &OperatorRule{},
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &AuditEvent{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
-		&Memory{}, &MemoryDigest{}, &DesktopPause{}, &Automation{}, &FeedPost{}, &DashboardCard{}, &SetupOffer{}, &DashboardWidget{}, &Subagent{}, &TaskItem{},
+		&Memory{}, &MemoryDigest{}, &DesktopPause{}, &Automation{}, &FeedPost{}, &DashboardCard{}, &SetupOffer{}, &DashboardWidget{}, &Subagent{}, &BotMessage{}, &TaskItem{},
 		&Drive{}, &BotDrive{}, &DriveHost{}, &DriveChange{},
 		&KnowledgeFolder{}, &KnowledgeSource{}, &KnowledgeChunk{},
 		&Tunnel{}, &TunnelGrant{},

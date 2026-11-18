@@ -132,6 +132,9 @@ export function renderBlock(b: Block, c: BlockCtx): ReactNode {
   if (b.type === "user" && b.from === "lead") {
     return <LeadNote text={b.text} createdAt={b.createdAt} />;
   }
+  if (b.type === "user" && b.from === "bot") {
+    return <LeadNote text={b.text} createdAt={b.createdAt} from={b.author || t("another Bot")} attachments={b.attachments} />;
+  }
   if (b.type === "user") {
     const id = b.id;
     const { onEditMessage, onDeleteMessage, onDivergeChat } = c;
