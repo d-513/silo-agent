@@ -42,6 +42,32 @@ func setNodeKey(doc *yaml.Node, key, value string) error {
 	return setPath(mappingOf(doc), strings.Split(key, "."), value)
 }
 
+// deleteNodeKey removes a dotted key from the document, and any mapping
+// it leaves empty. A key that is not there changes nothing.
+func deleteNodeKey(doc *yaml.Node, key string) {
+	deletePath(mappingOf(doc), strings.Split(key, "."))
+}
+
+func deletePath(m *yaml.Node, parts []string) {
+	if m.Kind != yaml.MappingNode {
+		return
+	}
+	for i := 0; i+1 < len(m.Content); i += 2 {
+		if m.Content[i].Value != parts[0] {
+			continue
+		}
+		if len(parts) > 1 {
+			val := m.Content[i+1]
+			deletePath(val, parts[1:])
+			if val.Kind != yaml.MappingNode || len(val.Content) > 0 {
+				return
+			}
+		}
+		m.Content = append(m.Content[:i], m.Content[i+2:]...)
+		return
+	}
+}
+
 // setNodeValue replaces (or appends) a top-level key's value node, keeping any
 // comments that were on the old value.
 func setNodeValue(doc *yaml.Node, key string, node *yaml.Node) {

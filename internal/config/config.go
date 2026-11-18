@@ -586,16 +586,11 @@ func (c Config) ApprovalModel() string {
 }
 
 // DecisionModel returns the default decision model: model_decision while it
-// is still allowed, else the first allowed decision model, else "" (the
-// operator has allowed none, so there is nothing to decide with).
+// is still allowed, else "" (none chosen, or taken off the list: there is
+// nothing to decide with).
 func (c Config) DecisionModel() string {
 	if m := strings.TrimSpace(c.ModelDecision); m != "" && llm.Allowed(m, c.DecisionModels) {
 		return m
-	}
-	for _, m := range c.DecisionModels {
-		if m = strings.TrimSpace(m); m != "" {
-			return m
-		}
 	}
 	return ""
 }

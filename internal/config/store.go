@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/knadh/koanf/parsers/yaml"
@@ -341,6 +342,10 @@ func (s *Store) Patch(fields map[string]string) error {
 		return err
 	}
 	for k, v := range fields {
+		if v == "" && isModelRole(k) {
+			deleteNodeKey(node, k)
+			continue
+		}
 		if err := setNodeKey(node, k, v); err != nil {
 			return err
 		}
@@ -458,6 +463,21 @@ func validateYAML(raw []byte) error {
 
 // textRoles are the settings that name a text model: one that writes.
 var textRoles = []string{"model", "model_title", "model_subagent", "model_memory", "model_voice"}
+
+// isModelRole says whether key is a setting that picks a model for a job.
+// Emptied in Admin, such a setting is no choice at all: its line leaves
+// silo.yaml, so one with a built-in default (model, embedding_model) takes
+// it again instead of naming an empty model.
+func isModelRole(key string) bool {
+	if _, ok := kindRoles[key]; ok {
+		return true
+	}
+	switch key {
+	case "model_decision", "model_approval", "model_filter":
+		return true
+	}
+	return slices.Contains(textRoles, key)
+}
 
 // kindRoles are the settings that name a model of one other kind. A role's
 // model counts as allowed (Config.KindModels), so it is checked for its kind

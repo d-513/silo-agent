@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { accountsOf, capOf, effective, isReady, markOf, modelOf, providerOf, providersInUse, resolveJobs } from "./providerJobs.ts";
 
 test("a job follows its setting's fallbacks", () => {
-  const jobs = resolveJobs({ model: "openrouter/openai/gpt-5.6-luna", model_title: "", model_approval: "", transcribe_model: "openrouter/openai/whisper-1", "voice.transcribe_model": "", "voice.speech_model": "elevenlabs/eleven_flash_v2_5", model_voice: "groq/openai/gpt-oss-120b", embedding_model: "openrouter/openai/text-embedding-3-small" }, ["typesafe/jev-latest"]);
+  const jobs = resolveJobs({ model: "openrouter/openai/gpt-5.6-luna", model_title: "", model_approval: "", transcribe_model: "openrouter/openai/whisper-1", "voice.transcribe_model": "", "voice.speech_model": "elevenlabs/eleven_flash_v2_5", model_voice: "groq/openai/gpt-oss-120b", embedding_model: "openrouter/openai/text-embedding-3-small", model_decision: "typesafe/jev-latest" });
   const by = Object.fromEntries(jobs.map((j) => [j.key, j]));
   assert.equal(by["voice.transcribe_model"].model, "openrouter/openai/whisper-1");
   assert.equal(by["voice.transcribe_model"].inherited, "transcribe_model");
@@ -13,7 +13,7 @@ test("a job follows its setting's fallbacks", () => {
 });
 
 test("off is nobody", () => {
-  const jobs = resolveJobs({ transcribe_model: "off" }, []);
+  const jobs = resolveJobs({ transcribe_model: "off" });
   const hears = jobs.find((j) => j.key === "voice.transcribe_model")!;
   assert.equal(hears.model, "");
   assert.equal(jobs.find((j) => j.key === "model_voice")!.model, "");
@@ -25,7 +25,7 @@ test("an empty setting follows the nearest one set", () => {
   assert.deepEqual(effective(v, "model_approval"), { model: "b/title", from: "model_title" });
   assert.deepEqual(effective({ ...v, model_filter: "c/judge" }, "model_filter"), { model: "c/judge", from: "" });
   assert.deepEqual(effective({}, "model_subagent"), { model: "", from: "" }, "the lead's model is not a setting");
-  assert.deepEqual(effective({}, "model_decision", ["t/jev"]), { model: "t/jev", from: "decision_models" });
+  assert.deepEqual(effective({}, "model_decision"), { model: "", from: "" }, "no decision model unless one is chosen");
   assert.deepEqual(effective({ transcribe_model: "off" }, "voice.transcribe_model"), { model: "", from: "transcribe_model" });
 });
 

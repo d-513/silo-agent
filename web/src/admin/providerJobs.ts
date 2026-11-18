@@ -57,10 +57,9 @@ export const FOLLOWS: Record<string, string[]> = {
 
 /**
  * The model a setting uses: its own value, else the first set one it follows
- * (from names that one), else for the decision model the first allowed one
- * (from = "decision_models"). "" when nobody does it; "off" reads as nobody.
+ * (from names that one). "" when nobody does it; "off" reads as nobody.
  */
-export function effective(values: Record<string, string>, key: string, decisionModels: string[] = []): { model: string; from: string } {
+export function effective(values: Record<string, string>, key: string): { model: string; from: string } {
   const own = (k: string) => {
     const v = (values[k] ?? "").trim();
     return v.toLowerCase() === "off" ? "off" : v;
@@ -77,17 +76,13 @@ export function effective(values: Record<string, string>, key: string, decisionM
       }
     }
   }
-  if (!model && key === "model_decision" && decisionModels.length) {
-    model = decisionModels[0];
-    from = "decision_models";
-  }
   return { model: model === "off" ? "" : model, from };
 }
 
 /** What each job is done with, given the form's values and the allowed decision models. */
-export function resolveJobs(values: Record<string, string>, decisionModels: string[]): Job[] {
+export function resolveJobs(values: Record<string, string>): Job[] {
   return JOBS.map((j) => {
-    const { model, from } = effective(values, j.key, decisionModels);
+    const { model, from } = effective(values, j.key);
     return { key: j.key, label: j.label, page: j.page, model, inherited: from, idle: j.idle ?? msg("Not set") };
   });
 }

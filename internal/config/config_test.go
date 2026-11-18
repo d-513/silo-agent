@@ -294,3 +294,40 @@ func TestRunsTimeout(t *testing.T) {
 		}
 	}
 }
+
+// A model setting emptied in Admin goes back to no choice: its line leaves
+// silo.yaml, so a setting with a built-in default (model, embedding_model)
+// takes that default again instead of an empty model.
+func TestPatchEmptyModelRoleUnsets(t *testing.T) {
+	dir := t.TempDir()
+	raw := []byte("model: openrouter/openai/gpt-test\nembedding_model: openai/text-embedding-3-large\nmodel_title: openrouter/title\nmodel_decision: openrouter/x\nproviders:\n  openrouter:\n    ignore: DeepInfra\n")
+	if err := os.WriteFile(filepath.Join(dir, "silo.yaml"), raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+	s, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Patch(map[string]string{"model": "", "embedding_model": "", "model_title": "", "model_decision": "", "providers.openrouter.ignore": ""}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(filepath.Join(dir, "silo.yaml"))
+	for _, key := range []string{"model:", "embedding_model:", "model_title:", "model_decision:"} {
+		if strings.Contains(string(got), "\n"+key) || strings.HasPrefix(string(got), key) {
+			t.Fatalf("%s still in silo.yaml:\n%s", key, got)
+		}
+	}
+	c := s.Config()
+	if c.Model != DefaultModel || c.EmbedModel != DefaultEmbeddingModel || c.ModelTitle != "" {
+		t.Fatalf("model %q embedding %q title %q", c.Model, c.EmbedModel, c.ModelTitle)
+	}
+	if s.Source("model") != SourceDefault {
+		t.Fatalf("model source %v", s.Source("model"))
+	}
+	// Any other setting emptied is still written empty: an empty ignore list
+	// means "ignore nobody", not the default.
+	if !strings.Contains(string(got), "ignore:") {
+		t.Fatalf("ignore was removed:\n%s", got)
+	}
+}

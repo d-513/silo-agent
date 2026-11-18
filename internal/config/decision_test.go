@@ -31,16 +31,17 @@ model_decision: typesafe/jev-latest
 		}
 	}
 
-	// With no default chosen (or one no longer allowed) the first allowed
-	// decision model stands in; with none allowed there is none.
+	// With no default chosen, or one no longer allowed, there is none: an
+	// allowed model is never picked for the operator.
 	c.ModelDecision = ""
-	if got := c.DecisionModel(); got != "openrouter/typesafe/jev-1.13" {
-		t.Fatalf("fallback decision model %q", got)
+	if got := c.DecisionModel(); got != "" {
+		t.Fatalf("none chosen, got %q", got)
 	}
 	c.ModelDecision = "openrouter/gone"
-	if got := c.DecisionModel(); got != "openrouter/typesafe/jev-1.13" {
-		t.Fatalf("stale default should fall back, got %q", got)
+	if got := c.DecisionModel(); got != "" {
+		t.Fatalf("stale default should be none, got %q", got)
 	}
+	c.ModelDecision = "typesafe/jev-latest"
 	c.DecisionModels = nil
 	if got := c.DecisionModel(); got != "" {
 		t.Fatalf("no decision models, got %q", got)

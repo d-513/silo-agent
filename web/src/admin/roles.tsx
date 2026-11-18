@@ -75,11 +75,15 @@ function RoleRow({ role: r }: { role: Role }) {
   const rows = r.takes === "either" ? eitherKind(models, decisionModels) : modelOptions(list, live);
   const none = t(NONE[kind]);
   const own = values[r.key] ?? "";
-  const use = effective(values, r.key, decisionModels.map((m) => m.id));
+  // A setting left to its built-in default (model, embedding_model) still
+  // reads as that model from the server; the picker shows it as no choice.
+  const builtin = f?.source === ConfigSource.DEFAULT && !!f.value && own === f.value && r.unsetValue === undefined;
+  const shown = builtin ? "" : own;
+  const pick = (v: string) => setValue(r.key, v === "" && f?.source === ConfigSource.DEFAULT ? f.value : v);
+  const use = effective(values, r.key);
   const chosen = list.find((m) => m.id === use.model);
-  // Left unset, the decision model is the first allowed one.
-  const placeholder = r.unset ? t(r.unset) : r.takes === "decision" && list.length ? t("First allowed ({{id}})", { id: list[0].id }) : list.length ? t("Select…") : none;
-  const follows = !own && use.model && use.from && use.from !== "decision_models";
+  const placeholder = r.unset ? t(r.unset) : list.length ? t("Select…") : none;
+  const follows = !shown && use.model && use.from;
 
   return (
     <div className="grid gap-x-8 gap-y-2.5 px-5 py-4 @min-[640px]:grid-cols-[minmax(0,1fr)_minmax(0,300px)] @min-[640px]:items-start">
@@ -92,8 +96,8 @@ function RoleRow({ role: r }: { role: Role }) {
       </div>
       <div className="min-w-0">
         <Select
-          value={own}
-          onChange={(v) => setValue(r.key, v)}
+          value={shown}
+          onChange={pick}
           disabled={f?.source === ConfigSource.ENV}
           options={r.unset ? [{ value: r.unsetValue ?? "", label: t(r.unset) }, ...rows] : rows}
           placeholder={placeholder}

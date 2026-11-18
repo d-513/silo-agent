@@ -16,9 +16,9 @@ import { msg, t } from "../i18n.ts";
 // per kind of job, each holding its pickers and the allowlists they pick from.
 
 export function ModelMapPage() {
-  const { providers, values, fields, decisionModels } = useSettingsForm();
+  const { providers, values, fields } = useSettingsForm();
   const navigate = useNavigate();
-  const jobs = resolveJobs(values, decisionModels.map((m) => m.id));
+  const jobs = resolveJobs(values);
   const ready = (id: string) => isReady(id, fields, values, ConfigSource.ENV, accountsOf(providers));
   const used = providersInUse(jobs);
   const missing = used.filter((p) => !ready(p)).length;
@@ -85,7 +85,7 @@ const pages: Record<ModelPage, () => React.ReactNode> = {
 
 // The text jobs. Every one but the default may follow another.
 const TEXT_ROLES: Role[] = [
-  { key: "model", takes: "text", hint: msg("What a chat writes with, unless its Bot or the chat picks another allowed text model.") },
+  { key: "model", takes: "text", unset: msg("Built-in default"), hint: msg("What a chat writes with, unless its Bot or the chat picks another allowed text model.") },
   { key: "model_title", takes: "text", unset: msg("Same as default"), hint: msg("Names a chat from its first message. A small, fast model is enough.") },
   { key: "model_subagent", takes: "text", unset: msg("Same as the lead"), hint: msg("Default for subagents a lead starts. A cheaper model keeps parallel work affordable; the lead can still pick another.") },
   { key: "model_memory", takes: "text", unset: msg("Same as title model"), hint: msg("Reads chats once they go quiet and saves the facts the Bot missed. A cheap model is enough.") },
@@ -102,7 +102,7 @@ function TextModels() {
 }
 
 // The decide tool's model, and the two judges that take either kind.
-const DECIDE_ROLES: Role[] = [{ key: "model_decision", takes: "decision", hint: msg("What the Bot's decide tool asks unless it names another allowed decision model.") }];
+const DECIDE_ROLES: Role[] = [{ key: "model_decision", takes: "decision", unset: msg("None: no decide tool"), hint: msg("What the Bot's decide tool asks unless it names another allowed decision model.") }];
 const JUDGE_ROLES: Role[] = [
   {
     key: "model_approval",
@@ -129,7 +129,7 @@ function DecisionModels() {
   );
 }
 
-const EMBED_ROLES: Role[] = [{ key: "embedding_model", takes: "embedding" }];
+const EMBED_ROLES: Role[] = [{ key: "embedding_model", takes: "embedding", unset: msg("Built-in default") }];
 
 function EmbeddingModels() {
   return (

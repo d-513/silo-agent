@@ -103,7 +103,13 @@ func TestDecideNeedsADecisionModel(t *testing.T) {
 		t.Fatal("decide should fail with no decision model")
 	}
 
-	s = decideService(t, config.Config{DecisionModels: []string{"dummy/judge", "dummy/other"}})
+	// Allowed but none chosen as the default is none too.
+	s = decideService(t, config.Config{DecisionModels: []string{"dummy/judge"}})
+	if s.CanDecide() {
+		t.Fatal("no default decision model chosen, yet CanDecide")
+	}
+
+	s = decideService(t, config.Config{DecisionModels: []string{"dummy/judge", "dummy/other"}, ModelDecision: "dummy/judge"})
 	if !s.CanDecide() {
 		t.Fatal("a decision model is allowed")
 	}
@@ -114,7 +120,7 @@ func TestDecideNeedsADecisionModel(t *testing.T) {
 
 // list_models tells the Bot which decision models decide() may name.
 func TestListToolNamesDecisionModels(t *testing.T) {
-	s := decideService(t, config.Config{Model: "dummy/echo", Models: []string{"dummy/echo"}, DecisionModels: []string{"dummy/judge"}})
+	s := decideService(t, config.Config{Model: "dummy/echo", Models: []string{"dummy/echo"}, DecisionModels: []string{"dummy/judge"}, ModelDecision: "dummy/judge"})
 	out, err := s.ListTool("", "")
 	if err != nil {
 		t.Fatal(err)

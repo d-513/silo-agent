@@ -23,11 +23,11 @@ import { Modal } from "../Modal";
 
 export function ProviderSettings() {
   const form = useSettingsForm();
-  const { providers, values, fields, decisionModels, allowedOf } = form;
+  const { providers, values, fields, allowedOf } = form;
   // The map sends a provider to open (?provider=…).
   const { provider: asked } = useSearch({ from: "/_authed/admin/settings/models/$page" });
   const [open, setOpen] = useState(asked ?? "");
-  const jobs = resolveJobs(values, decisionModels.map((m) => m.id));
+  const jobs = resolveJobs(values);
   const inUse = providersInUse(jobs);
   const ready = (id: string) => isReady(id, fields, values, ConfigSource.ENV, accountsOf(providers));
   // In use first (in the map's order), then the ones set up, then the rest.

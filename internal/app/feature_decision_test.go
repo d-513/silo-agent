@@ -20,7 +20,7 @@ import (
 // decisionYAML is the test config with one decision model allowed, plus extra.
 func decisionYAML(t *testing.T, extra string) string {
 	t.Helper()
-	return apptest.DefaultYAML(t.TempDir()) + "decision_models:\n  - dummy/judge\n" + extra
+	return apptest.DefaultYAML(t.TempDir()) + "decision_models:\n  - dummy/judge\nmodel_decision: dummy/judge\n" + extra
 }
 
 // setAuto stores the Bot's auto-approval policy and hands one action to the
