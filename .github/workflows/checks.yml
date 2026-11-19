@@ -1,0 +1,57 @@
+# Every push and pull request: the build, vet and the tests that need neither
+# a database nor a container engine. The feature tests (internal/app and the
+# other Postgres-backed packages) are run locally with `make test`.
+# Actions are pinned by commit: move a pin on purpose.
+name: Checks
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: Go
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: go build ./cmd/... ./internal/...
+      - name: Vet
+        run: make vet
+      - name: Formatting
+        run: |
+          out=$(gofmt -l cmd internal)
+          if [ -n "$out" ]; then echo "not gofmt-ed:"; echo "$out"; exit 1; fi
+      - name: Unit tests
+        run: make test-unit
+
+  web:
+    name: Web
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.27.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Install
+        run: pnpm --dir web install --frozen-lockfile
+      - name: Typecheck and unit tests
+        run: make test-web
+      - name: Production build
+        run: pnpm --dir web exec vite build

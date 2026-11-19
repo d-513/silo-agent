@@ -292,7 +292,7 @@ A container made from an older image, or made another way (a new `bot_limits`), 
 
 ## Running the control plane in a container
 
-`make cp-image` builds `cpimage/Containerfile` as `silo:<version>` (`make release` pushes it with the others). It holds the control plane only: Postgres is yours to run, and the web UI is not in it. The builder needs about 4 GB of memory.
+`make cp-image` builds `cpimage/Containerfile` as `silo:<version>` (`make release` pushes it with the others). It holds the control plane with the web console compiled in, served on the same port as the API (`public_url` is that address behind your TLS): no second container and no proxy rules. Postgres is yours to run. The builder needs about 4 GB of memory.
 
 The control plane makes every other container through the engine's socket, so the container needs four things:
 

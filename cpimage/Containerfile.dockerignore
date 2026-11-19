@@ -1,13 +1,23 @@
-# The control plane image's context: the Go module and nothing else. Docker
+# The control plane image's context: the Go module and the web console's
+# source, and nothing else. Docker
 # finds this file beside the Containerfile; podman is handed it with
 # --ignorefile (`make cp-image`). data/ (the Bots' workspaces), silo.yaml
-# (keys), bin/, web/, ios/, node_modules and .git never reach the builder.
+# (keys), bin/, ios/, node_modules and .git never reach the builder.
 *
 !go.mod
 !go.sum
 !gen
 !internal
 !cmd/silo
+!web
+web/node_modules
+web/dist
+web/e2e
+web/test-results
+web/playwright-report
+web/.playwright
+web/*.tsbuildinfo
+internal/webui/dist
 # A test run's leftovers and the tests themselves are not built.
 internal/app/data
 **/*_test.go

@@ -11,6 +11,7 @@ import (
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
 	"silo.agent/internal/version"
+	"silo.agent/internal/webui"
 )
 
 func main() {
@@ -44,6 +45,9 @@ func main() {
 	}
 	a := app.New(store, gdb, eng)
 	log.Printf("silo %s listening %s docker=%s cp_url=%s", version.String(), cfg.HTTPAddr, cfg.DockerHost, cfg.CPURL)
+	if webui.Embedded() {
+		log.Printf("silo: serving the web console at %s", cfg.HTTPAddr)
+	}
 	log.Printf("silo images: bot=%s stdio=%s drive=%s egress=%s pull=%s", cfg.BotImage, cfg.MCPStdioImage, cfg.DriveImage(), cfg.EgressImage(), cfg.PullPolicy())
 	if err := app.ListenAndServe(&cfg, a.Handler(), a.Shutdown); err != nil {
 		log.Fatal(err)

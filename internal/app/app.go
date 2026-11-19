@@ -58,6 +58,7 @@ import (
 	"silo.agent/internal/masker"
 	"silo.agent/internal/reader"
 	"silo.agent/internal/rpcx"
+	"silo.agent/internal/webui"
 )
 
 type ctxKey int
@@ -693,6 +694,11 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc(mailbox.RawPath, a.Mail.ServeRaw)
 	mux.HandleFunc(account.OIDCStartPath, a.Accounts.ServeOIDCStart)
 	mux.HandleFunc(account.OIDCCallbackPath, a.Accounts.ServeOIDCCallback)
+	// A build that carries the console (the webui tag) serves it under every
+	// path nothing above owns; a dev build leaves that to Vite.
+	if ui := webui.Handler(); ui != nil {
+		mux.Handle("/", ui)
+	}
 	log.Printf("mounted %s %s", uiPath, wkPath)
 	// <kind>-<name>.<content.host> is what Bots made; every other host is the
 	// control plane.

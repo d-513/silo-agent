@@ -1,0 +1,212 @@
+# Builds and publishes the five images to ghcr.io/d-513, for amd64 and arm64:
+#
+#   push to master  ->  <image>:master-<sha>, and :master moved to it
+#   tag vX.Y.Z      ->  <image>:vX.Y.Z, and :latest moved to it when the tag is
+#                       a full release (no -rc suffix) and the highest so far;
+#                       then a GitHub Release.
+#
+# The control plane inside `silo` is always built to run the fixed tag of its
+# own commit (master-<sha> or vX.Y.Z), never :master or :latest, so pulling
+# either moving tag still gets a matched set (internal/version).
+# Actions are pinned by commit: move a pin on purpose.
+name: Images
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+# A newer commit on master replaces a build still running; a release never is.
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/master' }}
+
+env:
+  REGISTRY: ghcr.io/d-513
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      moving: ${{ steps.plan.outputs.moving }}
+      revision: ${{ steps.plan.outputs.revision }}
+      prerelease: ${{ steps.plan.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0 # every tag, to tell whether this release is the newest
+      - id: plan
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          revision=${GITHUB_SHA::7}
+          moving=""
+          prerelease=false
+          if [ "$REF_TYPE" = tag ]; then
+            if ! echo "$REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+              echo "::error::tag $REF_NAME is not vX.Y.Z or vX.Y.Z-suffix"
+              exit 1
+            fi
+            version=$REF_NAME
+            case "$version" in
+              *-*) prerelease=true ;;
+              *)
+                # :latest follows the highest full release, so a patch to an
+                # older line does not take it backwards.
+                newest=$(git tag -l 'v*' | grep -Ev -- '-' | sort -V | tail -n1)
+                if [ "$newest" = "$version" ]; then moving=latest; fi
+                ;;
+            esac
+          else
+            version=master-$revision
+            moving=master
+          fi
+          {
+            echo "version=$version"
+            echo "moving=$moving"
+            echo "revision=$revision"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+          echo "### $version${moving:+ (and :$moving)}" >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    name: ${{ matrix.image }} (${{ matrix.arch }})
+    needs: plan
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+        image: [silo, silo-bot, silo-mcp-stdio, silo-drive, silo-egress]
+        include:
+          # The control plane is compiled inside its image (cgo, with the web
+          # console); the others copy a static binary built here first.
+          - { image: silo, file: cpimage/Containerfile, binary: "" }
+          - { image: silo-bot, file: botimage/Containerfile, binary: build-worker }
+          - { image: silo-mcp-stdio, file: mcpimage/Containerfile, binary: build-bridge }
+          - { image: silo-drive, file: driveimage/Containerfile, binary: build-drive }
+          - { image: silo-egress, file: egressimage/Containerfile, binary: build-egress }
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        if: matrix.binary != ''
+        with:
+          go-version-file: go.mod
+      - name: Build the binary the image copies
+        if: matrix.binary != ''
+        run: >
+          make ${{ matrix.binary }}
+          CONTAINER_ARCH=${{ matrix.arch }}
+          VERSION=${{ needs.plan.outputs.version }}
+          REVISION=${{ needs.plan.outputs.revision }}
+          REGISTRY=${{ env.REGISTRY }}
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Pushed by digest only: the tags are put on once both architectures of
+      # every image exist (the publish job).
+      - id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          platforms: linux/${{ matrix.arch }}
+          build-args: |
+            VERSION=${{ needs.plan.outputs.version }}
+            REVISION=${{ needs.plan.outputs.revision }}
+            REGISTRY=${{ env.REGISTRY }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ matrix.image }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.arch }}
+          provenance: false
+      - name: Record the digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p digests/${{ matrix.image }}
+          touch "digests/${{ matrix.image }}/${DIGEST#sha256:}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: digest-${{ matrix.image }}-${{ matrix.arch }}
+          path: digests
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Tag
+    needs: [plan, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          pattern: digest-*
+          path: digests
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # The control plane last: once `silo` carries a tag, the images it will
+      # ask for are already there.
+      - name: Join the architectures under their tags
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          MOVING: ${{ needs.plan.outputs.moving }}
+        run: |
+          for image in silo-bot silo-mcp-stdio silo-drive silo-egress silo; do
+            sources=""
+            for digest in digests/"$image"/*; do
+              sources="$sources $REGISTRY/$image@sha256:$(basename "$digest")"
+            done
+            tags="-t $REGISTRY/$image:$VERSION"
+            if [ -n "$MOVING" ]; then tags="$tags -t $REGISTRY/$image:$MOVING"; fi
+            # shellcheck disable=SC2086
+            docker buildx imagetools create $tags $sources
+            echo "- \`$REGISTRY/$image:$VERSION\`${MOVING:+ and \`:$MOVING\`}" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+  release:
+    name: GitHub Release
+    if: github.ref_type == 'tag'
+    needs: [plan, publish]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.plan.outputs.version }}
+          MOVING: ${{ needs.plan.outputs.moving }}
+          PRERELEASE: ${{ needs.plan.outputs.prerelease }}
+        run: |
+          flags="--generate-notes --verify-tag"
+          if [ "$PRERELEASE" = true ]; then flags="$flags --prerelease"; fi
+          if [ "$MOVING" = latest ]; then flags="$flags --latest"; else flags="$flags --latest=false"; fi
+          cat > notes.md <<EOF
+          Run the control plane, which pulls the other images of this release itself:
+
+              $REGISTRY/silo:$VERSION
+
+          See docs/CONFIGURATION.md, "Running the control plane in a container".
+          EOF
+          # shellcheck disable=SC2086
+          gh release create "$VERSION" $flags --notes-file notes.md

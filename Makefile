@@ -40,7 +40,10 @@ REVISION    ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)$(
 LDFLAGS      = -X silo.agent/internal/version.Version=$(VERSION) \
                -X silo.agent/internal/version.Commit=$(REVISION) \
                -X silo.agent/internal/version.Registry=$(REGISTRY)
-GOBUILD      = $(GO) build -ldflags '$(LDFLAGS)'
+# Go build tags. `webui` compiles the web console into the control plane
+# (internal/webui): run `make web-build` first, or use `make build-cp-ui`.
+TAGS         :=
+GOBUILD      = $(GO) build $(if $(TAGS),-tags '$(TAGS)') -ldflags '$(LDFLAGS)'
 IMAGE_ARGS   = --build-arg REVISION=$(REVISION) --build-arg VERSION=$(VERSION)
 
 # tmux session name used by `make dev`.
@@ -69,7 +72,7 @@ WATCH_OPTS  := \
 
 .PHONY: help claude-bin install deps web-install brand build build-cp build-worker \
 	build-bridge build-drive build-egress build-all images bot-image stdio-image drive-image egress-image run run-control \
-	run-frontend watch-control dev attach release nightly publish cp-image test test-fast test-containers \
+	run-frontend watch-control dev attach release nightly publish cp-image web-build build-cp-ui test-unit test-web test test-fast test-containers \
 	test-integration e2e fmt vet tidy proto rebuild \
 	clean clean-images cleanup reset-data db-up db-down db-psql db-reset \
 	db-check
@@ -103,6 +106,12 @@ web-install: ## Install frontend dependencies
 build-cp: ## Build the control plane to bin/silo
 	$(GOBUILD) -o bin/silo ./cmd/silo
 
+web-build: web-install ## Build the web console into internal/webui/dist, where the webui build tag embeds it
+	$(PNPM) --dir web exec vite build --outDir ../internal/webui/dist --emptyOutDir
+
+build-cp-ui: web-build ## Build bin/silo with the web console inside (what a release runs; dev builds use Vite)
+	$(MAKE) build-cp TAGS=webui VERSION=$(VERSION) REGISTRY=$(REGISTRY)
+
 build-worker: ## Cross-build the in-container worker to bin/silo-worker
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(CONTAINER_ARCH) $(GOBUILD) -o bin/silo-worker ./cmd/silo-worker
 
@@ -135,7 +144,7 @@ nightly: ## Publish a nightly: images tagged master-<sha> (and :master) on ghcr.
 # publish builds every image and the control plane for VERSION/REGISTRY,
 # pushes the images under that tag (never moved afterwards), then under
 # MOVING, a tag for people to follow. Binaries never name MOVING.
-publish: images cp-image build-cp
+publish: images cp-image build-cp-ui
 	@test -n "$(REGISTRY)" || { echo "publish needs REGISTRY: use make release or make nightly"; exit 1; }
 	@for img in $(BOT_IMAGE) $(STDIO_IMAGE) $(DRIVE_IMAGE) $(EGRESS_IMAGE) $(CP_IMAGE); do \
 		$(PODMAN) push $$img || exit 1; \
@@ -197,6 +206,13 @@ test: db-check ## Run the full Go suite (includes the real-container tier; needs
 
 test-fast: db-check ## Run the Go suite without the container tier (still needs make db-up)
 	SILO_SKIP_CONTAINERS=1 GO=$(GO) scripts/gotest.sh
+
+test-unit: ## The Go tests that need no database and no containers (what CI's checks run)
+	$(GO) test $$($(GO) list -f '{{.ImportPath}} {{join .TestImports " "}} {{join .XTestImports " "}}' ./cmd/... ./internal/... | grep -vE 'dbtest|apptest' | cut -d' ' -f1)
+
+test-web: ## Typecheck the web console and run its node unit tests
+	cd web && npx tsc --noEmit
+	@for f in $$(find web/src -name '*_test.ts' | sort); do node --experimental-strip-types $$f >/dev/null || { echo "FAIL $$f"; exit 1; }; done; echo "web tests ok"
 
 test-containers: ## Run only the real-container tests and fail if Podman is missing
 	SILO_REQUIRE_CONTAINERS=1 $(GO) test ./internal/app -run 'TestContainer' -count=1 -v

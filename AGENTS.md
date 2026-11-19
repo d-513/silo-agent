@@ -41,7 +41,9 @@ This file is the map of how things work and what must not be broken. Each sectio
 | `make test-integration` / `make e2e` | Need the user's running stack; real tokens / Playwright |
 | `make proto` | `buf generate` (Go + TS) after a `.proto` change, then rebuild the CP and whatever uses that proto (worker, drive sidecar, egress gateway). iOS stubs: `buf generate --template buf.gen.swift.yaml` |
 | `make cleanup` / `make clean-images` | `podman rm -f` every `silo-*` container / remove the local images |
-| `make cp-image` | The control plane's own image (`cpimage/`: built inside the image with cgo, context narrowed by `cpimage/Containerfile.dockerignore`, not the root `.containerignore`; its builder needs about 4 GB). Deployment rules (same-path data mount, the socket, uid 1000): docs/CONFIGURATION.md § Running the control plane in a container |
+| `make web-build` / `make build-cp-ui` | The console's production bundle into `internal/webui/dist` (ignored by git) / `bin/silo` with it compiled in (`-tags webui`). Dev builds carry no console and use Vite |
+| `make test-unit` / `make test-web` | What CI's Checks run (`.github/workflows/checks.yml`): the Go packages that need no database, and the web typecheck with its node tests. `images.yml` publishes the five images on a push to `master` (`:master-<sha>`, `:master`) and on a `v*` tag (`:vX.Y.Z`, `:latest` for the highest full release); DEVELOPMENT.md § Releases |
+| `make cp-image` | The control plane's own image, console included (`cpimage/`: built inside the image with cgo, context narrowed by `cpimage/Containerfile.dockerignore`, not the root `.containerignore`; its builder needs about 4 GB). Deployment rules (same-path data mount, the socket, uid 1000): docs/CONFIGURATION.md § Running the control plane in a container |
 | `make release VERSION=vX.Y.Z` / `make nightly` | Push the four images to `ghcr.io/d-513` under that tag (`master-<sha>` for a nightly) and build a `bin/silo` that runs them. The only builds that are not dev; see Images below |
 
 - **cgo:** the CP and the tests build with cgo (`CGO_ENABLED=1`, the Makefile default: libopus for calls). Anything that runs in a container is `CGO_ENABLED=0` (the Makefile targets and `apptest` pin it): a cgo binary built on this NixOS host links the host's glibc loader, which no image has.
@@ -774,6 +776,7 @@ Pinned by `feature_hardening_test.go`. The console's origin is where a signed-in
 
 pnpm + React + Tailwind in `web/`, ConnectRPC to the CP plus WebSockets. DESIGN.md is the look; DEVELOPMENT.md § Web bundle is the chunking rule (only the chat is in the first load; every other page is lazy).
 
+- **In a release the control plane serves the console itself** (`internal/webui`, build tag `webui`: `web/`'s bundle embedded and mounted at `/` in `App.Handler`, under every route the mux does not own). A file that exists is itself (`assets/` cached for good, the rest an hour), any other extensionless path is `index.html` (never cached) so a reload of a deep link opens that page, and a missing file, a path under an API prefix (`apiPrefixes`: a new top-level API path family goes there and in Vite's proxy list) or a non-GET is an error, never the app's HTML (`webui_test.go`; `go test -tags webui ./internal/webui` checks a real bundle after `make web-build`). Without the tag `webui.Handler()` is nil and nothing changes: dev is Vite on `:5173` proxying the API.
 - **No two modules in one folder whose names differ only by case** (`People.tsx` beside `people.ts`). On a case-insensitive disk (macOS) Vite resolves `./People` to the `.ts` first and the import fails at run time, while Linux builds fine. Give the helper its own name (`roster.ts`, `providerJobs.ts`, `changeset.ts`, `mailbox.ts`).
 
 ## Routing
