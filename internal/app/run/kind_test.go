@@ -21,6 +21,9 @@ func TestRequestKind(t *testing.T) {
 		{Request{Origin: &Origin{Subagent: sa}, From: FromLead}, KindSubagent, TriggerLead},
 		{Request{Report: &Report{}}, KindWake, TriggerReport},
 		{Request{Origin: &Origin{Peer: &db.BotMessage{}}, From: FromBot}, KindBot, TriggerBot},
+		{Request{Origin: &Origin{Room: &db.RoomBot{}}, From: FromRoom}, KindRoom, TriggerRoom},
+		// Woken by its subagents in a seat, a Bot answers the room.
+		{Request{Report: &Report{}, Origin: &Origin{Room: &db.RoomBot{}}}, KindRoom, TriggerReport},
 		// A lead woken on a channel answers there: it is that channel's run.
 		{Request{Report: &Report{}, Origin: &Origin{Channel: ch}}, KindChannel, TriggerReport},
 		{Request{Compact: true}, KindCompact, TriggerManual},

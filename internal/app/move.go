@@ -74,6 +74,7 @@ func (a *App) MoveBot(ctx context.Context, req *connect.Request[v1.MoveBotReques
 	if err := a.DB.Model(&db.Bot{}).Where("id = ?", b.ID).Update("space_id", sp.ID).Error; err != nil {
 		return nil, err
 	}
+	a.Rooms.Moved(b.ID, sp.ID)
 	b.SpaceID = sp.ID
 	go a.Skills.Push(b.ID)
 	me := access.User(ctx).ID

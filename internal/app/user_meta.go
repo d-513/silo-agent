@@ -36,6 +36,14 @@ type userMeta struct {
 	Quotes []eventQuote      `json:"quotes,omitempty"`
 	Spoken *spokenMeta       `json:"spoken,omitempty"`
 	Bot    *botFromMeta      `json:"bot,omitempty"`
+	Room   *roomMeta         `json:"room,omitempty"`
+}
+
+// roomMeta marks what a room said, handed to a Bot in its seat (run.RoomFrom):
+// the room's title as it was, and whether the Bot is named in it.
+type roomMeta struct {
+	Title     string `json:"title"`
+	Mentioned bool   `json:"mentioned,omitempty"`
 }
 
 // botFromMeta marks a message another Bot sent (run.BotFrom): its name and
@@ -88,11 +96,14 @@ func (a *App) userMeta(botID string, ex run.Extra) userMeta {
 	if f := ex.Bot; f != nil {
 		um.Bot = &botFromMeta{Name: a.kept(botID, f.Name), For: f.For}
 	}
+	if r := ex.Room; r != nil {
+		um.Room = &roomMeta{Title: a.kept(botID, r.Title), Mentioned: r.Mentioned}
+	}
 	return um
 }
 
 func (um userMeta) encode() string {
-	if len(um.Files) == 0 && len(um.Quotes) == 0 && um.Spoken == nil && um.Bot == nil {
+	if len(um.Files) == 0 && len(um.Quotes) == 0 && um.Spoken == nil && um.Bot == nil && um.Room == nil {
 		return ""
 	}
 	b, err := json.Marshal(um)
@@ -202,6 +213,16 @@ func userTurnText(text string, um userMeta) string {
 			b.WriteString("[Message from the Bot \u201c" + f.Name + "\u201d]\n")
 		}
 	}
+	// A room's messages are many people's and Bots' words: the opening line
+	// says so, and whether the Bot is named in them (prompts/ROOM.md says
+	// what to do with each).
+	if r := um.Room; r != nil {
+		if r.Mentioned {
+			b.WriteString("[New in the room \u201c" + r.Title + "\u201d \u2014 you are mentioned]\n")
+		} else {
+			b.WriteString("[New in the room \u201c" + r.Title + "\u201d]\n")
+		}
+	}
 	// What was said aloud is a transcript, and the reply will be heard: the
 	// marker says both (prompts/VOICE.md tells the model what it means).
 	if sp := um.Spoken; sp != nil {
@@ -268,6 +289,9 @@ func quoteHead(q eventQuote) string {
 func threadAuthor(author string, um userMeta) string {
 	if um.Bot != nil {
 		return um.Bot.Name
+	}
+	if um.Room != nil {
+		return um.Room.Title
 	}
 	return author
 }

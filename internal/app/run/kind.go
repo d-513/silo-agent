@@ -33,6 +33,7 @@ const (
 	KindSubagent   = "subagent"
 	KindWake       = "wake"
 	KindBot        = "bot"
+	KindRoom       = "room"
 	KindCompact    = "compact"
 	KindCommand    = "command"
 	KindQuote      = "quote"
@@ -51,6 +52,9 @@ var Kinds = []Kind{
 	{Name: KindWake, Origin: "subagents", Model: true, Machine: true},
 	// Answering another Bot's message, in this Bot's conversation for it.
 	{Name: KindBot, Origin: "bot", Model: true, Machine: true},
+	// A Bot hearing a room in its seat there, and answering if it has
+	// something to say.
+	{Name: KindRoom, Origin: "room", Model: true, Machine: true},
 	// A manual compaction: a model turn follows only if a message comes in.
 	{Name: KindCompact, Origin: "compact", Model: true},
 	{Name: KindCommand, Origin: "command"},
@@ -81,6 +85,9 @@ func (r Request) Kind() Kind {
 		return kind(KindSubagent)
 	case o.Peer != nil:
 		return kind(KindBot)
+	case o.Room != nil:
+		// A wake in a seat (its subagents' results) still answers the room.
+		return kind(KindRoom)
 	case o.Profile != nil:
 		return kind(KindJob)
 	case o.Automation != nil:
@@ -114,6 +121,7 @@ const (
 	TriggerOnboarding = "onboarding"
 	TriggerLead       = "lead"
 	TriggerBot        = "bot"
+	TriggerRoom       = "room"
 	TriggerReport     = "report"
 	TriggerAutomation = "automation"
 	TriggerManual     = "manual"

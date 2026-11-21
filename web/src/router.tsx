@@ -56,6 +56,8 @@ import { SpaceIndex, SpaceLayout } from "./space/Workspace";
 //     /w/$spaceId/new              New Bot in a Workspace
 //     /w/$spaceId                  the Workspace's settings (opens its first tab):
 //       connectors  skills  drives[/new[/$template]|/$driveId]  people[/invite|/$userId]  rules  activity  settings
+//     /w/$spaceId/rooms/new        a new room in a Workspace
+//     /rooms/$roomId               a room: several Bots and people in one conversation
 //     /account
 //     /admin                       admins only: one tab per page
 //       settings/$section          Settings and its categories
@@ -149,6 +151,8 @@ const spaceRules = createRoute({ getParentRoute: () => space, path: "rules", com
 const spaceActivity = createRoute({ getParentRoute: () => space, path: "activity", component: lazyRouteComponent(() => import("./space/Activity"), "SpaceActivityPage") });
 const spaceSettings = createRoute({ getParentRoute: () => space, path: "settings", component: SpaceSettingsPage });
 const account = createRoute({ getParentRoute: () => authed, path: "account", component: AccountRoute });
+const newRoom = createRoute({ getParentRoute: () => authed, path: "w/$spaceId/rooms/new", component: lazyRouteComponent(() => import("./room/NewRoomPage"), "NewRoomPage") });
+const roomPage = createRoute({ getParentRoute: () => authed, path: "rooms/$roomId", component: lazyRouteComponent(() => import("./room/RoomPage"), "RoomPage") });
 
 // Everything under /admin is one chunk, loaded the first time an admin opens it.
 const adminPage = (
@@ -300,6 +304,8 @@ const routeTree = root.addChildren([
     newBot,
     newSpace,
     spaceNewBot,
+    newRoom,
+    roomPage,
     skills,
     space.addChildren([
       spaceIndex,

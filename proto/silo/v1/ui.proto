@@ -227,6 +227,25 @@ service UI {
   rpc GetTaskboard(GetTaskboardRequest) returns (Taskboard);
   rpc ClearTaskboard(ClearTaskboardRequest) returns (Taskboard);
 
+  // Rooms: a conversation several Bots and people of a Workspace share.
+  // Everyone in a room is on every Bot in it.
+  rpc ListRooms(ListRoomsRequest) returns (ListRoomsResponse);
+  rpc CreateRoom(CreateRoomRequest) returns (Room);
+  rpc GetRoom(GetRoomRequest) returns (Room);
+  rpc UpdateRoom(UpdateRoomRequest) returns (Room);
+  rpc DeleteRoom(DeleteRoomRequest) returns (DeleteRoomResponse);
+  rpc AddRoomBot(RoomBotRequest) returns (Room);
+  rpc RemoveRoomBot(RoomBotRequest) returns (Room);
+  rpc AddRoomPerson(RoomPersonRequest) returns (Room);
+  // RemoveRoomPerson takes someone out; the caller's own id leaves.
+  rpc RemoveRoomPerson(RoomPersonRequest) returns (RemoveRoomPersonResponse);
+  rpc PostRoomMessage(PostRoomMessageRequest) returns (RoomMessage);
+  // StreamRoom replays the newest messages (or those after after_seq), then
+  // sends what is said and what each Bot is doing as it happens.
+  rpc StreamRoom(StreamRoomRequest) returns (stream RoomEvent);
+  // StopRoom stops every Bot's work in the room.
+  rpc StopRoom(StopRoomRequest) returns (StopRoomResponse);
+
   rpc ListSecrets(ListSecretsRequest) returns (ListSecretsResponse);
   rpc AddSecret(AddSecretRequest) returns (SecretMeta);
   // UpdateSecret changes a secret's name, value, mode or allowed hosts. Only
@@ -2028,6 +2047,10 @@ message Chat {
   // conversation per sending Bot and person (message_bot). It is read-only to
   // people. "" for every other chat.
   string from_bot = 12;
+  // room_id and room_title: the chat is the Bot's seat in a room. People
+  // talk in the room; the seat is read-only.
+  string room_id = 13;
+  string room_title = 14;
 }
 
 message ModelOption {
@@ -2444,6 +2467,115 @@ message StopSubagentRequest {
 }
 
 message StopSubagentResponse {}
+
+// Room is a conversation several Bots and people of one Workspace share.
+message Room {
+  string id = 1;
+  string space_id = 2;
+  string title = 3;
+  // reply_mode: "decide" (every Bot hears a person's message and answers
+  // if it has something to add) or "mentions" (only the Bots it names).
+  string reply_mode = 4;
+  repeated RoomBot bots = 5;
+  repeated RoomPerson people = 6;
+  string updated_at = 7;
+  // unread is how many messages the caller has not been shown.
+  int64 unread = 8;
+  // last_message is the newest message as one line, last_author its writer.
+  string last_message = 9;
+  string last_author = 10;
+  string last_at = 11;
+  // can_delete: the caller made the room or administers its Workspace.
+  bool can_delete = 12;
+}
+
+message RoomBot {
+  string bot_id = 1;
+  string name = 2;
+  int32 crest = 3;
+  // chat_id is the Bot's seat; set only for a caller who manages the Bot,
+  // who may open it to see the work behind the Bot's messages.
+  string chat_id = 4;
+  // working: the Bot has a run going in its seat; step is the tool it is
+  // using, "" while it thinks.
+  bool working = 5;
+  string step = 6;
+  // needs_you: that run waits on an approval the caller may answer.
+  bool needs_you = 7;
+}
+
+message RoomPerson {
+  string user_id = 1;
+  string email = 2;
+  bool me = 3;
+}
+
+message RoomMessage {
+  string id = 1;
+  string room_id = 2;
+  int64 seq = 3;
+  // kind: "message", or "notice" for a line Silo wrote (who joined, why the
+  // Bots wait).
+  string kind = 4;
+  string user_id = 5;
+  string bot_id = 6;
+  string author = 7;
+  string body = 8;
+  // mentions are the ids of the Bots the message names.
+  repeated string mentions = 9;
+  string created_at = 10;
+  bool mine = 11;
+}
+
+// RoomEvent is one thing a room's stream sends: a message, a Bot's state, or
+// the room as it now stands (people or Bots came or went). earlier opens a
+// replay that left older messages out.
+message RoomEvent {
+  RoomMessage message = 1;
+  RoomBot bot = 2;
+  Room room = 3;
+  bool earlier = 4;
+}
+
+message ListRoomsRequest { string space_id = 1; }
+message ListRoomsResponse { repeated Room rooms = 1; }
+message CreateRoomRequest {
+  string space_id = 1;
+  string title = 2;
+  repeated string bot_ids = 3;
+  repeated string user_ids = 4;
+}
+message GetRoomRequest { string room_id = 1; }
+message UpdateRoomRequest {
+  string room_id = 1;
+  optional string title = 2;
+  optional string reply_mode = 3;
+}
+message DeleteRoomRequest { string room_id = 1; }
+message DeleteRoomResponse {}
+message RoomBotRequest {
+  string room_id = 1;
+  string bot_id = 2;
+}
+message RoomPersonRequest {
+  string room_id = 1;
+  string user_id = 2;
+}
+message RemoveRoomPersonResponse {
+  // room is the room as it stands, unset when the caller left it (or it
+  // is gone: the last person left).
+  Room room = 1;
+}
+message PostRoomMessageRequest {
+  string room_id = 1;
+  string text = 2;
+}
+message StreamRoomRequest {
+  string room_id = 1;
+  int64 after_seq = 2;
+}
+message StopRoomRequest { string room_id = 1; }
+message StopRoomResponse {}
 
 message TaskItem {
   int32 n = 1;

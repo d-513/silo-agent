@@ -508,6 +508,14 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 	}
 
 	kind, profile := req.Kind(), profileOf(origin)
+	// firstTurn tells whoever waits on the first model turn (a room handing the
+	// floor on) that it has ended, once; a run that ends before one tells it
+	// on the way out.
+	firstTurn := func() {}
+	if origin != nil && origin.Turned != nil {
+		firstTurn = sync.OnceFunc(origin.Turned)
+		defer firstTurn()
+	}
 	// The model calls made for the run from here on are kept with it.
 	ctx = models.InRun(ctx, runID)
 	// label names the run's model calls in the LLM debug log.
@@ -702,6 +710,7 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 				return
 			}
 			a.Emit(botID, chatID, runID, "error", err.Error(), "")
+			firstTurn()
 			// A message that came in while the turn failed is answered in
 			// this run, like one that came in while a reply was written:
 			// the inbox already took it, so no other run will.
@@ -730,6 +739,7 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 				}
 				a.emitDelivered(botID, chatID, runID, kind, res.tail, origin)
 			}
+			firstTurn()
 			if a.closeInbox(lr, runID) {
 				a.finish(botID, chatID, runID, "done")
 				return
@@ -750,6 +760,9 @@ func (a *App) runLoop(ctx context.Context, req run.Request, runID string, lr *li
 		for _, sec := range res.sections {
 			a.emitDelivered(botID, chatID, runID, "section_live", sec, origin)
 		}
+		// Working on it with tools: whoever waits on the turn need not wait
+		// for the tools too.
+		firstTurn()
 		// The turn is kept as the log stores it (secrets masked), so the next
 		// run replays these very bytes; the calls run with what the model wrote.
 		turn := res.assistant
@@ -1008,4 +1021,20 @@ func (a *App) startOrInjectLocked(botID, chatID, text string, ex run.Extra, orig
 		}
 	}
 	return a.StartRun(run.Request{BotID: botID, ChatID: chatID, Text: text, Extra: ex, Origin: origin})
+}
+
+// StartOrSteer hands req's message to the conversation's live run, or starts
+// one with it, under the conversation lock; started says which.
+func (a *App) StartOrSteer(req run.Request) (string, bool, error) {
+	defer a.lockConv(req.ChatID)()
+	if runID := a.LiveRunID(req.BotID, req.ChatID); runID != "" {
+		if a.inject(req.BotID, req.ChatID, runID, req.Text, req.Extra, req.From) {
+			return runID, false, nil
+		}
+		if a.LiveRunID(req.BotID, req.ChatID) != "" {
+			return "", false, run.ErrBusy
+		}
+	}
+	runID, err := a.StartRun(req)
+	return runID, err == nil, err
 }

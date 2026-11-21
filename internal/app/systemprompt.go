@@ -57,6 +57,8 @@ type promptContext struct {
 	subagent *db.Subagent
 	// peer is set when this run answers another Bot's message.
 	peer *db.BotMessage
+	// room is set when this run is a Bot's in its seat in a room.
+	room *db.RoomBot
 	// drives are the Bot's saved drives (mounted under /workspace/drives).
 	drives []db.Drive
 	// knowledge are the Bot's indexed folders (search_docs).
@@ -86,6 +88,7 @@ func (a *App) promptProviders() []promptProvider {
 		a.automationSections,
 		a.subagentSections,
 		a.botMessageSections,
+		a.roomSections,
 	}
 }
 
@@ -325,8 +328,18 @@ func (a *App) promptContext(botID string, bot *db.Bot, origin *run.Origin) promp
 		pc.automation = origin.Automation
 		pc.subagent = origin.Subagent
 		pc.peer = origin.Peer
+		pc.room = origin.Room
 	}
 	return pc
+}
+
+// roomSections is the note of a run in a room seat: who is there and when to
+// answer. It is the conversation's, after the last cache breakpoint.
+func (a *App) roomSections(pc promptContext) []promptSection {
+	if pc.room == nil {
+		return nil
+	}
+	return []promptSection{{title: "This conversation", body: a.Rooms.Prompt(pc.room, prompts.Room), trailing: true}}
 }
 
 // knowledgeSections lists the indexed folders for the session tier.

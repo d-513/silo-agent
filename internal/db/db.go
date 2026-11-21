@@ -284,6 +284,10 @@ type Chat struct {
 	// one per sending Bot and person (UserID, "" for the sending Bot's own
 	// runs). People read it; only the sending Bot writes in it.
 	PeerBotID string `gorm:"index;not null;default:''"`
+	// RoomID marks a Bot's seat in a room (RoomBot.ChatID): what the room
+	// says reaches the Bot here, and its replies here are posted there.
+	// People talk in the room, never in the seat.
+	RoomID string `gorm:"index;not null;default:''"`
 	// Main marks a person's main chat on the Bot (one each): where its page
 	// opens for them, where replies to what the Bot made go when they press
 	// them, and where it asks things while it has one person. It cannot be
@@ -930,6 +934,64 @@ type BotMessage struct {
 	FinishedAt *time.Time
 }
 
+// Room is a conversation several Bots and people of one Workspace share. The
+// room's own transcript is RoomMessage; each Bot hears it in its seat
+// (RoomBot.ChatID), a chat of its own, so its context, tools and rules stay
+// its own. Everyone in a room is on every Bot in it.
+type Room struct {
+	ID        string `gorm:"primaryKey"`
+	SpaceID   string `gorm:"index;not null"`
+	Title     string `gorm:"not null;default:''"`
+	CreatedBy string `gorm:"not null;default:''"`
+	// ReplyMode is who answers a person's message: "decide" (every Bot,
+	// each choosing whether it has something to add) or "mentions" (only
+	// the Bots it names).
+	ReplyMode string `gorm:"not null;default:'decide'"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// RoomPerson is a person in a room. ReadSeq is the newest message they have
+// been shown.
+type RoomPerson struct {
+	RoomID  string `gorm:"primaryKey"`
+	UserID  string `gorm:"primaryKey;index"`
+	ReadSeq int64  `gorm:"not null;default:0"`
+	AddedAt time.Time
+}
+
+// RoomBot is a Bot's seat in a room: ChatID is its chat there, SeenSeq the
+// newest room message handed to it.
+type RoomBot struct {
+	RoomID  string `gorm:"primaryKey"`
+	BotID   string `gorm:"primaryKey;index"`
+	ChatID  string `gorm:"not null;index"`
+	SeenSeq int64  `gorm:"not null;default:0"`
+	AddedBy string `gorm:"not null;default:''"`
+	AddedAt time.Time
+}
+
+// RoomMessage is one line of a room's transcript: a person's message
+// (UserID), a Bot's (BotID, RunID in its seat), or a notice Silo wrote
+// (kind notice: who joined, why the Bots wait), which no Bot is handed.
+type RoomMessage struct {
+	ID     string `gorm:"primaryKey"`
+	RoomID string `gorm:"index:room_messages_room_seq,priority:1;not null"`
+	Seq    int64  `gorm:"autoIncrement;uniqueIndex;index:room_messages_room_seq,priority:2"`
+	Kind   string `gorm:"not null;default:'message'"`
+	UserID string `gorm:"not null;default:''"`
+	BotID  string `gorm:"not null;default:''"`
+	RunID  string `gorm:"not null;default:''"`
+	// Author is the writer's name as it was (an email, a Bot's name),
+	// frozen so a rename does not rewrite what was said.
+	Author string `gorm:"not null;default:''"`
+	Body   string `gorm:"not null;default:''"`
+	// Mentions are the ids of the room's Bots the message names (@Name),
+	// comma-separated, read when it was written.
+	Mentions  string `gorm:"not null;default:''"`
+	CreatedAt time.Time
+}
+
 // TaskItem is one line on a chat's Taskboard. The board belongs to the lead
 // chat and is shared with its subagents; Assignee is the [NAME] prefix.
 type TaskItem struct {
@@ -1142,6 +1204,7 @@ func Models() []any {
 		&Chat{}, &Run{}, &RunEvent{}, &Approval{}, &AuditEvent{}, &LLMLog{},
 		&Connector{}, &BotConnector{}, &BotSkill{}, &Channel{}, &CatalogSeed{},
 		&Memory{}, &MemoryDigest{}, &DesktopPause{}, &Automation{}, &FeedPost{}, &DashboardCard{}, &SetupOffer{}, &DashboardWidget{}, &Subagent{}, &BotMessage{}, &TaskItem{},
+		&Room{}, &RoomPerson{}, &RoomBot{}, &RoomMessage{},
 		&Drive{}, &BotDrive{}, &DriveHost{}, &DriveChange{},
 		&KnowledgeFolder{}, &KnowledgeSource{}, &KnowledgeChunk{},
 		&Tunnel{}, &TunnelGrant{},

@@ -30,6 +30,7 @@ Workspaces are on iOS too: the switcher on the sidebar's Workspace row (and New 
 
 Not decisions, just not done yet:
 
+- Rooms (several Bots and people in one conversation): the RPCs are there; iOS has no list, page or composer for them yet.
 - Secrets: surrogate mode, hosts, rotate.
 - Rules: the Network card. Audit: the Traffic tab.
 - Channels: Setup and Log.

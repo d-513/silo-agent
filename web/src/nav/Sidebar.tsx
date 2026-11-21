@@ -17,6 +17,7 @@ import { canBuild, useCurrentSpace } from "../space/spaces";
 import { SpaceSwitch } from "../space/SpaceTile";
 import { botLook, botNow, crestState } from "../statusLook";
 import { Tip, TipTitle } from "../Tip";
+import { RoomList } from "../room/RoomList";
 import { byLastMessage, shortWhen } from "./botOrder";
 import { AccountControls, hit, type Page } from "./chrome";
 import { closeNav } from "./navStore";
@@ -24,9 +25,9 @@ import { closeNav } from "./navStore";
 // Sidebar is the wide layout's left column, on every signed-in page: Silo,
 // the Workspace the console is in (its name opens the switcher, the gear its
 // settings), that Workspace's Bots as a list of conversations (the newest
-// message first, each with its Call), and the account at the foot. Below 960
+// message first, each with its Call), its rooms, and the account at the foot. Below 960
 // it is the left sheet (NavSheet), at the sheet's width.
-export function Sidebar({ page, activeBotId, className = "w-[280px]" }: { page: Page; activeBotId?: string; className?: string }) {
+export function Sidebar({ page, activeBotId, activeRoomId, className = "w-[280px]" }: { page: Page; activeBotId?: string; activeRoomId?: string; className?: string }) {
   const { bots, callEnabled } = useBots();
   const { space, spaces } = useCurrentSpace();
   const { pathname } = useLocation();
@@ -77,6 +78,7 @@ export function Sidebar({ page, activeBotId, className = "w-[280px]" }: { page: 
             {space && canBuild(space.role) ? t("No Bots here yet. Make one with the plus above.") : t("You are not on any Bot in this workspace yet.")}
           </p>
         ) : null}
+        {space && here.length > 0 ? <RoomList spaceId={space.id} activeRoomId={activeRoomId} newOn={pathname === `/w/${space.id}/rooms/new`} /> : null}
       </nav>
       <div className="flex shrink-0 items-center gap-0.5 p-2 shadow-[inset_0_1px_0_var(--color-line)]">
         <AccountControls page={page} />

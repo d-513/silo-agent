@@ -433,6 +433,7 @@ func (a *App) dropBot(ctx context.Context, b *db.Bot) {
 	a.Memory.DropDigest(b.ID)
 	a.Knowledge.Drop(b.ID)
 	a.Changes.Drop(b.ID)
+	a.Rooms.DropBot(b.ID)
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Chat{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.Automation{})
 	a.DB.Where("bot_id = ?", b.ID).Delete(&db.FeedPost{})

@@ -20,7 +20,10 @@ func (h spaceHost) DropBot(ctx context.Context, botID string) {
 	}
 }
 
-func (h spaceHost) AccessEnded(botID, userID string) { h.a.Gone.End(botID, userID) }
+func (h spaceHost) AccessEnded(botID, userID string) {
+	h.a.Gone.End(botID, userID)
+	h.a.Rooms.LostBot(botID, userID)
+}
 
 func (h spaceHost) NewUser(tx *gorm.DB, email, password string) (*db.User, error) {
 	return h.a.Accounts.NewUser(tx, email, password)

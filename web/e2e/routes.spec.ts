@@ -148,6 +148,11 @@ test("every route loads, stays put, and lights its place", async ({ page }) => {
     await expect(page.getByText(/sftp/i).first()).toBeVisible();
     await page.goto(`${workspace}/drives/nope`);
     await expect(page.getByText("That drive is gone.")).toBeVisible();
+    // A new room is a page of its own; a room that is not there says so.
+    await page.goto(`${workspace}/rooms/new`);
+    await expect(page.getByRole("heading", { name: "New room" })).toBeVisible();
+    await page.goto("/rooms/nope");
+    await expect(page.getByText("This room is not open to you")).toBeVisible();
     await page.goto("/account");
     await expect(page).toHaveURL(/\/account$/);
 

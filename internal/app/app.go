@@ -42,6 +42,7 @@ import (
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/pause"
 	"silo.agent/internal/app/proactivity"
+	"silo.agent/internal/app/room"
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/runlog"
 	"silo.agent/internal/app/setup"
@@ -295,7 +296,9 @@ type App struct {
 	Artifacts   *artifact.Service
 	Pause       *pause.Service
 	// Spaces is Workspaces: the containers of Bots and their people.
-	Spaces      *space.Service
+	Spaces *space.Service
+	// Rooms are conversations several Bots and people share.
+	Rooms       *room.Service
 	Proactivity *proactivity.Service
 	Setup       *setup.Service
 	// Slash is the slash commands a human types in a conversation.
@@ -353,6 +356,8 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Spaces.OnDelete(a.Skills.DropSpace)
 	a.Spaces.OnDelete(a.Connectors.DropSpace)
 	a.Spaces.OnDelete(a.Drives.DropSpace)
+	a.Rooms = room.New(a.DB, a)
+	a.Spaces.OnDelete(a.Rooms.DropSpace)
 	a.Spaces.Lend("connector", a.Connectors)
 	a.Spaces.Lend("drive", a.Drives)
 	a.Setup = setup.New(a.DB, a)

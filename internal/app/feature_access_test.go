@@ -163,6 +163,8 @@ func TestEveryRPCChecksAccess(t *testing.T) {
 			want = []string{access.NoSpace}
 		case access.SpaceOrBot:
 			want = []string{access.NoBot, access.NoSpace}
+		case access.RoomMember:
+			want = []string{access.NoRoom}
 		case access.InstanceAdmin:
 			want = []string{}
 		default:

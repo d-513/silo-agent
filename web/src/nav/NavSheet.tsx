@@ -15,7 +15,7 @@ import { Sidebar } from "./Sidebar";
 // Whatever top bar the page has opens it with NavButton; a swipe in from the
 // left edge pulls it out.
 
-export function NavSheet({ page, activeBotId }: { page: Page; activeBotId?: string }) {
+export function NavSheet({ page, activeBotId, activeRoomId }: { page: Page; activeBotId?: string; activeRoomId?: string }) {
   const shown = useNavOpen();
   const { pathname } = useLocation();
   // Any move to another page puts it away.
@@ -27,7 +27,7 @@ export function NavSheet({ page, activeBotId }: { page: Page; activeBotId?: stri
   return (
     <Sheet side="left" open={shown} edge label={t("Bots")} onOpen={openNav} onClose={closeNav}>
       <div className="flex min-h-0 flex-1" onClickCapture={onClick}>
-        <Sidebar page={page} activeBotId={activeBotId} className="min-w-0 flex-1" />
+        <Sidebar page={page} activeBotId={activeBotId} activeRoomId={activeRoomId} className="min-w-0 flex-1" />
       </div>
     </Sheet>
   );

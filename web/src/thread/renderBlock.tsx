@@ -13,6 +13,7 @@ import { OfferGroup } from "../setup/OfferCard";
 import { ThreadCard } from "./ThreadCard";
 import { ToolInput, ToolResult, ToolRow } from "./ToolRow";
 import { t } from "../i18n.ts";
+import { isPass, passSoFar } from "../room/roomText.ts";
 
 // Everything a block needs to know about the thread it sits in.
 export type BlockCtx = {
@@ -182,6 +183,9 @@ export function renderBlock(b: Block, c: BlockCtx): ReactNode {
     return <ArtifactUpdateRow title={b.title} version={b.version} />;
   }
   if (b.type === "assistant") {
+    // A Bot in a room that had nothing to add (prompts/ROOM.md): nothing was
+    // posted, and the marker is no reply to show.
+    if (b.streaming ? passSoFar(b.text) : isPass(b.text)) return b.streaming ? null : <p className="text-meta leading-[18px] text-ink-3">{t("Stayed quiet: nothing to add in the room.")}</p>;
     return <Reply text={b.text} bounds={b.bounds} streaming={b.streaming} onRetry={b.key === c.lastAssistantKey ? c.retry : undefined} speak={c.speech ? c.botId : undefined} />;
   }
   const onRetry = b.key === c.failedKey ? c.onRetryFailed : undefined;

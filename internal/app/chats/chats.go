@@ -32,7 +32,17 @@ func Proto(ctx context.Context, gdb *gorm.DB, c *db.Chat) *v1.Chat {
 	if c.PeerBotID != "" {
 		out.FromBot = botName(gdb, c.PeerBotID)
 	}
+	if c.RoomID != "" {
+		out.RoomId, out.RoomTitle = c.RoomID, roomTitle(gdb, c.RoomID)
+	}
 	return out
+}
+
+// roomTitle is a room's title, "" for one since deleted.
+func roomTitle(gdb *gorm.DB, roomID string) string {
+	var r db.Room
+	gdb.Select("title").Where("id = ?", roomID).Limit(1).Find(&r)
+	return r.Title
 }
 
 // botName is a Bot's name; a Bot since deleted reads as "another Bot".
@@ -89,14 +99,15 @@ func New(gdb *gorm.DB, botID, userID, title string) (*db.Chat, error) {
 }
 
 // Web reports whether c is a conversation the owner reads in Silo: not an
-// automation's or a subagent's log, not a channel conversation.
+// automation's or a subagent's log, not a channel conversation, not a Bot's
+// seat in a room (people read the room, not the seat).
 func Web(c *db.Chat) bool {
-	return c != nil && c.ID != "" && c.AutomationID == "" && c.SubagentID == "" && c.ChannelID == ""
+	return c != nil && c.ID != "" && c.AutomationID == "" && c.SubagentID == "" && c.ChannelID == "" && c.RoomID == ""
 }
 
 // WebScope keeps the rows Web would: the SQL form of the same test.
 func WebScope(q *gorm.DB) *gorm.DB {
-	return q.Where("(channel_id = '' OR channel_id IS NULL) AND (automation_id = '' OR automation_id IS NULL) AND (subagent_id = '' OR subagent_id IS NULL)")
+	return q.Where("(channel_id = '' OR channel_id IS NULL) AND (automation_id = '' OR automation_id IS NULL) AND (subagent_id = '' OR subagent_id IS NULL) AND (room_id = '' OR room_id IS NULL)")
 }
 
 // Put writes one event into a chat outside any live run: in a finished run
@@ -162,6 +173,8 @@ func Source(gdb *gorm.DB, chatID string) (kind, name string) {
 		return "subagent", c.Title
 	case c.PeerBotID != "":
 		return "bot", botName(gdb, c.PeerBotID)
+	case c.RoomID != "":
+		return "room", roomTitle(gdb, c.RoomID)
 	}
 	title := c.Title
 	if Untitled(title) {
@@ -184,6 +197,8 @@ func SourceLabel(kind, name string) string {
 		return "subagent “" + name + "”"
 	case "bot":
 		return "the Bot “" + name + "”"
+	case "room":
+		return "room “" + name + "”"
 	}
 	return ""
 }

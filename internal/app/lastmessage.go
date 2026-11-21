@@ -24,14 +24,15 @@ const snippetMax = 160
 // lastMessage is the newest thing said in the conversations userID reads on
 // the Bot in Silo: their own chats and, for a manager, the Bot's own (a
 // channel, a mail wake). An automation's or a subagent's log is work, not a
-// conversation, and someone else's chat is theirs. A message is what a
+// conversation, someone else's chat is theirs, and a seat in a room is the
+// room's (its row has the room's own last line). A message is what a
 // person typed or the Bot's reply; a brief, a quoted mail and the interview's
 // opening turn (user events with a sender tag) are not.
 //
 // It looks only at the few chats that moved last and their newest runs, so
 // it stays three small indexed reads however long the history is.
 func (a *App) lastMessage(botID, userID string, manager bool) lastSaid {
-	q := a.DB.Model(&db.Chat{}).Where("bot_id = ? AND COALESCE(automation_id, '') = '' AND COALESCE(subagent_id, '') = ''", botID)
+	q := a.DB.Model(&db.Chat{}).Where("bot_id = ? AND COALESCE(automation_id, '') = '' AND COALESCE(subagent_id, '') = '' AND COALESCE(room_id, '') = ''", botID)
 	if manager {
 		q = q.Where("user_id IN ?", []string{userID, ""})
 	} else {

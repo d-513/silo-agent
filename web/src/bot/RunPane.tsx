@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Square } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ui } from "../api";
@@ -100,7 +101,7 @@ export function RunPane({
   // The last reply failed: Retry answers it again, from the error row or
   // the send button. Only whoever writes in the chat retries.
   const retry =
-    chatId && !run.sending && (chat?.mine ?? true) && !chat?.fromBot && lastReplyFailed(run.events) ? () => void actions.retryRun() : undefined;
+    chatId && !run.sending && (chat?.mine ?? true) && !chat?.fromBot && !chat?.roomId && lastReplyFailed(run.events) ? () => void actions.retryRun() : undefined;
   const composer = (
     <Composer
       text={draft.text}
@@ -206,10 +207,17 @@ export function RunPane({
           {t("{{name}}'s managers can read this chat. What you tell {{name}}, it may remember for everyone who uses it.", { name: bot.name })}
         </p>
       ) : null}
-      {chat && (!chat.mine || chat.fromBot) ? (
+      {chat && (!chat.mine || chat.fromBot || chat.roomId) ? (
         <div className="mx-auto mb-4 flex w-full max-w-[760px] items-center gap-3 rounded-card bg-well px-4 py-3">
           <p className="min-w-0 flex-1 text-small leading-5 text-ink-3">
-            {chat.fromBot
+            {chat.roomId ? (
+              <>
+                {t("{{name}}'s seat in the room {{room}}: what the room says reaches it here, and what it writes here is posted there. Talk to it in the room.", { name: bot.name, room: chat.roomTitle })}{" "}
+                <Link to="/rooms/$roomId" params={{ roomId: chat.roomId }} className="text-cobalt hover:text-cobalt-deep">
+                  {t("Open the room")}
+                </Link>
+              </>
+            ) : chat.fromBot
               ? t("{{bot}} hands {{name}} work here, and gets its replies. You can read it and stop it; only {{bot}} writes in it.", { bot: chat.fromBot, name: bot.name })
               : chat.author
                 ? t("{{who}}'s chat. You can read it and stop it; only {{who}} writes in it.", { who: chat.author })

@@ -105,6 +105,12 @@ var MemoryDigest string
 //go:embed SUBAGENT.md
 var Subagent string
 
+// Room is the per-run note for a Bot in its seat in a room: who is there,
+// and when to answer.
+//
+//go:embed ROOM.md
+var Room string
+
 // BotMessage is the per-run note for a run that answers another Bot's
 // message. {{FROM}} is the sending Bot's name, {{FOR}} whom it asks for.
 //

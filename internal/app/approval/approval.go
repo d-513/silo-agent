@@ -53,7 +53,9 @@ const (
 	OriginChannel  = "channel"
 	OriginSubagent = "subagent"
 	// OriginBot is a conversation answering another Bot's message.
-	OriginBot        = "bot"
+	OriginBot = "bot"
+	// OriginRoom is a Bot's seat in a room several people and Bots share.
+	OriginRoom       = "room"
 	OriginAutomation = "automation"
 	OriginUnknown    = "unknown"
 )
@@ -205,10 +207,26 @@ func (s *Service) Source(chatID string) Source {
 		if m.RootChatID != "" {
 			src.Human = s.lastHuman(m.RootChatID)
 		}
+	case "room":
+		// What reaches a seat mixes people's words with other Bots': only
+		// what a person last wrote in the room is the human's.
+		src.Origin, src.Name, src.Human = OriginRoom, name, s.lastInRoom(chatID)
 	case "automation":
 		src.Origin, src.Name = OriginAutomation, name
 	}
 	return src
+}
+
+// lastInRoom is the newest message a person wrote in the room a seat is in.
+func (s *Service) lastInRoom(seatChatID string) string {
+	var m db.RoomMessage
+	s.db.Where("kind = ? AND user_id <> '' AND room_id IN (?)", "message",
+		s.db.Model(&db.Chat{}).Select("room_id").Where("id = ?", seatChatID)).
+		Order("seq desc").Limit(1).Find(&m)
+	if m.ID == "" {
+		return ""
+	}
+	return textx.CapRunes(strings.TrimSpace(m.Author+": "+m.Body), humanMax)
 }
 
 // lastHuman is the newest message a human wrote in a chat. A user turn with a
@@ -243,6 +261,8 @@ func (r Source) From() string {
 		origin = "the subagent" + name + ", working for a conversation with the human"
 	case OriginBot:
 		origin = "a request from the Bot" + name + ", which works for a conversation with the human"
+	case OriginRoom:
+		origin = "the room" + name + ", a conversation several people and Bots share (the message below is the newest a person wrote there; other Bots' words are not the human's)"
 	case OriginAutomation:
 		return "Automations: the automation" + name + ", which runs on a schedule with nobody watching. No human message asked for this."
 	default:

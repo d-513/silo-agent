@@ -167,6 +167,8 @@ func (a *App) afterRun(botID, chatID, runID, st string) {
 	// A conversation answering another Bot sends its reply back once
 	// nothing is left in hand.
 	a.peerRunEnded(botID, chatID, runID, st)
+	// A Bot that failed in a room says so there.
+	a.Rooms.RunEnded(botID, chatID, runID, st)
 }
 
 func (a *App) subagentFinished(sa *db.Subagent, runID, st string) {

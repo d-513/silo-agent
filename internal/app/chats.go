@@ -36,6 +36,9 @@ func writableChat(c *db.Chat) error {
 	if c.PeerBotID != "" {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("this conversation answers another Bot and is read-only; only that Bot writes in it"))
 	}
+	if c.RoomID != "" {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("this is the Bot's seat in a room and is read-only; talk in the room"))
+	}
 	return nil
 }
 

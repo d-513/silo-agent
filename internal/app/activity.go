@@ -106,6 +106,23 @@ func (a *App) pendingFor(botID, userID string, manager bool) (map[string]paused,
 	return out, needsYou
 }
 
+// RunStep is what a conversation's live run is doing: whether there is one,
+// and the tool it is in ("" while it thinks).
+func (a *App) RunStep(botID, chatID string) (bool, string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, lr := range a.runs {
+		if lr.botID == botID && lr.chatID == chatID {
+			return true, lr.step
+		}
+	}
+	return false, ""
+}
+
+// KeptText is text as a Bot's run log keeps it (kept): secrets masked, valid
+// UTF-8.
+func (a *App) KeptText(botID, s string) string { return a.kept(botID, s) }
+
 // NeedsYou says a run of a chat, or of a subagent it leads, is paused on an
 // approval this person may answer.
 func (a *App) NeedsYou(botID, chatID, userID string) bool {

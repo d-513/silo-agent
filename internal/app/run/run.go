@@ -35,6 +35,14 @@ type Origin struct {
 	// Peer is set when the run answers another Bot's message in this Bot's
 	// conversation for that Bot (message_bot). Its final reply goes back.
 	Peer *db.BotMessage
+	// Room is set when the run is a Bot's in its seat in a room: what it
+	// writes is posted to the room (Deliver), and its prompt says who is
+	// there.
+	Room *db.RoomBot
+	// Turned is called once, when the run's first model turn has ended (it
+	// answered, stayed quiet, called tools or failed) or the run ended before
+	// one: a room hands the floor to the next Bot then. nil when nobody waits.
+	Turned func()
 }
 
 // Profile narrows a run to one background job: a prompt of its own in place
@@ -71,6 +79,15 @@ type Extra struct {
 	// Bot marks a message another Bot sent (message_bot): who sent it and for
 	// whom.
 	Bot *BotFrom
+	// Room marks what a room said, handed to a Bot in its seat.
+	Room *RoomFrom
+}
+
+// RoomFrom is the room a Bot is handed messages from: its title as it was,
+// and whether the messages name the Bot (it must answer then).
+type RoomFrom struct {
+	Title     string
+	Mentioned bool
 }
 
 // BotFrom is the sender of a message from another Bot: its name, and the
@@ -119,6 +136,9 @@ const (
 	FromLead = "lead"
 	// FromBot is a message from another Bot of the Workspace (message_bot).
 	FromBot = "bot"
+	// FromRoom is what a room said, handed to a Bot in its seat: people's
+	// and other Bots' words, never one person's request on its own.
+	FromRoom = "room"
 )
 
 // ErrBusy is what StartIfIdle returns when the conversation already has a live
@@ -174,6 +194,10 @@ type Engine interface {
 	// StartOrInject steers a live run for the conversation with the message,
 	// or starts a new one: the single entry point for chats and channels.
 	StartOrInject(botID, chatID, text string, ex Extra, origin *Origin) (string, error)
+	// StartOrSteer is StartOrInject for a whole request (its sender
+	// included): started says a new run began, rather than the message
+	// going into the live one.
+	StartOrSteer(req Request) (runID string, started bool, err error)
 	// StartIfIdle starts a run only when the conversation has no live one,
 	// otherwise it returns ErrBusy: a scheduled firing is skipped, never queued.
 	StartIfIdle(Request) (string, error)

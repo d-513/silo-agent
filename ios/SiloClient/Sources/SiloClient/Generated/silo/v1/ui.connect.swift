@@ -86,6 +86,12 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `checkOidc`(request: Silo_V1_CheckOIDCRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_CheckOIDCResponse>
 
+    /// CheckSearch is the web search engine's health for an admin: the Built-in
+    /// Scraper's sources as this process has seen them, and with a query, one
+    /// real search with the saved settings.
+    @available(iOS 13, *)
+    func `checkSearch`(request: Silo_V1_CheckSearchRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_CheckSearchResponse>
+
     /// Workspaces: the containers of Bots, the people who use them, and what
     /// their Bots share. ListSpaces is the caller's memberships, and makes their
     /// first Workspace if they own none.
@@ -484,6 +490,48 @@ public protocol Silo_V1_UiClientInterface: Sendable {
 
     @available(iOS 13, *)
     func `clearTaskboard`(request: Silo_V1_ClearTaskboardRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Taskboard>
+
+    /// Rooms: a conversation several Bots and people of a Workspace share.
+    /// Everyone in a room is on every Bot in it.
+    @available(iOS 13, *)
+    func `listRooms`(request: Silo_V1_ListRoomsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListRoomsResponse>
+
+    @available(iOS 13, *)
+    func `createRoom`(request: Silo_V1_CreateRoomRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Room>
+
+    @available(iOS 13, *)
+    func `getRoom`(request: Silo_V1_GetRoomRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Room>
+
+    @available(iOS 13, *)
+    func `updateRoom`(request: Silo_V1_UpdateRoomRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Room>
+
+    @available(iOS 13, *)
+    func `deleteRoom`(request: Silo_V1_DeleteRoomRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_DeleteRoomResponse>
+
+    @available(iOS 13, *)
+    func `addRoomBot`(request: Silo_V1_RoomBotRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Room>
+
+    @available(iOS 13, *)
+    func `removeRoomBot`(request: Silo_V1_RoomBotRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Room>
+
+    @available(iOS 13, *)
+    func `addRoomPerson`(request: Silo_V1_RoomPersonRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Room>
+
+    /// RemoveRoomPerson takes someone out; the caller's own id leaves.
+    @available(iOS 13, *)
+    func `removeRoomPerson`(request: Silo_V1_RoomPersonRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_RemoveRoomPersonResponse>
+
+    @available(iOS 13, *)
+    func `postRoomMessage`(request: Silo_V1_PostRoomMessageRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_RoomMessage>
+
+    /// StreamRoom replays the newest messages (or those after after_seq), then
+    /// sends what is said and what each Bot is doing as it happens.
+    @available(iOS 13, *)
+    func `streamRoom`(headers: Connect.Headers) -> any Connect.ServerOnlyAsyncStreamInterface<Silo_V1_StreamRoomRequest, Silo_V1_RoomEvent>
+
+    /// StopRoom stops every Bot's work in the room.
+    @available(iOS 13, *)
+    func `stopRoom`(request: Silo_V1_StopRoomRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_StopRoomResponse>
 
     @available(iOS 13, *)
     func `listSecrets`(request: Silo_V1_ListSecretsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListSecretsResponse>
@@ -912,6 +960,11 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     @available(iOS 13, *)
     public func `checkOidc`(request: Silo_V1_CheckOIDCRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_CheckOIDCResponse> {
         return await self.client.unary(path: "/silo.v1.UI/CheckOIDC", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `checkSearch`(request: Silo_V1_CheckSearchRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_CheckSearchResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/CheckSearch", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
     @available(iOS 13, *)
@@ -1465,6 +1518,66 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `listRooms`(request: Silo_V1_ListRoomsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListRoomsResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ListRooms", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `createRoom`(request: Silo_V1_CreateRoomRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Room> {
+        return await self.client.unary(path: "/silo.v1.UI/CreateRoom", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `getRoom`(request: Silo_V1_GetRoomRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Room> {
+        return await self.client.unary(path: "/silo.v1.UI/GetRoom", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `updateRoom`(request: Silo_V1_UpdateRoomRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Room> {
+        return await self.client.unary(path: "/silo.v1.UI/UpdateRoom", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `deleteRoom`(request: Silo_V1_DeleteRoomRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_DeleteRoomResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/DeleteRoom", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `addRoomBot`(request: Silo_V1_RoomBotRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Room> {
+        return await self.client.unary(path: "/silo.v1.UI/AddRoomBot", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `removeRoomBot`(request: Silo_V1_RoomBotRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Room> {
+        return await self.client.unary(path: "/silo.v1.UI/RemoveRoomBot", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `addRoomPerson`(request: Silo_V1_RoomPersonRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Room> {
+        return await self.client.unary(path: "/silo.v1.UI/AddRoomPerson", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `removeRoomPerson`(request: Silo_V1_RoomPersonRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_RemoveRoomPersonResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/RemoveRoomPerson", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `postRoomMessage`(request: Silo_V1_PostRoomMessageRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_RoomMessage> {
+        return await self.client.unary(path: "/silo.v1.UI/PostRoomMessage", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `streamRoom`(headers: Connect.Headers = [:]) -> any Connect.ServerOnlyAsyncStreamInterface<Silo_V1_StreamRoomRequest, Silo_V1_RoomEvent> {
+        return self.client.serverOnlyStream(path: "/silo.v1.UI/StreamRoom", headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `stopRoom`(request: Silo_V1_StopRoomRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_StopRoomResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/StopRoom", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `listSecrets`(request: Silo_V1_ListSecretsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListSecretsResponse> {
         return await self.client.unary(path: "/silo.v1.UI/ListSecrets", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -1943,6 +2056,7 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let createInvite = Connect.MethodSpec(name: "CreateInvite", service: "silo.v1.UI", type: .unary)
             public static let deleteInvite = Connect.MethodSpec(name: "DeleteInvite", service: "silo.v1.UI", type: .unary)
             public static let checkOidc = Connect.MethodSpec(name: "CheckOIDC", service: "silo.v1.UI", type: .unary)
+            public static let checkSearch = Connect.MethodSpec(name: "CheckSearch", service: "silo.v1.UI", type: .unary)
             public static let listSpaces = Connect.MethodSpec(name: "ListSpaces", service: "silo.v1.UI", type: .unary)
             public static let getSpace = Connect.MethodSpec(name: "GetSpace", service: "silo.v1.UI", type: .unary)
             public static let createSpace = Connect.MethodSpec(name: "CreateSpace", service: "silo.v1.UI", type: .unary)
@@ -2053,6 +2167,18 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let stopSubagent = Connect.MethodSpec(name: "StopSubagent", service: "silo.v1.UI", type: .unary)
             public static let getTaskboard = Connect.MethodSpec(name: "GetTaskboard", service: "silo.v1.UI", type: .unary)
             public static let clearTaskboard = Connect.MethodSpec(name: "ClearTaskboard", service: "silo.v1.UI", type: .unary)
+            public static let listRooms = Connect.MethodSpec(name: "ListRooms", service: "silo.v1.UI", type: .unary)
+            public static let createRoom = Connect.MethodSpec(name: "CreateRoom", service: "silo.v1.UI", type: .unary)
+            public static let getRoom = Connect.MethodSpec(name: "GetRoom", service: "silo.v1.UI", type: .unary)
+            public static let updateRoom = Connect.MethodSpec(name: "UpdateRoom", service: "silo.v1.UI", type: .unary)
+            public static let deleteRoom = Connect.MethodSpec(name: "DeleteRoom", service: "silo.v1.UI", type: .unary)
+            public static let addRoomBot = Connect.MethodSpec(name: "AddRoomBot", service: "silo.v1.UI", type: .unary)
+            public static let removeRoomBot = Connect.MethodSpec(name: "RemoveRoomBot", service: "silo.v1.UI", type: .unary)
+            public static let addRoomPerson = Connect.MethodSpec(name: "AddRoomPerson", service: "silo.v1.UI", type: .unary)
+            public static let removeRoomPerson = Connect.MethodSpec(name: "RemoveRoomPerson", service: "silo.v1.UI", type: .unary)
+            public static let postRoomMessage = Connect.MethodSpec(name: "PostRoomMessage", service: "silo.v1.UI", type: .unary)
+            public static let streamRoom = Connect.MethodSpec(name: "StreamRoom", service: "silo.v1.UI", type: .serverStream)
+            public static let stopRoom = Connect.MethodSpec(name: "StopRoom", service: "silo.v1.UI", type: .unary)
             public static let listSecrets = Connect.MethodSpec(name: "ListSecrets", service: "silo.v1.UI", type: .unary)
             public static let addSecret = Connect.MethodSpec(name: "AddSecret", service: "silo.v1.UI", type: .unary)
             public static let updateSecret = Connect.MethodSpec(name: "UpdateSecret", service: "silo.v1.UI", type: .unary)

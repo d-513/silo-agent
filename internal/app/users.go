@@ -24,6 +24,7 @@ func (a *App) DropUserBots(ctx context.Context, userID string) {
 		}
 	}
 	a.Spaces.DropUser(ctx, userID)
+	a.Rooms.DropPerson(userID)
 	a.Spaces.Forget(userID)
 }
 

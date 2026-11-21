@@ -32,6 +32,10 @@ const (
 	// SpaceOrBot acts on a Workspace's connection either through a Bot the
 	// caller manages (bot_id) or in the Workspace itself (space_id, Build).
 	SpaceOrBot RPCNeed = "space|bot:manage"
+	// RoomMember is a person in the request's room who is on every Bot in
+	// it (access.Room). What more an action takes (managing a Bot to add it,
+	// having made the room to delete it) the handler checks.
+	RoomMember RPCNeed = "room"
 	// AdminOrSpace is a library preset's (an instance admin's) or a
 	// Workspace connection's (who added it, or a Workspace admin).
 	AdminOrSpace RPCNeed = "admin|space"
@@ -266,4 +270,16 @@ var RPCs = map[string]RPCNeed{
 	"BrowseDrive":              SpaceBuild,
 	"GetDriveSettings":         InstanceAdmin,
 	"PutDriveSettings":         InstanceAdmin,
+	"ListRooms":                SpaceView,
+	"CreateRoom":               SpaceView, // each Bot added needs Manage on it
+	"GetRoom":                  RoomMember,
+	"UpdateRoom":               RoomMember,
+	"DeleteRoom":               RoomMember, // who made it, or a Workspace admin
+	"AddRoomBot":               RoomMember, // and Manage on the Bot
+	"RemoveRoomBot":            RoomMember,
+	"AddRoomPerson":            RoomMember,
+	"RemoveRoomPerson":         RoomMember, // leaving; taking someone else out needs having made it or a Workspace admin
+	"PostRoomMessage":          RoomMember,
+	"StreamRoom":               RoomMember,
+	"StopRoom":                 RoomMember,
 }

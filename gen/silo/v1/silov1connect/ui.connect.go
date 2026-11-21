@@ -301,6 +301,30 @@ const (
 	UIGetTaskboardProcedure = "/silo.v1.UI/GetTaskboard"
 	// UIClearTaskboardProcedure is the fully-qualified name of the UI's ClearTaskboard RPC.
 	UIClearTaskboardProcedure = "/silo.v1.UI/ClearTaskboard"
+	// UIListRoomsProcedure is the fully-qualified name of the UI's ListRooms RPC.
+	UIListRoomsProcedure = "/silo.v1.UI/ListRooms"
+	// UICreateRoomProcedure is the fully-qualified name of the UI's CreateRoom RPC.
+	UICreateRoomProcedure = "/silo.v1.UI/CreateRoom"
+	// UIGetRoomProcedure is the fully-qualified name of the UI's GetRoom RPC.
+	UIGetRoomProcedure = "/silo.v1.UI/GetRoom"
+	// UIUpdateRoomProcedure is the fully-qualified name of the UI's UpdateRoom RPC.
+	UIUpdateRoomProcedure = "/silo.v1.UI/UpdateRoom"
+	// UIDeleteRoomProcedure is the fully-qualified name of the UI's DeleteRoom RPC.
+	UIDeleteRoomProcedure = "/silo.v1.UI/DeleteRoom"
+	// UIAddRoomBotProcedure is the fully-qualified name of the UI's AddRoomBot RPC.
+	UIAddRoomBotProcedure = "/silo.v1.UI/AddRoomBot"
+	// UIRemoveRoomBotProcedure is the fully-qualified name of the UI's RemoveRoomBot RPC.
+	UIRemoveRoomBotProcedure = "/silo.v1.UI/RemoveRoomBot"
+	// UIAddRoomPersonProcedure is the fully-qualified name of the UI's AddRoomPerson RPC.
+	UIAddRoomPersonProcedure = "/silo.v1.UI/AddRoomPerson"
+	// UIRemoveRoomPersonProcedure is the fully-qualified name of the UI's RemoveRoomPerson RPC.
+	UIRemoveRoomPersonProcedure = "/silo.v1.UI/RemoveRoomPerson"
+	// UIPostRoomMessageProcedure is the fully-qualified name of the UI's PostRoomMessage RPC.
+	UIPostRoomMessageProcedure = "/silo.v1.UI/PostRoomMessage"
+	// UIStreamRoomProcedure is the fully-qualified name of the UI's StreamRoom RPC.
+	UIStreamRoomProcedure = "/silo.v1.UI/StreamRoom"
+	// UIStopRoomProcedure is the fully-qualified name of the UI's StopRoom RPC.
+	UIStopRoomProcedure = "/silo.v1.UI/StopRoom"
 	// UIListSecretsProcedure is the fully-qualified name of the UI's ListSecrets RPC.
 	UIListSecretsProcedure = "/silo.v1.UI/ListSecrets"
 	// UIAddSecretProcedure is the fully-qualified name of the UI's AddSecret RPC.
@@ -702,6 +726,24 @@ type UIClient interface {
 	StopSubagent(context.Context, *connect.Request[v1.StopSubagentRequest]) (*connect.Response[v1.StopSubagentResponse], error)
 	GetTaskboard(context.Context, *connect.Request[v1.GetTaskboardRequest]) (*connect.Response[v1.Taskboard], error)
 	ClearTaskboard(context.Context, *connect.Request[v1.ClearTaskboardRequest]) (*connect.Response[v1.Taskboard], error)
+	// Rooms: a conversation several Bots and people of a Workspace share.
+	// Everyone in a room is on every Bot in it.
+	ListRooms(context.Context, *connect.Request[v1.ListRoomsRequest]) (*connect.Response[v1.ListRoomsResponse], error)
+	CreateRoom(context.Context, *connect.Request[v1.CreateRoomRequest]) (*connect.Response[v1.Room], error)
+	GetRoom(context.Context, *connect.Request[v1.GetRoomRequest]) (*connect.Response[v1.Room], error)
+	UpdateRoom(context.Context, *connect.Request[v1.UpdateRoomRequest]) (*connect.Response[v1.Room], error)
+	DeleteRoom(context.Context, *connect.Request[v1.DeleteRoomRequest]) (*connect.Response[v1.DeleteRoomResponse], error)
+	AddRoomBot(context.Context, *connect.Request[v1.RoomBotRequest]) (*connect.Response[v1.Room], error)
+	RemoveRoomBot(context.Context, *connect.Request[v1.RoomBotRequest]) (*connect.Response[v1.Room], error)
+	AddRoomPerson(context.Context, *connect.Request[v1.RoomPersonRequest]) (*connect.Response[v1.Room], error)
+	// RemoveRoomPerson takes someone out; the caller's own id leaves.
+	RemoveRoomPerson(context.Context, *connect.Request[v1.RoomPersonRequest]) (*connect.Response[v1.RemoveRoomPersonResponse], error)
+	PostRoomMessage(context.Context, *connect.Request[v1.PostRoomMessageRequest]) (*connect.Response[v1.RoomMessage], error)
+	// StreamRoom replays the newest messages (or those after after_seq), then
+	// sends what is said and what each Bot is doing as it happens.
+	StreamRoom(context.Context, *connect.Request[v1.StreamRoomRequest]) (*connect.ServerStreamForClient[v1.RoomEvent], error)
+	// StopRoom stops every Bot's work in the room.
+	StopRoom(context.Context, *connect.Request[v1.StopRoomRequest]) (*connect.Response[v1.StopRoomResponse], error)
 	ListSecrets(context.Context, *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error)
 	AddSecret(context.Context, *connect.Request[v1.AddSecretRequest]) (*connect.Response[v1.SecretMeta], error)
 	// UpdateSecret changes a secret's name, value, mode or allowed hosts. Only
@@ -1641,6 +1683,78 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("ClearTaskboard")),
 			connect.WithClientOptions(opts...),
 		),
+		listRooms: connect.NewClient[v1.ListRoomsRequest, v1.ListRoomsResponse](
+			httpClient,
+			baseURL+UIListRoomsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListRooms")),
+			connect.WithClientOptions(opts...),
+		),
+		createRoom: connect.NewClient[v1.CreateRoomRequest, v1.Room](
+			httpClient,
+			baseURL+UICreateRoomProcedure,
+			connect.WithSchema(uIMethods.ByName("CreateRoom")),
+			connect.WithClientOptions(opts...),
+		),
+		getRoom: connect.NewClient[v1.GetRoomRequest, v1.Room](
+			httpClient,
+			baseURL+UIGetRoomProcedure,
+			connect.WithSchema(uIMethods.ByName("GetRoom")),
+			connect.WithClientOptions(opts...),
+		),
+		updateRoom: connect.NewClient[v1.UpdateRoomRequest, v1.Room](
+			httpClient,
+			baseURL+UIUpdateRoomProcedure,
+			connect.WithSchema(uIMethods.ByName("UpdateRoom")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteRoom: connect.NewClient[v1.DeleteRoomRequest, v1.DeleteRoomResponse](
+			httpClient,
+			baseURL+UIDeleteRoomProcedure,
+			connect.WithSchema(uIMethods.ByName("DeleteRoom")),
+			connect.WithClientOptions(opts...),
+		),
+		addRoomBot: connect.NewClient[v1.RoomBotRequest, v1.Room](
+			httpClient,
+			baseURL+UIAddRoomBotProcedure,
+			connect.WithSchema(uIMethods.ByName("AddRoomBot")),
+			connect.WithClientOptions(opts...),
+		),
+		removeRoomBot: connect.NewClient[v1.RoomBotRequest, v1.Room](
+			httpClient,
+			baseURL+UIRemoveRoomBotProcedure,
+			connect.WithSchema(uIMethods.ByName("RemoveRoomBot")),
+			connect.WithClientOptions(opts...),
+		),
+		addRoomPerson: connect.NewClient[v1.RoomPersonRequest, v1.Room](
+			httpClient,
+			baseURL+UIAddRoomPersonProcedure,
+			connect.WithSchema(uIMethods.ByName("AddRoomPerson")),
+			connect.WithClientOptions(opts...),
+		),
+		removeRoomPerson: connect.NewClient[v1.RoomPersonRequest, v1.RemoveRoomPersonResponse](
+			httpClient,
+			baseURL+UIRemoveRoomPersonProcedure,
+			connect.WithSchema(uIMethods.ByName("RemoveRoomPerson")),
+			connect.WithClientOptions(opts...),
+		),
+		postRoomMessage: connect.NewClient[v1.PostRoomMessageRequest, v1.RoomMessage](
+			httpClient,
+			baseURL+UIPostRoomMessageProcedure,
+			connect.WithSchema(uIMethods.ByName("PostRoomMessage")),
+			connect.WithClientOptions(opts...),
+		),
+		streamRoom: connect.NewClient[v1.StreamRoomRequest, v1.RoomEvent](
+			httpClient,
+			baseURL+UIStreamRoomProcedure,
+			connect.WithSchema(uIMethods.ByName("StreamRoom")),
+			connect.WithClientOptions(opts...),
+		),
+		stopRoom: connect.NewClient[v1.StopRoomRequest, v1.StopRoomResponse](
+			httpClient,
+			baseURL+UIStopRoomProcedure,
+			connect.WithSchema(uIMethods.ByName("StopRoom")),
+			connect.WithClientOptions(opts...),
+		),
 		listSecrets: connect.NewClient[v1.ListSecretsRequest, v1.ListSecretsResponse](
 			httpClient,
 			baseURL+UIListSecretsProcedure,
@@ -2325,6 +2439,18 @@ type uIClient struct {
 	stopSubagent             *connect.Client[v1.StopSubagentRequest, v1.StopSubagentResponse]
 	getTaskboard             *connect.Client[v1.GetTaskboardRequest, v1.Taskboard]
 	clearTaskboard           *connect.Client[v1.ClearTaskboardRequest, v1.Taskboard]
+	listRooms                *connect.Client[v1.ListRoomsRequest, v1.ListRoomsResponse]
+	createRoom               *connect.Client[v1.CreateRoomRequest, v1.Room]
+	getRoom                  *connect.Client[v1.GetRoomRequest, v1.Room]
+	updateRoom               *connect.Client[v1.UpdateRoomRequest, v1.Room]
+	deleteRoom               *connect.Client[v1.DeleteRoomRequest, v1.DeleteRoomResponse]
+	addRoomBot               *connect.Client[v1.RoomBotRequest, v1.Room]
+	removeRoomBot            *connect.Client[v1.RoomBotRequest, v1.Room]
+	addRoomPerson            *connect.Client[v1.RoomPersonRequest, v1.Room]
+	removeRoomPerson         *connect.Client[v1.RoomPersonRequest, v1.RemoveRoomPersonResponse]
+	postRoomMessage          *connect.Client[v1.PostRoomMessageRequest, v1.RoomMessage]
+	streamRoom               *connect.Client[v1.StreamRoomRequest, v1.RoomEvent]
+	stopRoom                 *connect.Client[v1.StopRoomRequest, v1.StopRoomResponse]
 	listSecrets              *connect.Client[v1.ListSecretsRequest, v1.ListSecretsResponse]
 	addSecret                *connect.Client[v1.AddSecretRequest, v1.SecretMeta]
 	updateSecret             *connect.Client[v1.UpdateSecretRequest, v1.SecretMeta]
@@ -3083,6 +3209,66 @@ func (c *uIClient) ClearTaskboard(ctx context.Context, req *connect.Request[v1.C
 	return c.clearTaskboard.CallUnary(ctx, req)
 }
 
+// ListRooms calls silo.v1.UI.ListRooms.
+func (c *uIClient) ListRooms(ctx context.Context, req *connect.Request[v1.ListRoomsRequest]) (*connect.Response[v1.ListRoomsResponse], error) {
+	return c.listRooms.CallUnary(ctx, req)
+}
+
+// CreateRoom calls silo.v1.UI.CreateRoom.
+func (c *uIClient) CreateRoom(ctx context.Context, req *connect.Request[v1.CreateRoomRequest]) (*connect.Response[v1.Room], error) {
+	return c.createRoom.CallUnary(ctx, req)
+}
+
+// GetRoom calls silo.v1.UI.GetRoom.
+func (c *uIClient) GetRoom(ctx context.Context, req *connect.Request[v1.GetRoomRequest]) (*connect.Response[v1.Room], error) {
+	return c.getRoom.CallUnary(ctx, req)
+}
+
+// UpdateRoom calls silo.v1.UI.UpdateRoom.
+func (c *uIClient) UpdateRoom(ctx context.Context, req *connect.Request[v1.UpdateRoomRequest]) (*connect.Response[v1.Room], error) {
+	return c.updateRoom.CallUnary(ctx, req)
+}
+
+// DeleteRoom calls silo.v1.UI.DeleteRoom.
+func (c *uIClient) DeleteRoom(ctx context.Context, req *connect.Request[v1.DeleteRoomRequest]) (*connect.Response[v1.DeleteRoomResponse], error) {
+	return c.deleteRoom.CallUnary(ctx, req)
+}
+
+// AddRoomBot calls silo.v1.UI.AddRoomBot.
+func (c *uIClient) AddRoomBot(ctx context.Context, req *connect.Request[v1.RoomBotRequest]) (*connect.Response[v1.Room], error) {
+	return c.addRoomBot.CallUnary(ctx, req)
+}
+
+// RemoveRoomBot calls silo.v1.UI.RemoveRoomBot.
+func (c *uIClient) RemoveRoomBot(ctx context.Context, req *connect.Request[v1.RoomBotRequest]) (*connect.Response[v1.Room], error) {
+	return c.removeRoomBot.CallUnary(ctx, req)
+}
+
+// AddRoomPerson calls silo.v1.UI.AddRoomPerson.
+func (c *uIClient) AddRoomPerson(ctx context.Context, req *connect.Request[v1.RoomPersonRequest]) (*connect.Response[v1.Room], error) {
+	return c.addRoomPerson.CallUnary(ctx, req)
+}
+
+// RemoveRoomPerson calls silo.v1.UI.RemoveRoomPerson.
+func (c *uIClient) RemoveRoomPerson(ctx context.Context, req *connect.Request[v1.RoomPersonRequest]) (*connect.Response[v1.RemoveRoomPersonResponse], error) {
+	return c.removeRoomPerson.CallUnary(ctx, req)
+}
+
+// PostRoomMessage calls silo.v1.UI.PostRoomMessage.
+func (c *uIClient) PostRoomMessage(ctx context.Context, req *connect.Request[v1.PostRoomMessageRequest]) (*connect.Response[v1.RoomMessage], error) {
+	return c.postRoomMessage.CallUnary(ctx, req)
+}
+
+// StreamRoom calls silo.v1.UI.StreamRoom.
+func (c *uIClient) StreamRoom(ctx context.Context, req *connect.Request[v1.StreamRoomRequest]) (*connect.ServerStreamForClient[v1.RoomEvent], error) {
+	return c.streamRoom.CallServerStream(ctx, req)
+}
+
+// StopRoom calls silo.v1.UI.StopRoom.
+func (c *uIClient) StopRoom(ctx context.Context, req *connect.Request[v1.StopRoomRequest]) (*connect.Response[v1.StopRoomResponse], error) {
+	return c.stopRoom.CallUnary(ctx, req)
+}
+
 // ListSecrets calls silo.v1.UI.ListSecrets.
 func (c *uIClient) ListSecrets(ctx context.Context, req *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error) {
 	return c.listSecrets.CallUnary(ctx, req)
@@ -3754,6 +3940,24 @@ type UIHandler interface {
 	StopSubagent(context.Context, *connect.Request[v1.StopSubagentRequest]) (*connect.Response[v1.StopSubagentResponse], error)
 	GetTaskboard(context.Context, *connect.Request[v1.GetTaskboardRequest]) (*connect.Response[v1.Taskboard], error)
 	ClearTaskboard(context.Context, *connect.Request[v1.ClearTaskboardRequest]) (*connect.Response[v1.Taskboard], error)
+	// Rooms: a conversation several Bots and people of a Workspace share.
+	// Everyone in a room is on every Bot in it.
+	ListRooms(context.Context, *connect.Request[v1.ListRoomsRequest]) (*connect.Response[v1.ListRoomsResponse], error)
+	CreateRoom(context.Context, *connect.Request[v1.CreateRoomRequest]) (*connect.Response[v1.Room], error)
+	GetRoom(context.Context, *connect.Request[v1.GetRoomRequest]) (*connect.Response[v1.Room], error)
+	UpdateRoom(context.Context, *connect.Request[v1.UpdateRoomRequest]) (*connect.Response[v1.Room], error)
+	DeleteRoom(context.Context, *connect.Request[v1.DeleteRoomRequest]) (*connect.Response[v1.DeleteRoomResponse], error)
+	AddRoomBot(context.Context, *connect.Request[v1.RoomBotRequest]) (*connect.Response[v1.Room], error)
+	RemoveRoomBot(context.Context, *connect.Request[v1.RoomBotRequest]) (*connect.Response[v1.Room], error)
+	AddRoomPerson(context.Context, *connect.Request[v1.RoomPersonRequest]) (*connect.Response[v1.Room], error)
+	// RemoveRoomPerson takes someone out; the caller's own id leaves.
+	RemoveRoomPerson(context.Context, *connect.Request[v1.RoomPersonRequest]) (*connect.Response[v1.RemoveRoomPersonResponse], error)
+	PostRoomMessage(context.Context, *connect.Request[v1.PostRoomMessageRequest]) (*connect.Response[v1.RoomMessage], error)
+	// StreamRoom replays the newest messages (or those after after_seq), then
+	// sends what is said and what each Bot is doing as it happens.
+	StreamRoom(context.Context, *connect.Request[v1.StreamRoomRequest], *connect.ServerStream[v1.RoomEvent]) error
+	// StopRoom stops every Bot's work in the room.
+	StopRoom(context.Context, *connect.Request[v1.StopRoomRequest]) (*connect.Response[v1.StopRoomResponse], error)
 	ListSecrets(context.Context, *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error)
 	AddSecret(context.Context, *connect.Request[v1.AddSecretRequest]) (*connect.Response[v1.SecretMeta], error)
 	// UpdateSecret changes a secret's name, value, mode or allowed hosts. Only
@@ -4689,6 +4893,78 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("ClearTaskboard")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIListRoomsHandler := connect.NewUnaryHandler(
+		UIListRoomsProcedure,
+		svc.ListRooms,
+		connect.WithSchema(uIMethods.ByName("ListRooms")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uICreateRoomHandler := connect.NewUnaryHandler(
+		UICreateRoomProcedure,
+		svc.CreateRoom,
+		connect.WithSchema(uIMethods.ByName("CreateRoom")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGetRoomHandler := connect.NewUnaryHandler(
+		UIGetRoomProcedure,
+		svc.GetRoom,
+		connect.WithSchema(uIMethods.ByName("GetRoom")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIUpdateRoomHandler := connect.NewUnaryHandler(
+		UIUpdateRoomProcedure,
+		svc.UpdateRoom,
+		connect.WithSchema(uIMethods.ByName("UpdateRoom")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIDeleteRoomHandler := connect.NewUnaryHandler(
+		UIDeleteRoomProcedure,
+		svc.DeleteRoom,
+		connect.WithSchema(uIMethods.ByName("DeleteRoom")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIAddRoomBotHandler := connect.NewUnaryHandler(
+		UIAddRoomBotProcedure,
+		svc.AddRoomBot,
+		connect.WithSchema(uIMethods.ByName("AddRoomBot")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRemoveRoomBotHandler := connect.NewUnaryHandler(
+		UIRemoveRoomBotProcedure,
+		svc.RemoveRoomBot,
+		connect.WithSchema(uIMethods.ByName("RemoveRoomBot")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIAddRoomPersonHandler := connect.NewUnaryHandler(
+		UIAddRoomPersonProcedure,
+		svc.AddRoomPerson,
+		connect.WithSchema(uIMethods.ByName("AddRoomPerson")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRemoveRoomPersonHandler := connect.NewUnaryHandler(
+		UIRemoveRoomPersonProcedure,
+		svc.RemoveRoomPerson,
+		connect.WithSchema(uIMethods.ByName("RemoveRoomPerson")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIPostRoomMessageHandler := connect.NewUnaryHandler(
+		UIPostRoomMessageProcedure,
+		svc.PostRoomMessage,
+		connect.WithSchema(uIMethods.ByName("PostRoomMessage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIStreamRoomHandler := connect.NewServerStreamHandler(
+		UIStreamRoomProcedure,
+		svc.StreamRoom,
+		connect.WithSchema(uIMethods.ByName("StreamRoom")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIStopRoomHandler := connect.NewUnaryHandler(
+		UIStopRoomProcedure,
+		svc.StopRoom,
+		connect.WithSchema(uIMethods.ByName("StopRoom")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIListSecretsHandler := connect.NewUnaryHandler(
 		UIListSecretsProcedure,
 		svc.ListSecrets,
@@ -5503,6 +5779,30 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIGetTaskboardHandler.ServeHTTP(w, r)
 		case UIClearTaskboardProcedure:
 			uIClearTaskboardHandler.ServeHTTP(w, r)
+		case UIListRoomsProcedure:
+			uIListRoomsHandler.ServeHTTP(w, r)
+		case UICreateRoomProcedure:
+			uICreateRoomHandler.ServeHTTP(w, r)
+		case UIGetRoomProcedure:
+			uIGetRoomHandler.ServeHTTP(w, r)
+		case UIUpdateRoomProcedure:
+			uIUpdateRoomHandler.ServeHTTP(w, r)
+		case UIDeleteRoomProcedure:
+			uIDeleteRoomHandler.ServeHTTP(w, r)
+		case UIAddRoomBotProcedure:
+			uIAddRoomBotHandler.ServeHTTP(w, r)
+		case UIRemoveRoomBotProcedure:
+			uIRemoveRoomBotHandler.ServeHTTP(w, r)
+		case UIAddRoomPersonProcedure:
+			uIAddRoomPersonHandler.ServeHTTP(w, r)
+		case UIRemoveRoomPersonProcedure:
+			uIRemoveRoomPersonHandler.ServeHTTP(w, r)
+		case UIPostRoomMessageProcedure:
+			uIPostRoomMessageHandler.ServeHTTP(w, r)
+		case UIStreamRoomProcedure:
+			uIStreamRoomHandler.ServeHTTP(w, r)
+		case UIStopRoomProcedure:
+			uIStopRoomHandler.ServeHTTP(w, r)
 		case UIListSecretsProcedure:
 			uIListSecretsHandler.ServeHTTP(w, r)
 		case UIAddSecretProcedure:
@@ -6224,6 +6524,54 @@ func (UnimplementedUIHandler) GetTaskboard(context.Context, *connect.Request[v1.
 
 func (UnimplementedUIHandler) ClearTaskboard(context.Context, *connect.Request[v1.ClearTaskboardRequest]) (*connect.Response[v1.Taskboard], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ClearTaskboard is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListRooms(context.Context, *connect.Request[v1.ListRoomsRequest]) (*connect.Response[v1.ListRoomsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListRooms is not implemented"))
+}
+
+func (UnimplementedUIHandler) CreateRoom(context.Context, *connect.Request[v1.CreateRoomRequest]) (*connect.Response[v1.Room], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CreateRoom is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetRoom(context.Context, *connect.Request[v1.GetRoomRequest]) (*connect.Response[v1.Room], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetRoom is not implemented"))
+}
+
+func (UnimplementedUIHandler) UpdateRoom(context.Context, *connect.Request[v1.UpdateRoomRequest]) (*connect.Response[v1.Room], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.UpdateRoom is not implemented"))
+}
+
+func (UnimplementedUIHandler) DeleteRoom(context.Context, *connect.Request[v1.DeleteRoomRequest]) (*connect.Response[v1.DeleteRoomResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.DeleteRoom is not implemented"))
+}
+
+func (UnimplementedUIHandler) AddRoomBot(context.Context, *connect.Request[v1.RoomBotRequest]) (*connect.Response[v1.Room], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.AddRoomBot is not implemented"))
+}
+
+func (UnimplementedUIHandler) RemoveRoomBot(context.Context, *connect.Request[v1.RoomBotRequest]) (*connect.Response[v1.Room], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RemoveRoomBot is not implemented"))
+}
+
+func (UnimplementedUIHandler) AddRoomPerson(context.Context, *connect.Request[v1.RoomPersonRequest]) (*connect.Response[v1.Room], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.AddRoomPerson is not implemented"))
+}
+
+func (UnimplementedUIHandler) RemoveRoomPerson(context.Context, *connect.Request[v1.RoomPersonRequest]) (*connect.Response[v1.RemoveRoomPersonResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RemoveRoomPerson is not implemented"))
+}
+
+func (UnimplementedUIHandler) PostRoomMessage(context.Context, *connect.Request[v1.PostRoomMessageRequest]) (*connect.Response[v1.RoomMessage], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.PostRoomMessage is not implemented"))
+}
+
+func (UnimplementedUIHandler) StreamRoom(context.Context, *connect.Request[v1.StreamRoomRequest], *connect.ServerStream[v1.RoomEvent]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.StreamRoom is not implemented"))
+}
+
+func (UnimplementedUIHandler) StopRoom(context.Context, *connect.Request[v1.StopRoomRequest]) (*connect.Response[v1.StopRoomResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.StopRoom is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListSecrets(context.Context, *connect.Request[v1.ListSecretsRequest]) (*connect.Response[v1.ListSecretsResponse], error) {

@@ -81,6 +81,9 @@ func (a *App) wakeLead(botID, leadChatID string) {
 	case chat.PeerBotID != "":
 		// A conversation answering another Bot goes on answering it.
 		origin = &run.Origin{Peer: a.incomingMessage(leadChatID)}
+	case chat.RoomID != "":
+		// A Bot woken in its seat answers the room.
+		origin = a.Rooms.Origin(leadChatID)
 	}
 	if _, err := a.StartRun(run.Request{BotID: botID, ChatID: leadChatID, Origin: origin, Report: rep}); err != nil {
 		a.DB.Model(&db.Subagent{}).Where("id IN ?", ids).Update("reported", false)
