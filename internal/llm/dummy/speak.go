@@ -51,3 +51,13 @@ func Spoken() []llm.SpeechRequest {
 	defer mu.Unlock()
 	return append([]llm.SpeechRequest(nil), spoken...)
 }
+
+// Voices gives a model whose name holds "cast" (dummy/cast) two voices, one
+// English and one Polish; the other dummy models list none, so any voice id
+// passes.
+func (c *client) Voices(_ context.Context, model string) ([]llm.Voice, error) {
+	if !strings.Contains(model, "cast") {
+		return nil, nil
+	}
+	return []llm.Voice{{ID: "anna", Name: "Anna", Language: "en"}, {ID: "jan", Name: "Jan", Language: "pl"}}, nil
+}

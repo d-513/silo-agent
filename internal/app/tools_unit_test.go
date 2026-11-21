@@ -72,8 +72,8 @@ func TestBuiltinToolExposure(t *testing.T) {
 	}
 	want := map[string]string{
 		"chat": "delete desktop exec_python grep patch present read skill sleep spawn_agent terminal write",
-		"python": "agent_status channel chats chrome click close_tunnel create_automation decide delete_automation feed forget key list_automations list_bots list_dashboard list_mail list_models list_secrets list_tunnels look message_agent message_bot open_tunnel put_widget read_mail remove_dashboard_card remove_widget scroll search_docs " +
-			"set_proactivity set_timezone set_widget soul stop_agent switch_model task_add task_done task_list task_reset transcribe type update_automation upsert_dashboard_card web_read web_search",
+		"python": "agent_status channel chats chrome click close_tunnel create_automation decide delete_automation feed forget generate_image key list_automations list_bots list_dashboard list_mail list_models list_secrets list_tunnels list_voices look message_agent message_bot open_tunnel put_widget read_mail remove_dashboard_card remove_widget scroll search_docs " +
+			"set_proactivity set_timezone set_widget soul speak stop_agent switch_model task_add task_done task_list task_reset transcribe type update_automation upsert_dashboard_card web_read web_search",
 		"both": "artifact ask_owner offer_setup recall remember",
 		// Offered to no chat and no code: only a job's run that names them.
 		"job": "reinforce review_memories",
@@ -111,7 +111,7 @@ func TestWritingTools(t *testing.T) {
 		}
 	}
 	sort.Strings(got)
-	if strings.Join(got, " ") != "click delete desktop exec_python key patch terminal type write" {
+	if strings.Join(got, " ") != "click delete desktop exec_python generate_image key patch speak terminal type write" {
 		t.Fatalf("writing tools: %s", strings.Join(got, " "))
 	}
 }

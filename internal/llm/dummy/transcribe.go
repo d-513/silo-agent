@@ -29,5 +29,19 @@ func (c *client) Transcribe(_ context.Context, _ string, audio llm.Audio) (llm.T
 	if utf8.Valid(data) {
 		text = strings.TrimSpace(strings.TrimRight(string(data), "\x00"))
 	}
-	return llm.Transcript{Text: text, Language: audio.Language, Seconds: 1}, nil
+	out := llm.Transcript{Text: text, Language: audio.Language, Seconds: 1}
+	// Asked for timings, each line of the text is a segment two seconds
+	// long. A recording that holds Test_No_Timings has none, like a model
+	// that gives only text.
+	if audio.Timestamps && !strings.Contains(text, "Test_No_Timings") {
+		at := 0.0
+		for _, line := range strings.Split(text, "\n") {
+			if line = strings.TrimSpace(line); line != "" {
+				out.Segments = append(out.Segments, llm.Segment{Start: at, End: at + 2, Text: line})
+				at += 2
+			}
+		}
+		out.Seconds = at
+	}
+	return out, nil
 }

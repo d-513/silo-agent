@@ -64,6 +64,7 @@ var RPCs = map[string]RPCNeed{
 	"CreateInvite":             InstanceAdmin,
 	"DeleteInvite":             InstanceAdmin,
 	"CheckOIDC":                InstanceAdmin,
+	"CheckSearch":              InstanceAdmin,
 	"ListSpaces":               SignedIn,
 	"GetSpace":                 SpaceView,
 	"CreateSpace":              SignedIn,

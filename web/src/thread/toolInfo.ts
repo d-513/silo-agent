@@ -156,6 +156,11 @@ export function toolMeta(name: string): { app: string } {
       return { app: t("Model") };
     case "decide":
       return { app: t("Decision") };
+    case "generate_image":
+      return { app: t("Image") };
+    case "speak":
+    case "list_voices":
+      return { app: t("Speech") };
     case "spawn_agent":
     case "agent_status":
     case "message_agent":
@@ -218,6 +223,10 @@ export function toolAction(name: string, raw: string): string {
       return asStr(a.model);
     case "decide":
       return asked(a.questions);
+    case "generate_image":
+      return firstLine(asStr(a.prompt));
+    case "speak":
+      return firstLine(asStr(a.text));
     case "spawn_agent":
       return `start ${asStr(a.name)}`.trim();
     case "agent_status":

@@ -29,7 +29,7 @@ export type Job = {
   idle: string;
 };
 
-export type JobPage = "text" | "decision" | "embedding" | "voice";
+export type JobPage = "text" | "decision" | "embedding" | "voice" | "image";
 
 type JobDef = { key: string; label: string; page: JobPage; idle?: string };
 
@@ -44,6 +44,7 @@ export const JOBS: JobDef[] = [
   { key: "model_approval", label: msg("Auto-approval"), page: "decision" },
   { key: "model_decision", label: msg("Decisions"), page: "decision", idle: msg("No decision model") },
   { key: "embedding_model", label: msg("Embeddings"), page: "embedding" },
+  { key: "model_image", label: msg("Images"), page: "image", idle: msg("No image model") },
 ];
 
 // What a setting left empty follows, nearest first, as the server reads it.

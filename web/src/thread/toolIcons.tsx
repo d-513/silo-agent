@@ -12,6 +12,7 @@ import {
   FileX,
   Globe,
   Hourglass,
+  Image as ImageIcon,
   Inbox,
   KeyRound,
   Keyboard,
@@ -69,6 +70,7 @@ const toolIcons: Record<string, LucideIcon> = {
   list_models: Cpu,
   switch_model: Cpu,
   decide: Scale,
+  generate_image: ImageIcon,
   spawn_agent: Bot,
   agent_status: Bot,
   message_agent: Bot,
@@ -94,6 +96,7 @@ const builtinCallIcons: Record<string, LucideIcon> = {
   automations: Timer,
   model: Cpu,
   "model.decide": Scale,
+  "model.image": ImageIcon,
   tasks: ListChecks,
 };
 

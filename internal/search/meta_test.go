@@ -77,7 +77,7 @@ func testMeta(c *clock, fakes ...*fake) *meta {
 	m := &meta{
 		health: newBreaker(c.now), cache: newCache(c.now), buckets: map[string]*bucket{},
 		sourceTimeout: time.Second, grace: 20 * time.Millisecond, patience: time.Second, ceiling: 2 * time.Second,
-		queueMax: 20 * time.Millisecond, tokenWait: 20 * time.Millisecond, quorum: 3, fanout: 99,
+		queueMax: 20 * time.Millisecond, queueBatch: 20 * time.Millisecond, tokenWait: 20 * time.Millisecond, quorum: 3, fanout: 99,
 	}
 	for _, f := range fakes {
 		m.sources = append(m.sources, f.src)
@@ -216,10 +216,12 @@ func TestMetaBudgets(t *testing.T) {
 	}
 	// Both budgets are spent and the next turn is a minute off.
 	res, _ := m.Search(bg, Query{Text: "third"})
-	if called(a, b) != 2 || len(res.Results) != 0 || !reflect.DeepEqual(res.Blocked, []string{"a", "b"}) {
+	if called(a, b) != 2 || len(res.Results) != 0 || len(res.Blocked) != 0 || !reflect.DeepEqual(res.Busy, []string{"a", "b"}) {
 		t.Fatalf("res %+v after %d calls", res, called(a, b))
 	}
-	if !strings.Contains(res.Note, "rate-limited") || m.health.open("a") || m.health.open("b") {
+	// Busy is not blocked: the note says when to come back, about a minute.
+	if !strings.Contains(res.Note, "busy") || !strings.Contains(res.Note, "about 60 seconds") || strings.Contains(res.Note, "blocked") ||
+		m.health.open("a") || m.health.open("b") {
 		t.Fatalf("note %q, a open %v", res.Note, m.health.open("a"))
 	}
 	// A minute later they have a turn again (and the failed search was not cached).
@@ -502,22 +504,181 @@ func TestMetaQuery(t *testing.T) {
 }
 
 func TestPickSources(t *testing.T) {
-	all := []source{{name: "a", provider: "p"}, {name: "b", provider: "p"}, {name: "c", provider: "c"}}
-	names := func(list string) string {
+	fetch := func(context.Context, Query) ([]Hit, error) { return nil, nil }
+	all := []source{
+		{name: "a", provider: "p"}, {name: "b", provider: "p"}, {name: "c", provider: "c"},
+		{name: "walled", provider: "walled", optIn: true},
+		{name: "paid", provider: "paid", key: "paid_key", keyed: func(string) func(context.Context, Query) ([]Hit, error) { return fetch }},
+	}
+	names := func(s Settings) string {
 		var out []string
-		for _, s := range pickSources(all, list) {
-			out = append(out, s.name)
+		for _, src := range pickSources(all, s) {
+			if src.keyed != nil && src.fetch == nil {
+				t.Fatalf("%s was picked without its fetch", src.name)
+			}
+			out = append(out, src.name)
 		}
 		return strings.Join(out, ",")
 	}
-	for list, want := range map[string]string{"": "a,b,c", " C , a": "a,c", "p": "a,b", "nope": "a,b,c"} {
-		if got := names(list); got != want {
-			t.Fatalf("%q: %s want %s", list, got, want)
+	for want, s := range map[string]Settings{
+		// By default: no opt-in source, and none that lacks its key.
+		"a,b,c":      nil,
+		"a,b,c,paid": {"paid_key": "k"},
+		// A list keeps what it names, and is how an opt-in source is asked.
+		"a,c":         {"sources": " C , a"},
+		"a,b":         {"sources": "p"},
+		"a,walled":    {"sources": "a,walled"},
+		"walled":      {"sources": "walled,paid"},
+		"paid":        {"sources": "paid", "paid_key": "k"},
+		"a,b,c,paid ": {"sources": "nope", "paid_key": "k"},
+	} {
+		if got := names(s); got != strings.TrimSpace(want) {
+			t.Fatalf("%v: %s want %s", s, got, want)
 		}
 	}
-	// Every real source is on the list the admin page shows.
-	if d, _ := Lookup(Builtin); len(d.Settings) != 1 || !strings.Contains(d.Settings[0].Description, "marginalia") {
+	// The admin page names every source, and says which are off by default.
+	d, _ := Lookup(Builtin)
+	if len(d.Settings) != 2 || d.Settings[1].Key != "marginalia_key" || !d.Settings[1].Secret {
 		t.Fatalf("descriptor %+v", d)
+	}
+	for _, src := range sources {
+		if !strings.Contains(d.Settings[0].Description, src.name) && src.keyed == nil {
+			t.Fatalf("the sources setting does not name %s", src.name)
+		}
+	}
+	// What ships asked by default is the sites that answer a plain request.
+	var def []string
+	for _, src := range pickSources(sources, nil) {
+		def = append(def, src.name)
+	}
+	if want := []string{"duckduckgo", "yahoo", "seznam", "wikipedia"}; !reflect.DeepEqual(def, want) {
+		t.Fatalf("default sources %v want %v", def, want)
+	}
+}
+
+// A batch is what the Bot is told to send: its queries wait for their turn
+// instead of failing, and each asks one site.
+func TestBatchQueuesForItsTurns(t *testing.T) {
+	a, b := answers("a", hit("one")), answers("b", hit("two"))
+	m := testMeta(newClock(), a, b)
+	m.fanout = 2
+	m.queueMax, m.queueBatch = time.Millisecond, 5*time.Second
+	for _, n := range []string{"a", "b"} {
+		m.buckets[n] = newBucket(time.Now, limit{every: 60 * time.Millisecond, burst: 1})
+	}
+	var qs []Query
+	for i := range 8 {
+		qs = append(qs, Query{Text: fmt.Sprint("query ", i)})
+	}
+	for i, res := range Many(bg, m, qs) {
+		if len(res.Results) != 1 || res.Note != "" || len(res.Busy) != 0 {
+			t.Fatalf("query %d: %+v", i, res)
+		}
+	}
+	// One site each: eight queries are eight requests, not sixteen.
+	if n := called(a, b); n != 8 {
+		t.Fatalf("%d requests for 8 queries", n)
+	}
+	// A lone search does not wait that long: with the turns a minute off it
+	// says so, and when to come back.
+	c := newClock()
+	for _, n := range []string{"a", "b"} {
+		m.buckets[n] = newBucket(c.now, limit{every: time.Minute, burst: 1})
+		m.buckets[n].take(0)
+	}
+	res, _ := m.Search(bg, Query{Text: "alone"})
+	if len(res.Results) != 0 || len(res.Busy) != 2 || !strings.Contains(res.Note, "Search again in about") {
+		t.Fatalf("res %+v", res)
+	}
+}
+
+// A caller that gives up does not wait out the queue; the search goes on.
+func TestSearchReturnsWhenItsCallerGivesUp(t *testing.T) {
+	a := answers("a", hit("one"))
+	m := testMeta(newClock(), a)
+	m.queueMax = 5 * time.Second
+	m.buckets["a"] = newBucket(time.Now, limit{every: 400 * time.Millisecond, burst: 1})
+	_, _ = m.Search(bg, Query{Text: "first"})
+	ctx, cancel := context.WithTimeout(bg, 30*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	if _, err := m.Search(ctx, Query{Text: "second"}); err == nil || time.Since(start) > 300*time.Millisecond {
+		t.Fatalf("err %v after %v", err, time.Since(start))
+	}
+	// The answer still arrives, for whoever asks next.
+	time.Sleep(600 * time.Millisecond)
+	if res, _ := m.Search(bg, Query{Text: "second"}); len(res.Results) != 1 || a.calls.Load() != 2 {
+		t.Fatalf("res %+v calls %d", res, a.calls.Load())
+	}
+}
+
+// The encyclopedia answers first and always; a search still waits for a web
+// search site, and says so when none came.
+func TestReferenceAnswersAreNotAWebSearch(t *testing.T) {
+	api := answers("wiki", hit("article"))
+	api.src.api = true
+	slow := &fake{}
+	slow.src = source{name: "web", provider: "web", fetch: func(context.Context, Query) ([]Hit, error) {
+		time.Sleep(120 * time.Millisecond)
+		return []Hit{hit("page")}, nil
+	}}
+	m := testMeta(newClock(), api, slow)
+	m.patience = 20 * time.Millisecond
+	if res, _ := m.Search(bg, Query{Text: "q"}); len(res.Results) != 2 || res.Note != "" {
+		t.Fatalf("the search did not wait for the web: %+v", res)
+	}
+	c := newClock()
+	m = testMeta(c, api, fails("web", errBlocked))
+	res, _ := m.Search(bg, Query{Text: "q"})
+	if len(res.Results) != 1 || !strings.Contains(res.Note, "not a full web search") || !reflect.DeepEqual(res.Blocked, []string{"web"}) {
+		t.Fatalf("res %+v", res)
+	}
+	// Such an answer is not kept: once the web is back, it is asked.
+	c.add(backoffStart + time.Second)
+	m.sources[1] = answers("web", hit("page")).src
+	if res, _ = m.Search(bg, Query{Text: "q"}); len(res.Results) != 2 || res.Note != "" {
+		t.Fatalf("after recovery %+v", res)
+	}
+}
+
+// When nothing can answer, an answer from a while ago is served as one.
+func TestStaleAnswerBeatsNone(t *testing.T) {
+	c := newClock()
+	m := testMeta(c, answers("a", hit("one")))
+	_, _ = m.Search(bg, Query{Text: "q"})
+	c.add(20 * time.Minute)
+	m.sources = []source{fails("a", errBlocked).src}
+	res, _ := m.Search(bg, Query{Text: "q"})
+	if len(res.Results) != 1 || !strings.Contains(res.Note, "from 20 minutes ago") || !reflect.DeepEqual(res.Blocked, []string{"a"}) {
+		t.Fatalf("res %+v", res)
+	}
+	// Past an hour it is too old to pass for an answer.
+	c.add(time.Hour)
+	if res, _ = m.Search(bg, Query{Text: "q"}); len(res.Results) != 0 || !strings.Contains(res.Note, "does not mean nothing exists") {
+		t.Fatalf("res %+v", res)
+	}
+}
+
+// A timeout or a network error is no verdict on how a site sees us: the
+// source rests briefly, where a refusal doubles to half an hour.
+func TestStumbleIsNotARefusal(t *testing.T) {
+	c := newClock()
+	down, refusing := fails("down", errors.New("dial tcp: no route to host")), fails("refusing", errBlocked)
+	m := testMeta(c, down, refusing)
+	for range 6 {
+		_, _ = m.Search(bg, Query{Text: fmt.Sprint("q", c.now().Unix())})
+		c.add(backoffMax)
+	}
+	_, _ = m.Search(bg, Query{Text: "last"})
+	c.add(stumbleMax)
+	if m.health.open("down") || !m.health.open("refusing") {
+		t.Fatalf("down open %v, refusing open %v", m.health.open("down"), m.health.open("refusing"))
+	}
+	if h, _ := m.health.look("down"); !strings.Contains(h.reason, "no route to host") {
+		t.Fatalf("reason %q", h.reason)
+	}
+	if h, _ := m.health.look("refusing"); !strings.Contains(h.reason, "challenge") {
+		t.Fatalf("reason %q", h.reason)
 	}
 }
 

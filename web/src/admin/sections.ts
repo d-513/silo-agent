@@ -29,6 +29,7 @@ export const MODEL_PAGES = [
   { id: "text", label: msg("Text") },
   { id: "decision", label: msg("Decisions") },
   { id: "embedding", label: msg("Embeddings") },
+  { id: "image", label: msg("Images") },
   { id: "voice", label: msg("Voice") },
 ] as const;
 

@@ -190,13 +190,27 @@ func audioMIME(name string) string {
 
 // Tool is the Bot's transcribe (chat tool and
 // silo_runtime.transcribe). The caller already authorized bot.transcribe.
-func (s *Service) Tool(ctx context.Context, botID, path, language string, structured bool) (string, error) {
+// timestamps asks for the text in timed segments; subtitles names a .srt or
+// .vtt file in the workspace to write them to.
+func (s *Service) Tool(ctx context.Context, botID string, args map[string]any, structured bool) (string, error) {
+	path, _ := args["path"].(string)
+	language, _ := args["language"].(string)
+	timed, _ := args["timestamps"].(bool)
+	subs, _ := args["subtitles"].(string)
+	subs = workspace.Rel(subs)
 	if strings.TrimSpace(path) == "" {
 		return "", errors.New("path required")
 	}
 	mime := audioMIME(path)
 	if mime == "" {
-		return "", fmt.Errorf("%s is not an audio file (mp3, wav, m4a, ogg, opus, webm, flac)", path)
+		return "", fmt.Errorf("%s is not an audio file (mp3, wav, m4a, ogg, opus, webm, flac); take a video's sound out with ffmpeg first", path)
+	}
+	vtt := strings.EqualFold(filepath.Ext(subs), ".vtt")
+	if subs != "" && !vtt && !strings.EqualFold(filepath.Ext(subs), ".srt") {
+		return "", errors.New("subtitles: name a .srt or .vtt file")
+	}
+	if strings.Contains("/"+subs+"/", "/../") {
+		return "", errors.New("subtitles: the path must stay inside the workspace")
 	}
 	if s.cfg().TranscribeModel() == "" {
 		return "", errVoiceOff
@@ -206,17 +220,52 @@ func (s *Service) Tool(ctx context.Context, botID, path, language string, struct
 		return "", err
 	}
 	out, err := s.transcribe(ctx, botID, "transcribe", llm.Audio{
-		Data: file.Data, MIME: mime, Filename: file.Name, Language: strings.TrimSpace(language),
+		Data: file.Data, MIME: mime, Filename: file.Name, Language: strings.TrimSpace(language), Timestamps: timed || subs != "",
 	})
 	if err != nil {
 		return "", err
 	}
-	if !structured {
-		if out.Text == "" {
-			return "(no speech found)", nil
+	if subs != "" {
+		if len(out.Segments) == 0 {
+			if out.Text == "" {
+				return "", errors.New("no speech found, so no subtitles were written")
+			}
+			return "", fmt.Errorf("the speech-to-text model (%s) gives no timings, so no subtitles were written; the operator can pick one that does (Whisper, Deepgram Nova, ElevenLabs Scribe)", s.cfg().TranscribeModel())
 		}
-		return out.Text, nil
+		if err := s.ws.Put(ctx, botID, subs, []byte(Subtitles(out.Segments, vtt))); err != nil {
+			return "", fmt.Errorf("save %s: %w", subs, err)
+		}
 	}
-	b, err := json.Marshal(map[string]any{"text": out.Text, "language": out.Language, "seconds": out.Seconds})
+	if !structured {
+		text := out.Text
+		if text == "" {
+			text = "(no speech found)"
+		}
+		switch {
+		case subs != "":
+			text += fmt.Sprintf("\n\n[%d subtitles written to %s]", len(out.Segments), subs)
+		case timed && len(out.Segments) == 0 && out.Text != "":
+			text += "\n\n[this speech-to-text model gives no timings]"
+		case timed:
+			var b strings.Builder
+			for _, sg := range out.Segments {
+				fmt.Fprintf(&b, "[%.2f-%.2f] %s\n", sg.Start, sg.End, sg.Text)
+			}
+			text = strings.TrimSpace(b.String())
+		}
+		return text, nil
+	}
+	res := map[string]any{"text": out.Text, "language": out.Language, "seconds": out.Seconds}
+	if timed || subs != "" {
+		segs := out.Segments
+		if segs == nil {
+			segs = []llm.Segment{}
+		}
+		res["segments"] = segs
+	}
+	if subs != "" {
+		res["subtitles"] = subs
+	}
+	b, err := json.Marshal(res)
 	return string(b), err
 }

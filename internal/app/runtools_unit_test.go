@@ -3,6 +3,7 @@ package app
 import (
 	"testing"
 
+	"silo.agent/internal/app/imagegen"
 	"silo.agent/internal/app/knowledge"
 	"silo.agent/internal/app/mailbox"
 	"silo.agent/internal/app/models"
@@ -33,7 +34,7 @@ func TestToolListIsLeanUnlessTheOperatorAsks(t *testing.T) {
 			t.Errorf("%s is not offered by default", name)
 		}
 	}
-	for _, name := range []string{"web_search", "feed", "task_add", "list_tunnels", "list_automations", "chats", "forget", "open_tunnel", "create_automation", "soul", "switch_model", "agent_status", "decide"} {
+	for _, name := range []string{"web_search", "feed", "task_add", "list_tunnels", "list_automations", "chats", "forget", "open_tunnel", "create_automation", "soul", "switch_model", "agent_status", "decide", "generate_image"} {
 		if offered(a, name) {
 			t.Errorf("%s is offered by default", name)
 		}
@@ -65,6 +66,7 @@ func newToolApp() *App {
 	a := &App{}
 	a.Models = models.New(nil, a.cfg)
 	a.Voice = voice.New(nil, a.cfg, a.Models, nil, a)
+	a.ImageGen = imagegen.New(a.cfg, a.Models, nil)
 	a.Tunnels = tunnels.New(nil, nil, a.cfg, nil)
 	a.Mail = mailbox.New(nil, a.cfg, nil, nil, nil)
 	a.Knowledge = knowledge.New(nil, nil, a.cfg, a.Models, nil)

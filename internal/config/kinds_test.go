@@ -73,3 +73,32 @@ func TestValidateKindModels(t *testing.T) {
 		t.Fatalf("a valid voice config: %v", err)
 	}
 }
+
+// Image models: a list of their own, a role that counts as listed, and
+// providers that serve nothing else.
+func TestImageModels(t *testing.T) {
+	s, err := FromYAML([]byte("image_models: [fal/fal-ai/flux-2-pro, openrouter/google/gemini-3-pro-image]\nmodel_image: bfl/flux-3-image\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := s.Config()
+	if got := c.KindModels(llm.KindImage); strings.Join(got, ",") != "fal/fal-ai/flux-2-pro,openrouter/google/gemini-3-pro-image,bfl/flux-3-image" {
+		t.Fatalf("image models %q", got)
+	}
+	if c.ImageModel() != "bfl/flux-3-image" || c.ModelKind("fal/fal-ai/flux-2-pro") != llm.KindImage || c.ModelKind("stability/ultra") != llm.KindImage {
+		t.Fatalf("default %q", c.ImageModel())
+	}
+	if none, _ := FromYAML(nil); none.Config().ImageModel() != "" || len(none.Config().KindModels(llm.KindImage)) != 0 {
+		t.Fatal("image generation is on with nothing set")
+	}
+	for name, tc := range map[string]struct{ yaml, want string }{
+		"anthropic has none":   {"image_models: [anthropic/claude-opus-5-5]\n", "no image models"},
+		"fal as the chat":      {"model: fal/fal-ai/flux-2-pro\n", "an image model, not a text model"},
+		"fal allowed as text":  {"models: [fal/fal-ai/flux-2-pro]\n", "image models only"},
+		"a text-only provider": {"model_image: anthropic/claude-opus-5-5\n", "model_image"},
+	} {
+		if err := validateYAML([]byte(tc.yaml)); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+}

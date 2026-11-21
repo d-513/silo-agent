@@ -69,6 +69,9 @@ func (d *deepgram) Transcribe(ctx context.Context, model string, a Audio) (Trans
 	} else {
 		q.Set("detect_language", "true")
 	}
+	if a.Timestamps {
+		q.Set("utterances", "true")
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, d.base+"/v1/listen?"+q.Encode(), strings.NewReader(string(a.Data)))
 	if err != nil {
 		return Transcript{}, err
@@ -96,12 +99,22 @@ func (d *deepgram) Transcribe(ctx context.Context, model string, a Audio) (Trans
 					Transcript string `json:"transcript"`
 				} `json:"alternatives"`
 			} `json:"channels"`
+			Utterances []struct {
+				Start      float64 `json:"start"`
+				End        float64 `json:"end"`
+				Transcript string  `json:"transcript"`
+			} `json:"utterances"`
 		} `json:"results"`
 	}
 	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
 		return Transcript{}, fmt.Errorf("deepgram: %w", err)
 	}
 	out := Transcript{Seconds: body.Metadata.Duration, Language: a.Language}
+	for _, u := range body.Results.Utterances {
+		if text := strings.TrimSpace(u.Transcript); text != "" {
+			out.Segments = append(out.Segments, Segment{Start: u.Start, End: u.End, Text: text})
+		}
+	}
 	if ch := body.Results.Channels; len(ch) > 0 {
 		if ch[0].DetectedLanguage != "" {
 			out.Language = ch[0].DetectedLanguage

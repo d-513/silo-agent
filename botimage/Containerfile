@@ -70,7 +70,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # What Debian does not package, pinned. Playwright drives the desktop's own
 # Chromium over CDP, so it never downloads a browser.
 RUN PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pip3 install --break-system-packages --no-cache-dir \
-    playwright==1.65.2 python-pptx==1.0.2 pdfplumber==0.11.10 duckdb==2.0.0
+    playwright==1.65.2 python-pptx==1.0.2 pdfplumber==0.11.10 duckdb==2.0.0 \
+    "yt-dlp[default]==2026.10.26"
+# yt-dlp solves YouTube's player challenges with a JavaScript runtime: the
+# image has Node, not the Deno it looks for by default.
+RUN printf -- '--js-runtimes node\n' > /etc/yt-dlp.conf
 # pip may install for the silo user: it then falls back to ~/.local by itself
 # (the system's site-packages are root's), and that folder exists from the
 # start so an interpreter that is already running sees what lands there.
@@ -124,10 +128,11 @@ RUN for i in org.xfce.thunar org.xfce.terminal org.xfce.mousepad; do \
         lightpanda pdftotext pdftoppm qpdf pandoc ocrmypdf tesseract catdoc antiword \
         convert rsvg-convert dot exiftool ffmpeg ffprobe sox curl wget jq yq sqlite3 \
         file less nano tree lsof rsync git rg fd zip unzip xz bzip2 zstd 7z make gcc \
-        certutil proxychains4 nc ssh; do \
+        certutil proxychains4 nc ssh yt-dlp; do \
       command -v "$c" >/dev/null || { echo "missing: $c" >&2; exit 1; }; \
     done \
-    && python3 -c 'import playwright, pptx, pdfplumber, duckdb, httpx, scipy, docx, openpyxl, weasyprint'
+    && python3 -c 'import playwright, pptx, pdfplumber, duckdb, httpx, scipy, docx, openpyxl, weasyprint' \
+    && yt-dlp --version >/dev/null
 
 # Silo's own files, last: they change most.
 COPY botimage/openbox/autostart /opt/silo/openbox/autostart

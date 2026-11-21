@@ -321,6 +321,25 @@ func (a *App) toolDefs() []tool.Def {
 			}),
 		},
 		{
+			Name:        "generate_image",
+			Description: "Make images from a prompt with an image model and save them in the workspace; optionally give it images to edit or build on. Answers the saved paths ({model, images: [{path, mime, bytes}], cost} from Python). It shows nothing to anyone: present a saved file to look at it or to show the human. Python: silo_runtime.generate_image(prompt).",
+			Params: tool.Object(map[string]any{
+				"prompt": map[string]any{"type": "string", "description": "what to make: subject, setting, style, composition, lighting, any text that must appear (in quotes). With input images, what to change and what to keep."},
+				"path":   map[string]any{"type": "string", "description": "where to save, relative to /workspace, e.g. site/hero.png; the extension follows the format the model answers in, and several images get -1, -2. Leave out for images/<words of the prompt>-<id>."},
+				"images": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "workspace paths of images to edit, combine or take as reference (up to 8); not every model takes them"},
+				"aspect": map[string]any{"type": "string", "enum": llm.ImageAspects, "description": "width:height; leave out for the model's default (square, or the input's shape)"},
+				"count":  map[string]any{"type": "integer", "description": "how many variations, 1 to 4; default 1"},
+				"model":  map[string]any{"type": "string", "description": "another allowed image model, as silo_runtime.list_models() gives them; leave out for the operator's default"},
+			}, "prompt"),
+			Connector: security.Model, Action: "image",
+			ExposePython: true,
+			Writes:       true,
+			Enabled:      func(string) bool { return a.ImageGen.Enabled() },
+			Run: text(func(ctx context.Context, c *tool.Call) (string, error) {
+				return a.ImageGen.Tool(ctx, c.Bot.ID, c.Args, c.Structured())
+			}),
+		},
+		{
 			Name:        "switch_model",
 			Description: "Switch this conversation to another allowed model: an id from silo_runtime.list_models() (an id that is not allowed answers with the list). Takes effect from the next model call.",
 			Params: tool.Object(map[string]any{
@@ -478,7 +497,7 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "web_search",
-			Description: "Search the public web. Returns titles, URLs, and snippets; `engines` on a hit is how many search engines agreed on it. Search in the language of the topic. A `note` on a result means the engines were blocked, not that nothing exists. Prefer this over typing a search URL on the desktop.",
+			Description: "Search the public web. Returns titles, URLs, and snippets; `engines` on a hit is how many search engines agreed on it. Search in the language of the topic. A `note` on a result means the engines could not answer properly (blocked, busy, or an older answer), not that nothing exists: read it. Prefer this over typing a search URL on the desktop.",
 			Params: tool.Object(map[string]any{
 				"query":       map[string]any{"type": "string"},
 				"queries":     map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "several searches in one call instead of `query` (max 10); answers {searches: [{query, results}]}"},
@@ -647,16 +666,50 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "transcribe",
-			Description: "Transcribe a speech recording in the workspace (mp3, wav, m4a, ogg, opus, webm, flac; up to 25 MB) to text with the operator's speech-to-text model. Python: silo_runtime.transcribe(path).",
+			Description: "Transcribe a speech recording in the workspace (mp3, wav, m4a, ogg, opus, webm, flac; up to 25 MB) to text with the operator's speech-to-text model; with timestamps, in timed segments, and with subtitles, written as a .srt or .vtt file. Python: silo_runtime.transcribe(path).",
 			Params: tool.Object(map[string]any{
-				"path":     map[string]any{"type": "string", "description": "audio file relative to /workspace"},
-				"language": map[string]any{"type": "string", "description": "optional ISO-639-1 hint such as en or pl"},
+				"path":       map[string]any{"type": "string", "description": "audio file relative to /workspace"},
+				"language":   map[string]any{"type": "string", "description": "optional ISO-639-1 hint such as en or pl"},
+				"timestamps": map[string]any{"type": "boolean", "description": "also answer segments: [{start, end, text}] in seconds; empty when the model has no timings"},
+				"subtitles":  map[string]any{"type": "string", "description": "write the segments as subtitles to this workspace path, .srt or .vtt"},
 			}, "path"),
 			Connector: security.Bot, Action: "transcribe",
 			ExposePython: true,
 			Enabled:      func(string) bool { return a.Voice.Enabled() },
 			Run: text(func(ctx context.Context, c *tool.Call) (string, error) {
-				return a.Voice.Tool(ctx, c.Bot.ID, c.Str("path"), c.Str("language"), c.Structured())
+				return a.Voice.Tool(ctx, c.Bot.ID, c.Args, c.Structured())
+			}),
+		},
+		{
+			Name:        "speak",
+			Description: "Read text aloud with a speech model into a WAV file in the workspace: narration, a voice-over, a spoken version of a text. It plays nothing and shows nothing; convert or mix the file with ffmpeg. Answers {path, seconds, bytes, sample_rate, model, voice} from Python. Python: silo_runtime.speak(text).",
+			Params: tool.Object(map[string]any{
+				"text":     map[string]any{"type": "string", "description": "what to say, as it should be spoken (no markdown); up to 12000 characters a call"},
+				"path":     map[string]any{"type": "string", "description": "where to save, relative to /workspace; always written as .wav. Leave out for audio/<first words>-<id>.wav"},
+				"voice":    map[string]any{"type": "string", "description": "a voice id from silo_runtime.list_voices(); leave out for this Bot's own voice"},
+				"language": map[string]any{"type": "string", "description": "ISO-639-1 code of the text when it is not this Bot's language; picks a voice that speaks it"},
+				"speed":    map[string]any{"type": "number", "description": "0.5 to 2; default this Bot's own"},
+				"model":    map[string]any{"type": "string", "description": "another allowed speech model, from silo_runtime.list_voices()[\"models\"]"},
+			}, "text"),
+			Connector: security.Bot, Action: "speak",
+			ExposePython: true,
+			Writes:       true,
+			Enabled:      func(string) bool { return a.Voice.SpeechEnabled() },
+			Run: text(func(ctx context.Context, c *tool.Call) (string, error) {
+				return a.Voice.SpeakTool(ctx, c.Bot, c.Args, c.Structured())
+			}),
+		},
+		{
+			Name:        "list_voices",
+			Description: "List the voices speak can use: {model, models, voices: [{id, name, language}], default_voice}. Python: silo_runtime.list_voices().",
+			Params: tool.Object(map[string]any{
+				"model": map[string]any{"type": "string", "description": "another allowed speech model; leave out for this Bot's own"},
+			}),
+			Connector: security.Bot, Action: "list_voices",
+			ExposePython: true,
+			Enabled:      func(string) bool { return a.Voice.SpeechEnabled() },
+			Run: text(func(ctx context.Context, c *tool.Call) (string, error) {
+				return a.Voice.VoicesTool(ctx, c.Bot, c.Args)
 			}),
 		},
 		{

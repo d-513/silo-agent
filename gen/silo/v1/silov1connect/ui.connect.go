@@ -77,6 +77,8 @@ const (
 	UIDeleteInviteProcedure = "/silo.v1.UI/DeleteInvite"
 	// UICheckOIDCProcedure is the fully-qualified name of the UI's CheckOIDC RPC.
 	UICheckOIDCProcedure = "/silo.v1.UI/CheckOIDC"
+	// UICheckSearchProcedure is the fully-qualified name of the UI's CheckSearch RPC.
+	UICheckSearchProcedure = "/silo.v1.UI/CheckSearch"
 	// UIListSpacesProcedure is the fully-qualified name of the UI's ListSpaces RPC.
 	UIListSpacesProcedure = "/silo.v1.UI/ListSpaces"
 	// UIGetSpaceProcedure is the fully-qualified name of the UI's GetSpace RPC.
@@ -517,6 +519,10 @@ type UIClient interface {
 	// CheckOIDC asks the configured OIDC provider for its discovery document,
 	// with the saved settings.
 	CheckOIDC(context.Context, *connect.Request[v1.CheckOIDCRequest]) (*connect.Response[v1.CheckOIDCResponse], error)
+	// CheckSearch is the web search engine's health for an admin: the Built-in
+	// Scraper's sources as this process has seen them, and with a query, one
+	// real search with the saved settings.
+	CheckSearch(context.Context, *connect.Request[v1.CheckSearchRequest]) (*connect.Response[v1.CheckSearchResponse], error)
 	// Workspaces: the containers of Bots, the people who use them, and what
 	// their Bots share. ListSpaces is the caller's memberships, and makes their
 	// first Workspace if they own none.
@@ -967,6 +973,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			httpClient,
 			baseURL+UICheckOIDCProcedure,
 			connect.WithSchema(uIMethods.ByName("CheckOIDC")),
+			connect.WithClientOptions(opts...),
+		),
+		checkSearch: connect.NewClient[v1.CheckSearchRequest, v1.CheckSearchResponse](
+			httpClient,
+			baseURL+UICheckSearchProcedure,
+			connect.WithSchema(uIMethods.ByName("CheckSearch")),
 			connect.WithClientOptions(opts...),
 		),
 		listSpaces: connect.NewClient[v1.ListSpacesRequest, v1.ListSpacesResponse](
@@ -2202,6 +2214,7 @@ type uIClient struct {
 	createInvite             *connect.Client[v1.CreateInviteRequest, v1.Invite]
 	deleteInvite             *connect.Client[v1.DeleteInviteRequest, v1.DeleteInviteResponse]
 	checkOIDC                *connect.Client[v1.CheckOIDCRequest, v1.CheckOIDCResponse]
+	checkSearch              *connect.Client[v1.CheckSearchRequest, v1.CheckSearchResponse]
 	listSpaces               *connect.Client[v1.ListSpacesRequest, v1.ListSpacesResponse]
 	getSpace                 *connect.Client[v1.GetSpaceRequest, v1.Space]
 	createSpace              *connect.Client[v1.CreateSpaceRequest, v1.Space]
@@ -2513,6 +2526,11 @@ func (c *uIClient) DeleteInvite(ctx context.Context, req *connect.Request[v1.Del
 // CheckOIDC calls silo.v1.UI.CheckOIDC.
 func (c *uIClient) CheckOIDC(ctx context.Context, req *connect.Request[v1.CheckOIDCRequest]) (*connect.Response[v1.CheckOIDCResponse], error) {
 	return c.checkOIDC.CallUnary(ctx, req)
+}
+
+// CheckSearch calls silo.v1.UI.CheckSearch.
+func (c *uIClient) CheckSearch(ctx context.Context, req *connect.Request[v1.CheckSearchRequest]) (*connect.Response[v1.CheckSearchResponse], error) {
+	return c.checkSearch.CallUnary(ctx, req)
 }
 
 // ListSpaces calls silo.v1.UI.ListSpaces.
@@ -3553,6 +3571,10 @@ type UIHandler interface {
 	// CheckOIDC asks the configured OIDC provider for its discovery document,
 	// with the saved settings.
 	CheckOIDC(context.Context, *connect.Request[v1.CheckOIDCRequest]) (*connect.Response[v1.CheckOIDCResponse], error)
+	// CheckSearch is the web search engine's health for an admin: the Built-in
+	// Scraper's sources as this process has seen them, and with a query, one
+	// real search with the saved settings.
+	CheckSearch(context.Context, *connect.Request[v1.CheckSearchRequest]) (*connect.Response[v1.CheckSearchResponse], error)
 	// Workspaces: the containers of Bots, the people who use them, and what
 	// their Bots share. ListSpaces is the caller's memberships, and makes their
 	// first Workspace if they own none.
@@ -3999,6 +4021,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		UICheckOIDCProcedure,
 		svc.CheckOIDC,
 		connect.WithSchema(uIMethods.ByName("CheckOIDC")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uICheckSearchHandler := connect.NewUnaryHandler(
+		UICheckSearchProcedure,
+		svc.CheckSearch,
+		connect.WithSchema(uIMethods.ByName("CheckSearch")),
 		connect.WithHandlerOptions(opts...),
 	)
 	uIListSpacesHandler := connect.NewUnaryHandler(
@@ -5253,6 +5281,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIDeleteInviteHandler.ServeHTTP(w, r)
 		case UICheckOIDCProcedure:
 			uICheckOIDCHandler.ServeHTTP(w, r)
+		case UICheckSearchProcedure:
+			uICheckSearchHandler.ServeHTTP(w, r)
 		case UIListSpacesProcedure:
 			uIListSpacesHandler.ServeHTTP(w, r)
 		case UIGetSpaceProcedure:
@@ -5750,6 +5780,10 @@ func (UnimplementedUIHandler) DeleteInvite(context.Context, *connect.Request[v1.
 
 func (UnimplementedUIHandler) CheckOIDC(context.Context, *connect.Request[v1.CheckOIDCRequest]) (*connect.Response[v1.CheckOIDCResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CheckOIDC is not implemented"))
+}
+
+func (UnimplementedUIHandler) CheckSearch(context.Context, *connect.Request[v1.CheckSearchRequest]) (*connect.Response[v1.CheckSearchResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.CheckSearch is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListSpaces(context.Context, *connect.Request[v1.ListSpacesRequest]) (*connect.Response[v1.ListSpacesResponse], error) {

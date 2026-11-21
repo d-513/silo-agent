@@ -87,6 +87,8 @@ export function callWord(label: string): string {
       return msg("Embedding");
     case "speech":
       return msg("Speech");
+    case "image":
+      return msg("Image");
     case "dictation":
       return msg("Dictation");
     case "channel":

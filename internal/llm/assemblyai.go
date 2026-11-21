@@ -155,11 +155,24 @@ func (a *assemblyAI) Transcribe(ctx context.Context, model string, au Audio) (Tr
 	var body struct {
 		Text            string  `json:"text"`
 		AudioDurationMs float64 `json:"audio_duration_ms"`
+		Words           []struct {
+			Text  string  `json:"text"`
+			Start float64 `json:"start"`
+			End   float64 `json:"end"`
+		} `json:"words"`
 	}
 	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
 		return Transcript{}, fmt.Errorf("assemblyai: %w", err)
 	}
-	return Transcript{Text: strings.TrimSpace(body.Text), Language: au.Language, Seconds: body.AudioDurationMs / 1000}, nil
+	out := Transcript{Text: strings.TrimSpace(body.Text), Language: au.Language, Seconds: body.AudioDurationMs / 1000}
+	if au.Timestamps {
+		words := make([]TimedWord, 0, len(body.Words))
+		for _, w := range body.Words {
+			words = append(words, TimedWord{Text: w.Text, Start: w.Start / 1000, End: w.End / 1000})
+		}
+		out.Segments = SegmentsOf(words)
+	}
+	return out, nil
 }
 
 // ListModels is AssemblyAI's streaming models (no list endpoint).

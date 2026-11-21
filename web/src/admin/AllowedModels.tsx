@@ -1,10 +1,11 @@
-import { Plus, Trash2 } from "lucide-react";
+import { List as ListIcon, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Btn } from "../Btn";
 import { Panel, inputClass } from "../Field";
 import { Spinner } from "../Feedback";
 import { Select } from "../Select";
+import { KindModelsDialog, useAskable } from "./KindModelsDialog";
 import { LiveChip } from "./LiveChip";
 import { ProviderMark } from "./ProviderMap";
 import { ROLE_NAMES } from "./roles";
@@ -46,6 +47,12 @@ export const ALLOWLISTS: Record<ModelKind, { title: string; note: string; none: 
     none: msg("No embedding models allowed yet."),
     example: msg("model name, e.g. openai/text-embedding-3-small"),
   },
+  image: {
+    title: msg("Allowed image models"),
+    note: msg("Models that make and edit pictures. A Bot's generate_image tool can name any of these. Saved at once."),
+    none: msg("No image models allowed yet. Without one the Bot has no generate_image tool."),
+    example: msg("model name, e.g. flux-3-image"),
+  },
 };
 
 // One kind's allowlist (the text models every chat's model menu offers, the
@@ -65,6 +72,9 @@ export function AllowedModels({ kind }: { kind: ModelKind }) {
   const pick = provider || providers[0]?.id || "";
   const id = `${pick}/${name.trim()}`.replace(/\/+$/, "");
   const known = models.some((m) => m.id === id);
+  // The models every provider that is set up lists for this kind.
+  const [listing, setListing] = useState(false);
+  const askable = useAskable(kind).length;
 
   function add() {
     if (!pick || !name.trim() || known) return;
@@ -107,9 +117,15 @@ export function AllowedModels({ kind }: { kind: ModelKind }) {
         </ul>
       )}
       <div className="bg-well px-5 py-4 shadow-[inset_0_1px_0_var(--color-line)]">
-        <p className="mb-3 text-meta leading-[18px] text-ink-2">
-          <Trans i18nKey="Pick from a provider's own list under <link>Providers</link>, or add a model by id." components={{ link: <Link to="/admin/settings/models/$page" params={{ page: "providers" }} className="text-cobalt hover:text-cobalt-deep" /> }} />
-        </p>
+        <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Btn onClick={() => setListing(true)}>
+            <ListIcon size={14} /> {t("List models")}
+          </Btn>
+          <p className="min-w-0 flex-1 basis-[240px] text-meta leading-[18px] text-ink-2">
+            {askable ? t("Asks the {{count}} providers you have set up what they serve of this kind.", { count: askable }) + " " : null}
+            <Trans i18nKey="Pick from a provider's own list under <link>Providers</link>, or add a model by id." components={{ link: <Link to="/admin/settings/models/$page" params={{ page: "providers" }} className="text-cobalt hover:text-cobalt-deep" /> }} />
+          </p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="w-[150px]">
             <Select value={pick} onChange={setProvider} ariaLabel={t("Provider")} options={providers.map((p) => ({ value: p.id, label: p.id }))} />
@@ -135,6 +151,7 @@ export function AllowedModels({ kind }: { kind: ModelKind }) {
           </Btn>
         </div>
       </div>
+      {listing ? <KindModelsDialog kind={kind} onClose={() => setListing(false)} /> : null}
     </Panel>
   );
 }

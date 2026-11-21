@@ -337,6 +337,11 @@ type Config struct {
 	TranscriptionModels []string `koanf:"transcription_models"`
 	SpeechModels        []string `koanf:"speech_models"`
 	EmbeddingModels     []string `koanf:"embedding_models"`
+	// ImageModels is the allowlist of image models, and ModelImage the one
+	// the Bot's generate_image uses when it names none. With no default there
+	// is no image generation.
+	ImageModels []string `koanf:"image_models"`
+	ModelImage  string   `koanf:"model_image"`
 	// ModelVoice is the talker of a voice call: a fast text model that holds
 	// the conversation and hands real work to the Bot. Empty means the Bot
 	// answers every turn itself (direct mode).
@@ -461,6 +466,8 @@ func (c Config) KindModels(kind string) []string {
 		list, roles = c.SpeechModels, []string{strings.TrimSpace(c.Voice.SpeechModel)}
 	case llm.KindEmbedding:
 		list, roles = c.EmbeddingModels, []string{strings.TrimSpace(c.EmbedModel)}
+	case llm.KindImage:
+		list, roles = c.ImageModels, []string{c.ImageModel()}
 	}
 	out := append([]string(nil), list...)
 	for _, r := range roles {
@@ -607,6 +614,10 @@ func (c Config) DecisionModel() string {
 	return ""
 }
 
+// ImageModel is the default image model, or "" when the operator picked none:
+// the Bot then has no generate_image.
+func (c Config) ImageModel() string { return strings.TrimSpace(c.ModelImage) }
+
 // ModelKind is the kind of a provider/model id: a decision model when the
 // operator allowed it as one, or when its provider has no other kind.
 func (c Config) ModelKind(modelID string) string {
@@ -654,6 +665,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "model_memory"},
 	{Key: "model_decision"},
 	{Key: "embedding_model"},
+	{Key: "model_image"},
 	{Key: "transcribe_model"},
 	{Key: "model_voice"},
 	{Key: "voice.enabled", Type: "bool"},

@@ -9,29 +9,14 @@ import (
 	"silo.agent/internal/search"
 )
 
-func (a *App) searchEngineID() string {
-	if v := search.ID(a.cfg().Search.Engine); search.Known(v) {
-		return v
+// searchEngine is the engine the operator picked, with its settings.
+func (a *App) searchEngine() (search.Engine, error) {
+	get := func(string) string { return "" }
+	if a.Store != nil {
+		get = a.Store.Get
 	}
-	return search.DefaultEngine
-}
-
-func (a *App) searchEngineSettings() search.Settings {
-	id := a.searchEngineID()
-	d, ok := search.Lookup(id)
-	if !ok || a.Store == nil {
-		return nil
-	}
-	out := search.Settings{}
-	for _, f := range d.Settings {
-		if v := a.Store.Get("search." + id + "." + f.Key); v != "" {
-			out[f.Key] = v
-		}
-	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
+	id, settings := search.Configured(a.cfg().Search.Engine, get)
+	return search.New(id, settings)
 }
 
 // searchAnswer is one query's result inside a batch.
@@ -72,7 +57,7 @@ func (a *App) runWebSearch(ctx context.Context, argsJSON string) (string, error)
 	case len(texts) > search.MaxQueries:
 		return "", fmt.Errorf("at most %d queries in one call", search.MaxQueries)
 	}
-	eng, err := search.New(a.searchEngineID(), a.searchEngineSettings())
+	eng, err := a.searchEngine()
 	if err != nil {
 		return "", err
 	}

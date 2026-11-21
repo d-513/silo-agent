@@ -31,6 +31,7 @@ var Kinds = []Kind{
 	{ID: KindTranscription, List: "transcription_models"},
 	{ID: KindSpeech, List: "speech_models"},
 	{ID: KindEmbedding, List: "embedding_models"},
+	{ID: KindImage, List: "image_models"},
 }
 
 // KindOf finds a kind by id.
@@ -61,6 +62,9 @@ func Implements(c Client, kind string) bool {
 	case KindEmbedding:
 		_, ok := c.(Embedder)
 		return ok
+	case KindImage:
+		_, ok := c.(ImageMaker)
+		return ok
 	}
 	return false
 }
@@ -86,6 +90,8 @@ func GuessKind(id string) string {
 		return KindEmbedding
 	case has("whisper", "transcribe", "parakeet", "asr", "stt", "moonshine", "canary"):
 		return KindTranscription
+	case has("gpt-image", "dall-e", "imagen", "flux", "stable-diffusion", "sdxl", "sd3", "seedream", "-image", "recraft", "ideogram"):
+		return KindImage
 	case has("tts", "kokoro", "piper", "speech", "voice", "orpheus", "chatterbox"):
 		return KindSpeech
 	}

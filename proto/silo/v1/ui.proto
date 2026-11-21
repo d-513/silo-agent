@@ -36,6 +36,10 @@ service UI {
   // CheckOIDC asks the configured OIDC provider for its discovery document,
   // with the saved settings.
   rpc CheckOIDC(CheckOIDCRequest) returns (CheckOIDCResponse);
+  // CheckSearch is the web search engine's health for an admin: the Built-in
+  // Scraper's sources as this process has seen them, and with a query, one
+  // real search with the saved settings.
+  rpc CheckSearch(CheckSearchRequest) returns (CheckSearchResponse);
 
   // Workspaces: the containers of Bots, the people who use them, and what
   // their Bots share. ListSpaces is the caller's memberships, and makes their
@@ -571,6 +575,56 @@ message CheckOIDCRequest {}
 message CheckOIDCResponse {
   string issuer = 1;
   string authorization_endpoint = 2;
+}
+
+message CheckSearchRequest {
+  // Query, when set, is searched for (it spends the engine's budget or
+  // quota like any search). Empty only reads the sources' health.
+  string query = 1;
+}
+
+message CheckSearchResponse {
+  // Engine is the engine in use (search.engine as saved).
+  string engine = 1;
+  // Sources are the Built-in Scraper's; empty for any other engine.
+  repeated SearchSource sources = 2;
+  // Test is the search that was run; unset without a query.
+  SearchTest test = 3;
+}
+
+message SearchSource {
+  string name = 1;
+  // Api marks a public API; the others are scraped pages.
+  bool api = 2;
+  // On reports whether searches ask it; off_reason says why not.
+  bool on = 3;
+  string off_reason = 4;
+  // State: "ok", "resting" (left alone until resting_until after a failure),
+  // "failing" (its rest is over; the next search tries it) or "" (not asked
+  // since the control plane started).
+  string state = 5;
+  string reason = 6;
+  // RFC 3339, empty when never.
+  string resting_until = 7;
+  string last_ok = 8;
+  string last_failed = 9;
+}
+
+message SearchTest {
+  int32 took_ms = 1;
+  repeated SearchTestHit hits = 2;
+  repeated string blocked = 3;
+  repeated string busy = 4;
+  string note = 5;
+  // Error is why the search failed outright (a rejected key, an instance
+  // that did not answer).
+  string error = 6;
+}
+
+message SearchTestHit {
+  string title = 1;
+  string url = 2;
+  int32 engines = 3;
 }
 
 message Bot {

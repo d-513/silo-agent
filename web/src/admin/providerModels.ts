@@ -29,9 +29,9 @@ export function filterModels<T extends { id: string; name: string }>(list: T[], 
 }
 
 /** The kinds of model (the server's llm.Kinds), in the order Admin shows them. */
-export type ModelKind = "text" | "decision" | "transcription" | "speech" | "embedding";
+export type ModelKind = "text" | "decision" | "transcription" | "speech" | "embedding" | "image";
 
-export const KINDS: ModelKind[] = ["text", "decision", "transcription", "speech", "embedding"];
+export const KINDS: ModelKind[] = ["text", "decision", "transcription", "speech", "embedding", "image"];
 
 /** A listed model's kind; anything a provider does not mark is text. */
 export function kindOf(m: { kind?: string }): ModelKind {
@@ -54,6 +54,8 @@ export function kindWord(k: ModelKind): string {
       return t("Speech", { context: "kind" });
     case "embedding":
       return t("Embedding", { context: "kind" });
+    case "image":
+      return t("Image", { context: "kind" });
     default:
       return t("Text", { context: "kind" });
   }
@@ -70,6 +72,8 @@ export function filterWord(k: ModelKind, count: number): string {
       return t("Filter {{count}} speech models", { count });
     case "embedding":
       return t("Filter {{count}} embedding models", { count });
+    case "image":
+      return t("Filter {{count}} image models", { count });
     default:
       return t("Filter {{count}} text models", { count });
   }
@@ -86,6 +90,8 @@ export function removeTitle(k: ModelKind): string {
       return t("Remove from the allowed speech models");
     case "embedding":
       return t("Remove from the allowed embedding models");
+    case "image":
+      return t("Remove from the allowed image models");
     default:
       return t("Remove from the allowed text models");
   }

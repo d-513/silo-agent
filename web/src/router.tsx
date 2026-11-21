@@ -59,7 +59,7 @@ import { SpaceIndex, SpaceLayout } from "./space/Workspace";
 //     /account
 //     /admin                       admins only: one tab per page
 //       settings/$section          Settings and its categories
-//       settings/models[/$page]    the model map, and its pages: providers text decision embedding voice
+//       settings/models[/$page]    the model map, and its pages: providers text decision embedding image voice
 //       users[/invite|/$userId]
 //       connectors[/new|/$id]  skills  drives  audit  debug
 //     /bots/$botId                 BotPage: the tab bar, the right rail, what survives a page change

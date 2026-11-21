@@ -211,6 +211,63 @@ type Audio struct {
 	MIME     string
 	Filename string
 	Language string
+	// Timestamps asks for Transcript.Segments (subtitles); a model that has
+	// no timings answers without them.
+	Timestamps bool
+}
+
+// Segment is a stretch of a transcript and when it is said, in seconds from
+// the start of the recording.
+type Segment struct {
+	Start float64 `json:"start"`
+	End   float64 `json:"end"`
+	Text  string  `json:"text"`
+}
+
+// TimedWord is one word and when it is said, in seconds.
+type TimedWord struct {
+	Text       string
+	Start, End float64
+}
+
+// SegmentsOf groups timed words into stretches a subtitle can show: a
+// sentence, cut earlier at a pause or once it is long.
+func SegmentsOf(words []TimedWord) []Segment {
+	const (
+		maxChars = 84  // two subtitle lines
+		maxSecs  = 6.0 // one subtitle on screen
+		pause    = 0.7 // a breath between sentences
+	)
+	var out []Segment
+	var cur []string
+	var start, end float64
+	flush := func() {
+		if len(cur) > 0 {
+			out = append(out, Segment{Start: start, End: end, Text: strings.Join(cur, " ")})
+			cur = nil
+		}
+	}
+	size := 0
+	for _, w := range words {
+		text := strings.TrimSpace(w.Text)
+		if text == "" {
+			continue
+		}
+		if len(cur) > 0 && (w.Start-end > pause || size+len(text) > maxChars || w.End-start > maxSecs) {
+			flush()
+		}
+		if len(cur) == 0 {
+			start, size = w.Start, 0
+		}
+		cur = append(cur, text)
+		size += len(text) + 1
+		end = max(w.End, w.Start)
+		if strings.ContainsAny(text[len(text)-1:], ".?!") {
+			flush()
+		}
+	}
+	flush()
+	return out
 }
 
 // Transcript is a transcription result. Language and Seconds are filled when
@@ -220,6 +277,9 @@ type Transcript struct {
 	Language string
 	Seconds  float64
 	Cost     float64
+	// Segments are the text in timed stretches, when Audio.Timestamps asked
+	// and the model has timings.
+	Segments []Segment
 }
 
 // Transcriber is the optional interface a provider implements when it can turn
@@ -333,6 +393,12 @@ const (
 	Inworld    = "inworld"
 	Soniox     = "soniox"
 	AssemblyAI = "assemblyai"
+	Fal        = "fal"
+	Replicate  = "replicate"
+	BFL        = "bfl"
+	Stability  = "stability"
+	Google     = "google"
+	XAI        = "xai"
 )
 
 // keyAndURL are the settings of a provider that needs a key and may be
@@ -352,7 +418,7 @@ var builtinProviders = []registered{
 			Fast:          true,
 			Name:          "OpenRouter",
 			Description:   "OpenAI-compatible gateway to many models, decision models included (Jev, Clef and others through its Decisions API). Most upstreams cache a stable prefix on their own; Claude is cached only when the request marks it, which prompt caching does.",
-			Kinds:         []string{KindText, KindDecision, KindTranscription, KindSpeech, KindEmbedding},
+			Kinds:         []string{KindText, KindDecision, KindTranscription, KindSpeech, KindEmbedding, KindImage},
 			SupportsCache: true,
 			CacheTTLs:     []string{"5m", "1h"},
 			Settings: []SettingDef{
@@ -375,7 +441,7 @@ var builtinProviders = []registered{
 			Live:          []string{KindTranscription},
 			Name:          "OpenAI",
 			Description:   "OpenAI's API. Automatic prefix caching; prompt_cache_key improves routing.",
-			Kinds:         []string{KindText, KindTranscription, KindSpeech, KindEmbedding},
+			Kinds:         []string{KindText, KindTranscription, KindSpeech, KindEmbedding, KindImage},
 			SupportsCache: true,
 			Settings: []SettingDef{
 				{Key: "api_key", Label: "API key", Description: "OpenAI API key.", Secret: true},
@@ -426,7 +492,7 @@ var builtinProviders = []registered{
 			Live:            []string{KindTranscription},
 			Name:            "Local",
 			Description:     "Any self-hosted OpenAI-compatible server (LocalAI, Ollama, vLLM, Speaches, whisper.cpp). Silo only connects; it does not run models.",
-			Kinds:           []string{KindText, KindTranscription, KindSpeech, KindEmbedding},
+			Kinds:           []string{KindText, KindTranscription, KindSpeech, KindEmbedding, KindImage},
 			KeyOptional:     true,
 			BaseURLRequired: true,
 			Settings: []SettingDef{
@@ -538,6 +604,69 @@ var builtinProviders = []registered{
 			Settings:    keyAndURL("AssemblyAI"),
 		},
 		new: newAssemblyAI,
+	},
+	{
+		desc: Descriptor{
+			ID:          Fal,
+			Name:        "fal",
+			Description: "Hundreds of image models behind one key (FLUX, Nano Banana, Seedream, Ideogram, GPT Image and more), each named by its endpoint: fal-ai/flux-2-pro. Models differ in what they take: an editing endpoint (…/edit) is the one that takes input images.",
+			Kinds:       []string{KindImage},
+			Settings:    keyAndURL("fal"),
+		},
+		new: newFal,
+	},
+	{
+		desc: Descriptor{
+			ID:          Replicate,
+			Name:        "Replicate",
+			Description: "Image models run by Replicate, named owner/name: black-forest-labs/flux-2-pro, google/nano-banana-2. Each model's own input schema is read to learn what it takes.",
+			Kinds:       []string{KindImage},
+			Settings: []SettingDef{
+				{Key: "api_key", Label: "API token", Description: "Replicate API token.", Secret: true},
+				{Key: "base_url", Label: "Base URL", Description: "Override the API base URL."},
+			},
+		},
+		new: newReplicate,
+	},
+	{
+		desc: Descriptor{
+			ID:          BFL,
+			Name:        "Black Forest Labs",
+			Description: "FLUX from its maker: FLUX 3 and FLUX.2 make and edit images (up to 8 or 10 input images), Kontext edits. One image per request, so several are made side by side.",
+			Kinds:       []string{KindImage},
+			Settings:    keyAndURL("Black Forest Labs"),
+		},
+		new: newBFL,
+	},
+	{
+		desc: Descriptor{
+			ID:          Stability,
+			Name:        "Stability AI",
+			Description: "Stable Image: ultra, core and the Stable Diffusion 3.5 models. ultra and SD3.5 can start from one input image.",
+			Kinds:       []string{KindImage},
+			Settings:    keyAndURL("Stability AI"),
+		},
+		new: newStability,
+	},
+	{
+		desc: Descriptor{
+			ID:          Google,
+			Name:        "Google",
+			Description: "The Gemini API's image models (Nano Banana): they make images, edit them and combine up to 14 input images, and are good with text in a picture. Images only here; Gemini's text models are reached through OpenRouter.",
+			Kinds:       []string{KindImage},
+			Settings:    keyAndURL("Gemini"),
+		},
+		new: newGoogle,
+	},
+	{
+		desc: Descriptor{
+			ID:          XAI,
+			Name:        "xAI",
+			Description: "Grok Imagine image models; an edit takes one input image. Images only here.",
+			Kinds:       []string{KindImage},
+			Settings:    keyAndURL("xAI"),
+		},
+		new: newXAI,
 	},
 }
 

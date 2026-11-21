@@ -110,3 +110,25 @@ func TestAudioExt(t *testing.T) {
 		}
 	}
 }
+
+// Words with timings become subtitle-sized segments: a sentence each, cut
+// earlier at a pause.
+func TestSegmentsOf(t *testing.T) {
+	w := func(text string, start, end float64) TimedWord { return TimedWord{Text: text, Start: start, End: end} }
+	got := SegmentsOf([]TimedWord{
+		w("Hello", 0, 0.4), w("there.", 0.4, 0.9),
+		w("How", 1.0, 1.2), w("are", 1.2, 1.4), w(" ", 1.4, 1.4), w("you", 3.0, 3.3), w("today?", 3.3, 3.8),
+	})
+	want := []Segment{{0, 0.9, "Hello there."}, {1.0, 1.4, "How are"}, {3.0, 3.8, "you today?"}}
+	if len(got) != len(want) {
+		t.Fatalf("segments %+v", got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("segment %d = %+v, want %+v", i, got[i], want[i])
+		}
+	}
+	if SegmentsOf(nil) != nil {
+		t.Fatal("segments from no words")
+	}
+}

@@ -1,5 +1,5 @@
 import { useQuery } from "@connectrpc/connect-query";
-import { AudioLines, Binary, Check, ChevronRight, Ear, List as ListIcon, Plug, Plus, RefreshCw, Split, Type, Volume2, X } from "lucide-react";
+import { AudioLines, Binary, Check, ChevronRight, Ear, Image, List as ListIcon, Plug, Plus, RefreshCw, Split, Type, Volume2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSearch } from "@tanstack/react-router";
 import { Btn } from "../Btn";
@@ -55,7 +55,7 @@ export function ProviderSettings() {
       </ModelsHead>
       <Panel padded={false}>
         <div className="@container">
-          <div className="hidden h-9 items-center gap-2 pr-4 pl-5 text-section text-ink-3 @min-[640px]:grid @min-[640px]:grid-cols-[minmax(0,1fr)_repeat(5,3.25rem)_6.5rem]">
+          <div className="hidden h-9 items-center gap-2 pr-4 pl-5 text-section text-ink-3 @min-[640px]:grid @min-[640px]:grid-cols-[minmax(0,1fr)_repeat(6,3.25rem)_6.5rem]">
             <span>{t("Provider")}</span>
             {CAP_KINDS.map((k) => (
               <Tip key={k.kind} content={t(k.label)}>
@@ -85,6 +85,7 @@ const CAP_KINDS: { kind: ModelKind; label: string; icon: typeof Type }[] = [
   { kind: "transcription", label: msg("Speech-to-text: dictation and what you say on a call"), icon: Ear },
   { kind: "speech", label: msg("Speech: Read aloud and a Bot's voice on a call"), icon: Volume2 },
   { kind: "embedding", label: msg("Embeddings: memories and documents searched by meaning"), icon: Binary },
+  { kind: "image", label: msg("Images: pictures a Bot makes and edits"), icon: Image },
 ];
 
 // One provider: a row of what it can do, that opens into its settings.
@@ -97,7 +98,7 @@ function ProviderRow({ provider, open, ready, inUse, allowed, onToggle }: { prov
         type="button"
         aria-expanded={open}
         onClick={onToggle}
-        className={`relative grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 py-3 pr-4 pl-5 text-left transition-colors duration-[160ms] ease-quiet hover:bg-well @min-[640px]:grid-cols-[minmax(0,1fr)_repeat(5,3.25rem)_6.5rem] ${open ? "bg-well" : ""}`}
+        className={`relative grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 py-3 pr-4 pl-5 text-left transition-colors duration-[160ms] ease-quiet hover:bg-well @min-[640px]:grid-cols-[minmax(0,1fr)_repeat(6,3.25rem)_6.5rem] ${open ? "bg-well" : ""}`}
       >
         {open ? <span aria-hidden className="absolute top-3 bottom-3 left-0 w-[2px] rounded-full bg-cobalt" /> : null}
         <span className="flex min-w-0 items-center gap-3">
@@ -265,7 +266,7 @@ function ModelsDialog({ provider, onClose }: { provider: Provider; onClose: () =
 }
 
 function ModelList({ provider, models, refreshing, onRefresh }: { provider: Provider; models: ProviderModel[]; refreshing: boolean; onRefresh: () => void }) {
-  const { allowedOf, setModel, busyModels } = useSettingsForm();
+  const { allowedOf, setModel, busyModels, err } = useSettingsForm();
   const [query, setQuery] = useState("");
   // A provider with several kinds shows one at a time; text is what most are after.
   const kinds = kindsIn(models);
@@ -296,6 +297,7 @@ function ModelList({ provider, models, refreshing, onRefresh }: { provider: Prov
           {refreshing ? <Spinner size={13} /> : <RefreshCw size={14} />}
         </Btn>
       </div>
+      {err ? <ErrorWell className="mb-3">{err}</ErrorWell> : null}
       {shown.length === 0 ? (
         <p className="py-2 text-small text-ink-2">{t("No model matches “{{search}}”.", { search: query.trim() })}</p>
       ) : (

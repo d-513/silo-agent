@@ -124,6 +124,13 @@ var Mail string
 //go:embed DECIDE.md
 var Decide string
 
+// Images is the system-prompt section for generate_image, there while the
+// operator has picked an image model; {default} is that model and {models}
+// the allowed ones.
+//
+//go:embed IMAGES.md
+var Images string
+
 // Voice is the system-prompt section that says what a spoken turn is, there
 // while calls are on. The same text for every Bot.
 //

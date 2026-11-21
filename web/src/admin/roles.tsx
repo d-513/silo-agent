@@ -23,6 +23,7 @@ export const ROLE_NAMES: Record<string, string> = {
   model_filter: msg("Output filter"),
   model_decision: msg("Decisions"),
   embedding_model: msg("Embeddings"),
+  model_image: msg("Images"),
   transcribe_model: msg("Dictation"),
   "voice.transcribe_model": msg("Hears calls"),
   "voice.speech_model": msg("Speaks"),
@@ -49,6 +50,7 @@ const NONE: Record<ModelKind, string> = {
   transcription: msg("No speech-to-text models allowed yet"),
   speech: msg("No speech models allowed yet"),
   embedding: msg("No embedding models allowed yet"),
+  image: msg("No image models allowed yet"),
 };
 
 // RolePanel is a card of model settings, one row each: the job on the left,

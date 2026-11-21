@@ -114,6 +114,8 @@ var catalog = map[string]spec{
 	"bot.widget_set":       {title: "Update a Dashboard widget", mode: Allow, summary: want("update a Dashboard widget's data")},
 	"bot.widget_remove":    {title: "Remove a Dashboard widget", mode: Allow, summary: want("remove a Dashboard widget")},
 	"bot.transcribe":       {title: "Transcribe audio", mode: Allow, output: OutCheck, summary: want("transcribe an audio file")},
+	"bot.speak":            {title: "Speak text into a file", mode: Allow, summary: want("read text aloud into an audio file")},
+	"bot.list_voices":      {title: "List voices", mode: Allow, summary: want("list the voices it can speak with")},
 	"bot.list_secrets":     {title: "List secret names", mode: Allow, summary: want("see the names of its secrets (never their values)")},
 	"skills.load":          {title: "Load skill", mode: Allow, summary: want("load a skill")},
 	"artifact.emit":        {title: "Artifact", mode: Allow, summary: want("show an artifact")},
@@ -124,6 +126,7 @@ var catalog = map[string]spec{
 	"model.list":           {title: "List models", mode: Allow, summary: want("list the allowed models")},
 	"model.switch":         {title: "Switch model", mode: Allow, summary: switchSummary, fields: switchFields},
 	"model.decide":         {title: "Ask a decision model", mode: Allow, summary: want("ask a decision model typed questions"), fields: switchFields},
+	"model.image":          {title: "Generate an image", mode: Allow, summary: want("generate an image with an image model"), fields: imageFields},
 	"automations.list":     {title: "List automations", mode: Allow, summary: want("list its automations")},
 	"automations.create":   {manager: true, title: "Create automation", mode: Ask, summary: automationSummary("create"), fields: automationFields},
 	"automations.update":   {manager: true, title: "Change automation", mode: Ask, summary: automationSummary("change"), fields: automationFields},
@@ -161,6 +164,22 @@ func switchFields(args map[string]string) []Field {
 		return []Field{{Label: "Model", Value: m}}
 	}
 	return nil
+}
+
+// imageFields show what is asked for and of which model: an image costs
+// money, so an owner who set the rule to Ask sees what they pay for.
+func imageFields(args map[string]string) []Field {
+	var out []Field
+	if p := strings.TrimSpace(args["prompt"]); p != "" {
+		out = append(out, Field{Label: "Prompt", Value: p})
+	}
+	if m := strings.TrimSpace(args["model"]); m != "" {
+		out = append(out, Field{Label: "Model", Value: m})
+	}
+	if n := strings.TrimSpace(args["count"]); n != "" && n != "1" {
+		out = append(out, Field{Label: "Images", Value: n})
+	}
+	return out
 }
 
 func tunnelSummary(verb string) func(map[string]string) string {
@@ -326,6 +345,8 @@ func BuiltinRows() []Row {
 		{Bot, "widget_set", "Update a Dashboard widget"},
 		{Bot, "widget_remove", "Remove a Dashboard widget"},
 		{Bot, "transcribe", "Transcribe audio"},
+		{Bot, "speak", "Speak text into a file"},
+		{Bot, "list_voices", "List voices"},
 		{Skills, "load", "Load skill"},
 		{Artifact, "emit", "Artifact"},
 		{Artifact, "app_network", "App with network"},
@@ -335,6 +356,7 @@ func BuiltinRows() []Row {
 		{Model, "list", "List models"},
 		{Model, "switch", "Switch model"},
 		{Model, "decide", "Ask a decision model"},
+		{Model, "image", "Generate an image"},
 		{Automations, "list", "List automations"},
 		{Automations, "create", "Create automation"},
 		{Automations, "update", "Change automation"},

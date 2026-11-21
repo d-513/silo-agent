@@ -10,6 +10,7 @@ export const LABELS: Record<string, string> = {
   model_memory: msg("Memory save model"),
   model_decision: msg("Default decision model"),
   embedding_model: msg("Embedding model"),
+  model_image: msg("Default image model"),
   transcribe_model: msg("Speech-to-text model"),
   "voice.enabled": msg("Voice"),
   "voice.max_minutes": msg("Longest call (minutes)"),
@@ -240,7 +241,7 @@ export const OIDC_NOTE =
 export const BOOTSTRAP_NOTE = msg("First admin only. Ignored after a user exists. Restart required.");
 
 export function groupOf(key: string) {
-  if (key === "model" || key === "model_title" || key === "model_approval" || key === "model_filter" || key === "model_subagent" || key === "model_memory" || key === "model_decision" || key === "embedding_model") return "models";
+  if (key === "model" || key === "model_title" || key === "model_approval" || key === "model_filter" || key === "model_subagent" || key === "model_memory" || key === "model_decision" || key === "embedding_model" || key === "model_image") return "models";
   if (key === "transcribe_model" || key === "model_voice" || key === "voice.speech_model" || key === "voice.transcribe_model") return "voice_models";
   if (key.startsWith("voice.webrtc.") || key === "voice.opus_library") return "voice_network";
   if (key.startsWith("voice.")) return "voice";

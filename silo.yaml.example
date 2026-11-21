@@ -28,6 +28,14 @@ model_approval: ""
 models:
   - openrouter/openai/gpt-5.6-luna
 
+# Image generation: the Bot's generate_image tool. Off until model_image names
+# a model; image_models are the others a Bot may name. Providers: openrouter,
+# openai, local, fal, replicate, bfl, stability, google, xai.
+# image_models:
+#   - openrouter/google/gemini-3-pro-image
+#   - bfl/flux-3-image
+# model_image: openrouter/google/gemini-3-pro-image
+
 # Debug logging. When true, every model request/response is stored and shown
 # on the Admin → Debug tab. Off by default. Env: SILO_DEBUG.
 debug: false
@@ -136,12 +144,17 @@ providers:
 #   max_size_mb: 10
 
 # Web search engine. Env: SILO_SEARCH__ENGINE
-# builtin is the Built-in Scraper: a keyless metasearch over DuckDuckGo, Mojeek,
-# Brave, Startpage, Wikipedia and Marginalia. `sources` narrows that list.
+# builtin is the Built-in Scraper: a keyless metasearch over DuckDuckGo, Yahoo,
+# Seznam and Wikipedia. `sources` asks only the ones it names (brave, mojeek
+# and startpage are off unless named: they answer most addresses with a script
+# challenge). searxng is your own SearXNG instance; brave and exa are keyed APIs.
 search:
   engine: builtin
   # builtin:
-  #   sources: duckduckgo,brave,wikipedia
+  #   sources: duckduckgo,yahoo,wikipedia
+  #   marginalia_key: ...        # adds Marginalia as a source
+  # searxng:
+  #   url: http://searxng:8080   # with engine: searxng
 
 # Operator-defined connector variables. Connectors reference these as ${NAME}
 # in their URL, headers, OAuth fields, STDIO command/args/image, env values,

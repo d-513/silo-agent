@@ -332,7 +332,7 @@ func (v *ctxVoice) Close() error {
 func pcmFromWAV(a Audio) ([]byte, error) {
 	pcm, rate, err := speech.ReadWAV(a.Data)
 	if err != nil {
-		return nil, errors.New("this model takes live audio only: a recording must be a WAV (calls send one); for dictation pick a model that takes files")
+		return nil, errors.New("this model takes live audio only: a recording must be a WAV (calls send one; convert a file with ffmpeg -i in -ar 16000 -ac 1 out.wav); for dictation pick a model that takes files")
 	}
 	return speech.Resample(pcm, rate, LiveSampleRate), nil
 }

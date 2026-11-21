@@ -27,15 +27,19 @@ type source struct {
 	api bool
 	// limit is how often the site may be asked; zero is no limit.
 	limit limit
+	// optIn marks a site that answers a plain request with a script
+	// challenge these days: it is asked only when the operator names it in
+	// `sources`, for the address or the day it answers again.
+	optIn bool
+	// key names the engine setting that holds the source's API key, and
+	// keyed builds its fetch from it. Without the key it is not asked.
+	key   string
+	keyed func(key string) func(ctx context.Context, q Query) ([]Hit, error)
 }
 
 // errBlocked is a source refusing to answer: a rate limit, a captcha, or a
 // page with neither results nor the site's own "no results" notice.
 var errBlocked = errors.New("blocked")
-
-// errBusy is a source whose next turn is too far off to wait for. It says
-// nothing about the site's health.
-var errBusy = errors.New("busy")
 
 // refused is a site turning a request away by its status. It is errBlocked.
 type refused struct {
@@ -67,21 +71,30 @@ func rateLimited(err error) (after time.Duration, ok bool) {
 // patience, and a block costs far more than a skipped site.
 var scraped = limit{every: 6 * time.Second, burst: 2}
 
-// sources is every site asked, in no particular order.
+// sources is every site known, in no particular order. DuckDuckGo and Yahoo
+// both lean on Bing's index but rank on their own, so each is a voice.
 var sources = []source{
 	{name: "duckduckgo", provider: "duckduckgo", fetch: duckduckgo, limit: scraped},
-	{name: "mojeek", provider: "mojeek", fetch: mojeek, limit: scraped},
-	{name: "brave", provider: "brave", fetch: brave, limit: scraped},
-	{name: "startpage", provider: "startpage", fetch: startpage, limit: scraped},
+	{name: "yahoo", provider: "yahoo", fetch: yahoo, limit: scraped},
+	{name: "seznam", provider: "seznam", fetch: seznam, limit: scraped},
 	{name: "wikipedia", provider: "wikipedia", fetch: wikipedia, api: true},
-	// The public key's quota is everybody's: take little of it.
-	{name: "marginalia", provider: "marginalia", fetch: marginalia, api: true, skip: notEnglish, limit: limit{every: 2 * time.Second, burst: 2}},
+	{name: "marginalia", provider: "marginalia", api: true, skip: notEnglish, limit: limit{every: 2 * time.Second, burst: 2},
+		key: "marginalia_key", keyed: marginalia},
+	// These three put a script challenge (a captcha, a proof of work) before
+	// their results since 2026: a plain request is refused from most
+	// addresses, whatever it looks like.
+	{name: "brave", provider: "brave", fetch: brave, limit: scraped, optIn: true},
+	{name: "mojeek", provider: "mojeek", fetch: mojeek, limit: scraped, optIn: true},
+	{name: "startpage", provider: "startpage", fetch: startpage, limit: scraped, optIn: true},
 }
 
-func sourceNames() []string {
-	out := make([]string, len(sources))
-	for i, s := range sources {
-		out[i] = s.name
+// sourceNames lists the sources that are opt-in, or the ones that are not.
+func sourceNames(optIn bool) []string {
+	var out []string
+	for _, s := range sources {
+		if s.optIn == optIn {
+			out = append(out, s.name)
+		}
 	}
 	return out
 }

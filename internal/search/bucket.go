@@ -46,8 +46,8 @@ func (b *bucket) level() float64 {
 }
 
 // take reserves the site's next turn and answers how long until it comes. It
-// refuses when that is further off than maxWait: the search goes on without
-// the site rather than queue for it.
+// refuses when that is further off than maxWait, still saying how far: the
+// search goes on without the site rather than queue for it.
 func (b *bucket) take(maxWait time.Duration) (wait time.Duration, ok bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -55,7 +55,7 @@ func (b *bucket) take(maxWait time.Duration) (wait time.Duration, ok bool) {
 	if b.tokens < 1 {
 		wait = time.Duration((1 - b.tokens) * float64(b.every))
 		if wait > maxWait {
-			return 0, false
+			return wait, false
 		}
 	}
 	b.tokens--

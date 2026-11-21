@@ -116,6 +116,7 @@ func Reset() {
 	decided = nil
 	completed = nil
 	spoken = nil
+	painted = nil
 	liveOpened = 0
 	liveSaid = nil
 	failures = map[string]int{}
@@ -157,7 +158,7 @@ func init() {
 		ID:            Provider,
 		Name:          "Dummy",
 		Description:   "Deterministic scripted provider for tests. Not for production.",
-		Kinds:         []string{llm.KindText, llm.KindDecision, llm.KindTranscription, llm.KindSpeech, llm.KindEmbedding},
+		Kinds:         []string{llm.KindText, llm.KindDecision, llm.KindTranscription, llm.KindSpeech, llm.KindEmbedding, llm.KindImage},
 		SupportsCache: false,
 		Fast:          true,
 		Settings: []llm.SettingDef{

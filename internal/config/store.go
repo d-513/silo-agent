@@ -490,6 +490,7 @@ var kindRoles = map[string]string{
 	"voice.transcribe_model": llm.KindTranscription,
 	"voice.speech_model":     llm.KindSpeech,
 	"embedding_model":        llm.KindEmbedding,
+	"model_image":            llm.KindImage,
 }
 
 // kindNames word a kind in a refusal.
@@ -499,6 +500,7 @@ var kindNames = map[string]string{
 	llm.KindTranscription: "a transcription model",
 	llm.KindSpeech:        "a speech model",
 	llm.KindEmbedding:     "an embedding model",
+	llm.KindImage:         "an image model",
 }
 
 // validateModels checks the allowlists and the roles that pick from them. A

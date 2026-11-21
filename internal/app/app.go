@@ -35,6 +35,7 @@ import (
 	"silo.agent/internal/app/egress"
 	"silo.agent/internal/app/feed"
 	"silo.agent/internal/app/filter"
+	"silo.agent/internal/app/imagegen"
 	"silo.agent/internal/app/knowledge"
 	"silo.agent/internal/app/mailbox"
 	"silo.agent/internal/app/memory"
@@ -264,16 +265,18 @@ type App struct {
 
 	// The domain services: each owns one slice of the UI service and of the
 	// Bot's tools. uiHandler promotes their RPCs.
-	Feed       *feed.Service
-	Runlog     *runlog.Service
-	Dashboard  *dashboard.Service
-	Tunnels    *tunnels.Service
-	Mail       *mailbox.Service
-	Models     *models.Service
-	Approval   *approval.Service
-	Filter     *filter.Service
-	Workspace  *workspace.Service
-	Voice      *voice.Service
+	Feed      *feed.Service
+	Runlog    *runlog.Service
+	Dashboard *dashboard.Service
+	Tunnels   *tunnels.Service
+	Mail      *mailbox.Service
+	Models    *models.Service
+	Approval  *approval.Service
+	Filter    *filter.Service
+	Workspace *workspace.Service
+	Voice     *voice.Service
+	// ImageGen is the Bot's generate_image tool.
+	ImageGen   *imagegen.Service
 	Knowledge  *knowledge.Service
 	Changes    *changes.Service
 	Memory     *memory.Service
@@ -318,6 +321,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Filter = filter.New(a.cfg, a.Models, a.Approval)
 	a.Workspace = workspace.New(a.DB, a.Hub, a.Mask, func(botID, path string) { a.Knowledge.Dirty(botID, path) })
 	a.Voice = voice.New(a.DB, a.cfg, a.Models, a.Workspace, a)
+	a.ImageGen = imagegen.New(a.cfg, a.Models, a.Workspace)
 	a.Knowledge = knowledge.New(a.DB, a.Hub, a.cfg, a.Models, a.Workspace)
 	a.Changes = changes.New(a.DB, a.cfg, a.Workspace, a, a.Mask)
 	a.Automations = automation.New(a.DB, a, a)

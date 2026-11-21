@@ -219,11 +219,30 @@ func (e *elevenLabs) Transcribe(ctx context.Context, model string, a Audio) (Tra
 	var body struct {
 		Text         string `json:"text"`
 		LanguageCode string `json:"language_code"`
+		Words        []struct {
+			Text  string  `json:"text"`
+			Start float64 `json:"start"`
+			End   float64 `json:"end"`
+			Type  string  `json:"type"`
+		} `json:"words"`
 	}
 	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
 		return Transcript{}, fmt.Errorf("elevenlabs: %w", err)
 	}
-	return Transcript{Text: strings.TrimSpace(body.Text), Language: body.LanguageCode}, nil
+	out := Transcript{Text: strings.TrimSpace(body.Text), Language: body.LanguageCode}
+	if a.Timestamps {
+		var words []TimedWord
+		for _, w := range body.Words {
+			if w.Type == "" || w.Type == "word" {
+				words = append(words, TimedWord{Text: w.Text, Start: w.Start, End: w.End})
+			}
+		}
+		out.Segments = SegmentsOf(words)
+		if n := len(body.Words); n > 0 {
+			out.Seconds = body.Words[n-1].End
+		}
+	}
+	return out, nil
 }
 
 // OpenTranscription opens Scribe v2 Realtime with manual commits: partial

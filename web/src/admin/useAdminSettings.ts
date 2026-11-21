@@ -104,6 +104,13 @@ export function useAdminSettings() {
     setYamlText(null);
   };
 
+  // What the rest of the console holds about the allowed models (a chat's
+  // model menu, a Bot's default, its voice) is asked again.
+  const modelsChanged = () => {
+    void reload(UI.method.listModels);
+    void reload(UI.method.listVoices);
+  };
+
   // Allowlist changes run one after another, each on top of what the server
   // last answered, so two quick presses cannot drop each other's model. kind
   // names the allowlist: a model is a text model or a decision model.
@@ -118,7 +125,10 @@ export function useAdminSettings() {
         // is not written into it by a press on another row.
         const cur = saved?.allowed.find((a) => a.kind === kind)?.listed ?? [];
         const next = withModel(cur, id, on);
-        if (next !== cur) applyAside(await ui.setModels({ models: next, kind }));
+        if (next !== cur) {
+          applyAside(await ui.setModels({ models: next, kind }));
+          modelsChanged();
+        }
       } catch (ex) {
         setErr(fail(ex));
       } finally {

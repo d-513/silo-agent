@@ -171,10 +171,12 @@ def web_search(
     of the results you want ("pl", "de"): search in the language of the topic.
     `country` (two letters) is optional and follows the language.
 
-    When search engines were blocked or rate-limited the result also has
-    `blocked` (which ones) and, if nothing came back at all, a `note`: that is
-    a failed search, not proof that nothing exists. Do not retry at once: the
-    engines allow only so many searches a minute.
+    A result with a `note` is not a normal answer; the note says why. Engines
+    that refused are in `blocked` (a failed search is not proof that nothing
+    exists; do not retry at once), ones whose budget for this server is spent
+    are in `busy` (search again after the seconds the note names). The note
+    also says when results are from an earlier search or only the
+    encyclopedia answered.
     """
     return call("web", "search", {"query": query, **_search_args(max_results, language, country)})
 
@@ -189,7 +191,8 @@ def web_search_many(
 
     Each result is what `web_search` returns for that query. Use this instead
     of a thread pool or a loop: it is one call, and the searches run side by
-    side on the server.
+    side on the server. When the server has to wait its turn with the search
+    engines, a query waits rather than fail, so a large batch can take a while.
     """
     queries = [q for q in queries if q and q.strip()]
     if not queries:
@@ -279,17 +282,78 @@ def web_read_many(
     return dict(zip(urls, out.get("reads", [])))
 
 
-def transcribe(path: str, language: str | None = None) -> dict:
+def transcribe(path: str, language: str | None = None, timestamps: bool = False, subtitles: str | None = None) -> dict:
     """Transcribe a speech recording in the workspace to text.
 
     Same as the `transcribe` chat tool (mp3, wav, m4a, ogg, opus, webm, flac;
-    up to 25 MB). `language` is an optional ISO-639-1 hint such as "en".
-    Returns {text, language, seconds}.
+    up to 25 MB: take a video's sound out and shrink it with
+    `ffmpeg -i in.mp4 -vn -ac 1 -ar 16000 -b:a 32k out.opus`, and cut a long
+    one into parts). `language` is an optional ISO-639-1 hint such as "en".
+
+    `timestamps=True` adds segments: [{start, end, text}] in seconds (empty
+    when the operator's model has no timings). `subtitles="talk.srt"` (or
+    .vtt) writes them as a subtitle file in the workspace, and is an error
+    when there are no timings.
+
+    Returns {text, language, seconds} and, when asked, {segments, subtitles}.
     """
     args: dict = {"path": path}
     if language is not None:
         args["language"] = language
+    if timestamps:
+        args["timestamps"] = True
+    if subtitles is not None:
+        args["subtitles"] = subtitles
     return call("bot", "transcribe", args)
+
+
+def speak(
+    text: str,
+    path: str | None = None,
+    voice: str | None = None,
+    language: str | None = None,
+    speed: float | None = None,
+    model: str | None = None,
+) -> dict:
+    """Read text aloud with a speech model into a WAV file in the workspace.
+
+    For narration, a voice-over, a spoken version of a text: nothing is
+    played and nobody hears it until the file is used. Write `text` as it
+    should be spoken (no markdown, numbers and abbreviations the way they are
+    said); up to 12000 characters a call, so speak a long script in parts and
+    join them with ffmpeg. `path` is where to save, relative to /workspace
+    (default audio/<first words>-<id>.wav); the file is always a .wav, which
+    ffmpeg turns into anything else. `voice` is an id from list_voices()
+    (default this Bot's own voice), `language` the ISO-639-1 code of the
+    text when it is not the Bot's language, `speed` 0.5 to 2, `model`
+    another speech model from list_voices()["models"].
+
+    Returns {path, seconds, bytes, sample_rate, model, voice}.
+    """
+    args: dict = {"text": text}
+    if path is not None:
+        args["path"] = path
+    if voice is not None:
+        args["voice"] = voice
+    if language is not None:
+        args["language"] = language
+    if speed is not None:
+        args["speed"] = float(speed)
+    if model is not None:
+        args["model"] = model
+    return call("bot", "speak", args)
+
+
+def list_voices(model: str | None = None) -> dict:
+    """The voices speak() can use: {model, models, voices: [{id, name, language}], default_voice}.
+
+    `model` is another allowed speech model (one of `models`); the default is
+    this Bot's own.
+    """
+    args: dict = {}
+    if model is not None:
+        args["model"] = model
+    return call("bot", "list_voices", args)
 
 
 def send_channel(channel: str, text: str, to: str | None = None) -> dict:
@@ -608,7 +672,8 @@ def list_models() -> dict:
     """The models this Bot may use: {current, default, models: [...]}.
 
     When the operator has decision models, also {decision_models: [...],
-    default_decision}: what `decide` may be given as `model`.
+    default_decision}: what `decide` may be given as `model`; with image
+    models, {image_models: [...], default_image} for `generate_image`.
     """
     return call("model", "list", {})
 
@@ -630,6 +695,44 @@ def soul(content: str | None = None, old_text: str | None = None, new_text: str 
     unique snippet. The next conversation reads the new SOUL.
     """
     return call("bot", "soul", {"content": content, "old_text": old_text, "new_text": new_text})
+
+
+def generate_image(
+    prompt: str,
+    path: str | None = None,
+    images: list[str] | None = None,
+    aspect: str | None = None,
+    count: int | None = None,
+    model: str | None = None,
+) -> dict:
+    """Make images from a prompt with an image model and save them in the workspace.
+
+    `prompt` describes the picture: subject, setting, composition, style,
+    lighting, any text that must appear (in quotes). `images` are workspace
+    paths of pictures to edit, combine or take as reference (up to 8; say
+    what to change and what to keep); a model that takes none says so.
+    `path` is where to save, relative to /workspace (default
+    images/<words of the prompt>-<id>); the extension follows the format the
+    model answers in, and several images are saved as -1, -2, ...
+    `aspect` is width:height, one of 1:1 3:2 2:3 4:3 3:4 16:9 9:16 21:9.
+    `count` is 1 to 4 variations. `model` picks another image model from
+    list_models()["image_models"]; the default is the operator's.
+
+    Returns {model, images: [{path, mime, bytes}], cost?}. Nothing is shown
+    to anyone: `present` a saved path to look at it or show the human.
+    """
+    args: dict = {"prompt": prompt}
+    if path is not None:
+        args["path"] = path
+    if images:
+        args["images"] = [images] if isinstance(images, str) else list(images)
+    if aspect is not None:
+        args["aspect"] = aspect
+    if count is not None:
+        args["count"] = count
+    if model is not None:
+        args["model"] = model
+    return call("model", "image", args)
 
 
 def decide(state, questions: dict, model: str | None = None) -> dict:

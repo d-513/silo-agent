@@ -16,6 +16,7 @@ const (
 	Builtin           = "builtin"
 	Brave             = "brave"
 	Exa               = "exa"
+	SearXNG           = "searxng"
 	DefaultEngine     = Builtin
 	DefaultMaxResults = 8
 	MaxResultsCap     = 20
@@ -36,6 +37,9 @@ type Query struct {
 	Language string
 	Country  string
 	Max      int
+	// batch marks a query of a batch (Many): it waits longer for its turn
+	// and asks one site.
+	batch bool
 }
 
 // Hit is one result. Engines is how many independent sources returned it:
@@ -48,11 +52,15 @@ type Hit struct {
 }
 
 // Result is what a search answers. Blocked names the sources that were
-// blocked, failed or timed out; Note is set when there are no results because
-// of them, so "nothing came back" is never read as "nothing exists".
+// blocked, failed or timed out, and Busy the ones not asked because this
+// server's budget with them was spent; Note is set when the results are not
+// what a working web search would answer (none, an older answer, or the
+// encyclopedia's alone), so "nothing came back" is never read as "nothing
+// exists".
 type Result struct {
 	Results []Hit    `json:"results"`
 	Blocked []string `json:"blocked,omitempty"`
+	Busy    []string `json:"busy,omitempty"`
 	Note    string   `json:"note,omitempty"`
 }
 
@@ -85,8 +93,15 @@ func newEngines() *registry.Registry[Descriptor, factory] {
 		Settings: []SettingDef{{
 			Key:   "sources",
 			Label: "Sources",
-			Description: "Comma-separated sources to ask; empty asks all of them: " + strings.Join(sourceNames(), ", ") +
-				". Marginalia's public key is a quota shared with everyone and its data is CC-BY-NC-SA.",
+			Description: "Comma-separated sources to ask; empty asks " + strings.Join(sourceNames(false), ", ") +
+				". Naming sources asks only those, which is also how to try " + strings.Join(sourceNames(true), ", ") +
+				": they answer most addresses with a script challenge.",
+		}, {
+			Key:   "marginalia_key",
+			Label: "Marginalia API key",
+			Description: "Adds Marginalia, an index of the small, text-heavy web (English only), as a source. A key is free for " +
+				"non-commercial use (CC-BY-NC-SA results): about.marginalia-search.com/article/api.",
+			Secret: true,
 		}},
 	}, func(s Settings) Engine { return newMeta(s) })
 	r.Put(Descriptor{
@@ -101,6 +116,12 @@ func newEngines() *registry.Registry[Descriptor, factory] {
 		Description: "Exa's neural search API: finds pages by meaning and returns the passages that answer the query. Needs an API key (dashboard.exa.ai); each search is billed to the account.",
 		Settings:    []SettingDef{{Key: "api_key", Label: "API key", Description: "Your Exa API key.", Secret: true}},
 	}, newExa)
+	r.Put(Descriptor{
+		ID:          SearXNG,
+		Name:        "SearXNG",
+		Description: "Your own SearXNG instance: a self-hosted metasearch over many engines, with no key. Its settings.yml must list `json` under search.formats, and its limiter must let the control plane through.",
+		Settings:    []SettingDef{{Key: "url", Label: "Address", Description: "The instance's root address, e.g. http://searxng:8080."}},
+	}, newSearXNG)
 	return r
 }
 
@@ -158,6 +179,7 @@ func Many(ctx context.Context, eng Engine, queries []Query) []Result {
 			defer wg.Done()
 			slots <- struct{}{}
 			defer func() { <-slots }()
+			q.batch = len(queries) > 1
 			res, err := eng.Search(ctx, q)
 			if err != nil {
 				res = Result{Note: "search failed: " + err.Error()}

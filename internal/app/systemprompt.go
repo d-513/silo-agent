@@ -79,6 +79,7 @@ func (a *App) promptProviders() []promptProvider {
 		a.knowledgeSections,
 		a.networkSections,
 		a.decideSections,
+		a.imageSections,
 		a.voiceSections,
 		a.tunnelSections,
 		a.mailSections,
@@ -138,6 +139,13 @@ func (a *App) channelSections(pc promptContext) []promptSection {
 // so it is the same text for every Bot.
 func (a *App) decideSections(promptContext) []promptSection {
 	return []promptSection{{title: "Decisions", body: a.Models.DecidePrompt(prompts.Decide)}}
+}
+
+// imageSections explains generate_image, only while the operator has picked an
+// image model. It names the operator's models and nothing of the Bot's, so it
+// is the same text for every Bot.
+func (a *App) imageSections(promptContext) []promptSection {
+	return []promptSection{{title: "Images", body: a.ImageGen.Prompt(prompts.Images)}}
 }
 
 // voiceSections says what a spoken turn is, only while calls are on. The same

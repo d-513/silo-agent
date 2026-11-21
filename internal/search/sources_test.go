@@ -316,23 +316,103 @@ func TestWikipedia(t *testing.T) {
 
 func TestMarginalia(t *testing.T) {
 	p := serve(t, map[string]page{"marginalia": fixture(t, "marginalia.json")})
-	hits, err := marginalia(bg, Query{Text: "golang context cancellation"})
+	hits, err := marginalia("k-123")(bg, Query{Text: "golang context cancellation"})
 	if err != nil || len(hits) == 0 {
 		t.Fatalf("hits %v err %v", hits, err)
 	}
 	if hits[0].URL != "https://golangbot.com/context-timeout-cancellation/" || hits[0].Snippet == "" {
 		t.Fatalf("first hit %+v", hits[0])
 	}
-	if rq := p.requests("marginalia")[0]; !rq.api || !strings.HasSuffix(rq.url, "/public/search/golang%20context%20cancellation") {
+	rq := p.requests("marginalia")[0]
+	if !rq.api || rq.url != "https://api2.marginalia-search.com/search" || rq.query.Get("query") != "golang context cancellation" || rq.headers["API-Key"] != "k-123" {
 		t.Fatalf("request %+v", rq)
 	}
-	// The shared public key ran out of quota.
+	// The key's rate limit.
 	serve(t, map[string]page{"marginalia": {status: http.StatusServiceUnavailable}})
-	if _, err := marginalia(bg, Query{Text: "x"}); !errors.Is(err, errBlocked) {
+	if _, err := marginalia("k")(bg, Query{Text: "x"}); !errors.Is(err, errBlocked) {
 		t.Fatalf("503: %v", err)
 	}
 	if !notEnglish(Query{Language: "pl"}) || notEnglish(Query{}) || notEnglish(Query{Language: "en"}) {
 		t.Fatal("marginalia is asked for English and unspecified queries only")
+	}
+}
+
+func TestYahoo(t *testing.T) {
+	p := serve(t, map[string]page{"search.yahoo.com": fixture(t, "yahoo.html")})
+	hits, err := yahoo(bg, Query{Text: "golang context cancellation", Language: "pl"})
+	if err != nil || len(hits) < 5 {
+		t.Fatalf("hits %d err %v", len(hits), err)
+	}
+	want := "https://go.dev/doc/database/cancel-operations"
+	if hits[0].URL != want || hits[0].Title != "Canceling in-progress operations - The Go Programming Language" || !strings.HasPrefix(hits[0].Snippet, "You can manage in-progress operations") {
+		t.Fatalf("first hit %+v", hits[0])
+	}
+	for _, h := range hits {
+		if strings.Contains(h.URL, "r.search.yahoo.com") || h.Title == "" {
+			t.Fatalf("redirect link or empty title kept: %+v", h)
+		}
+	}
+	rq := p.requests("yahoo")[0]
+	if rq.query.Get("p") != "golang context cancellation" || rq.query.Get("vl") != "lang_pl" || !strings.Contains(rq.cookies["sB"], "vl=lang_pl") {
+		t.Fatalf("request %+v", rq)
+	}
+	// Without a language nothing about one is sent.
+	_, _ = yahoo(bg, Query{Text: "x"})
+	if rq := p.requests("yahoo")[1]; rq.query.Has("vl") || len(rq.cookies) != 0 {
+		t.Fatalf("request %+v", rq)
+	}
+	serve(t, map[string]page{"search.yahoo.com": fixture(t, "yahoo_none.html")})
+	if hits, err := yahoo(bg, Query{Text: "zzqqxx"}); err != nil || len(hits) != 0 {
+		t.Fatalf("no results: %v %v", hits, err)
+	}
+	serve(t, map[string]page{"search.yahoo.com": body(`<html><body><h1>Verify you are human</h1></body></html>`)})
+	if _, err := yahoo(bg, Query{Text: "x"}); !errors.Is(err, errBlocked) {
+		t.Fatalf("challenge: %v", err)
+	}
+	serve(t, map[string]page{"search.yahoo.com": {status: http.StatusTooManyRequests}})
+	if _, limited := rateLimited(func() error { _, err := yahoo(bg, Query{Text: "x"}); return err }()); !limited {
+		t.Fatal("a 429 is a rate limit")
+	}
+	if got := decodeYahooURL("https://example.com/a"); got != "https://example.com/a" {
+		t.Fatalf("a plain link: %q", got)
+	}
+	if got := decodeYahooURL("/search?p=x"); got != "" {
+		t.Fatalf("a relative link: %q", got)
+	}
+}
+
+func TestSeznam(t *testing.T) {
+	p := serve(t, map[string]page{"search.seznam.cz": fixture(t, "seznam.html")})
+	hits, err := seznam(bg, Query{Text: "golang context cancellation"})
+	if err != nil || len(hits) < 8 {
+		t.Fatalf("hits %d err %v", len(hits), err)
+	}
+	if hits[0].URL != "https://www.golinuxcloud.com/golang-context/" || !strings.HasPrefix(hits[0].Title, "Golang context") ||
+		!strings.HasPrefix(hits[0].Snippet, "Use golang context for deadlines and cancellation") {
+		t.Fatalf("first hit %+v", hits[0])
+	}
+	withSnippet := 0
+	for _, h := range hits {
+		if strings.Contains(h.URL, "seznam.cz") || h.Title == "" {
+			t.Fatalf("an ad or the site's own link kept: %+v", h)
+		}
+		if h.Snippet != "" {
+			withSnippet++
+		}
+	}
+	if withSnippet < len(hits)-2 {
+		t.Fatalf("%d of %d hits have a snippet", withSnippet, len(hits))
+	}
+	if rq := p.requests("seznam")[0]; rq.query.Get("q") != "golang context cancellation" {
+		t.Fatalf("request %+v", rq)
+	}
+	serve(t, map[string]page{"search.seznam.cz": fixture(t, "seznam_none.html")})
+	if hits, err := seznam(bg, Query{Text: "zzqqxx"}); err != nil || len(hits) != 0 {
+		t.Fatalf("no results: %v %v", hits, err)
+	}
+	serve(t, map[string]page{"search.seznam.cz": body(`<html><body><h1>Jste robot?</h1></body></html>`)})
+	if _, err := seznam(bg, Query{Text: "x"}); !errors.Is(err, errBlocked) {
+		t.Fatalf("challenge: %v", err)
 	}
 }
 

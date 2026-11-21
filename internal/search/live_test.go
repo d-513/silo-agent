@@ -49,6 +49,9 @@ func TestLive(t *testing.T) {
 		if only == "" {
 			start := time.Now()
 			res, err := newMeta(nil).Search(context.Background(), q)
+			if err != nil || len(res.Results) == 0 || res.Note != "" {
+				t.Errorf("%q was not answered: note %q err %v", q.Text, res.Note, err)
+			}
 			t.Logf("%q: %d ms, %d results, blocked %v, note %q, err %v", q.Text, time.Since(start).Milliseconds(), len(res.Results), res.Blocked, res.Note, err)
 			for _, h := range res.Results {
 				t.Logf("   [%d] %s  %s", h.Engines, h.Title, h.URL)
@@ -68,6 +71,32 @@ func TestLive(t *testing.T) {
 				first = hits[0].Title + " | " + hits[0].URL + " | " + clip(hits[0].Snippet, 60)
 			}
 			t.Logf("%-12s %-28q %4d ms  %2d hits  err=%v  %s", s.name, q.Text, time.Since(start).Milliseconds(), len(hits), err, first)
+		}
+	}
+}
+
+// TestLiveSources asks every source that is on by default once, on its own,
+// and fails for each that does not bring results: a whole search hides a dead
+// source behind the others, which is how three of them went unnoticed.
+//
+//	SILO_SEARCH_LIVE=1 go test ./internal/search -run TestLiveSources -v
+//
+// It is one request to each site from this address: run it by hand, after
+// touching a source or when search seems thin, never in a loop.
+func TestLiveSources(t *testing.T) {
+	if os.Getenv("SILO_SEARCH_LIVE") == "" {
+		t.Skip("set SILO_SEARCH_LIVE=1 to ask the real search sites")
+	}
+	q := cleanQuery(Query{Text: "golang context cancellation"})
+	for _, s := range pickSources(sources, nil) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		start := time.Now()
+		hits, err := s.fetch(ctx, q)
+		cancel()
+		t.Logf("%-12s %4d ms  %2d hits  err=%v", s.name, time.Since(start).Milliseconds(), len(hits), err)
+		// Wikipedia matches titles: no article by that name is its answer.
+		if err != nil || (len(hits) == 0 && !s.api) {
+			t.Errorf("%s does not answer: %d hits, err %v", s.name, len(hits), err)
 		}
 	}
 }

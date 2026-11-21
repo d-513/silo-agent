@@ -1,4 +1,4 @@
-import { Binary, Cpu, Split, Type } from "lucide-react";
+import { Binary, Cpu, Image, Split, Type } from "lucide-react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Panel } from "../Field";
 import { ConfigSource } from "../gen/silo/v1/ui_pb";
@@ -80,6 +80,7 @@ const pages: Record<ModelPage, () => React.ReactNode> = {
   text: () => <TextModels />,
   decision: () => <DecisionModels />,
   embedding: () => <EmbeddingModels />,
+  image: () => <ImageModels />,
   voice: () => <VoiceSettings />,
 };
 
@@ -137,6 +138,25 @@ function EmbeddingModels() {
       <ModelsHead icon={Binary} title={t("Embeddings")} note={t("Models that turn text into vectors, so memories and indexed documents can be searched by meaning.")} kinds={["embedding"]} />
       <RolePanel title={t("Jobs")} roles={EMBED_ROLES} />
       <AllowedModels kind="embedding" />
+    </>
+  );
+}
+
+const IMAGE_ROLES: Role[] = [
+  {
+    key: "model_image",
+    takes: "image",
+    unset: msg("None: no image generation"),
+    hint: msg("What a Bot's generate_image tool asks unless it names another allowed image model. Each image is billed by its provider."),
+  },
+];
+
+function ImageModels() {
+  return (
+    <>
+      <ModelsHead icon={Image} title={t("Images")} note={t("Models that make pictures from a prompt, and edit the ones they are given. A Bot saves what they make in its workspace.")} kinds={["image"]} />
+      <RolePanel title={t("The generate_image tool")} roles={IMAGE_ROLES} />
+      <AllowedModels kind="image" />
     </>
   );
 }

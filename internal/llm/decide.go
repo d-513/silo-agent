@@ -415,10 +415,11 @@ var openRouterModalities = []struct{ modality, kind string }{
 	{"transcription", KindTranscription},
 	{"speech", KindSpeech},
 	{"embeddings", KindEmbedding},
+	{"image", KindImage},
 }
 
 // ListModels lists the text models and, from one more query per modality,
-// the decision, transcription, speech and embedding models. A gateway that
+// the decision, transcription, speech, embedding and image models. A gateway that
 // does not know those queries still lists its text models.
 func (c *openRouterClient) ListModels(ctx context.Context) ([]ModelInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, listTimeout)

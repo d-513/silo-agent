@@ -320,7 +320,7 @@ test("admin settings form tracks and discards edits", async ({ page }) => {
   await expect(page).toHaveURL(/\/admin\/settings\/models$/);
   // Models is the map, with a page per kind under it; the old Providers and
   // Voice categories land on theirs, an unknown page on the map.
-  for (const m of ["providers", "text", "decision", "embedding", "voice"]) {
+  for (const m of ["providers", "text", "decision", "embedding", "image", "voice"]) {
     await page.goto(`/admin/settings/models/${m}`);
     await expect(page).toHaveURL(new RegExp(`/admin/settings/models/${m}$`));
     await expect(categories.locator("[data-tab-on]")).toHaveCount(1);

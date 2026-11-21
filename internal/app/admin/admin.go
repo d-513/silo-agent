@@ -118,6 +118,7 @@ var modelRoles = map[string][]string{
 	"voice.transcribe_model": {llm.KindTranscription},
 	"voice.speech_model":     {llm.KindSpeech},
 	"embedding_model":        {llm.KindEmbedding},
+	"model_image":            {llm.KindImage},
 }
 
 // kindWords name a kind in a refusal.
@@ -127,6 +128,7 @@ var kindWords = map[string]string{
 	llm.KindTranscription: "a transcription model",
 	llm.KindSpeech:        "a speech model",
 	llm.KindEmbedding:     "an embedding model",
+	llm.KindImage:         "an image model",
 }
 
 // checkRole refuses a role given a model that is not allowed, or is of a kind

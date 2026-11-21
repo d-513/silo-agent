@@ -24,6 +24,8 @@ eq(toolMeta("mystery").app, "mystery", "an unknown name is shown as it is");
 // A decision is named by what was asked: the questions' own names.
 const asked = (names: string[]) => JSON.stringify({ state: { mail: "hi" }, questions: Object.fromEntries(names.map((n) => [n, { type: "noul", instructions: "?" }])) });
 eq(toolMeta("decide").app, "Decision", "decide has its own app name");
+eq(toolMeta("generate_image").app, "Image", "generate_image has its own app name");
+eq(toolAction("generate_image", '{"prompt":"A red fox in snow\\nlong exposure","aspect":"16:9"}'), "A red fox in snow", "an image is named by its prompt");
 eq(toolAction("decide", asked(["is_spam"])), "is_spam", "one question");
 eq(toolAction("decide", asked(["is_spam", "team", "urgency"])), "is_spam, team, urgency", "a few questions are all named");
 eq(toolAction("decide", asked(["a", "b", "c", "d", "e"])), "a, b, c +2 more", "many are counted");

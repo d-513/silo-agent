@@ -157,7 +157,7 @@ func (k *keyed) Search(ctx context.Context, q Query) (Result, error) {
 	// is part of the key; the engine keeps answers of different engines apart.
 	key := fmt.Sprintf("%s\x00%d\x00%s", k.id, q.Max, cacheKey(q))
 	var failure error
-	f := k.keep.do(key, func() found {
+	f, err := k.keep.do(ctx, key, func() found {
 		hits, err := k.do(context.WithoutCancel(ctx), q)
 		if err != nil {
 			failure = err
@@ -166,10 +166,13 @@ func (k *keyed) Search(ctx context.Context, q Query) (Result, error) {
 		}
 		return found{hits: hits}
 	})
+	if err != nil {
+		return Result{}, err
+	}
 	if failure != nil {
 		return Result{}, failure
 	}
-	if len(f.hits) == 0 && len(f.blocked) > 0 {
+	if len(f.blocked) > 0 {
 		// Another caller's request failed while this one waited on it.
 		return Result{}, fmt.Errorf("search failed: try again")
 	}

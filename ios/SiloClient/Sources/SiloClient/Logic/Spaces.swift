@@ -173,6 +173,7 @@ public func activityStepApp(_ step: String) -> String {
     case "feed": return "Feed"
     case "list_models", "switch_model": return "Model"
     case "decide": return "Decision"
+    case "generate_image": return "Image"
     case "spawn_agent", "agent_status", "message_agent", "stop_agent": return "Subagents"
     case "sleep": return "Sleep"
     case "task_add", "task_list", "task_done", "task_reset": return "Taskboard"

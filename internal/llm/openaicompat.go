@@ -555,7 +555,20 @@ func (c *openAICompatClient) Transcribe(ctx context.Context, model string, audio
 	if lang := strings.TrimSpace(audio.Language); lang != "" {
 		params.Language = openai.String(lang)
 	}
-	resp, err := c.client.Audio.Transcriptions.New(ctx, params)
+	var resp *openai.Transcription
+	var err error
+	if audio.Timestamps {
+		// Timings come only in the verbose form, which the newer transcribe
+		// models refuse: those are asked again the plain way.
+		timed := params
+		timed.ResponseFormat = openai.AudioResponseFormatVerboseJSON
+		timed.TimestampGranularities = []string{"segment"}
+		if resp, err = c.client.Audio.Transcriptions.New(ctx, timed); err != nil && ctx.Err() == nil {
+			resp, err = c.client.Audio.Transcriptions.New(ctx, params)
+		}
+	} else {
+		resp, err = c.client.Audio.Transcriptions.New(ctx, params)
+	}
 	if err != nil {
 		return Transcript{}, err
 	}
@@ -567,6 +580,7 @@ func (c *openAICompatClient) Transcribe(ctx context.Context, model string, audio
 			Seconds float64 `json:"seconds"`
 			Cost    float64 `json:"cost"`
 		} `json:"usage"`
+		Segments []Segment `json:"segments"`
 	}
 	if json.Unmarshal([]byte(resp.RawJSON()), &extra) == nil {
 		out.Language = extra.Language
@@ -575,6 +589,11 @@ func (c *openAICompatClient) Transcribe(ctx context.Context, model string, audio
 			out.Seconds = extra.Duration
 		}
 		out.Cost = extra.Usage.Cost
+		for _, sg := range extra.Segments {
+			if sg.Text = strings.TrimSpace(sg.Text); sg.Text != "" {
+				out.Segments = append(out.Segments, sg)
+			}
+		}
 	}
 	return out, nil
 }

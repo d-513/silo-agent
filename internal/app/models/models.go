@@ -240,6 +240,10 @@ func (s *Service) ListTool(botID, chatID string) (string, error) {
 		}
 		list["decision_models"], list["default_decision"] = deciders, def
 	}
+	// Image models are what generate_image may name.
+	if def := cfg.ImageModel(); def != "" {
+		list["image_models"], list["default_image"] = cfg.KindModels(llm.KindImage), def
+	}
 	body, err := json.Marshal(list)
 	if err != nil {
 		return "", err
