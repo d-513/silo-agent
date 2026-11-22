@@ -37,7 +37,7 @@ func TestSystemPromptKeepsSecretsOutOfTheConversation(t *testing.T) {
 	}
 }
 
-// The box ships Node.js and pnpm (botimage/Containerfile); the model only
+// The box ships Node.js and pnpm (images/bot/Containerfile); the model only
 // reaches for them if the prompt says they are there.
 func TestSystemPromptNamesTheJavaScriptToolchain(t *testing.T) {
 	for _, want := range []string{"Node.js", "npm", "pnpm"} {
@@ -47,7 +47,7 @@ func TestSystemPromptNamesTheJavaScriptToolchain(t *testing.T) {
 	}
 }
 
-// The box ships the everyday shell tools and uv (botimage/Containerfile, whose
+// The box ships the everyday shell tools and uv (images/bot/Containerfile, whose
 // last check fails the build when one is missing); the model reaches for one
 // only if the prompt says it is there.
 func TestSystemPromptNamesTheInstalledTools(t *testing.T) {

@@ -364,7 +364,7 @@ The Bot's question (`ask_owner`), the same card in a thread and on the Dashboard
 
 ### Crests
 
-- A crest is a **Stack**: a small head with a face on one to three rounded layers, on its own rounded tile (corner 24% of the tile). A Bot is one of eight shapes (wobble, duo, pyramid, tower, blocks, hourglass, tilt, coins) in one of the eight hues; the shape tells Bots apart, the hue is decoration. The same character, wobble in green at rest, is Silo's mark. It is flat: no gradients, no shading, no outline. The geometry is `web/src/stack.ts` (ported to iOS as `Logic/Stack.swift`), the tokens and the designer's reference drawings live in [brand/](brand/README.md), and `stack_test.ts` holds the renderer to those drawings byte for byte.
+- A crest is a **Stack**: a small head with a face on one to three rounded layers, on its own rounded tile (corner 24% of the tile). A Bot is one of eight shapes (wobble, duo, pyramid, tower, blocks, hourglass, tilt, coins) in one of the eight hues; the shape tells Bots apart, the hue is decoration. The same character, wobble in green at rest, is Silo's mark. It is flat: no gradients, no shading, no outline. The geometry is `web/src/stack.ts` (ported to iOS as `Logic/Stack.swift`), the tokens and the designer's reference drawings live in [brand/](../brand/README.md), and `stack_test.ts` holds the renderer to those drawings byte for byte.
 - **It acts out what the Bot is doing** (`crestState` in `statusLook.ts`, most pressing first):
   - **needs you**: the head pops up off the layers, wide eyes, two ticks beside the gap, a white badge with "!".
   - **working**: the pieces get shorter and restack higher over a dashed layer sliding in; dash eyes.
@@ -536,4 +536,4 @@ The Bot's question (`ask_owner`), the same card in a thread and on the Dashboard
 - Loop any animation other than the Working lamp's breathing.
 - Use IBM Plex, Inter or decorative display faces. Geist, Geist Mono and Source Serif 4 (replies only) are the only fonts.
 - Show a secret value.
-- Add illustrations, other mascots or 3D robots. The Stack is the one character: a Bot's crest in the app and Silo's mark outside it ([brand/](brand/README.md)).
+- Add illustrations, other mascots or 3D robots. The Stack is the one character: a Bot's crest in the app and Silo's mark outside it ([brand/](../brand/README.md)).

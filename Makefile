@@ -12,7 +12,7 @@ CLAUDE_PLATFORM ?= $(shell uname -s | tr A-Z a-z)-$(shell uname -m | sed 's/x86_
 PNPM        ?= pnpm
 PODMAN      ?= podman
 COMPOSE     ?= $(PODMAN) compose
-DEV_COMPOSE := $(COMPOSE) -f docker-compose.dev.yml
+DEV_COMPOSE := $(COMPOSE) -f dev/compose.yml
 PG_CONTAINER ?= silodb-postgres
 CONTAINER_ARCH ?= $(shell $(PODMAN) info --format '{{.Host.Arch}}' 2>/dev/null || $(GO) env GOARCH)
 
@@ -30,12 +30,12 @@ BOT_IMAGE    ?= $(IMAGE_REPO)/silo-bot:$(VERSION)
 STDIO_IMAGE  ?= $(IMAGE_REPO)/silo-mcp-stdio:$(VERSION)
 DRIVE_IMAGE  ?= $(IMAGE_REPO)/silo-drive:$(VERSION)
 EGRESS_IMAGE ?= $(IMAGE_REPO)/silo-egress:$(VERSION)
-# The control plane's own image (cpimage/), which runs the four above.
+# The control plane's own image (images/cp/), which runs the four above.
 CP_IMAGE     ?= $(IMAGE_REPO)/silo:$(VERSION)
-# Caddy with the DNS providers Silo configures (caddyimage/): SiloOS runs it.
+# Caddy with the DNS providers Silo configures (images/caddy/): SiloOS runs it.
 CADDY_IMAGE  ?= $(IMAGE_REPO)/silo-caddy:$(VERSION)
-# SiloOS (os/): a bootable image of the control plane and Caddy of the same
-# VERSION (a dev build runs the nightly's). os/README.md § Channels.
+# SiloOS (images/os/): a bootable image of the control plane and Caddy of the same
+# VERSION (a dev build runs the nightly's). images/os/README.md § Channels.
 OS_IMAGE      ?= $(IMAGE_REPO)/silo-os:$(VERSION)
 OS_REPOSITORY := $(PROD_REGISTRY)/silo-os
 # What a disk is made from, and so what the machine follows: local (the image
@@ -180,34 +180,34 @@ publish: images cp-image caddy-image os-image build-cp-ui
 	./build/bin/silo version
 
 bot-image: build-worker ## Build the local bot image
-	$(PODMAN) build --pull=newer $(IMAGE_ARGS) -t $(BOT_IMAGE) -f botimage/Containerfile .
+	$(PODMAN) build --pull=newer $(IMAGE_ARGS) -t $(BOT_IMAGE) -f images/bot/Containerfile .
 
 stdio-image: build-bridge ## Build the local STDIO MCP sidecar image
-	$(PODMAN) build --pull=newer $(IMAGE_ARGS) -t $(STDIO_IMAGE) -f mcpimage/Containerfile .
+	$(PODMAN) build --pull=newer $(IMAGE_ARGS) -t $(STDIO_IMAGE) -f images/mcp-stdio/Containerfile .
 
 drive-image: build-drive ## Build the local drive (rclone) sidecar image
-	$(PODMAN) build --pull=newer $(IMAGE_ARGS) -t $(DRIVE_IMAGE) -f driveimage/Containerfile .
+	$(PODMAN) build --pull=newer $(IMAGE_ARGS) -t $(DRIVE_IMAGE) -f images/drive/Containerfile .
 
 # The control plane is built inside the image (cgo against the image's glibc),
-# from the Go module only: cpimage/Containerfile.dockerignore stands in for the
+# from the Go module only: images/cp/Containerfile.dockerignore stands in for the
 # root .containerignore. Docker format, so HEALTHCHECK is kept.
-cp-image: ## Build the control plane image (cpimage/; runs the bot, STDIO, drive and egress images of the same VERSION)
+cp-image: ## Build the control plane image (images/cp/; runs the bot, STDIO, drive and egress images of the same VERSION)
 	$(PODMAN) build --pull=newer --format docker $(IMAGE_ARGS) --build-arg REGISTRY=$(REGISTRY) --build-arg BUILD_JOBS=$(CP_BUILD_JOBS) \
-		--ignorefile cpimage/Containerfile.dockerignore -t $(CP_IMAGE) -f cpimage/Containerfile .
+		--ignorefile images/cp/Containerfile.dockerignore -t $(CP_IMAGE) -f images/cp/Containerfile .
 
 egress-image: build-egress ## Build the local network filter gateway image
-	$(PODMAN) build --pull=newer $(IMAGE_ARGS) -t $(EGRESS_IMAGE) -f egressimage/Containerfile .
+	$(PODMAN) build --pull=newer $(IMAGE_ARGS) -t $(EGRESS_IMAGE) -f images/egress/Containerfile .
 
 # Caddy is compiled inside the image (xcaddy, every DNS provider pinned).
-caddy-image: ## Build silo-caddy: Caddy with the DNS providers Silo can use (caddyimage/)
-	$(PODMAN) build --pull=newer $(IMAGE_ARGS) -t $(CADDY_IMAGE) -f caddyimage/Containerfile .
+caddy-image: ## Build silo-caddy: Caddy with the DNS providers Silo can use (images/caddy/)
+	$(PODMAN) build --pull=newer $(IMAGE_ARGS) -t $(CADDY_IMAGE) -f images/caddy/Containerfile .
 
-# SiloOS copies siloosd and os/ only (os/Containerfile.dockerignore stands in
+# SiloOS copies siloosd and images/os/ only (images/os/Containerfile.dockerignore stands in
 # for the root .containerignore). REGISTRY and VERSION say which control
 # plane and Caddy it runs and which repository its channels are in.
-os-image: build-siloosd ## Build SiloOS, the bootc image that runs Silo (os/)
+os-image: build-siloosd ## Build SiloOS, the bootc image that runs Silo (images/os/)
 	$(PODMAN) build --pull=newer $(IMAGE_ARGS) --build-arg REGISTRY=$(REGISTRY) \
-		--ignorefile os/Containerfile.dockerignore -t $(OS_IMAGE) -f os/Containerfile .
+		--ignorefile images/os/Containerfile.dockerignore -t $(OS_IMAGE) -f images/os/Containerfile .
 
 # The rest make installable media with bootc-image-builder, which needs a
 # rootful, privileged Podman and the image in root's storage: they run under
@@ -228,7 +228,7 @@ os-source:
 # OS_OUT/OUT, owned by you. The media are the same for everyone: no user, no
 # key, no setting is baked in. A machine gets its login from cloud-init when
 # something hands it user-data, and its first admin is shown on its console
-# (os/README.md § First boot). os/bib.toml, when you write one, passes
+# (images/os/README.md § First boot). images/os/bib.toml, when you write one, passes
 # bootc-image-builder options of your own (the root's size, the installer's
 # disk).
 define bib
@@ -237,13 +237,13 @@ define bib
 		--security-opt label=type:unconfined_t \
 		-v /var/lib/containers/storage:/var/lib/containers/storage \
 		-v $(CURDIR)/$(OS_OUT)/$(1):/output \
-		$(if $(wildcard os/bib.toml),-v $(CURDIR)/os/bib.toml:/config.toml:ro) \
+		$(if $(wildcard images/os/bib.toml),-v $(CURDIR)/images/os/bib.toml:/config.toml:ro) \
 		$(BIB_IMAGE) build --type $(2) --rootfs xfs --chown $(shell id -u):$(shell id -g) $(OS_SOURCE)
 	@echo "made $(2) of $(OS_SOURCE) in $(OS_OUT)/$(1)"
 endef
 
-os/cloud-init/user-data.yaml:
-	@echo "os/cloud-init/user-data.yaml is the VM's user-data: cp os/cloud-init/user-data.example.yaml os/cloud-init/user-data.yaml and fill it in"; exit 1
+images/os/cloud-init/user-data.yaml:
+	@echo "images/os/cloud-init/user-data.yaml is the VM's user-data: cp images/os/cloud-init/user-data.example.yaml images/os/cloud-init/user-data.yaml and fill it in"; exit 1
 
 os-disk: os-source ## A disk image (OS_DISK_TYPE=qcow2|raw|vmdk|vhd|ami|gce, OS_CHANNEL=local|latest|master|vX.Y.Z; sudo)
 	$(call bib,$(OS_DISK_TYPE),$(OS_DISK_TYPE))
@@ -252,7 +252,7 @@ os-iso: os-source ## An installer ISO for bare metal; it erases the disk it inst
 	$(call bib,iso,anaconda-iso)
 
 # The qcow2 os-disk made, as an Incus VM image (metadata + disk).
-os-incus: ## Import the qcow2 from os-disk into Incus as OS_INCUS_ALIAS (os/README.md § Incus)
+os-incus: ## Import the qcow2 from os-disk into Incus as OS_INCUS_ALIAS (images/os/README.md § Incus)
 	@test -f $(OS_OUT)/qcow2/qcow2/disk.qcow2 || { echo "no $(OS_OUT)/qcow2/qcow2/disk.qcow2: run make os-disk first"; exit 1; }
 	printf 'architecture: %s\ncreation_date: %s\nproperties:\n  os: SiloOS\n  release: %s\n  description: SiloOS (%s)\n' \
 		"$$(uname -m)" "$$(date +%s)" "$(OS_CHANNEL)" "$(OS_SOURCE)" > $(OS_OUT)/qcow2/metadata.yaml
@@ -260,11 +260,11 @@ os-incus: ## Import the qcow2 from os-disk into Incus as OS_INCUS_ALIAS (os/READ
 	incus image import $(OS_OUT)/qcow2/metadata.tar.xz $(OS_OUT)/qcow2/qcow2/disk.qcow2 --alias $(OS_INCUS_ALIAS) --reuse
 
 # A NoCloud seed: the user-data and meta-data a VM's cloud-init reads from a
-# CD labelled cidata, for trying a cloud image locally (os/README.md).
-os-seed: os/cloud-init/user-data.yaml ## The cloud-init seed ISO for a local VM, from os/cloud-init/user-data.yaml
+# CD labelled cidata, for trying a cloud image locally (images/os/README.md).
+os-seed: images/os/cloud-init/user-data.yaml ## The cloud-init seed ISO for a local VM, from images/os/cloud-init/user-data.yaml
 	mkdir -p $(OS_OUT)/seed
-	cp os/cloud-init/user-data.yaml $(OS_OUT)/seed/user-data
-	cp $(if $(wildcard os/cloud-init/meta-data.yaml),os/cloud-init/meta-data.yaml,os/cloud-init/meta-data.example.yaml) $(OS_OUT)/seed/meta-data
+	cp images/os/cloud-init/user-data.yaml $(OS_OUT)/seed/user-data
+	cp $(if $(wildcard images/os/cloud-init/meta-data.yaml),images/os/cloud-init/meta-data.yaml,images/os/cloud-init/meta-data.example.yaml) $(OS_OUT)/seed/meta-data
 	$(PODMAN) run --rm -v $(CURDIR)/$(OS_OUT)/seed:/seed:z $(SEED_IMAGE) sh -c \
 		'apk add --no-cache -q xorriso && xorriso -as mkisofs -quiet -output /seed/seed.iso -volid cidata -joliet -rock /seed/user-data /seed/meta-data'
 	@echo "made $(OS_OUT)/seed/seed.iso"
@@ -313,7 +313,7 @@ test-containers: ## Run only the real-container tests and fail if Podman is miss
 	SILO_REQUIRE_CONTAINERS=1 $(GO) test ./internal/app -run 'TestContainer' -count=1 -v
 
 test-integration: ## Run the Go client integration tests against a running CP
-	SILO_INTEGRATION=1 $(GO) test -tags integration ./integration/... -count=1 -v
+	SILO_INTEGRATION=1 $(GO) test -tags integration ./test/integration/... -count=1 -v
 
 e2e: ## Run Playwright against the already-running dev stack (make dev)
 	$(PNPM) --dir web exec playwright test
@@ -328,7 +328,7 @@ tidy: ## Tidy go.mod / go.sum
 	$(GO) mod tidy
 
 proto: ## Regenerate protobuf stubs (Go + TS)
-	buf generate
+	buf generate proto --template proto/buf.gen.yaml
 
 claude-bin: ## Download the official Claude Code binary to build/claude (the Claude Agent provider, for development)
 	rm -rf build/claude

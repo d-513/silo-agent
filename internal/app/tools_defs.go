@@ -35,7 +35,7 @@ import (
 // stops while a cell waits on the control plane.
 //
 // A tool with ExposePython needs a silo_runtime helper of the same name (or
-// PyName) in botimage/silo_runtime.py; TestPythonToolsHaveHelpers checks it.
+// PyName) in images/bot/silo_runtime.py; TestPythonToolsHaveHelpers checks it.
 // desktopActions are what the desktop chat tool can do: one Python tool each.
 var desktopActions = []string{"look", "click", "type", "key", "scroll"}
 

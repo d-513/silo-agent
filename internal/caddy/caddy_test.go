@@ -81,7 +81,7 @@ func TestConfig(t *testing.T) {
 // Every provider Admin offers is compiled into silo-caddy, and nothing
 // compiled in is missing from Admin.
 func TestDNSProvidersAreBuilt(t *testing.T) {
-	raw, err := os.ReadFile("../../caddyimage/Containerfile")
+	raw, err := os.ReadFile("../../images/caddy/Containerfile")
 	if err != nil {
 		t.Fatal(err)
 	}

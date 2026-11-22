@@ -103,7 +103,7 @@ const WelcomePath = "/admin"
 
 // FirstAdminMarker is the file, in data_dir, that says the first admin has
 // signed in. SiloOS's console banner shows the generated first password only
-// until it exists (os/rootfs/usr/libexec/siloos/init).
+// until it exists (images/os/rootfs/usr/libexec/siloos/init).
 const FirstAdminMarker = "first-admin-signed-in"
 
 // welcome reports whether u is the first admin signing in for the first

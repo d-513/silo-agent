@@ -1,6 +1,6 @@
 // siloosd is the SiloOS host daemon: the one way Silo changes the machine it
 // runs on (internal/siloosd, proto/silo/v1/siloos.proto). It runs as root
-// under systemd (os/rootfs/usr/lib/systemd/system/siloosd.service) and
+// under systemd (images/os/rootfs/usr/lib/systemd/system/siloosd.service) and
 // answers on a unix socket only root and the silo user may open.
 package main
 

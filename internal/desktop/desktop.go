@@ -1,6 +1,6 @@
 // Package desktop is what the CP and the Bot worker both need to agree on about
 // the Bot's X11 desktop: its size and which code needs the headed browser. The
-// Xvfb geometry is also set in botimage/start.sh and stated in the prompts.
+// Xvfb geometry is also set in images/bot/start.sh and stated in the prompts.
 package desktop
 
 import (

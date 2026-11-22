@@ -7,7 +7,7 @@ import (
 )
 
 // DNSProvider is one DNS host Caddy can answer the ACME DNS challenge
-// through: a caddy-dns module compiled into silo-caddy (caddyimage/
+// through: a caddy-dns module compiled into silo-caddy (images/caddy/
 // Containerfile; TestDNSProvidersAreBuilt holds the two lists together).
 // Its settings are caddy.dns.<ID>.<Key> in silo.yaml, and each Key is the
 // JSON field of the libdns provider the module wraps, read from its source:

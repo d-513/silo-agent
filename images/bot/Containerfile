@@ -135,21 +135,21 @@ RUN for i in org.xfce.thunar org.xfce.terminal org.xfce.mousepad; do \
     && yt-dlp --version >/dev/null
 
 # Silo's own files, last: they change most.
-COPY botimage/openbox/autostart /opt/silo/openbox/autostart
-COPY botimage/openbox/rc.xml /opt/silo/openbox/rc.xml
-COPY botimage/tint2/tint2rc /opt/silo/tint2/tint2rc
-COPY botimage/apps/ /opt/silo/desktop/
-COPY botimage/wallpaper.png /opt/silo/wallpaper.png
-COPY botimage/gtk-3.0/ /opt/silo/gtk-3.0/
-COPY botimage/thunar/thunarrc /opt/silo/thunar/thunarrc
-COPY botimage/mimeapps.list /opt/silo/mimeapps.list
-COPY botimage/chromium.png /opt/silo/chromium.png
-COPY botimage/chromium/policies.json /etc/chromium/policies/managed/silo.json
-COPY botimage/chromium/egress.pac /opt/silo/egress.pac
-COPY --chown=silo:silo botimage/chromium/stealth/ /opt/silo/stealth/
-COPY --chmod=755 botimage/silo-chromium /usr/local/bin/silo-chromium
-COPY --chmod=755 botimage/start.sh /usr/local/bin/start.sh
-COPY botimage/silo_runtime.py /opt/silo/silo_runtime.py
+COPY images/bot/openbox/autostart /opt/silo/openbox/autostart
+COPY images/bot/openbox/rc.xml /opt/silo/openbox/rc.xml
+COPY images/bot/tint2/tint2rc /opt/silo/tint2/tint2rc
+COPY images/bot/apps/ /opt/silo/desktop/
+COPY images/bot/wallpaper.png /opt/silo/wallpaper.png
+COPY images/bot/gtk-3.0/ /opt/silo/gtk-3.0/
+COPY images/bot/thunar/thunarrc /opt/silo/thunar/thunarrc
+COPY images/bot/mimeapps.list /opt/silo/mimeapps.list
+COPY images/bot/chromium.png /opt/silo/chromium.png
+COPY images/bot/chromium/policies.json /etc/chromium/policies/managed/silo.json
+COPY images/bot/chromium/egress.pac /opt/silo/egress.pac
+COPY --chown=silo:silo images/bot/chromium/stealth/ /opt/silo/stealth/
+COPY --chmod=755 images/bot/silo-chromium /usr/local/bin/silo-chromium
+COPY --chmod=755 images/bot/start.sh /usr/local/bin/start.sh
+COPY images/bot/silo_runtime.py /opt/silo/silo_runtime.py
 RUN mkdir -p /workspace/bot /workspace/tmp /var/run/silo /run/user/1000 \
         /home/silo/chrome-profile /usr/local/share/applications /opt/silo/tools /var/lib/silo/history \
     && touch /opt/silo/tools/__init__.py \

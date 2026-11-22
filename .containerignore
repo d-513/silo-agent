@@ -7,10 +7,10 @@
 !build/bin/silo-mcp-bridge
 !build/bin/silo-drive
 !build/bin/silo-egress
-!botimage
-!mcpimage
-!driveimage
-!egressimage
+!images/bot
+!images/mcp-stdio
+!images/drive
+!images/egress
 **/__pycache__
 **/.DS_Store
-botimage/silo_runtime_test.py
+images/bot/silo_runtime_test.py

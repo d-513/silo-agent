@@ -290,7 +290,7 @@ const (
 	TranscribeOff          = "off"
 )
 
-// DefaultDatabaseURL is the dev Postgres from docker-compose.dev.yml.
+// DefaultDatabaseURL is the dev Postgres from dev/compose.yml.
 const DefaultDatabaseURL = "postgres://silo:silo@localhost:5433/silo?sslmode=disable"
 
 type Config struct {

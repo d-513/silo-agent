@@ -2268,7 +2268,7 @@ const de: Record<string, string> = {
   "Apply": "Anwenden",
   "Not on SiloOS": "Nicht auf SiloOS",
   "This control plane does not run on SiloOS, so there is no machine to manage from here.": "Diese Steuerebene läuft nicht auf SiloOS, daher gibt es hier keine Maschine zu verwalten.",
-  "SiloOS is a bootable image that runs Silo and nothing else. See os/README.md in the repository.": "SiloOS ist ein bootfähiges Image, das Silo ausführt und sonst nichts. Siehe os/README.md im Repository.",
+  "SiloOS is a bootable image that runs Silo and nothing else. See images/os/README.md in the repository.": "SiloOS ist ein bootfähiges Image, das Silo ausführt und sonst nichts. Siehe images/os/README.md im Repository.",
   "The machine Silo runs on: its network, name, clock, updates and power.": "Die Maschine, auf der Silo läuft: Netzwerk, Name, Uhr, Updates und Stromversorgung.",
   "The host daemon (siloosd) is not answering: {{error}}": "Der Host-Dienst (siloosd) antwortet nicht: {{error}}",
   "HTTPS": "HTTPS",

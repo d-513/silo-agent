@@ -2380,7 +2380,7 @@ const pl: Record<string, string> = {
   "Apply": "Zastosuj",
   "Not on SiloOS": "Nie na SiloOS",
   "This control plane does not run on SiloOS, so there is no machine to manage from here.": "Ta płaszczyzna sterowania nie działa na SiloOS, więc nie ma tu maszyny do zarządzania.",
-  "SiloOS is a bootable image that runs Silo and nothing else. See os/README.md in the repository.": "SiloOS to bootowalny obraz, który uruchamia Silo i nic więcej. Zobacz os/README.md w repozytorium.",
+  "SiloOS is a bootable image that runs Silo and nothing else. See images/os/README.md in the repository.": "SiloOS to bootowalny obraz, który uruchamia Silo i nic więcej. Zobacz images/os/README.md w repozytorium.",
   "The machine Silo runs on: its network, name, clock, updates and power.": "Maszyna, na której działa Silo: sieć, nazwa, zegar, aktualizacje i zasilanie.",
   "The host daemon (siloosd) is not answering: {{error}}": "Demon systemu (siloosd) nie odpowiada: {{error}}",
   "HTTPS": "HTTPS",

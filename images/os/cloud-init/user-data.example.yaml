@@ -3,7 +3,7 @@
 # SiloOS user-data for cloud-init: a cloud's "user data" box, Proxmox's
 # cloud-init tab, `incus config set <vm> cloud-init.user-data - < this`, or
 # `make os-seed` for a plain QEMU/libvirt VM. Copy it to
-# os/cloud-init/user-data.yaml (ignored by git: it holds your keys) and fill
+# images/os/cloud-init/user-data.yaml (ignored by git: it holds your keys) and fill
 # it in. The media carry no login; this is where one comes from. Everything
 # is optional: with none of it you get the provider's key (if any) on the
 # user "admin", a generated first admin shown on the machine's console, and

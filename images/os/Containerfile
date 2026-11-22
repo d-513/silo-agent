@@ -7,7 +7,7 @@
 #   silodb     Postgres + pgvector (silodb.container)
 #   silo       the control plane, console inside (silo.container), which makes
 #              every Bot's box and sidecar through that user's Podman socket
-#   silocaddy  silo-caddy (caddyimage/): HTTPS, configured by the control
+#   silocaddy  silo-caddy (images/caddy/): HTTPS, configured by the control
 #              plane through its admin socket (silocaddy.container,
 #              internal/caddy)
 #
@@ -22,10 +22,10 @@
 # One image for every install: an installer ISO or a disk for a machine you
 # set up yourself, and a cloud image configured at first boot by cloud-init
 # (which turns itself off where no cloud answers). Which channel a machine
-# follows is the image name it was installed from (os/README.md § Channels).
+# follows is the image name it was installed from (images/os/README.md § Channels).
 #
 # Build with `make os-image`: the context is os/ and build/bin/siloosd only
-# (os/Containerfile.dockerignore). See os/README.md.
+# (images/os/Containerfile.dockerignore). See images/os/README.md.
 # The base follows Fedora 43's bootc tag, not a digest, unlike every other
 # base in this repository: Fedora rebuilds it about daily with the
 # distribution's fixes, which a SiloOS build should carry, and quay.io
@@ -42,7 +42,7 @@ RUN dnf -y install cloud-init \
     && ln -s ../cloud-init.target /usr/lib/systemd/system/default.target.wants/cloud-init.target \
     && rm -rf /var/cache/* /var/log/* /var/lib/dnf /var/lib/cloud /run/cloud-init /run/dnf
 
-COPY os/rootfs/ /
+COPY images/os/rootfs/ /
 
 # The user every Silo container runs under. Made now, not only by sysusers at
 # first boot, so a user made at install (cloud-init, a kickstart)

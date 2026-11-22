@@ -1,4 +1,4 @@
-# Dev-only Radicale for the Calendar built-in connector (docker-compose.dev.yml).
+# Dev-only Radicale for the Calendar built-in connector (dev/compose.yml).
 [server]
 hosts = 0.0.0.0:5232
 

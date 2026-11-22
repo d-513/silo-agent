@@ -26,7 +26,7 @@ export function SiloOSPage() {
   if (!st.available) {
     return (
       <Panel title={t("Not on SiloOS")} note={t("This control plane does not run on SiloOS, so there is no machine to manage from here.")}>
-        <p className="text-small text-ink-2">{t("SiloOS is a bootable image that runs Silo and nothing else. See os/README.md in the repository.")}</p>
+        <p className="text-small text-ink-2">{t("SiloOS is a bootable image that runs Silo and nothing else. See images/os/README.md in the repository.")}</p>
       </Panel>
     );
   }

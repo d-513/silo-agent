@@ -14,7 +14,7 @@ import (
 // connector.action, so adding ExposePython to a definition cannot leave Python
 // without a way in.
 func TestPythonToolsHaveHelpers(t *testing.T) {
-	src, err := os.ReadFile("../../botimage/silo_runtime.py")
+	src, err := os.ReadFile("../../images/bot/silo_runtime.py")
 	if err != nil {
 		t.Fatal(err)
 	}

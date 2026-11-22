@@ -18,7 +18,7 @@ import (
 // it (rollback); a new one is downloaded beside them (staged) and used at the
 // next boot. siloosd runs the three steps as jobs, one at a time, and keeps
 // the update policy in place of the base image's bootc-fetch-apply-updates
-// timer (masked in os/Containerfile), which reboots whenever it finds
+// timer (masked in images/os/Containerfile), which reboots whenever it finds
 // something: an admin chooses that here.
 
 const (

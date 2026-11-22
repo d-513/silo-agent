@@ -2,9 +2,9 @@
 # build-siloosd`), nothing else. podman is handed this file with --ignorefile
 # (`make os-image`); data/, silo.yaml and .git never reach the builder.
 *
-!os
+!images/os
 !build/bin/siloosd
-os/bib.toml
-os/config.toml
-os/cloud-init/user-data.yaml
-os/cloud-init/meta-data.yaml
+images/os/bib.toml
+images/os/config.toml
+images/os/cloud-init/user-data.yaml
+images/os/cloud-init/meta-data.yaml

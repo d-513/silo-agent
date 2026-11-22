@@ -22,7 +22,7 @@ services:
       - "5433:5432"
     volumes:
       - silodb-pg:/var/lib/postgresql/data
-      - ./deploy/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro,z
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro,z
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U silo -d silo"]
       interval: 2s
@@ -66,7 +66,7 @@ services:
     image: docker.io/tomsquest/docker-radicale:latest
     container_name: silodb-radicale
     volumes:
-      - ./deploy/radicale:/config:ro
+      - ./radicale:/config:ro
       - silodb-radicale:/data
     ports:
       - "127.0.0.1:5232:5232"
@@ -75,13 +75,13 @@ services:
   # OIDC provider for trying single sign-on (Dex). Issuer
   # http://localhost:5556/dex, client silo / silo-dev-secret, users
   # admin@local and guest@local with the password "password"
-  # (deploy/dex/config.yaml). Nothing is stored: a restart forgets sessions.
+  # (dev/dex/config.yaml). Nothing is stored: a restart forgets sessions.
   dex:
     image: ghcr.io/dexidp/dex:latest
     container_name: silodb-dex
     command: ["dex", "serve", "/etc/dex/config.yaml"]
     volumes:
-      - ./deploy/dex:/etc/dex:ro
+      - ./dex:/etc/dex:ro
     ports:
       - "127.0.0.1:5556:5556"
     restart: unless-stopped

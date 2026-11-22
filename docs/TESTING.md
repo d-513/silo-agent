@@ -91,7 +91,7 @@ Run `make images` first.
 These use the developer's own `silo.yaml` — real provider keys, real tools,
 channels, and MCP — so they cost money. They never gate `make test`.
 
-- **Go client**: `integration/client_test.go` signs in over ConnectRPC,
+- **Go client**: `test/integration/client_test.go` signs in over ConnectRPC,
   creates a Bot, sends a message, and streams the reply. Requires a running CP:
   `SILO_INTEGRATION=1 SILO_CP_URL=http://localhost:8080 make test-integration`.
 - **Playwright**: `web/e2e/` drives the real UI. It assumes the stack is already

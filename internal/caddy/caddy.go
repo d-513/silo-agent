@@ -1,4 +1,4 @@
-// Package caddy configures a Caddy server (silo-caddy, caddyimage/) in front
+// Package caddy configures a Caddy server (silo-caddy, images/caddy/) in front
 // of the control plane through Caddy's admin API (caddy.admin): HTTPS for the
 // control plane's own name and its content host, from Let's Encrypt (over
 // HTTP, or through a DNS provider, DNSProviders) or from Caddy's own

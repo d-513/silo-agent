@@ -1,5 +1,5 @@
 // Package dbtest gives each test its own throwaway Postgres schema on the dev
-// database from docker-compose.dev.yml (`make db-up`).
+// database from dev/compose.yml (`make db-up`).
 package dbtest
 
 import (
@@ -21,7 +21,7 @@ import (
 	"silo.agent/internal/ids"
 )
 
-// DefaultURL is the silo_test database created by deploy/postgres/init.sql.
+// DefaultURL is the silo_test database created by dev/postgres/init.sql.
 const DefaultURL = "postgres://silo:silo@localhost:5433/silo_test?sslmode=disable"
 
 var (

@@ -1,6 +1,6 @@
 # Brand
 
-The source of truth for how Silo looks outside its colors and type (those are in [DESIGN.md](../DESIGN.md)). The character is the **Stack**: a small head with a face, sitting on a pile of rounded layers. Every Bot is shown as one, and the same character at rest (the `wobble` shape in `green`) is Silo's mark.
+The source of truth for how Silo looks outside its colors and type (those are in [DESIGN.md](../docs/DESIGN.md)). The character is the **Stack**: a small head with a face, sitting on a pile of rounded layers. Every Bot is shown as one, and the same character at rest (the `wobble` shape in `green`) is Silo's mark.
 
 ## What is here
 

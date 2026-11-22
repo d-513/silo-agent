@@ -145,7 +145,7 @@ Audio is never kept: what is said on a call is written into its chat as text, an
 | `caddy.admin` | (none) | `SILO_CADDY__ADMIN` | Caddy's admin API (`unix//path/to/admin.sock` or `http://host:port`). Set, the control plane configures that Caddy itself: HTTPS for `public_url`'s name and `content.host` (see Content host & tunnels). SiloOS sets it |
 | `caddy.mode` | `auto` | `SILO_CADDY__MODE` | Where certificates come from: `auto` (Let's Encrypt for a public domain, Caddy's own authority for an address or a local name), `acme` (Let's Encrypt), `internal` (Caddy's own authority; browsers warn until its root is installed) or `off` (Caddy serves nothing) |
 | `caddy.email` | (none) | `SILO_CADDY__EMAIL` | The Let's Encrypt account's address, for expiry notices |
-| `caddy.dns_provider` | (none) | `SILO_CADDY__DNS_PROVIDER` | Answer Let's Encrypt through this DNS host instead of on port 80 (no inbound connection; a wildcard for the content host): `cloudflare`, `route53`, `azure`, `bunny`, `desec`, `digitalocean`, `duckdns`, `gandi`, `godaddy`, `hetzner`, `ionos`, `linode`, `namecheap`, `netcup`, `ovh`, `porkbun`, `vultr`. Needs `silo-caddy` (`caddyimage/`) |
+| `caddy.dns_provider` | (none) | `SILO_CADDY__DNS_PROVIDER` | Answer Let's Encrypt through this DNS host instead of on port 80 (no inbound connection; a wildcard for the content host): `cloudflare`, `route53`, `azure`, `bunny`, `desec`, `digitalocean`, `duckdns`, `gandi`, `godaddy`, `hetzner`, `ionos`, `linode`, `namecheap`, `netcup`, `ovh`, `porkbun`, `vultr`. Needs `silo-caddy` (`images/caddy/`) |
 | `caddy.dns.<provider>.<field>` | (none) | `SILO_CADDY__DNS__<PROVIDER>__<FIELD>` | The provider's credentials, by the names its libdns provider uses (`caddy.dns.cloudflare.api_token`); Admin → Settings → HTTPS lists each provider's fields (`internal/caddy/dns.go`) |
 | `siloos.socket` | (none) | `SILO_SILOOS__SOCKET` | siloosd's unix socket, on a SiloOS machine only (SiloOS sets it). Set, Admin has a SiloOS page |
 | `tunnels.enabled` | `true` | `SILO_TUNNELS__ENABLED` | Master switch for tunnels. Off: the proxy, the Bot's tunnel tools and the Tunnels tab's add form are gone (existing rows are kept) |
@@ -323,7 +323,7 @@ A container made from an older image, or made another way (a new `bot_limits`), 
 
 ## Running the control plane in a container
 
-`make cp-image` builds `cpimage/Containerfile` as `silo:<version>` (`make release` pushes it with the others). It holds the control plane with the web console compiled in, served on the same port as the API (`public_url` is that address behind your TLS): no second container and no proxy rules. Postgres is yours to run. The builder needs about 4 GB of memory.
+`make cp-image` builds `images/cp/Containerfile` as `silo:<version>` (`make release` pushes it with the others). It holds the control plane with the web console compiled in, served on the same port as the API (`public_url` is that address behind your TLS): no second container and no proxy rules. Postgres is yours to run. The builder needs about 4 GB of memory.
 
 The control plane makes every other container through the engine's socket, so the container needs four things:
 
@@ -352,7 +352,7 @@ podman run -d --name silo --restart unless-stopped \
   ghcr.io/d-513/silo:v0.4.2
 ```
 
-For a machine that runs Silo and nothing else, SiloOS (`os/`, see os/README.md) is a bootable image that does all of this with rootless Podman.
+For a machine that runs Silo and nothing else, SiloOS (`images/os/`, see images/os/README.md) is a bootable image that does all of this with rootless Podman.
 
 Do not name the container `silo-…`: that prefix is the control plane's own containers, which `make cleanup` removes and Admin → Containers lists. The image has a `HEALTHCHECK` (`silo healthcheck`, which asks `/healthz`), stops on SIGTERM, and runs under `tini`. The network filter needs Podman (see Network filter); on Docker it is off.
 

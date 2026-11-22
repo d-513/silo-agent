@@ -5,7 +5,7 @@
 // tokens, so it is opt-in: set SILO_INTEGRATION=1 and start the stack first
 // (`make dev`).
 //
-//	go test -tags integration ./integration/... -run Integration
+//	go test -tags integration ./test/integration/... -run Integration
 package integration
 
 import (

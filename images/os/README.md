@@ -16,7 +16,7 @@ Quadlets in `rootfs/etc/containers/systemd/users/1000/`:
 | --- | --- | --- |
 | `silodb` | Postgres 17 + pgvector | `127.0.0.1:5432`, volume `silodb-data` |
 | `silo` | The control plane with the console (`ghcr.io/d-513/silo`) | host network: 8080 (HTTP), 25 (mail), 3479 UDP/TCP (calls) |
-| `silocaddy` | `silo-caddy` (`caddyimage/`): Caddy with 17 DNS providers, configured by the control plane (`caddy.*`, `internal/caddy`) | host network: 80, 443; admin API only on a socket in `/run/user/1000/silocaddy` |
+| `silocaddy` | `silo-caddy` (`images/caddy/`): Caddy with 17 DNS providers, configured by the control plane (`caddy.*`, `internal/caddy`) | host network: 80, 443; admin API only on a socket in `/run/user/1000/silocaddy` |
 | `silo-…` | The Bots' boxes and sidecars, made by the control plane through `silo`'s Podman socket | their own networks |
 
 On the host, as root, runs **siloosd** (`cmd/siloosd`, `internal/siloosd`,
@@ -82,7 +82,7 @@ make os-image                    # localhost/silo-os:dev (runs silo:master and s
 make caddy-image                 # localhost/silo-caddy:dev, if you are changing Caddy's DNS providers
 ```
 
-The context is `os/` and `build/bin/siloosd` (`os/Containerfile.dockerignore`). The
+The context is `images/os/` and `build/bin/siloosd` (`images/os/Containerfile.dockerignore`). The
 Postgres image is pinned by digest; the base follows `fedora-bootc:43` (Fedora
 rebuilds it with fixes and quay.io drops old digests within days, so a pin
 stops resolving); the last step is
@@ -111,18 +111,18 @@ make os-disk OS_DISK_TYPE=ami OS_CHANNEL=latest   # AWS; also vmdk (VMware), vhd
 
 - **The ISO is unattended:** it installs to the first disk it finds and
   **erases it**. On a machine with several disks, name the one in a kickstart
-  (`os/bib.toml`, from `os/bib.toml.example`).
+  (`images/os/bib.toml`, from `images/os/bib.toml.example`).
 - **A disk image's root** grows to fill a larger virtual disk at first boot
   (`bootc-generic-growpart`), so give the VM the disk size you want. For a
-  raw disk written to a drive, set the size in `os/bib.toml`.
-- `os/bib.toml` is only ever bootc-image-builder options (sizes, the
+  raw disk written to a drive, set the size in `images/os/bib.toml`.
+- `images/os/bib.toml` is only ever bootc-image-builder options (sizes, the
   installer's disk), never a person.
 
 ### cloud-init
 
 The image carries cloud-init. Handed user-data, it sets up the login and the
 host name and can write Silo's first settings; with nothing to read it turns
-itself off. `os/cloud-init/user-data.example.yaml` is the place to start:
+itself off. `images/os/cloud-init/user-data.example.yaml` is the place to start:
 
 - `users: [default]` is a user `admin` with the key the cloud provider holds;
   `ssh_authorized_keys` adds yours.
@@ -136,11 +136,11 @@ Proxmox's cloud-init tab, `incus config set … cloud-init.user-data`), or make
 a NoCloud seed for a plain QEMU or libvirt VM:
 
 ```sh
-cp os/cloud-init/user-data.example.yaml os/cloud-init/user-data.yaml   # your key, your admin
+cp images/os/cloud-init/user-data.example.yaml images/os/cloud-init/user-data.yaml   # your key, your admin
 make os-seed                                                           # build/os/seed/seed.iso, labelled cidata
 ```
 
-A new `instance-id` in `os/cloud-init/meta-data.yaml` makes cloud-init run its
+A new `instance-id` in `images/os/cloud-init/meta-data.yaml` makes cloud-init run its
 first-boot steps again on the same disk.
 
 ### Incus
@@ -159,7 +159,7 @@ first admin), hand it user-data before the first start:
 
 ```sh
 incus init silo-os silo --vm -c limits.cpu=4 -c limits.memory=8GiB -d root,size=60GiB
-incus config set silo cloud-init.user-data - < os/cloud-init/user-data.yaml
+incus config set silo cloud-init.user-data - < images/os/cloud-init/user-data.yaml
 incus config device add silo cloud-init disk source=cloud-init:config
 incus start silo
 ssh admin@$(incus list silo -c 4 -f csv | cut -d' ' -f1)
@@ -239,7 +239,7 @@ reach the machine from outside, and the content host gets a wildcard.
 `silo-caddy` has Cloudflare, Route 53, Azure, Bunny, deSEC, DigitalOcean,
 Duck DNS, Gandi, GoDaddy, Hetzner, IONOS, Linode, Namecheap, netcup, OVHcloud,
 Porkbun and Vultr compiled in (Caddy loads no plugins at run time; a new
-provider is a line in `caddyimage/Containerfile` and one in
+provider is a line in `images/caddy/Containerfile` and one in
 `internal/caddy/dns.go`). Give a provider the narrowest credential it takes
 (for Cloudflare, a token with Zone → DNS → Edit on the one zone). The
 credential is a secret setting in `silo.yaml`, and Caddy keeps its last

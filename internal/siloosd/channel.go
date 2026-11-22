@@ -23,7 +23,7 @@ import (
 //	         it again never finds anything new
 //	custom   an image of another repository (a fork, a mirror)
 //
-// The image says what it is in /usr/lib/siloos/release (os/Containerfile):
+// The image says what it is in /usr/lib/siloos/release (images/os/Containerfile):
 // its version and the repository its channels are tags of. siloosd switches
 // only within that repository, so the control plane can move the machine
 // between SiloOS's own releases and nowhere else.

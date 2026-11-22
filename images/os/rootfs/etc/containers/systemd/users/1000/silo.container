@@ -12,7 +12,7 @@ After=podman.socket silodb.service
 
 [Container]
 ContainerName=silo
-# Set at build time (os/Containerfile, SILO_IMAGE).
+# Set at build time (images/os/Containerfile, SILO_IMAGE).
 Image=@SILO_IMAGE@
 Network=host
 # The container's uid 1000 is silo here, which owns the socket and data/.

@@ -1,6 +1,6 @@
 # Development
 
-Silo is three local processes — a Go control plane, a Vite frontend, and worker binaries that run inside Bot containers — plus container images (the Bot, STDIO MCP sidecar, drive sidecar and egress gateway) and a Postgres (pgvector) database from `docker-compose.dev.yml`.
+Silo is three local processes — a Go control plane, a Vite frontend, and worker binaries that run inside Bot containers — plus container images (the Bot, STDIO MCP sidecar, drive sidecar and egress gateway) and a Postgres (pgvector) database from `dev/compose.yml`.
 
 ```
 browser  →  Vite :5173  →  Control Plane :8080  →  Bot container (silo-worker)
@@ -30,11 +30,11 @@ make install
 make db-up
 ```
 
-`make db-up` starts Postgres 17 + pgvector on `localhost:5433` (`docker-compose.dev.yml`; user/password/db `silo`). It also starts one shared Lightpanda headless browser as an HTTP MCP server on `localhost:9223/mcp` (`silodb-lightpanda`) for the Lightpanda connector preset — set the connector variable `LIGHTPANDA_URL=http://localhost:9223` in Admin → Settings. It also starts smtp4dev (`silodb-smtp4dev`), a local mail server for the Email connector: SMTP on `localhost:1025` and IMAP on `localhost:1143` (no TLS, login `silo`/`silo`), inbox UI on `http://localhost:8025`. And Radicale (`silodb-radicale`), a CalDAV server for the Calendar connector: pick Other, URL `http://localhost:5232`, login `silo`/`silo` (config in `deploy/radicale/`; each user starts with one calendar). And Dex (`silodb-dex`), an OIDC provider for trying single sign-on: in Admin → Settings → Sign-in set issuer `http://localhost:5556/dex`, client ID `silo`, client secret `silo-dev-secret`, then sign in as `admin@local` or `guest@local` with the password `password` (config in `deploy/dex/`; `guest@local` has no Silo account until you invite it or turn on "Create accounts on sign-in"). The CP and Vite still run locally. All five containers are `silodb-*`, deliberately not `silo-*`, so `make cleanup` leaves them alone. `deploy/postgres/init.sql` also creates `silo_test`, where every Go test gets its own throwaway schema — `make test` fails early if Postgres is down.
+`make db-up` starts Postgres 17 + pgvector on `localhost:5433` (`dev/compose.yml`; user/password/db `silo`). It also starts one shared Lightpanda headless browser as an HTTP MCP server on `localhost:9223/mcp` (`silodb-lightpanda`) for the Lightpanda connector preset — set the connector variable `LIGHTPANDA_URL=http://localhost:9223` in Admin → Settings. It also starts smtp4dev (`silodb-smtp4dev`), a local mail server for the Email connector: SMTP on `localhost:1025` and IMAP on `localhost:1143` (no TLS, login `silo`/`silo`), inbox UI on `http://localhost:8025`. And Radicale (`silodb-radicale`), a CalDAV server for the Calendar connector: pick Other, URL `http://localhost:5232`, login `silo`/`silo` (config in `dev/radicale/`; each user starts with one calendar). And Dex (`silodb-dex`), an OIDC provider for trying single sign-on: in Admin → Settings → Sign-in set issuer `http://localhost:5556/dex`, client ID `silo`, client secret `silo-dev-secret`, then sign in as `admin@local` or `guest@local` with the password `password` (config in `dev/dex/`; `guest@local` has no Silo account until you invite it or turn on "Create accounts on sign-in"). The CP and Vite still run locally. All five containers are `silodb-*`, deliberately not `silo-*`, so `make cleanup` leaves them alone. `dev/postgres/init.sql` also creates `silo_test`, where every Go test gets its own throwaway schema — `make test` fails early if Postgres is down.
 
 `make install` creates `silo.yaml` from the example (if missing), downloads Go modules, and installs web dependencies. Then edit `silo.yaml`: `providers.<id>.api_key`, the `models` allowlist, and `bootstrap.email` / `bootstrap.password`.
 
-`silo.yaml` is gitignored. Keys and load order: [docs/CONFIGURATION.md](docs/CONFIGURATION.md). Nested keys use `__` (`SILO_PROVIDERS__OPENROUTER__API_KEY` → `providers.openrouter.api_key`). Env wins over the file; `bootstrap.*` seeds the first admin, so `make db-reset` to recreate it.
+`silo.yaml` is gitignored. Keys and load order: [docs/CONFIGURATION.md](CONFIGURATION.md). Nested keys use `__` (`SILO_PROVIDERS__OPENROUTER__API_KEY` → `providers.openrouter.api_key`). Env wins over the file; `bootstrap.*` seeds the first admin, so `make db-reset` to recreate it.
 
 ## Everyday targets
 
@@ -58,7 +58,7 @@ Run `make help` to list everything.
 | `make test-integration` | Go client integration tests against a running CP              |
 | `make e2e`           | Playwright against an already-running `make dev` stack            |
 | `make fmt` / `vet`   | `go fmt` / `go vet`                                               |
-| `make proto`         | `buf generate`                                                    |
+| `make proto`         | `buf generate proto --template proto/buf.gen.yaml`                |
 | `make cleanup`       | Force-remove every `silo-*` container                             |
 | `make clean-images`  | Remove the local bot, STDIO, drive and egress images              |
 | `make clean`         | Remove `bin/` and `web/dist`                                      |
@@ -113,8 +113,8 @@ VS Code tasks and launch configs live in `.vscode/`:
 
 1. `Silo: start local stack` builds the CP and starts Vite with HMR.
 2. `Silo: control plane + browser` debugs CP Go breakpoints and UI breakpoints together.
-3. After changing `cmd/silo-worker`, `botimage/`, or worker-facing generated code, run `make bot-image`, then `podman rm -f silo-<bot-id>` and Start the Bot so it is recreated.
-4. After changing `cmd/silo-mcp-bridge` or `mcpimage/`, run `make stdio-image`, then refresh the connector.
+3. After changing `cmd/silo-worker`, `images/bot/`, or worker-facing generated code, run `make bot-image`, then `podman rm -f silo-<bot-id>` and Start the Bot so it is recreated.
+4. After changing `cmd/silo-mcp-bridge` or `images/mcp-stdio/`, run `make stdio-image`, then refresh the connector.
 
 Keep the CP terminal visible and inspect a Bot with `podman logs -f silo-<bot-id>`; MCP sidecars use `podman logs -f silo-mcp-<connector-id>`. A worker change needs an image rebuild because the binary is copied in; a CP change does not.
 
@@ -142,13 +142,13 @@ Mail sent this way is always *not verified* (no DKIM, and loopback has no SPF), 
 | `internal/prompts/SYSTEM.md` | same — it is `go:embed`’d                                                              |
 | `internal/catalog/*`         | same — presets/skills are `go:embed`’d; restart to seed new keys                      |
 | Go (worker)                  | `make bot-image`, then Stop/Start the Bot                                           |
-| `botimage/*`                 | same                                                                                  |
+| `images/bot/*`                 | same                                                                                  |
 | `internal/toolsgen/*`        | same — the worker writes `/opt/silo/tools` with it                                    |
 | Go (stdio bridge)            | `make stdio-image`, Refresh the connector                                              |
-| `mcpimage/*`                 | same                                                                                  |
+| `images/mcp-stdio/*`                 | same                                                                                  |
 | `proto/**`                   | `make proto`, then rebuild CP and worker (and the image if the worker stub changed)   |
 | `internal/channels/**`       | restart the CP; sessions live under `data/channels/<id>/`                             |
-| `botimage/silo_runtime.py`   | `make bot-image`, then Stop/Start the Bot                                           |
+| `images/bot/silo_runtime.py`   | `make bot-image`, then Stop/Start the Bot                                           |
 | `web/**`                     | Vite reloads. `pnpm build` is the production bundle only                              |
 | `brand/**`                   | `make brand` rewrites the icons, `web/src/crestArt.ts` and iOS `Logic/StackArt.swift`  |
 
@@ -189,7 +189,7 @@ Use **Conventional Commits**: `<type>(<scope>): <imperative summary>` — lowerc
 | `build` | Makefile, Containerfiles, dependencies, images |
 | `chore` | housekeeping with no src/logic change |
 
-**Scopes** mirror the layout or the feature: `app`, `worker`, `bridge`, `mcp`, `channels`, `llm`, `search`, `security`, `catalog`, `prompts`, `proto`, `web`, `botimage`, `mcpimage`, `config`, and feature names such as `voice`, `drives`, `egress`, `spaces`, `zones`. Omit the scope for cross-cutting changes.
+**Scopes** mirror the layout or the feature: `app`, `worker`, `bridge`, `mcp`, `channels`, `llm`, `search`, `security`, `catalog`, `prompts`, `proto`, `web`, `images/bot`, `images/mcp-stdio`, `config`, and feature names such as `voice`, `drives`, `egress`, `spaces`, `zones`. Omit the scope for cross-cutting changes.
 
 The body (optional) explains what and why, not how, wrapped at 72 columns. Footers carry `BREAKING CHANGE:` and issue references. A commit made with a model's help ends with an `Assisted-by: <model name>` trailer (never a `Co-Authored-By` for the model).
 
@@ -223,8 +223,8 @@ internal/desktop    what the CP and the worker agree on about the Bot's X11 desk
 internal/channels   channel adapter engine (telegram/ gotd MTProto, whatsapp/ whatsmeow, discord/ discordgo, slack/ slack-go Socket Mode; GUIDE.md go:embed’d)
 internal/prompts    SYSTEM.md (embedded)
 internal/catalog    connector presets + skills (embedded)
-botimage/           Containerfile, start.sh, Thunar, wallpaper, dock
-mcpimage/           STDIO sidecar Containerfile
+images/bot/           Containerfile, start.sh, Thunar, wallpaper, dock
+images/mcp-stdio/           STDIO sidecar Containerfile
 proto/silo/v1       ui.proto, worker.proto
 gen/                Go stubs (generated)
 web/                Vite + React

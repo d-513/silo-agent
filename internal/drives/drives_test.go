@@ -460,7 +460,7 @@ func TestDig(t *testing.T) {
 // TestRcloneOptions checks every template against rclone's own option list
 // (testdata/rclone_options.json, from `rclone config providers`): option names
 // must exist, and exactly the options rclone treats as passwords are obscured.
-// Refresh the snapshot when bumping rclone in driveimage/.
+// Refresh the snapshot when bumping rclone in images/drive/.
 func TestRcloneOptions(t *testing.T) {
 	raw, err := os.ReadFile("testdata/rclone_options.json")
 	if err != nil {

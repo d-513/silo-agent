@@ -1,4 +1,4 @@
-# HTTPS in front of the control plane: silo-caddy (caddyimage/), Caddy with
+# HTTPS in front of the control plane: silo-caddy (images/caddy/), Caddy with
 # the DNS providers Silo can use, configured by the control plane through
 # Caddy's admin API on a unix socket the two share (internal/caddy). From the
 # first boot it serves the machine's own name and addresses with Caddy's own
@@ -10,7 +10,7 @@ Description=Silo HTTPS (Caddy)
 [Container]
 # Not silo-…: that prefix is the control plane's own containers.
 ContainerName=silocaddy
-# Set at build time (os/Containerfile, CADDY_IMAGE): the same release as the
+# Set at build time (images/os/Containerfile, CADDY_IMAGE): the same release as the
 # control plane.
 Image=@CADDY_IMAGE@
 # On the host network, so it sees each visitor's real address and reaches the
