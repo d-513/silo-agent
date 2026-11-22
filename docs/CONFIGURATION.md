@@ -230,7 +230,7 @@ Audio is never kept: what is said on a call is written into its chat as text, an
 
 ## Sign-in
 
-Accounts live in Postgres; **Admin → Users** manages them. `bootstrap.*` is read at start and only matters while no admin can sign in (a new install, or the only admin was disabled): the user with `bootstrap.email` becomes an admin, and is created with `bootstrap.password` if there is none. Once an admin exists it does nothing, so changing the admin's email or password in Silo is not undone by a restart.
+Accounts live in Postgres; **Admin → Users** manages them. `bootstrap.*` is read at start and only matters while no admin can sign in (a new install, or the only admin was disabled): the user with `bootstrap.email` becomes an admin, and is created with `bootstrap.password` if there is none. Once an admin exists it does nothing, so changing the admin's email or password in Silo is not undone by a restart. That admin's first sign-in opens **Admin**, where a new installation is set up, and leaves `<data_dir>/first-admin-signed-in` behind (SiloOS reads it).
 
 - **New people get an invite link.** An admin makes one for an email address (optionally as an admin); the person opens it and chooses their own password. A link works once and lasts 7 days. Silo sends no mail: the admin passes the link on. A password is at least 8 characters.
 - **Email** is what a person signs in with, and they can change it on their Account page. Nothing is sent to the new address and nothing confirms it. Because of that, OIDC never matches an account by an address its user typed in themselves (below); an address an admin sets on the user's page in Admin → Users is matched again.

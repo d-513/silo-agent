@@ -471,3 +471,27 @@ func TestHostCookieIsTheOnlySessionWhenOn(t *testing.T) {
 		t.Fatalf("clearing cookie %+v", h)
 	}
 }
+
+func TestEnsureBootstrapMarksTheFirstAdmin(t *testing.T) {
+	gdb := dbtest.New(t)
+	if err := EnsureBootstrap(gdb, "admin@local", "password"); err != nil {
+		t.Fatal(err)
+	}
+	var u db.User
+	gdb.First(&u, "email = ?", "admin@local")
+	if !u.Welcome {
+		t.Error("a new first admin is not marked for the welcome")
+	}
+	// Promoting an existing user marks them too.
+	gdb2 := dbtest.New(t)
+	hash, _ := HashPassword("pw")
+	gdb2.Create(&db.User{ID: "u1", Email: "boss@local", PasswordHash: hash})
+	if err := EnsureBootstrap(gdb2, "boss@local", "pw"); err != nil {
+		t.Fatal(err)
+	}
+	var b db.User
+	gdb2.First(&b, "id = ?", "u1")
+	if !b.Admin || !b.Welcome {
+		t.Errorf("promoted: admin=%v welcome=%v", b.Admin, b.Welcome)
+	}
+}

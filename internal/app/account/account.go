@@ -7,7 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"connectrpc.com/connect"
@@ -92,6 +95,33 @@ func (s *Service) signIn(w http.ResponseWriter, r *http.Request, u *db.User, met
 		Secure: access.SecureCookies(s.cfg().PublicURL, r), HostOnly: s.cfg().HostCookies(),
 	})
 	return err
+}
+
+// WelcomePath is where the first admin's first sign-in lands: Admin, where
+// a new installation is set up (providers, models, the rest).
+const WelcomePath = "/admin"
+
+// FirstAdminMarker is the file, in data_dir, that says the first admin has
+// signed in. SiloOS's console banner shows the generated first password only
+// until it exists (os/rootfs/usr/libexec/siloos/init).
+const FirstAdminMarker = "first-admin-signed-in"
+
+// welcome reports whether u is the first admin signing in for the first
+// time, and marks it done: once, even for two sign-ins at the same moment.
+func (s *Service) welcome(u *db.User) bool {
+	if !u.Welcome {
+		return false
+	}
+	res := s.db.Model(&db.User{}).Where("id = ? AND welcome = ?", u.ID, true).Update("welcome", false)
+	if res.Error != nil || res.RowsAffected == 0 {
+		return false
+	}
+	if dir := s.cfg().DataDir; dir != "" {
+		if err := os.WriteFile(filepath.Join(dir, FirstAdminMarker), []byte(time.Now().UTC().Format(time.RFC3339)+"\n"), 0o644); err != nil {
+			log.Printf("first admin: %v", err)
+		}
+	}
+	return true
 }
 
 // begin lets one guess by account at addr through, counted as it passes (so a

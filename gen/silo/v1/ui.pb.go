@@ -141,7 +141,9 @@ type SignInResponse struct {
 	Created bool                   `protobuf:"varint,2,opt,name=created,proto3" json:"created,omitempty"`
 	// needs_code: the password was right and the account has two-factor on.
 	// Nobody is signed in yet.
-	NeedsCode     bool `protobuf:"varint,3,opt,name=needs_code,json=needsCode,proto3" json:"needs_code,omitempty"`
+	NeedsCode bool `protobuf:"varint,3,opt,name=needs_code,json=needsCode,proto3" json:"needs_code,omitempty"`
+	// welcome: the first admin's first sign-in; the console opens Admin.
+	Welcome       bool `protobuf:"varint,4,opt,name=welcome,proto3" json:"welcome,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -193,6 +195,13 @@ func (x *SignInResponse) GetCreated() bool {
 func (x *SignInResponse) GetNeedsCode() bool {
 	if x != nil {
 		return x.NeedsCode
+	}
+	return false
+}
+
+func (x *SignInResponse) GetWelcome() bool {
+	if x != nil {
+		return x.Welcome
 	}
 	return false
 }
@@ -32029,12 +32038,13 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\rSignInRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x12\n" +
-	"\x04code\x18\x03 \x01(\tR\x04code\"l\n" +
+	"\x04code\x18\x03 \x01(\tR\x04code\"\x86\x01\n" +
 	"\x0eSignInResponse\x12!\n" +
 	"\x04user\x18\x01 \x01(\v2\r.silo.v1.UserR\x04user\x12\x18\n" +
 	"\acreated\x18\x02 \x01(\bR\acreated\x12\x1d\n" +
 	"\n" +
-	"needs_code\x18\x03 \x01(\bR\tneedsCode\"\x10\n" +
+	"needs_code\x18\x03 \x01(\bR\tneedsCode\x12\x18\n" +
+	"\awelcome\x18\x04 \x01(\bR\awelcome\"\x10\n" +
 	"\x0eSignOutRequest\"\x11\n" +
 	"\x0fSignOutResponse\"\v\n" +
 	"\tMeRequest\"/\n" +

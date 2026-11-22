@@ -423,6 +423,8 @@ message SignInResponse {
   // needs_code: the password was right and the account has two-factor on.
   // Nobody is signed in yet.
   bool needs_code = 3;
+  // welcome: the first admin's first sign-in; the console opens Admin.
+  bool welcome = 4;
 }
 
 message SignOutRequest {}

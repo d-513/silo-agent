@@ -39,6 +39,9 @@ type User struct {
 	TOTPStep     int64  `gorm:"column:totp_step;not null;default:0"`
 	LastSignInAt *time.Time
 	CreatedAt    time.Time
+	// Welcome marks the first admin (auth.EnsureBootstrap) until their first
+	// sign-in, which lands them in Admin instead of the Bots.
+	Welcome bool `gorm:"not null;default:false"`
 }
 
 // Session is one signed-in browser. ID is the hash of the cookie's value, so

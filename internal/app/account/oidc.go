@@ -243,7 +243,11 @@ func (s *Service) ServeOIDCCallback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not sign you in", http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, flow.rd, http.StatusFound)
+	rd := flow.rd
+	if s.welcome(u) {
+		rd = WelcomePath
+	}
+	http.Redirect(w, r, rd, http.StatusFound)
 }
 
 // identity is who the provider says signed in.

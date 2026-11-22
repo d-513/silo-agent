@@ -11,9 +11,21 @@ export function getSession() {
   return session;
 }
 
-export function setSession(s: Session | null) {
+// landing is where the next sign-in goes instead of back to where the session
+// ended: Admin, for the first admin's first sign-in (SignInResponse.welcome).
+let landing: string | undefined;
+
+export function setSession(s: Session | null, land?: string) {
   session = s;
+  landing = land;
   listeners.forEach((l) => l());
+}
+
+/** The landing a sign-in asked for, once. */
+export function takeLanding() {
+  const l = landing;
+  landing = undefined;
+  return l;
 }
 
 /** Called on every sign-in and sign-out. */

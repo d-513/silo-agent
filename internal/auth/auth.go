@@ -218,13 +218,13 @@ func EnsureBootstrap(gdb *gorm.DB, email, pass string) error {
 		return err
 	}
 	if u != nil {
-		return gdb.Model(u).Updates(map[string]any{"admin": true, "disabled": false}).Error
+		return gdb.Model(u).Updates(map[string]any{"admin": true, "disabled": false, "welcome": true}).Error
 	}
 	hash, err := HashPassword(pass)
 	if err != nil {
 		return err
 	}
-	return gdb.Create(&db.User{ID: ids.New(), Email: email, PasswordHash: hash, Admin: true, CreatedAt: time.Now()}).Error
+	return gdb.Create(&db.User{ID: ids.New(), Email: email, PasswordHash: hash, Admin: true, Welcome: true, CreatedAt: time.Now()}).Error
 }
 
 func EnsureAdmin(gdb *gorm.DB) error {

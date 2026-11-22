@@ -1,6 +1,6 @@
 import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Outlet, redirect } from "@tanstack/react-router";
 import { FIRST_SECTION, isModelPage, isSection } from "./admin/sections";
-import { getSession, onSession } from "./auth";
+import { getSession, onSession, takeLanding } from "./auth";
 import { BotPage } from "./bot/BotPage";
 import {
   AgentRoute,
@@ -107,7 +107,7 @@ const signin = createRoute({
     ...(typeof s.error === "string" ? { error: s.error } : {}),
   }),
   beforeLoad: ({ search }) => {
-    if (getSession()) throw redirect(backTo(search.from));
+    if (getSession()) throw redirect(takeLanding() === "/admin" ? { to: "/admin" } : backTo(search.from));
   },
   component: SignIn,
 });

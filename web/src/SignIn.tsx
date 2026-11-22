@@ -74,7 +74,9 @@ export function SignIn() {
       // The /signin route sees the session and goes back to where it ended
       // (router.tsx), not the Bots list.
       if (r.user) await followUser(r.user.language);
-      setSession({ email: r.user?.email ?? email, admin: r.user?.admin ?? false });
+      // The first admin's first sign-in opens Admin, where a new
+      // installation is set up.
+      setSession({ email: r.user?.email ?? email, admin: r.user?.admin ?? false }, r.welcome ? "/admin" : undefined);
     } catch (ex) {
       setErr(fail(ex));
       setBusy(false);

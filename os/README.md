@@ -192,15 +192,19 @@ sudo bootc switch ghcr.io/d-513/silo-os:latest && sudo reboot
 
    ```
    SiloOS  ·  https://192.168.1.20
-   First sign-in: admin@silo.local / 3f9c…  (change the password once in)
+   First sign-in: admin@silo.local / k7mp-x3qa-9ten  (change the password once in)
    ```
+
+   The banner is written at every boot. Once the first admin has signed in
+   (Silo leaves `/var/lib/silo/data/first-admin-signed-in`), the next boot
+   shows no password, only where to find it (`/etc/silo/secrets.env`).
 
    The first start pulls the images, which takes a few minutes. With a shell
    (`ssh admin@…`), `journalctl --user -M silo@ -u silo -f` shows it, and
    `sudo cat /etc/silo/secrets.env` has the same first admin.
 2. Open `https://<address>` (the browser warns once: the certificate is Silo's
    own until there is a domain; `http://<address>:8080` also answers) and
-   sign in. Change the password on the Account page: the console's line is
+   sign in. The first admin's first sign-in opens Admin. Change the password on the Account page: the console's line is
    only the first one, and goes stale once you do.
 3. For a domain, point its DNS here and set Admin → Settings → Server →
    Public URL to `https://<that name>`. Within 15 s Caddy has a Let's Encrypt

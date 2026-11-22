@@ -81,7 +81,7 @@ func (s *Service) SignIn(ctx context.Context, req *connect.Request[v1.SignInRequ
 	if err := s.signIn(access.ResponseWriter(ctx), r, u, MethodPassword); err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&v1.SignInResponse{User: protoUser(u)}), nil
+	return connect.NewResponse(&v1.SignInResponse{User: protoUser(u), Welcome: s.welcome(u)}), nil
 }
 
 func (s *Service) SignOut(ctx context.Context, _ *connect.Request[v1.SignOutRequest]) (*connect.Response[v1.SignOutResponse], error) {
