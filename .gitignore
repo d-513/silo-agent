@@ -14,7 +14,7 @@ silo.yaml
 # Everything make builds: build/bin (binaries), build/os (SiloOS media), build/claude
 /build/
 # (before build/)
-bin
+/bin/
 __pycache__
 tmp
 scratchpad.txt

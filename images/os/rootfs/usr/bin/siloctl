@@ -1,0 +1,44 @@
+#!/bin/bash
+# siloctl: Silo's services on SiloOS, without remembering that they are user
+# units of `silo` (images/os/rootfs/etc/containers/systemd/users/1000/).
+# Talks to silo's own systemd and Podman through their sockets (runuser),
+# not through `systemctl --user -M silo@`, whose bridge can be refused.
+#
+#   siloctl status [unit…]     silo, silodb and silocaddy, or the ones named
+#   siloctl logs [unit…]       their journal, followed (-f)
+#   siloctl restart [unit…]    after editing /etc/silo/silo.env
+#   siloctl start|stop [unit…]
+#   siloctl ps                 every container: Silo's three, the Bots' boxes and sidecars
+#   siloctl podman …           anything else, as silo
+set -euo pipefail
+
+if [ "$(id -u)" != 0 ]; then
+	exec sudo "$0" "$@"
+fi
+as_silo() { runuser -u silo -- env XDG_RUNTIME_DIR=/run/user/1000 "$@"; }
+
+cmd=${1:-status}
+shift || true
+units=("$@")
+[ ${#units[@]} -gt 0 ] || units=(silo silodb silocaddy)
+
+case "$cmd" in
+status) as_silo systemctl --user status --no-pager "${units[@]}" ;;
+start | stop | restart) as_silo systemctl --user "$cmd" "${units[@]}" ;;
+logs)
+	# Read as root by field, not --user-unit (which matches the caller's own
+	# uid): the unit's lines and its container's output, either of each.
+	args=()
+	for u in "${units[@]}"; do
+		[ ${#args[@]} -eq 0 ] || args+=(+)
+		args+=("_SYSTEMD_USER_UNIT=$u.service" + "CONTAINER_NAME=$u")
+	done
+	exec journalctl -f -n 100 "${args[@]}"
+	;;
+ps) as_silo podman ps -a ;;
+podman) as_silo podman "${units[@]}" ;;
+*)
+	sed -n '2,13p' "$0"
+	exit 2
+	;;
+esac
