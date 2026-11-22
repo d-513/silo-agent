@@ -49,7 +49,9 @@ OS_DISK_TYPE  ?= qcow2
 OS_OUT        ?= build/os
 # What os-incus calls the image it imports.
 OS_INCUS_ALIAS ?= silo-os
-BIB_IMAGE     ?= quay.io/centos-bootc/bootc-image-builder@sha256:dab86ee6b46dcade411b37f4e70b07d93b6a06da0dbfec6fe89247a220e0d9f8
+# bootc-image-builder publishes only :latest, and quay.io drops the digests
+# it replaces, so it is followed by tag (--pull=newer).
+BIB_IMAGE     ?= quay.io/centos-bootc/bootc-image-builder:latest
 SEED_IMAGE    ?= docker.io/library/alpine:3.22@sha256:49340b346798875b5592e5d420241f2f9cfba5f47e62ebb1446a1b34734e898f
 # Packages the control plane image compiles at once (go build -p); empty is
 # one per CPU. Its builder needs about 4 GB of memory whatever this says.

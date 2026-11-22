@@ -83,12 +83,14 @@ make caddy-image                 # localhost/silo-caddy:dev, if you are changing
 ```
 
 The context is `os/` and `build/bin/siloosd` (`os/Containerfile.dockerignore`). The
-base and the Postgres image are pinned by digest; the last step is
+Postgres image is pinned by digest; the base follows `fedora-bootc:43` (Fedora
+rebuilds it with fixes and quay.io drops old digests within days, so a pin
+stops resolving); the last step is
 `bootc container lint`. `images.yml` builds and publishes `silo-os` for amd64
 and arm64 beside the other images, `silo-os` last, after the `silo` it names.
 
 Then the media, with [bootc-image-builder](https://github.com/osbuild/bootc-image-builder)
-(pinned by digest). It needs a rootful, privileged Podman, so these run under
+(followed by its `latest` tag, the only one it publishes). It needs a rootful, privileged Podman, so these run under
 `sudo` and ask for your password. Each takes `OS_CHANNEL` (`local`, the
 default, installs your `make os-image`; `latest`, `master` or `v0.4.2` pull
 that tag from ghcr.io) and writes under `build/os/`.

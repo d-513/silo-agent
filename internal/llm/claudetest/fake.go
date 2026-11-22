@@ -404,7 +404,10 @@ var word = regexp.MustCompile(`Test_[A-Za-z]+(_[A-Za-z0-9_-]+)?`)
 
 func (s *session) turn(text string) {
 	s.dump.History = append(s.dump.History, text)
-	defer s.save()
+	// Saved before anything is answered: the caller may stop the binary the
+	// moment the turn's result arrives (a restart), as the real one would
+	// have its transcript by then.
+	s.save()
 	all := word.FindAllStringIndex(text, -1)
 	cmd, rest := "", ""
 	if len(all) > 0 {
@@ -423,6 +426,7 @@ func (s *session) turn(text string) {
 			reply += " queued: " + strings.Join(s.queued, " | ")
 			s.dump.History = append(s.dump.History, s.queued...)
 			s.queued = nil
+			s.save()
 		}
 		s.say(reply)
 		s.result(reply, false)
@@ -468,5 +472,10 @@ func (s *session) save() {
 	}
 	_ = os.MkdirAll(filepath.Dir(s.persist), 0o700)
 	raw, _ := json.Marshal(s.dump.History)
-	_ = os.WriteFile(s.persist, raw, 0o600)
+	// Whole or not at all: a binary killed mid-write must not leave an empty
+	// transcript for the next --resume.
+	tmp := s.persist + ".tmp"
+	if os.WriteFile(tmp, raw, 0o600) == nil {
+		_ = os.Rename(tmp, s.persist)
+	}
 }

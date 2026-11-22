@@ -26,8 +26,13 @@
 #
 # Build with `make os-image`: the context is os/ and build/bin/siloosd only
 # (os/Containerfile.dockerignore). See os/README.md.
-# The base is pinned by digest: move it on purpose.
-FROM quay.io/fedora/fedora-bootc:43@sha256:840da31a3e3e8055a8d1c8c0f378e66e5c7de6ebe39037bbf7e5b252f138f04d
+# The base follows Fedora 43's bootc tag, not a digest, unlike every other
+# base in this repository: Fedora rebuilds it about daily with the
+# distribution's fixes, which a SiloOS build should carry, and quay.io
+# deletes the builds it replaced within days, so a pinned digest stops
+# resolving (CI failed on exactly that). The digest a build used is in its
+# build log, and Fedora 44 is a change of this line.
+FROM quay.io/fedora/fedora-bootc:43
 
 # cloud-init, for cloud images and VMs that hand a user, a key and settings
 # at first boot. On a machine with no cloud metadata ds-identify turns it off
