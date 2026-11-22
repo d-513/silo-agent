@@ -10,6 +10,7 @@ import (
 
 	"github.com/knadh/koanf/v2"
 
+	"silo.agent/internal/caddy"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/search"
 	"silo.agent/internal/version"
@@ -378,6 +379,11 @@ type Config struct {
 	Audit Audit `koanf:"audit"`
 	// Spaces configures Workspaces.
 	Spaces Spaces `koanf:"spaces"`
+	// Caddy is the HTTPS proxy in front of the control plane, when the
+	// control plane configures it (internal/caddy).
+	Caddy Caddy `koanf:"caddy"`
+	// SiloOS is the host daemon of a SiloOS machine (internal/siloosd).
+	SiloOS SiloOS `koanf:"siloos"`
 }
 
 // Voice configures talking to a Bot: Read aloud and calls.
@@ -725,6 +731,10 @@ var fieldDefs = []fieldMeta{
 	{Key: "egress.pass"},
 	{Key: "egress.feeds"},
 	{Key: "egress.dns"},
+	{Key: "caddy.admin"},
+	{Key: "caddy.mode"},
+	{Key: "caddy.email"},
+	{Key: "caddy.dns_provider"},
 	{Key: "content.host"},
 	{Key: "content.scheme"},
 	{Key: "tunnels.enabled", Type: "bool"},
@@ -750,6 +760,49 @@ var fieldDefs = []fieldMeta{
 	{Key: "oidc.admin_group"},
 	{Key: "bootstrap.email", Restart: true},
 	{Key: "bootstrap.password", Secret: true, Restart: true},
+}
+
+// Caddy is a Caddy server the control plane configures through its admin
+// API (internal/caddy): HTTPS for public_url's name and the content host.
+type Caddy struct {
+	// Admin is Caddy's admin API: unix//path/to/admin.sock or
+	// http://host:port. Empty leaves Caddy (if any) to the operator.
+	Admin string `koanf:"admin"`
+	// Mode is where certificates come from: auto (Let's Encrypt for a public
+	// domain, else Caddy's own authority), acme (Let's Encrypt), internal
+	// (Caddy's own authority, which browsers warn about until its root is
+	// trusted) or off (Caddy serves nothing).
+	Mode string `koanf:"mode"`
+	// Email is the Let's Encrypt account's address (expiry notices).
+	Email string `koanf:"email"`
+	// DNSProvider, set, answers Let's Encrypt through that DNS host instead
+	// of on port 80 (caddy.DNSProviders); its settings are DNS[provider].
+	DNSProvider string                       `koanf:"dns_provider"`
+	DNS         map[string]map[string]string `koanf:"dns"`
+}
+
+// The caddy.mode values.
+const (
+	CaddyAuto     = "auto"
+	CaddyACME     = "acme"
+	CaddyInternal = "internal"
+	CaddyOff      = "off"
+)
+
+// CaddyMode is caddy.mode, auto when unset or unknown.
+func (c Config) CaddyMode() string {
+	switch m := strings.TrimSpace(c.Caddy.Mode); m {
+	case CaddyACME, CaddyInternal, CaddyOff:
+		return m
+	}
+	return CaddyAuto
+}
+
+// SiloOS is set on a SiloOS machine only.
+type SiloOS struct {
+	// Socket is siloosd's unix socket as the control plane sees it. Set, the
+	// control plane runs on SiloOS and Admin shows the SiloOS page.
+	Socket string `koanf:"socket"`
 }
 
 type Field struct {
@@ -815,6 +868,13 @@ func KnownKey(key string) bool {
 	for _, d := range llm.Descriptors() {
 		for _, f := range d.Settings {
 			if key == "providers."+d.ID+"."+f.Key {
+				return true
+			}
+		}
+	}
+	for _, d := range caddy.DNSProviders() {
+		for _, f := range d.Settings {
+			if key == "caddy.dns."+d.ID+"."+f.Key {
 				return true
 			}
 		}

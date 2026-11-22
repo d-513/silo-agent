@@ -1,0 +1,3 @@
+; The control plane's data/ is bound into Bot boxes and sidecars without a
+; relabel, so it carries the label any container may read and write.
+(filecon "/var/lib/silo/data(/.*)?" any (system_u object_r container_file_t ((s0) (s0))))

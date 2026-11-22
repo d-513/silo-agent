@@ -25,7 +25,7 @@ export function FieldGroup({
   action?: ReactNode;
   children?: ReactNode;
 }) {
-  const { values, engines, providers, setValue } = useSettingsForm();
+  const { values, engines, providers, dnsProviders, setValue } = useSettingsForm();
   if (rows.length === 0) return null;
   return (
     <Panel title={title} note={note} action={action} padded={false}>
@@ -37,6 +37,7 @@ export function FieldGroup({
               value={values[f.key] ?? ""}
               engines={engines}
               providers={providers}
+              dns={dnsProviders}
               placeholder={placeholders?.[f.key]}
               hint={hints?.[f.key]}
               onChange={(v) => setValue(f.key, v)}

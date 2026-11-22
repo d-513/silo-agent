@@ -1,6 +1,6 @@
 import { useQuery } from "@connectrpc/connect-query";
 import { Link, Outlet, type LinkProps } from "@tanstack/react-router";
-import { ArrowLeft, Book, Bug, Container, HardDrive, History, Plug, SlidersHorizontal, Users, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Book, Bug, Container, HardDrive, History, Plug, Server, SlidersHorizontal, Users, type LucideIcon } from "lucide-react";
 import { type ReactNode } from "react";
 import { ActiveBar } from "./bot/SideNav";
 import { btnClass } from "./Btn";
@@ -12,7 +12,7 @@ import { useWide } from "./useWide";
 
 // One entry per admin page. What silo.yaml holds is Settings (with categories
 // of its own); the users and the libraries live in the database.
-const pages: readonly { to: LinkProps["to"]; label: string; icon: LucideIcon; debug?: true }[] = [
+const pages: readonly { to: LinkProps["to"]; label: string; icon: LucideIcon; debug?: true; siloos?: true }[] = [
   { to: "/admin/settings", label: msg("Settings"), icon: SlidersHorizontal },
   { to: "/admin/users", label: msg("Users"), icon: Users },
   { to: "/admin/connectors", label: msg("Connectors Library"), icon: Plug },
@@ -20,6 +20,8 @@ const pages: readonly { to: LinkProps["to"]; label: string; icon: LucideIcon; de
   { to: "/admin/drives", label: msg("Drives"), icon: HardDrive },
   { to: "/admin/containers", label: msg("Containers"), icon: Container },
   { to: "/admin/audit", label: msg("Audit"), icon: History },
+  // Only while the control plane runs on SiloOS.
+  { to: "/admin/siloos", label: msg("SiloOS"), icon: Server, siloos: true },
   { to: "/admin/debug", label: msg("Debug"), icon: Bug, debug: true },
 ];
 
@@ -70,7 +72,8 @@ function BackToBots() {
 export function AdminLayout() {
   const wide = useWide();
   const debug = useQuery(UI.method.getSettings, {}).data?.fields.some((f) => f.key === "debug" && f.value === "true") ?? false;
-  const shown = pages.filter((p) => debug || !p.debug);
+  const siloos = useQuery(UI.method.getSiloOS, {}, { staleTime: 60_000 }).data?.available ?? false;
+  const shown = pages.filter((p) => (debug || !p.debug) && (siloos || !p.siloos));
   if (wide) {
     return (
       <div className="flex h-full">

@@ -23,7 +23,7 @@ import (
 // copying, leaves a one-off alone, and takes nothing from a tool result. Run it after touching MEMORY.md, MEMORY_INFER.md
 // or the memory tools' schemas:
 //
-//	SILO_CLAUDE_DIR=data/claude SILO_CLAUDE_BIN=tmp/claude-bin/package/claude \
+//	SILO_CLAUDE_DIR=data/claude SILO_CLAUDE_BIN=build/claude/package/claude \
 //	  go test -tags live ./internal/app -run TestLiveCollect -v
 //
 // SILO_LIVE_MODEL names another model as provider/model, with the provider's

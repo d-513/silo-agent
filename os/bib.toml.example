@@ -1,0 +1,26 @@
+# Optional: options for bootc-image-builder when `make os-disk` / `make
+# os-iso` build media. Copy it to os/bib.toml (ignored by git) only when you
+# want one of these; without it the media are the defaults below.
+#
+# Nothing about a person goes here. The media are the same for everyone:
+# a login comes from cloud-init at first boot (os/cloud-init/), and the
+# first admin of Silo is shown on the machine's console.
+
+# The root filesystem of a disk image. Silo keeps its images, the database and
+# every Bot's workspace there. In a VM the root also grows by itself to fill
+# a larger virtual disk at first boot, so this matters for raw disks written
+# to a drive.
+[[customizations.filesystem]]
+mountpoint = "/"
+minsize = "40 GiB"
+
+# The installer ISO installs to the first disk it finds and erases it. To
+# name the disk on a machine with several, give the kickstart yourself
+# (bootc-image-builder adds the image to install):
+#
+# [customizations.installer.kickstart]
+# contents = """
+# ignoredisk --only-use=nvme0n1
+# clearpart --all --initlabel --disklabel=gpt
+# autopart --noswap --type=lvm
+# """

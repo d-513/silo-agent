@@ -281,3 +281,32 @@ export type AskPhase = "open" | "answered" | "put_away";
 export function askPhase(status: string): AskPhase {
   return status === "open" ? "open" : status === "submitted" ? "answered" : "put_away";
 }
+
+// SiloOS (Admin → SiloOS): the HTTPS proxy as the control plane last left it.
+export function proxyLook(state: string): StatusLook {
+  switch (state) {
+    case "ok":
+      return { lamp: "online", word: t("Serving HTTPS"), tone: "text-emerald" };
+    case "error":
+      return { lamp: "needs_you", word: t("Not working"), tone: "text-vermilion" };
+    case "off":
+      return { lamp: "stopped", word: t("Serving nothing"), tone: "text-ink-3" };
+    default:
+      return { lamp: "none", word: t("Not set up"), tone: "text-ink-3" };
+  }
+}
+
+// A network device as NetworkManager names its state.
+export function netDeviceLook(state: string): StatusLook {
+  if (state === "connected") return { lamp: "online", word: t("Connected"), tone: "text-emerald" };
+  if (state.startsWith("connecting")) return { lamp: "starting", word: t("Connecting"), tone: "text-ink-2" };
+  if (state === "unavailable") return { lamp: "stopped", word: t("No cable"), tone: "text-ink-3" };
+  return { lamp: "stopped", word: t("Disconnected"), tone: "text-ink-3" };
+}
+
+// An update job: running, failed, or done.
+export function updateJobLook(job: { running: boolean; error: string }): StatusLook {
+  if (job.running) return { lamp: "working", word: t("Working"), tone: "text-ink-2" };
+  if (job.error) return { lamp: "none", word: t("Failed"), tone: "text-vermilion" };
+  return { lamp: "none", word: t("Done"), tone: "text-emerald" };
+}

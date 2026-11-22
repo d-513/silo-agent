@@ -15,7 +15,7 @@ import (
 // requests, a run that ends on its tools, and a resumed session. It needs a
 // signed-in provider directory:
 //
-//	SILO_CLAUDE_DIR=data/claude SILO_CLAUDE_BIN=tmp/claude-bin/package/claude \
+//	SILO_CLAUDE_DIR=data/claude SILO_CLAUDE_BIN=build/claude/package/claude \
 //	  go test -tags live ./internal/llm -run TestLiveClaude -v
 func TestLiveClaude(t *testing.T) {
 	dir := os.Getenv("SILO_CLAUDE_DIR")

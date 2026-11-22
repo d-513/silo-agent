@@ -156,7 +156,7 @@ RUN mkdir -p /workspace/bot /workspace/tmp /var/run/silo /run/user/1000 \
     && cp /opt/silo/desktop/*.desktop /usr/local/share/applications/ \
     && chown silo:silo /home/silo /home/silo/chrome-profile /workspace /workspace/bot /workspace/tmp \
         /var/run/silo /run/user/1000 /opt/silo/tools /opt/silo/tools/__init__.py /var/lib/silo/history
-COPY --chmod=755 bin/silo-worker /usr/local/bin/silo-worker
+COPY --chmod=755 build/bin/silo-worker /usr/local/bin/silo-worker
 
 ENV DISPLAY=:1 \
     HOME=/home/silo \

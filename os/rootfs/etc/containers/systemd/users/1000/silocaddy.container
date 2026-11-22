@@ -1,0 +1,34 @@
+# HTTPS in front of the control plane: silo-caddy (caddyimage/), Caddy with
+# the DNS providers Silo can use, configured by the control plane through
+# Caddy's admin API on a unix socket the two share (internal/caddy). From the
+# first boot it serves the machine's own name and addresses with Caddy's own
+# authority; public_url's name and the content host follow caddy.mode (Admin
+# → Settings → HTTPS).
+[Unit]
+Description=Silo HTTPS (Caddy)
+
+[Container]
+# Not silo-…: that prefix is the control plane's own containers.
+ContainerName=silocaddy
+# Set at build time (os/Containerfile, CADDY_IMAGE): the same release as the
+# control plane.
+Image=@CADDY_IMAGE@
+# On the host network, so it sees each visitor's real address and reaches the
+# control plane at 127.0.0.1:8080.
+Network=host
+# Its admin API only on the socket, never on a port. The image runs
+# `caddy run --resume`: what the control plane last loaded survives a restart.
+Environment=CADDY_ADMIN=unix//run/silocaddy/admin.sock
+Volume=%t/silocaddy:/run/silocaddy:z
+# Certificates, and Caddy's own authority with its root.
+Volume=silocaddy-data:/data
+Volume=silocaddy-config:/config
+Pull=missing
+
+[Service]
+ExecStartPre=/usr/bin/mkdir -p %t/silocaddy
+Restart=always
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target

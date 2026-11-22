@@ -13,6 +13,7 @@ import (
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 
+	"silo.agent/internal/caddy"
 	"silo.agent/internal/llm"
 	"silo.agent/internal/search"
 	"silo.agent/internal/settingdef"
@@ -37,6 +38,7 @@ func setDefaults(k *koanf.Koanf) {
 	_ = k.Set("mail.addr", DefaultMailAddr)
 	_ = k.Set("mail.max_size_mb", DefaultMailSizeMB)
 	_ = k.Set("search.engine", search.DefaultEngine)
+	_ = k.Set("caddy.mode", CaddyAuto)
 	_ = k.Set("reader.block_private", true)
 	_ = k.Set("reader.render", true)
 	_ = k.Set("model", DefaultModel)
@@ -255,6 +257,9 @@ func (s *Store) Fields() []Field {
 	for _, d := range llm.Descriptors() {
 		addFamily("providers.", d.ID, d.Settings)
 	}
+	for _, d := range caddy.DNSProviders() {
+		addFamily("caddy.dns.", d.ID, d.Settings)
+	}
 	return out
 }
 
@@ -383,6 +388,14 @@ func validateYAML(raw []byte) error {
 	}
 	if err := validateContent(k.String("content.host"), k.String("content.scheme"), k.String("public_url")); err != nil {
 		return err
+	}
+	if m := strings.TrimSpace(k.String("caddy.mode")); m != "" && m != CaddyAuto && m != CaddyACME && m != CaddyInternal && m != CaddyOff {
+		return fmt.Errorf("caddy.mode is auto, acme, internal or off, not %q", m)
+	}
+	if p := strings.TrimSpace(k.String("caddy.dns_provider")); p != "" {
+		if _, ok := caddy.DNSProviderOf(p); !ok {
+			return fmt.Errorf("unknown DNS provider %q", p)
+		}
 	}
 	if err := validateArtifacts(k); err != nil {
 		return err

@@ -4,6 +4,8 @@ package silo.v1;
 
 option go_package = "silo.agent/gen/silo/v1;silov1";
 
+import "silo/v1/siloos.proto";
+
 service UI {
   rpc SignIn(SignInRequest) returns (SignInResponse);
   rpc SignOut(SignOutRequest) returns (SignOutResponse);
@@ -321,6 +323,23 @@ service UI {
   rpc RotateEgressCA(RotateEgressCARequest) returns (EgressStatus);
 
   rpc ListLLMLogs(ListLLMLogsRequest) returns (ListLLMLogsResponse);
+
+  // SiloOS, for admins, when the control plane runs on it (siloos.socket):
+  // the machine through siloosd (siloos.proto), and the HTTPS proxy.
+  // GetSiloOS answers available=false anywhere else; the rest refuse.
+  rpc GetSiloOS(GetSiloOSRequest) returns (SiloOSStatus);
+  rpc SetSiloOSHostname(SetHostnameRequest) returns (SystemInfo);
+  rpc SetSiloOSTime(SetTimeRequest) returns (SystemInfo);
+  rpc GetSiloOSNetwork(GetNetworkRequest) returns (Network);
+  rpc ApplySiloOSConnection(ApplyConnectionRequest) returns (Network);
+  rpc ConfirmSiloOSNetwork(ConfirmNetworkRequest) returns (Network);
+  rpc RollBackSiloOSNetwork(RollBackNetworkRequest) returns (Network);
+  rpc GetSiloOSUpdates(GetUpdatesRequest) returns (Updates);
+  rpc RunSiloOSUpdate(RunUpdateRequest) returns (Updates);
+  rpc SetSiloOSUpdatePolicy(SetUpdatePolicyRequest) returns (Updates);
+  rpc SetSiloOSUpdateChannel(SetUpdateChannelRequest) returns (Updates);
+  rpc SiloOSPower(PowerRequest) returns (PowerResponse);
+  rpc ReadSiloOSLogs(ReadLogsRequest) returns (ReadLogsResponse);
 
   rpc ListConnectors(ListConnectorsRequest) returns (ListConnectorsResponse);
   rpc CreateConnector(CreateConnectorRequest) returns (Connector);
@@ -2895,6 +2914,8 @@ message Settings {
   // order of the kinds registry. A role's model is on its kind's list even
   // when silo.yaml does not list it.
   repeated KindModels allowed = 14;
+  // The DNS providers silo-caddy has, for Admin → Settings → HTTPS.
+  repeated CaddyDNSProvider dns_providers = 15;
 }
 
 // KindModels is the allowlist of one kind of model.
@@ -3048,6 +3069,13 @@ message AutoenableConnectors {
 
 message SetAutoenableConnectorsRequest {
   repeated string identifiers = 1;
+}
+
+message CaddyDNSProvider {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  repeated SearchEngineField fields = 4;
 }
 
 message SearchEngine {

@@ -1,4 +1,4 @@
-import { AudioLines, Binary, Braces, Cpu, Database, Image, KeyRound, Mail, Plug, Scale, Search, Server, ShieldCheck, Split, Timer, Type, Variable, Waypoints, type LucideIcon } from "lucide-react";
+import { AudioLines, Binary, Braces, Cpu, Database, Image, KeyRound, LockKeyhole, Mail, Plug, Scale, Search, Server, ShieldCheck, Split, Timer, Type, Variable, Waypoints, type LucideIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link, Outlet, useMatch, useParams } from "@tanstack/react-router";
 import { ActiveBar } from "../bot/SideNav";
@@ -21,6 +21,7 @@ const ICONS: Record<SectionId, LucideIcon> = {
   server: Server,
   yaml: Braces,
   network: ShieldCheck,
+  https: LockKeyhole,
 };
 
 // The pages under Models go by the kind of model they hold.

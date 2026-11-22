@@ -1,4 +1,4 @@
-import { ConfigSource, type Provider, type SearchEngine } from "../gen/silo/v1/ui_pb";
+import { ConfigSource, type CaddyDNSProvider, type Provider, type SearchEngine } from "../gen/silo/v1/ui_pb";
 import { msg, t } from "../i18n.ts";
 
 export const LABELS: Record<string, string> = {
@@ -51,6 +51,10 @@ export const LABELS: Record<string, string> = {
   http_addr: msg("Listen address"),
   public_url: msg("Public URL"),
   cp_url: msg("Control plane URL"),
+  "caddy.admin": msg("Caddy admin API"),
+  "caddy.mode": msg("Certificates"),
+  "caddy.email": msg("Let's Encrypt email"),
+  "caddy.dns_provider": msg("DNS provider"),
   data_dir: msg("Data directory"),
   database_url: msg("Database URL"),
   docker_host: msg("Docker host"),
@@ -93,6 +97,9 @@ export const LABELS: Record<string, string> = {
 };
 
 export const HINTS: Record<string, string> = {
+  "caddy.admin": msg("A Caddy server Silo configures itself: HTTPS for the Public URL's name and the content domain. unix//path/to/admin.sock or http://host:port. SiloOS sets it."),
+  "caddy.mode": msg("Automatic uses Let's Encrypt for a public domain and Silo's own certificate authority for an address or a name on the local network. Browsers warn about Silo's own until its root certificate is installed on the device."),
+  "caddy.email": msg("Optional: Let's Encrypt writes here before a certificate would expire unrenewed."),
   "bot_limits.memory_mb": msg("The most memory one Bot's machine may use, Chromium included. 0 is no limit; at least 512. Applies when a machine next starts."),
   "bot_limits.pids": msg("The most processes and threads one Bot's machine may run at once, which stops a runaway build or a fork bomb. 0 is no limit. Applies when a machine next starts."),
   "context.window": msg("Tokens, used when the provider does not report one (OpenRouter does). Per-model overrides go in silo.yaml under context.windows."),
@@ -168,6 +175,7 @@ export const HINTS: Record<string, string> = {
 };
 
 export const PLACEHOLDERS: Record<string, string> = {
+  "caddy.admin": "unix//run/caddy/admin.sock",
   embedding_model: "openrouter/openai/text-embedding-3-small",
   transcribe_model: "openrouter/openai/whisper-1",
   "voice.opus_library": "libopus.so.0",
@@ -238,9 +246,11 @@ export const AUTH_NOTE =
 export const OIDC_NOTE =
   msg("One OpenID Connect provider (Authentik, Keycloak, Google, Entra and the like). On when the issuer and client ID are set. An account is matched by the email the provider has verified.");
 
+export const HTTPS_NOTE = msg("Silo configures Caddy in front of itself: Public URL's name and the content domain, from Let's Encrypt or Silo's own certificate authority. On SiloOS the machine's own name and addresses are HTTPS too, with Silo's own authority, before there is any domain.");
 export const BOOTSTRAP_NOTE = msg("First admin only. Ignored after a user exists. Restart required.");
 
 export function groupOf(key: string) {
+  if (key.startsWith("caddy.")) return "https";
   if (key === "model" || key === "model_title" || key === "model_approval" || key === "model_filter" || key === "model_subagent" || key === "model_memory" || key === "model_decision" || key === "embedding_model" || key === "model_image") return "models";
   if (key === "transcribe_model" || key === "model_voice" || key === "voice.speech_model" || key === "voice.transcribe_model") return "voice_models";
   if (key.startsWith("voice.webrtc.") || key === "voice.opus_library") return "voice_network";
@@ -268,8 +278,16 @@ export function groupOf(key: string) {
   return "server";
 }
 
-export function labelOf(key: string, engines: SearchEngine[], providers: Provider[]) {
+// dnsField is the DNS provider setting a caddy.dns.<id>.<key> names.
+function dnsField(key: string, dns: CaddyDNSProvider[]) {
+  const d = /^caddy\.dns\.(.+)\.(.+)$/.exec(key);
+  return d ? dns.find((x) => x.id === d[1])?.fields.find((x) => x.key === d[2]) : undefined;
+}
+
+export function labelOf(key: string, engines: SearchEngine[], providers: Provider[], dns: CaddyDNSProvider[] = []) {
   if (LABELS[key]) return t(LABELS[key]);
+  const df = dnsField(key, dns);
+  if (df) return df.label;
   const p = /^providers\.(.+)\.(.+)$/.exec(key);
   if (p) {
     const prov = providers.find((x) => x.id === p[1]);
@@ -287,8 +305,10 @@ export function labelOf(key: string, engines: SearchEngine[], providers: Provide
 
 // hintOf is the sentence under a field: ours, else the one the provider or
 // search engine declares for its own setting.
-export function hintOf(key: string, engines: SearchEngine[], providers: Provider[]) {
+export function hintOf(key: string, engines: SearchEngine[], providers: Provider[], dns: CaddyDNSProvider[] = []) {
   if (HINTS[key]) return t(HINTS[key]);
+  const df = dnsField(key, dns);
+  if (df) return df.description || undefined;
   const p = /^providers\.(.+)\.(.+)$/.exec(key);
   if (p) return providers.find((x) => x.id === p[1])?.fields.find((x) => x.key === p[2])?.description || undefined;
   const m = /^search\.(.+)\.(.+)$/.exec(key);

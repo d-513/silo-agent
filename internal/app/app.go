@@ -46,6 +46,7 @@ import (
 	"silo.agent/internal/app/run"
 	"silo.agent/internal/app/runlog"
 	"silo.agent/internal/app/setup"
+	"silo.agent/internal/app/siloos"
 	"silo.agent/internal/app/skill"
 	"silo.agent/internal/app/space"
 	"silo.agent/internal/app/tool"
@@ -53,6 +54,7 @@ import (
 	"silo.agent/internal/app/voice"
 	"silo.agent/internal/app/workspace"
 	"silo.agent/internal/auth"
+	"silo.agent/internal/caddy"
 	"silo.agent/internal/config"
 	"silo.agent/internal/db"
 	"silo.agent/internal/dockerx"
@@ -295,6 +297,8 @@ type App struct {
 	Skills      *skill.Service
 	Artifacts   *artifact.Service
 	Pause       *pause.Service
+	// SiloOS is the machine's page in Admin (on SiloOS) and the HTTPS proxy.
+	SiloOS *siloos.Service
 	// Spaces is Workspaces: the containers of Bots and their people.
 	Spaces *space.Service
 	// Rooms are conversations several Bots and people share.
@@ -352,6 +356,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Runlog = runlog.New(a.DB)
 	a.Models.Seen = a.Runlog.Seen
 	a.Pause = pause.New(a.DB)
+	a.SiloOS = siloos.New(a.DB, a.cfg)
 	a.Spaces = space.New(a.DB, a.cfg, spaceHost{a})
 	a.Spaces.OnDelete(a.Skills.DropSpace)
 	a.Spaces.OnDelete(a.Connectors.DropSpace)
@@ -390,6 +395,12 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		go tickLoop(a.stopAutomations, audit.Tick, func(now time.Time) { a.Audit.Trim(now) })
 		go tickLoop(a.stopAutomations, artifact.SweepTick, func(time.Time) { a.Artifacts.Sweep(context.Background()) })
 		go tickLoop(a.stopAutomations, setup.Tick, func(now time.Time) { a.Setup.Sweep(now) })
+		// Caddy is given what public_url and content.host call for, and given it
+		// again if it lost it.
+		go func() {
+			a.SiloOS.SyncProxy(context.Background())
+			tickLoop(a.stopAutomations, siloos.Tick, func(time.Time) { a.SiloOS.SyncProxy(context.Background()) })
+		}()
 		// The SMTP listener follows mail.* without a restart.
 		a.Mail.Sync()
 		go tickLoop(a.stopAutomations, mailbox.Tick, func(time.Time) { a.Mail.Sync() })
@@ -700,6 +711,7 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/connectors/", a.Connectors.ServeImage)
 	mux.HandleFunc("/artifacts/", a.Artifacts.ServeHTTP)
 	mux.HandleFunc("/tunnels/auth", a.Tunnels.ServeAuth)
+	mux.HandleFunc(caddy.AskPath, a.SiloOS.ServeAsk)
 	mux.HandleFunc(mailbox.RawPath, a.Mail.ServeRaw)
 	mux.HandleFunc(account.OIDCStartPath, a.Accounts.ServeOIDCStart)
 	mux.HandleFunc(account.OIDCCallbackPath, a.Accounts.ServeOIDCCallback)

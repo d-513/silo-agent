@@ -1,0 +1,53 @@
+# syntax=docker/dockerfile:1
+#
+# silo-caddy: Caddy with the DNS providers Silo can get certificates through
+# (the ACME DNS challenge: wildcards, and machines nothing can reach from
+# outside). Caddy loads no plugins at run time, so every provider is compiled
+# in here; the list must match internal/caddy/dns.go, which names each one's
+# settings for Admin → Settings → HTTPS (TestDNSProvidersAreBuilt reads this
+# file). Silo configures it through its admin API (caddy.admin); see
+# docs/CONFIGURATION.md § Content host & tunnels.
+#
+# Bases and modules are pinned: move them on purpose, all at once, and check
+# the field names in internal/caddy/dns.go against each libdns provider again.
+FROM docker.io/library/caddy:2.11.9-builder@sha256:f9beaa5ddbe7df6f26ebbcf9cbf44e05a1917b9bba464f0c3229038d7e2e6e13 AS build
+RUN --mount=type=cache,target=/root/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    xcaddy build v2.11.9 --output /out/caddy \
+      --with github.com/caddy-dns/azure@v0.6.0 \
+      --with github.com/caddy-dns/bunny@v1.2.0 \
+      --with github.com/caddy-dns/cloudflare@v0.2.4 \
+      --with github.com/caddy-dns/desec@v1.1.0 \
+      --with github.com/caddy-dns/digitalocean@v0.0.0-20250606074528-04bde2867106 \
+      --with github.com/caddy-dns/duckdns@v0.5.0 \
+      --with github.com/caddy-dns/gandi@v1.2.1 \
+      --with github.com/caddy-dns/godaddy@v1.2.0 \
+      --with github.com/caddy-dns/hetzner/v2@v2.0.1 \
+      --with github.com/caddy-dns/ionos@v1.3.0 \
+      --with github.com/caddy-dns/linode@v0.8.0 \
+      --with github.com/caddy-dns/namecheap@v1.0.0 \
+      --with github.com/caddy-dns/netcup@v1.0.0 \
+      --with github.com/caddy-dns/ovh@v1.1.0 \
+      --with github.com/caddy-dns/porkbun@v0.3.1 \
+      --with github.com/caddy-dns/route53@v1.6.3 \
+      --with github.com/caddy-dns/vultr@v0.0.0-20250723121531-55bf3e9768be \
+    && /out/caddy list-modules | grep '^dns\.providers\.' | sort > /out/providers.txt \
+    && cat /out/providers.txt
+
+FROM docker.io/library/caddy:2.11.9@sha256:4851e54a46b206517c574821bb5cc67f170d2156041e9fbc4c9193b45e84a75b
+COPY --from=build /out/caddy /usr/bin/caddy
+COPY --from=build /out/providers.txt /usr/share/caddy/providers.txt
+# The admin API is on a socket Silo shares with it, never on a port
+# (CADDY_ADMIN), and the configuration Silo last loaded is kept across a
+# restart (--resume).
+CMD ["caddy", "run", "--resume"]
+
+# Last, so a new commit does not rebuild anything above.
+ARG REVISION=unknown
+ARG VERSION=dev
+LABEL org.opencontainers.image.title="silo-caddy" \
+      org.opencontainers.image.description="Caddy with the DNS providers Silo configures" \
+      org.opencontainers.image.source="https://github.com/d-513/silo-agent" \
+      org.opencontainers.image.version="$VERSION" \
+      org.opencontainers.image.revision="$REVISION" \
+      org.opencontainers.image.base.name="docker.io/library/caddy:2.11.9"

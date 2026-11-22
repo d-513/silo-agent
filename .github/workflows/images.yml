@@ -1,4 +1,4 @@
-# Builds and publishes the five images to ghcr.io/d-513, for amd64 and arm64:
+# Builds and publishes the seven images (SiloOS's bootable one included) to ghcr.io/d-513, for amd64 and arm64:
 #
 #   push to master  ->  <image>:master-<sha>, and :master moved to it
 #   tag vX.Y.Z      ->  <image>:vX.Y.Z, and :latest moved to it when the tag is
@@ -86,7 +86,7 @@ jobs:
       fail-fast: false
       matrix:
         arch: [amd64, arm64]
-        image: [silo, silo-bot, silo-mcp-stdio, silo-drive, silo-egress]
+        image: [silo, silo-bot, silo-mcp-stdio, silo-drive, silo-egress, silo-caddy, silo-os]
         include:
           # The control plane is compiled inside its image (cgo, with the web
           # console); the others copy a static binary built here first.
@@ -95,6 +95,12 @@ jobs:
           - { image: silo-mcp-stdio, file: mcpimage/Containerfile, binary: build-bridge }
           - { image: silo-drive, file: driveimage/Containerfile, binary: build-drive }
           - { image: silo-egress, file: egressimage/Containerfile, binary: build-egress }
+          # Caddy with Silo's DNS providers, compiled inside its image (SiloOS).
+          - { image: silo-caddy, file: caddyimage/Containerfile, binary: "" }
+          # SiloOS: a bootc image of this release's silo and silo-caddy (its
+          # build args name them), with the host daemon built here. Its
+          # ignore file (os/Containerfile.dockerignore) narrows the context.
+          - { image: silo-os, file: os/Containerfile, binary: build-siloosd }
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
@@ -170,7 +176,9 @@ jobs:
           VERSION: ${{ needs.plan.outputs.version }}
           MOVING: ${{ needs.plan.outputs.moving }}
         run: |
-          for image in silo-bot silo-mcp-stdio silo-drive silo-egress silo; do
+          # SiloOS after the control plane: a machine following :master or
+          # :latest pulls the silo and silo-caddy of the same tag.
+          for image in silo-bot silo-mcp-stdio silo-drive silo-egress silo-caddy silo silo-os; do
             sources=""
             for digest in digests/"$image"/*; do
               sources="$sources $REGISTRY/$image@sha256:$(basename "$digest")"
@@ -205,6 +213,10 @@ jobs:
           Run the control plane, which pulls the other images of this release itself:
 
               $REGISTRY/silo:$VERSION
+
+          Or install SiloOS, the machine image that runs it (os/README.md):
+
+              $REGISTRY/silo-os:$VERSION
 
           See docs/CONFIGURATION.md, "Running the control plane in a container".
           EOF

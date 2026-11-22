@@ -1,0 +1,4 @@
+# NoCloud meta-data, for `make os-seed` only (a cloud writes its own). A new
+# instance-id makes cloud-init run its first-boot steps again.
+instance-id: silo-local-1
+local-hostname: silo

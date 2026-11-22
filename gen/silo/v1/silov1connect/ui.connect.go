@@ -410,6 +410,36 @@ const (
 	UIRotateEgressCAProcedure = "/silo.v1.UI/RotateEgressCA"
 	// UIListLLMLogsProcedure is the fully-qualified name of the UI's ListLLMLogs RPC.
 	UIListLLMLogsProcedure = "/silo.v1.UI/ListLLMLogs"
+	// UIGetSiloOSProcedure is the fully-qualified name of the UI's GetSiloOS RPC.
+	UIGetSiloOSProcedure = "/silo.v1.UI/GetSiloOS"
+	// UISetSiloOSHostnameProcedure is the fully-qualified name of the UI's SetSiloOSHostname RPC.
+	UISetSiloOSHostnameProcedure = "/silo.v1.UI/SetSiloOSHostname"
+	// UISetSiloOSTimeProcedure is the fully-qualified name of the UI's SetSiloOSTime RPC.
+	UISetSiloOSTimeProcedure = "/silo.v1.UI/SetSiloOSTime"
+	// UIGetSiloOSNetworkProcedure is the fully-qualified name of the UI's GetSiloOSNetwork RPC.
+	UIGetSiloOSNetworkProcedure = "/silo.v1.UI/GetSiloOSNetwork"
+	// UIApplySiloOSConnectionProcedure is the fully-qualified name of the UI's ApplySiloOSConnection
+	// RPC.
+	UIApplySiloOSConnectionProcedure = "/silo.v1.UI/ApplySiloOSConnection"
+	// UIConfirmSiloOSNetworkProcedure is the fully-qualified name of the UI's ConfirmSiloOSNetwork RPC.
+	UIConfirmSiloOSNetworkProcedure = "/silo.v1.UI/ConfirmSiloOSNetwork"
+	// UIRollBackSiloOSNetworkProcedure is the fully-qualified name of the UI's RollBackSiloOSNetwork
+	// RPC.
+	UIRollBackSiloOSNetworkProcedure = "/silo.v1.UI/RollBackSiloOSNetwork"
+	// UIGetSiloOSUpdatesProcedure is the fully-qualified name of the UI's GetSiloOSUpdates RPC.
+	UIGetSiloOSUpdatesProcedure = "/silo.v1.UI/GetSiloOSUpdates"
+	// UIRunSiloOSUpdateProcedure is the fully-qualified name of the UI's RunSiloOSUpdate RPC.
+	UIRunSiloOSUpdateProcedure = "/silo.v1.UI/RunSiloOSUpdate"
+	// UISetSiloOSUpdatePolicyProcedure is the fully-qualified name of the UI's SetSiloOSUpdatePolicy
+	// RPC.
+	UISetSiloOSUpdatePolicyProcedure = "/silo.v1.UI/SetSiloOSUpdatePolicy"
+	// UISetSiloOSUpdateChannelProcedure is the fully-qualified name of the UI's SetSiloOSUpdateChannel
+	// RPC.
+	UISetSiloOSUpdateChannelProcedure = "/silo.v1.UI/SetSiloOSUpdateChannel"
+	// UISiloOSPowerProcedure is the fully-qualified name of the UI's SiloOSPower RPC.
+	UISiloOSPowerProcedure = "/silo.v1.UI/SiloOSPower"
+	// UIReadSiloOSLogsProcedure is the fully-qualified name of the UI's ReadSiloOSLogs RPC.
+	UIReadSiloOSLogsProcedure = "/silo.v1.UI/ReadSiloOSLogs"
 	// UIListConnectorsProcedure is the fully-qualified name of the UI's ListConnectors RPC.
 	UIListConnectorsProcedure = "/silo.v1.UI/ListConnectors"
 	// UICreateConnectorProcedure is the fully-qualified name of the UI's CreateConnector RPC.
@@ -810,6 +840,22 @@ type UIClient interface {
 	GetEgressStatus(context.Context, *connect.Request[v1.GetEgressStatusRequest]) (*connect.Response[v1.EgressStatus], error)
 	RotateEgressCA(context.Context, *connect.Request[v1.RotateEgressCARequest]) (*connect.Response[v1.EgressStatus], error)
 	ListLLMLogs(context.Context, *connect.Request[v1.ListLLMLogsRequest]) (*connect.Response[v1.ListLLMLogsResponse], error)
+	// SiloOS, for admins, when the control plane runs on it (siloos.socket):
+	// the machine through siloosd (siloos.proto), and the HTTPS proxy.
+	// GetSiloOS answers available=false anywhere else; the rest refuse.
+	GetSiloOS(context.Context, *connect.Request[v1.GetSiloOSRequest]) (*connect.Response[v1.SiloOSStatus], error)
+	SetSiloOSHostname(context.Context, *connect.Request[v1.SetHostnameRequest]) (*connect.Response[v1.SystemInfo], error)
+	SetSiloOSTime(context.Context, *connect.Request[v1.SetTimeRequest]) (*connect.Response[v1.SystemInfo], error)
+	GetSiloOSNetwork(context.Context, *connect.Request[v1.GetNetworkRequest]) (*connect.Response[v1.Network], error)
+	ApplySiloOSConnection(context.Context, *connect.Request[v1.ApplyConnectionRequest]) (*connect.Response[v1.Network], error)
+	ConfirmSiloOSNetwork(context.Context, *connect.Request[v1.ConfirmNetworkRequest]) (*connect.Response[v1.Network], error)
+	RollBackSiloOSNetwork(context.Context, *connect.Request[v1.RollBackNetworkRequest]) (*connect.Response[v1.Network], error)
+	GetSiloOSUpdates(context.Context, *connect.Request[v1.GetUpdatesRequest]) (*connect.Response[v1.Updates], error)
+	RunSiloOSUpdate(context.Context, *connect.Request[v1.RunUpdateRequest]) (*connect.Response[v1.Updates], error)
+	SetSiloOSUpdatePolicy(context.Context, *connect.Request[v1.SetUpdatePolicyRequest]) (*connect.Response[v1.Updates], error)
+	SetSiloOSUpdateChannel(context.Context, *connect.Request[v1.SetUpdateChannelRequest]) (*connect.Response[v1.Updates], error)
+	SiloOSPower(context.Context, *connect.Request[v1.PowerRequest]) (*connect.Response[v1.PowerResponse], error)
+	ReadSiloOSLogs(context.Context, *connect.Request[v1.ReadLogsRequest]) (*connect.Response[v1.ReadLogsResponse], error)
 	ListConnectors(context.Context, *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error)
 	CreateConnector(context.Context, *connect.Request[v1.CreateConnectorRequest]) (*connect.Response[v1.Connector], error)
 	UpdateConnector(context.Context, *connect.Request[v1.UpdateConnectorRequest]) (*connect.Response[v1.Connector], error)
@@ -2007,6 +2053,84 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("ListLLMLogs")),
 			connect.WithClientOptions(opts...),
 		),
+		getSiloOS: connect.NewClient[v1.GetSiloOSRequest, v1.SiloOSStatus](
+			httpClient,
+			baseURL+UIGetSiloOSProcedure,
+			connect.WithSchema(uIMethods.ByName("GetSiloOS")),
+			connect.WithClientOptions(opts...),
+		),
+		setSiloOSHostname: connect.NewClient[v1.SetHostnameRequest, v1.SystemInfo](
+			httpClient,
+			baseURL+UISetSiloOSHostnameProcedure,
+			connect.WithSchema(uIMethods.ByName("SetSiloOSHostname")),
+			connect.WithClientOptions(opts...),
+		),
+		setSiloOSTime: connect.NewClient[v1.SetTimeRequest, v1.SystemInfo](
+			httpClient,
+			baseURL+UISetSiloOSTimeProcedure,
+			connect.WithSchema(uIMethods.ByName("SetSiloOSTime")),
+			connect.WithClientOptions(opts...),
+		),
+		getSiloOSNetwork: connect.NewClient[v1.GetNetworkRequest, v1.Network](
+			httpClient,
+			baseURL+UIGetSiloOSNetworkProcedure,
+			connect.WithSchema(uIMethods.ByName("GetSiloOSNetwork")),
+			connect.WithClientOptions(opts...),
+		),
+		applySiloOSConnection: connect.NewClient[v1.ApplyConnectionRequest, v1.Network](
+			httpClient,
+			baseURL+UIApplySiloOSConnectionProcedure,
+			connect.WithSchema(uIMethods.ByName("ApplySiloOSConnection")),
+			connect.WithClientOptions(opts...),
+		),
+		confirmSiloOSNetwork: connect.NewClient[v1.ConfirmNetworkRequest, v1.Network](
+			httpClient,
+			baseURL+UIConfirmSiloOSNetworkProcedure,
+			connect.WithSchema(uIMethods.ByName("ConfirmSiloOSNetwork")),
+			connect.WithClientOptions(opts...),
+		),
+		rollBackSiloOSNetwork: connect.NewClient[v1.RollBackNetworkRequest, v1.Network](
+			httpClient,
+			baseURL+UIRollBackSiloOSNetworkProcedure,
+			connect.WithSchema(uIMethods.ByName("RollBackSiloOSNetwork")),
+			connect.WithClientOptions(opts...),
+		),
+		getSiloOSUpdates: connect.NewClient[v1.GetUpdatesRequest, v1.Updates](
+			httpClient,
+			baseURL+UIGetSiloOSUpdatesProcedure,
+			connect.WithSchema(uIMethods.ByName("GetSiloOSUpdates")),
+			connect.WithClientOptions(opts...),
+		),
+		runSiloOSUpdate: connect.NewClient[v1.RunUpdateRequest, v1.Updates](
+			httpClient,
+			baseURL+UIRunSiloOSUpdateProcedure,
+			connect.WithSchema(uIMethods.ByName("RunSiloOSUpdate")),
+			connect.WithClientOptions(opts...),
+		),
+		setSiloOSUpdatePolicy: connect.NewClient[v1.SetUpdatePolicyRequest, v1.Updates](
+			httpClient,
+			baseURL+UISetSiloOSUpdatePolicyProcedure,
+			connect.WithSchema(uIMethods.ByName("SetSiloOSUpdatePolicy")),
+			connect.WithClientOptions(opts...),
+		),
+		setSiloOSUpdateChannel: connect.NewClient[v1.SetUpdateChannelRequest, v1.Updates](
+			httpClient,
+			baseURL+UISetSiloOSUpdateChannelProcedure,
+			connect.WithSchema(uIMethods.ByName("SetSiloOSUpdateChannel")),
+			connect.WithClientOptions(opts...),
+		),
+		siloOSPower: connect.NewClient[v1.PowerRequest, v1.PowerResponse](
+			httpClient,
+			baseURL+UISiloOSPowerProcedure,
+			connect.WithSchema(uIMethods.ByName("SiloOSPower")),
+			connect.WithClientOptions(opts...),
+		),
+		readSiloOSLogs: connect.NewClient[v1.ReadLogsRequest, v1.ReadLogsResponse](
+			httpClient,
+			baseURL+UIReadSiloOSLogsProcedure,
+			connect.WithSchema(uIMethods.ByName("ReadSiloOSLogs")),
+			connect.WithClientOptions(opts...),
+		),
 		listConnectors: connect.NewClient[v1.ListConnectorsRequest, v1.ListConnectorsResponse](
 			httpClient,
 			baseURL+UIListConnectorsProcedure,
@@ -2493,6 +2617,19 @@ type uIClient struct {
 	getEgressStatus          *connect.Client[v1.GetEgressStatusRequest, v1.EgressStatus]
 	rotateEgressCA           *connect.Client[v1.RotateEgressCARequest, v1.EgressStatus]
 	listLLMLogs              *connect.Client[v1.ListLLMLogsRequest, v1.ListLLMLogsResponse]
+	getSiloOS                *connect.Client[v1.GetSiloOSRequest, v1.SiloOSStatus]
+	setSiloOSHostname        *connect.Client[v1.SetHostnameRequest, v1.SystemInfo]
+	setSiloOSTime            *connect.Client[v1.SetTimeRequest, v1.SystemInfo]
+	getSiloOSNetwork         *connect.Client[v1.GetNetworkRequest, v1.Network]
+	applySiloOSConnection    *connect.Client[v1.ApplyConnectionRequest, v1.Network]
+	confirmSiloOSNetwork     *connect.Client[v1.ConfirmNetworkRequest, v1.Network]
+	rollBackSiloOSNetwork    *connect.Client[v1.RollBackNetworkRequest, v1.Network]
+	getSiloOSUpdates         *connect.Client[v1.GetUpdatesRequest, v1.Updates]
+	runSiloOSUpdate          *connect.Client[v1.RunUpdateRequest, v1.Updates]
+	setSiloOSUpdatePolicy    *connect.Client[v1.SetUpdatePolicyRequest, v1.Updates]
+	setSiloOSUpdateChannel   *connect.Client[v1.SetUpdateChannelRequest, v1.Updates]
+	siloOSPower              *connect.Client[v1.PowerRequest, v1.PowerResponse]
+	readSiloOSLogs           *connect.Client[v1.ReadLogsRequest, v1.ReadLogsResponse]
 	listConnectors           *connect.Client[v1.ListConnectorsRequest, v1.ListConnectorsResponse]
 	createConnector          *connect.Client[v1.CreateConnectorRequest, v1.Connector]
 	updateConnector          *connect.Client[v1.UpdateConnectorRequest, v1.Connector]
@@ -3479,6 +3616,71 @@ func (c *uIClient) ListLLMLogs(ctx context.Context, req *connect.Request[v1.List
 	return c.listLLMLogs.CallUnary(ctx, req)
 }
 
+// GetSiloOS calls silo.v1.UI.GetSiloOS.
+func (c *uIClient) GetSiloOS(ctx context.Context, req *connect.Request[v1.GetSiloOSRequest]) (*connect.Response[v1.SiloOSStatus], error) {
+	return c.getSiloOS.CallUnary(ctx, req)
+}
+
+// SetSiloOSHostname calls silo.v1.UI.SetSiloOSHostname.
+func (c *uIClient) SetSiloOSHostname(ctx context.Context, req *connect.Request[v1.SetHostnameRequest]) (*connect.Response[v1.SystemInfo], error) {
+	return c.setSiloOSHostname.CallUnary(ctx, req)
+}
+
+// SetSiloOSTime calls silo.v1.UI.SetSiloOSTime.
+func (c *uIClient) SetSiloOSTime(ctx context.Context, req *connect.Request[v1.SetTimeRequest]) (*connect.Response[v1.SystemInfo], error) {
+	return c.setSiloOSTime.CallUnary(ctx, req)
+}
+
+// GetSiloOSNetwork calls silo.v1.UI.GetSiloOSNetwork.
+func (c *uIClient) GetSiloOSNetwork(ctx context.Context, req *connect.Request[v1.GetNetworkRequest]) (*connect.Response[v1.Network], error) {
+	return c.getSiloOSNetwork.CallUnary(ctx, req)
+}
+
+// ApplySiloOSConnection calls silo.v1.UI.ApplySiloOSConnection.
+func (c *uIClient) ApplySiloOSConnection(ctx context.Context, req *connect.Request[v1.ApplyConnectionRequest]) (*connect.Response[v1.Network], error) {
+	return c.applySiloOSConnection.CallUnary(ctx, req)
+}
+
+// ConfirmSiloOSNetwork calls silo.v1.UI.ConfirmSiloOSNetwork.
+func (c *uIClient) ConfirmSiloOSNetwork(ctx context.Context, req *connect.Request[v1.ConfirmNetworkRequest]) (*connect.Response[v1.Network], error) {
+	return c.confirmSiloOSNetwork.CallUnary(ctx, req)
+}
+
+// RollBackSiloOSNetwork calls silo.v1.UI.RollBackSiloOSNetwork.
+func (c *uIClient) RollBackSiloOSNetwork(ctx context.Context, req *connect.Request[v1.RollBackNetworkRequest]) (*connect.Response[v1.Network], error) {
+	return c.rollBackSiloOSNetwork.CallUnary(ctx, req)
+}
+
+// GetSiloOSUpdates calls silo.v1.UI.GetSiloOSUpdates.
+func (c *uIClient) GetSiloOSUpdates(ctx context.Context, req *connect.Request[v1.GetUpdatesRequest]) (*connect.Response[v1.Updates], error) {
+	return c.getSiloOSUpdates.CallUnary(ctx, req)
+}
+
+// RunSiloOSUpdate calls silo.v1.UI.RunSiloOSUpdate.
+func (c *uIClient) RunSiloOSUpdate(ctx context.Context, req *connect.Request[v1.RunUpdateRequest]) (*connect.Response[v1.Updates], error) {
+	return c.runSiloOSUpdate.CallUnary(ctx, req)
+}
+
+// SetSiloOSUpdatePolicy calls silo.v1.UI.SetSiloOSUpdatePolicy.
+func (c *uIClient) SetSiloOSUpdatePolicy(ctx context.Context, req *connect.Request[v1.SetUpdatePolicyRequest]) (*connect.Response[v1.Updates], error) {
+	return c.setSiloOSUpdatePolicy.CallUnary(ctx, req)
+}
+
+// SetSiloOSUpdateChannel calls silo.v1.UI.SetSiloOSUpdateChannel.
+func (c *uIClient) SetSiloOSUpdateChannel(ctx context.Context, req *connect.Request[v1.SetUpdateChannelRequest]) (*connect.Response[v1.Updates], error) {
+	return c.setSiloOSUpdateChannel.CallUnary(ctx, req)
+}
+
+// SiloOSPower calls silo.v1.UI.SiloOSPower.
+func (c *uIClient) SiloOSPower(ctx context.Context, req *connect.Request[v1.PowerRequest]) (*connect.Response[v1.PowerResponse], error) {
+	return c.siloOSPower.CallUnary(ctx, req)
+}
+
+// ReadSiloOSLogs calls silo.v1.UI.ReadSiloOSLogs.
+func (c *uIClient) ReadSiloOSLogs(ctx context.Context, req *connect.Request[v1.ReadLogsRequest]) (*connect.Response[v1.ReadLogsResponse], error) {
+	return c.readSiloOSLogs.CallUnary(ctx, req)
+}
+
 // ListConnectors calls silo.v1.UI.ListConnectors.
 func (c *uIClient) ListConnectors(ctx context.Context, req *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error) {
 	return c.listConnectors.CallUnary(ctx, req)
@@ -4024,6 +4226,22 @@ type UIHandler interface {
 	GetEgressStatus(context.Context, *connect.Request[v1.GetEgressStatusRequest]) (*connect.Response[v1.EgressStatus], error)
 	RotateEgressCA(context.Context, *connect.Request[v1.RotateEgressCARequest]) (*connect.Response[v1.EgressStatus], error)
 	ListLLMLogs(context.Context, *connect.Request[v1.ListLLMLogsRequest]) (*connect.Response[v1.ListLLMLogsResponse], error)
+	// SiloOS, for admins, when the control plane runs on it (siloos.socket):
+	// the machine through siloosd (siloos.proto), and the HTTPS proxy.
+	// GetSiloOS answers available=false anywhere else; the rest refuse.
+	GetSiloOS(context.Context, *connect.Request[v1.GetSiloOSRequest]) (*connect.Response[v1.SiloOSStatus], error)
+	SetSiloOSHostname(context.Context, *connect.Request[v1.SetHostnameRequest]) (*connect.Response[v1.SystemInfo], error)
+	SetSiloOSTime(context.Context, *connect.Request[v1.SetTimeRequest]) (*connect.Response[v1.SystemInfo], error)
+	GetSiloOSNetwork(context.Context, *connect.Request[v1.GetNetworkRequest]) (*connect.Response[v1.Network], error)
+	ApplySiloOSConnection(context.Context, *connect.Request[v1.ApplyConnectionRequest]) (*connect.Response[v1.Network], error)
+	ConfirmSiloOSNetwork(context.Context, *connect.Request[v1.ConfirmNetworkRequest]) (*connect.Response[v1.Network], error)
+	RollBackSiloOSNetwork(context.Context, *connect.Request[v1.RollBackNetworkRequest]) (*connect.Response[v1.Network], error)
+	GetSiloOSUpdates(context.Context, *connect.Request[v1.GetUpdatesRequest]) (*connect.Response[v1.Updates], error)
+	RunSiloOSUpdate(context.Context, *connect.Request[v1.RunUpdateRequest]) (*connect.Response[v1.Updates], error)
+	SetSiloOSUpdatePolicy(context.Context, *connect.Request[v1.SetUpdatePolicyRequest]) (*connect.Response[v1.Updates], error)
+	SetSiloOSUpdateChannel(context.Context, *connect.Request[v1.SetUpdateChannelRequest]) (*connect.Response[v1.Updates], error)
+	SiloOSPower(context.Context, *connect.Request[v1.PowerRequest]) (*connect.Response[v1.PowerResponse], error)
+	ReadSiloOSLogs(context.Context, *connect.Request[v1.ReadLogsRequest]) (*connect.Response[v1.ReadLogsResponse], error)
 	ListConnectors(context.Context, *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error)
 	CreateConnector(context.Context, *connect.Request[v1.CreateConnectorRequest]) (*connect.Response[v1.Connector], error)
 	UpdateConnector(context.Context, *connect.Request[v1.UpdateConnectorRequest]) (*connect.Response[v1.Connector], error)
@@ -5217,6 +5435,84 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("ListLLMLogs")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIGetSiloOSHandler := connect.NewUnaryHandler(
+		UIGetSiloOSProcedure,
+		svc.GetSiloOS,
+		connect.WithSchema(uIMethods.ByName("GetSiloOS")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetSiloOSHostnameHandler := connect.NewUnaryHandler(
+		UISetSiloOSHostnameProcedure,
+		svc.SetSiloOSHostname,
+		connect.WithSchema(uIMethods.ByName("SetSiloOSHostname")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetSiloOSTimeHandler := connect.NewUnaryHandler(
+		UISetSiloOSTimeProcedure,
+		svc.SetSiloOSTime,
+		connect.WithSchema(uIMethods.ByName("SetSiloOSTime")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGetSiloOSNetworkHandler := connect.NewUnaryHandler(
+		UIGetSiloOSNetworkProcedure,
+		svc.GetSiloOSNetwork,
+		connect.WithSchema(uIMethods.ByName("GetSiloOSNetwork")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIApplySiloOSConnectionHandler := connect.NewUnaryHandler(
+		UIApplySiloOSConnectionProcedure,
+		svc.ApplySiloOSConnection,
+		connect.WithSchema(uIMethods.ByName("ApplySiloOSConnection")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIConfirmSiloOSNetworkHandler := connect.NewUnaryHandler(
+		UIConfirmSiloOSNetworkProcedure,
+		svc.ConfirmSiloOSNetwork,
+		connect.WithSchema(uIMethods.ByName("ConfirmSiloOSNetwork")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRollBackSiloOSNetworkHandler := connect.NewUnaryHandler(
+		UIRollBackSiloOSNetworkProcedure,
+		svc.RollBackSiloOSNetwork,
+		connect.WithSchema(uIMethods.ByName("RollBackSiloOSNetwork")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIGetSiloOSUpdatesHandler := connect.NewUnaryHandler(
+		UIGetSiloOSUpdatesProcedure,
+		svc.GetSiloOSUpdates,
+		connect.WithSchema(uIMethods.ByName("GetSiloOSUpdates")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIRunSiloOSUpdateHandler := connect.NewUnaryHandler(
+		UIRunSiloOSUpdateProcedure,
+		svc.RunSiloOSUpdate,
+		connect.WithSchema(uIMethods.ByName("RunSiloOSUpdate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetSiloOSUpdatePolicyHandler := connect.NewUnaryHandler(
+		UISetSiloOSUpdatePolicyProcedure,
+		svc.SetSiloOSUpdatePolicy,
+		connect.WithSchema(uIMethods.ByName("SetSiloOSUpdatePolicy")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISetSiloOSUpdateChannelHandler := connect.NewUnaryHandler(
+		UISetSiloOSUpdateChannelProcedure,
+		svc.SetSiloOSUpdateChannel,
+		connect.WithSchema(uIMethods.ByName("SetSiloOSUpdateChannel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uISiloOSPowerHandler := connect.NewUnaryHandler(
+		UISiloOSPowerProcedure,
+		svc.SiloOSPower,
+		connect.WithSchema(uIMethods.ByName("SiloOSPower")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIReadSiloOSLogsHandler := connect.NewUnaryHandler(
+		UIReadSiloOSLogsProcedure,
+		svc.ReadSiloOSLogs,
+		connect.WithSchema(uIMethods.ByName("ReadSiloOSLogs")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uIListConnectorsHandler := connect.NewUnaryHandler(
 		UIListConnectorsProcedure,
 		svc.ListConnectors,
@@ -5887,6 +6183,32 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIRotateEgressCAHandler.ServeHTTP(w, r)
 		case UIListLLMLogsProcedure:
 			uIListLLMLogsHandler.ServeHTTP(w, r)
+		case UIGetSiloOSProcedure:
+			uIGetSiloOSHandler.ServeHTTP(w, r)
+		case UISetSiloOSHostnameProcedure:
+			uISetSiloOSHostnameHandler.ServeHTTP(w, r)
+		case UISetSiloOSTimeProcedure:
+			uISetSiloOSTimeHandler.ServeHTTP(w, r)
+		case UIGetSiloOSNetworkProcedure:
+			uIGetSiloOSNetworkHandler.ServeHTTP(w, r)
+		case UIApplySiloOSConnectionProcedure:
+			uIApplySiloOSConnectionHandler.ServeHTTP(w, r)
+		case UIConfirmSiloOSNetworkProcedure:
+			uIConfirmSiloOSNetworkHandler.ServeHTTP(w, r)
+		case UIRollBackSiloOSNetworkProcedure:
+			uIRollBackSiloOSNetworkHandler.ServeHTTP(w, r)
+		case UIGetSiloOSUpdatesProcedure:
+			uIGetSiloOSUpdatesHandler.ServeHTTP(w, r)
+		case UIRunSiloOSUpdateProcedure:
+			uIRunSiloOSUpdateHandler.ServeHTTP(w, r)
+		case UISetSiloOSUpdatePolicyProcedure:
+			uISetSiloOSUpdatePolicyHandler.ServeHTTP(w, r)
+		case UISetSiloOSUpdateChannelProcedure:
+			uISetSiloOSUpdateChannelHandler.ServeHTTP(w, r)
+		case UISiloOSPowerProcedure:
+			uISiloOSPowerHandler.ServeHTTP(w, r)
+		case UIReadSiloOSLogsProcedure:
+			uIReadSiloOSLogsHandler.ServeHTTP(w, r)
 		case UIListConnectorsProcedure:
 			uIListConnectorsHandler.ServeHTTP(w, r)
 		case UICreateConnectorProcedure:
@@ -6740,6 +7062,58 @@ func (UnimplementedUIHandler) RotateEgressCA(context.Context, *connect.Request[v
 
 func (UnimplementedUIHandler) ListLLMLogs(context.Context, *connect.Request[v1.ListLLMLogsRequest]) (*connect.Response[v1.ListLLMLogsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListLLMLogs is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetSiloOS(context.Context, *connect.Request[v1.GetSiloOSRequest]) (*connect.Response[v1.SiloOSStatus], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetSiloOS is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetSiloOSHostname(context.Context, *connect.Request[v1.SetHostnameRequest]) (*connect.Response[v1.SystemInfo], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetSiloOSHostname is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetSiloOSTime(context.Context, *connect.Request[v1.SetTimeRequest]) (*connect.Response[v1.SystemInfo], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetSiloOSTime is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetSiloOSNetwork(context.Context, *connect.Request[v1.GetNetworkRequest]) (*connect.Response[v1.Network], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetSiloOSNetwork is not implemented"))
+}
+
+func (UnimplementedUIHandler) ApplySiloOSConnection(context.Context, *connect.Request[v1.ApplyConnectionRequest]) (*connect.Response[v1.Network], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ApplySiloOSConnection is not implemented"))
+}
+
+func (UnimplementedUIHandler) ConfirmSiloOSNetwork(context.Context, *connect.Request[v1.ConfirmNetworkRequest]) (*connect.Response[v1.Network], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ConfirmSiloOSNetwork is not implemented"))
+}
+
+func (UnimplementedUIHandler) RollBackSiloOSNetwork(context.Context, *connect.Request[v1.RollBackNetworkRequest]) (*connect.Response[v1.Network], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RollBackSiloOSNetwork is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetSiloOSUpdates(context.Context, *connect.Request[v1.GetUpdatesRequest]) (*connect.Response[v1.Updates], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetSiloOSUpdates is not implemented"))
+}
+
+func (UnimplementedUIHandler) RunSiloOSUpdate(context.Context, *connect.Request[v1.RunUpdateRequest]) (*connect.Response[v1.Updates], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.RunSiloOSUpdate is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetSiloOSUpdatePolicy(context.Context, *connect.Request[v1.SetUpdatePolicyRequest]) (*connect.Response[v1.Updates], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetSiloOSUpdatePolicy is not implemented"))
+}
+
+func (UnimplementedUIHandler) SetSiloOSUpdateChannel(context.Context, *connect.Request[v1.SetUpdateChannelRequest]) (*connect.Response[v1.Updates], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetSiloOSUpdateChannel is not implemented"))
+}
+
+func (UnimplementedUIHandler) SiloOSPower(context.Context, *connect.Request[v1.PowerRequest]) (*connect.Response[v1.PowerResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SiloOSPower is not implemented"))
+}
+
+func (UnimplementedUIHandler) ReadSiloOSLogs(context.Context, *connect.Request[v1.ReadLogsRequest]) (*connect.Response[v1.ReadLogsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ReadSiloOSLogs is not implemented"))
 }
 
 func (UnimplementedUIHandler) ListConnectors(context.Context, *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error) {

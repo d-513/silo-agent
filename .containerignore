@@ -3,10 +3,10 @@
 # Bots' workspaces and browser profiles), silo.yaml (keys), node_modules, tmp/
 # and .git would otherwise be sent to the builder on every build.
 *
-!bin/silo-worker
-!bin/silo-mcp-bridge
-!bin/silo-drive
-!bin/silo-egress
+!build/bin/silo-worker
+!build/bin/silo-mcp-bridge
+!build/bin/silo-drive
+!build/bin/silo-egress
 !botimage
 !mcpimage
 !driveimage

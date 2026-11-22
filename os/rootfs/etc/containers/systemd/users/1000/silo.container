@@ -1,0 +1,47 @@
+# The Silo control plane, with the web console, run as the docs describe
+# (docs/CONFIGURATION.md § Running the control plane in a container) on silo's
+# rootless Podman, whose socket it is handed to make the Bots' boxes.
+#
+# Host network: it sees each client's real address (sign-in throttling), a
+# call's WebRTC offers the machine's own addresses, and the Bots' boxes reach
+# it at its default cp_url, host.containers.internal:8080.
+[Unit]
+Description=Silo control plane
+Requires=podman.socket silodb.service
+After=podman.socket silodb.service
+
+[Container]
+ContainerName=silo
+# Set at build time (os/Containerfile, SILO_IMAGE).
+Image=@SILO_IMAGE@
+Network=host
+# The container's uid 1000 is silo here, which owns the socket and data/.
+UserNS=keep-id:uid=1000,gid=1000
+# It holds the engine's socket, so SELinux confinement would only break it.
+SecurityLabelDisable=true
+Volume=%t/podman/podman.sock:/run/docker.sock
+# The same path inside as out: the binds it asks the engine for are host paths.
+Volume=/var/lib/silo:/var/lib/silo
+# siloosd's socket (the host daemon), and the folder of Caddy's admin socket,
+# through which it configures HTTPS. Nothing else gets either.
+Volume=/run/siloosd:/run/siloosd
+Volume=%t/silocaddy:/run/silocaddy
+Environment=SILO_SILOOS__SOCKET=/run/siloosd/siloosd.sock
+Environment=SILO_CADDY__ADMIN=unix//run/silocaddy/admin.sock
+# Later files win: the operator's silo.env over the generated secrets.
+EnvironmentFile=/etc/silo/secrets.env
+EnvironmentFile=/etc/silo/silo.env
+# Port 25 directly (net.ipv4.ip_unprivileged_port_start, sysctl.d/60-siloos.conf).
+Environment=SILO_MAIL__ADDR=:25
+# silocaddy, on the same host network, is the one proxy to believe.
+Environment=SILO_AUTH__TRUSTED_PROXIES=127.0.0.1,::1
+Pull=missing
+
+[Service]
+ExecStartPre=/usr/bin/mkdir -p %t/silocaddy
+Restart=always
+# The first start pulls the image.
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target

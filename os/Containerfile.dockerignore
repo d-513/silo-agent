@@ -1,0 +1,10 @@
+# SiloOS's context: its own folder and the host daemon's binary (`make
+# build-siloosd`), nothing else. podman is handed this file with --ignorefile
+# (`make os-image`); data/, silo.yaml and .git never reach the builder.
+*
+!os
+!build/bin/siloosd
+os/bib.toml
+os/config.toml
+os/cloud-init/user-data.yaml
+os/cloud-init/meta-data.yaml

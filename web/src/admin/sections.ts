@@ -14,6 +14,7 @@ export const SECTIONS = [
   { id: "tunnels", label: msg("Tunnels & apps") },
   { id: "mail", label: msg("Mail") },
   { id: "network", label: msg("Network") },
+  { id: "https", label: msg("HTTPS") },
   { id: "signin", label: msg("Sign-in") },
   { id: "server", label: msg("Server") },
   // The file itself is not the form.

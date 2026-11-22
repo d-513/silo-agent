@@ -6,7 +6,7 @@ FROM docker.io/library/debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d054
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
-COPY bin/silo-egress /usr/local/bin/silo-egress
+COPY build/bin/silo-egress /usr/local/bin/silo-egress
 RUN chmod +x /usr/local/bin/silo-egress
 ENTRYPOINT ["/usr/local/bin/silo-egress"]
 

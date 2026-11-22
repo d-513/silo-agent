@@ -17,6 +17,7 @@ import (
 	"silo.agent/internal/app/access"
 	"silo.agent/internal/app/models"
 	"silo.agent/internal/app/voice"
+	"silo.agent/internal/caddy"
 	"silo.agent/internal/catalog"
 	"silo.agent/internal/config"
 	"silo.agent/internal/llm"
@@ -326,7 +327,7 @@ func (s *Service) SetAutoenableConnectors(ctx context.Context, req *connect.Requ
 }
 
 func (s *Service) settings(ctx context.Context) (*v1.Settings, error) {
-	out := &v1.Settings{SearchEngines: searchEngineProtos()}
+	out := &v1.Settings{SearchEngines: searchEngineProtos(), DnsProviders: dnsProviderProtos()}
 	if s.oidcRedirect != nil {
 		out.OidcRedirectUrl = s.oidcRedirect(access.Request(ctx))
 	}
@@ -414,6 +415,20 @@ func sourceProto(s config.Source) v1.ConfigSource {
 	default:
 		return v1.ConfigSource_CONFIG_SOURCE_DEFAULT
 	}
+}
+
+// dnsProviderProtos are the DNS providers silo-caddy has, with their
+// settings (caddy.dns.<id>.<key>).
+func dnsProviderProtos() []*v1.CaddyDNSProvider {
+	out := make([]*v1.CaddyDNSProvider, 0, len(caddy.DNSProviders()))
+	for _, d := range caddy.DNSProviders() {
+		p := &v1.CaddyDNSProvider{Id: d.ID, Name: d.Name, Description: d.Description}
+		for _, f := range d.Settings {
+			p.Fields = append(p.Fields, &v1.SearchEngineField{Key: f.Key, Label: f.Label, Type: f.Type, Description: f.Description, Secret: f.Secret})
+		}
+		out = append(out, p)
+	}
+	return out
 }
 
 func searchEngineProtos() []*v1.SearchEngine {

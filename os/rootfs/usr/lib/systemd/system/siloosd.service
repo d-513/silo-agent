@@ -1,0 +1,23 @@
+[Unit]
+Description=SiloOS host daemon (siloosd)
+Documentation=https://github.com/d-513/silo-agent/blob/master/os/README.md
+# The control plane reaches it at /run/siloosd/siloosd.sock (tmpfiles.d/
+# siloos.conf makes the folder root:silo 0750). It changes the network, the
+# host name, the clock, updates and power, and nothing else.
+After=NetworkManager.service systemd-tmpfiles-setup.service
+Wants=NetworkManager.service
+
+[Service]
+ExecStart=/usr/bin/siloosd --socket /run/siloosd/siloosd.sock --state /var/lib/siloosd --user silo
+StateDirectory=siloosd
+StateDirectoryMode=0700
+Restart=always
+RestartSec=2
+# Root for bootc, NetworkManager, hostnamed and timedated; the rest of the
+# machine it has no business with.
+ProtectHome=yes
+PrivateTmp=yes
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

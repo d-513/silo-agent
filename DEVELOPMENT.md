@@ -46,8 +46,8 @@ Run `make help` to list everything.
 | `make run-control`   | Build and run the CP on `:8080`                                   |
 | `make run-frontend`  | Vite dev server on `:5173`                                        |
 | `make watch-control` | Run the CP under watchexec (rebuild + restart on Go changes)      |
-| `make build-cp`      | `bin/silo`                                                        |
-| `make build-all`     | Every binary (`bin/silo`, worker, bridge, drive, egress) and every image |
+| `make build-cp`      | `build/bin/silo`                                                        |
+| `make build-all`     | Every binary (`build/bin/silo`, worker, bridge, drive, egress) and every image |
 | `make images`        | Bot, STDIO MCP, drive and egress images                           |
 | `make db-up` / `db-down` | Start / stop dev Postgres (pgvector) on `:5433` + Lightpanda MCP on `:9223` + smtp4dev on `:1025`/`:1143`/`:8025` + Radicale on `:5232` + Dex (OIDC) on `:5556` |
 | `make db-psql`       | `psql` on the dev database                                        |
@@ -86,14 +86,14 @@ Every build is a dev build unless it says otherwise: its binaries are `version.V
 GitHub Actions does this (`.github/workflows/`):
 
 - **Checks** (`checks.yml`, every push and pull request): build, vet, gofmt, `make test-unit` (the Go packages that need no database) and `make test-web`. The Postgres-backed feature tests stay local (`make test`).
-- **Images** (`images.yml`): a push to `master` publishes the five images (`silo`, `silo-bot`, `silo-mcp-stdio`, `silo-drive`, `silo-egress`) for amd64 and arm64 as `ghcr.io/d-513/<image>:master-<sha>` and moves `:master`; a tag `vX.Y.Z` publishes `:vX.Y.Z`, moves `:latest` when it is the highest full release (a `-rc` tag or a patch to an older line leaves it), and opens a GitHub Release. To release: `git tag v0.4.2 && git push origin v0.4.2`. A new package on ghcr.io starts private: make each public once, since the control plane pulls without credentials.
+- **Images** (`images.yml`): a push to `master` publishes the seven images (`silo`, `silo-bot`, `silo-mcp-stdio`, `silo-drive`, `silo-egress`, `silo-caddy`, the Caddy SiloOS runs, and `silo-os`, the bootable SiloOS image whose `:master`, `:latest` and version tags are its channels) for amd64 and arm64 as `ghcr.io/d-513/<image>:master-<sha>` and moves `:master`; a tag `vX.Y.Z` publishes `:vX.Y.Z`, moves `:latest` when it is the highest full release (a `-rc` tag or a patch to an older line leaves it), and opens a GitHub Release. To release: `git tag v0.4.2 && git push origin v0.4.2`. A new package on ghcr.io starts private: make each public once, since the control plane pulls without credentials.
 
 The same by hand, from this machine:
 
 
 The web console is compiled into a release's control plane (`make build-cp-ui` = `make web-build` + `go build -tags webui`; the control plane image does the same), so it serves the UI on its own port; a dev build has none and uses Vite.
 
-`make release VERSION=v0.4.2` (a clean tree, after `podman login ghcr.io`) builds the four images as `ghcr.io/d-513/silo-*:v0.4.2`, pushes them and `:latest`, and builds `bin/silo` with that registry and tag baked in (`-ldflags -X silo.agent/internal/version.…`), so that control plane runs exactly those images and pulls them on a new host. `make nightly` does the same as `master-<sha>`, plus `:master`. A binary never names a moving tag. Both build for this machine's architecture only.
+`make release VERSION=v0.4.2` (a clean tree, after `podman login ghcr.io`) builds the four images as `ghcr.io/d-513/silo-*:v0.4.2`, pushes them and `:latest`, and builds `build/bin/silo` with that registry and tag baked in (`-ldflags -X silo.agent/internal/version.…`), so that control plane runs exactly those images and pulls them on a new host. `make nightly` does the same as `master-<sha>`, plus `:master`. A binary never names a moving tag. Both build for this machine's architecture only.
 
 ## Run
 

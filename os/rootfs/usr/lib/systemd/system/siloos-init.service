@@ -1,0 +1,16 @@
+[Unit]
+Description=Prepare SiloOS's secrets and settings
+Documentation=https://github.com/d-513/silo-agent/blob/master/os/README.md
+# Before silo's user manager, which starts every Silo container.
+Before=user@1000.service
+# After cloud-init has written what user-data asked (write_files: an
+# /etc/silo/silo.env of the operator's), which siloos-init then keeps.
+After=systemd-sysusers.service systemd-tmpfiles-setup.service cloud-init.service cloud-init-network.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/libexec/siloos/init
+
+[Install]
+WantedBy=multi-user.target

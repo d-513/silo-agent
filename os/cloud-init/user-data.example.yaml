@@ -1,0 +1,43 @@
+#cloud-config
+#
+# SiloOS user-data for cloud-init: a cloud's "user data" box, Proxmox's
+# cloud-init tab, `incus config set <vm> cloud-init.user-data - < this`, or
+# `make os-seed` for a plain QEMU/libvirt VM. Copy it to
+# os/cloud-init/user-data.yaml (ignored by git: it holds your keys) and fill
+# it in. The media carry no login; this is where one comes from. Everything
+# is optional: with none of it you get the provider's key (if any) on the
+# user "admin", a generated first admin shown on the machine's console, and
+# Silo on https://<address> with its own certificate.
+
+# Your login. "default" is admin with the key the cloud provider holds; add
+# keys of your own here. Never a user named silo: that one runs Silo.
+users:
+  - default
+ssh_authorized_keys:
+  - ssh-ed25519 AAAA… you@laptop
+
+hostname: silo
+
+write_files:
+  # Silo's own settings, the file Admin → Settings edits afterwards (so
+  # nothing here is locked in the console). Owned by silo, which runs it.
+  - path: /var/lib/silo/silo.yaml
+    owner: silo:silo
+    permissions: "0600"
+    content: |
+      # The first admin, made at the first start. Change the password on
+      # the Account page once signed in: user-data stays readable to
+      # whoever can read the cloud's metadata.
+      bootstrap:
+        email: you@example.com
+        password: change-me-at-once
+      # Your domain, its DNS pointing here (Admin → Settings → Server).
+      # public_url: https://silo.example.com
+      # Certificates (Admin → Settings → HTTPS). Through a DNS provider
+      # Let's Encrypt needs no inbound port 80:
+      # caddy:
+      #   email: you@example.com
+      #   dns_provider: cloudflare
+      #   dns:
+      #     cloudflare:
+      #       api_token: …

@@ -10,8 +10,9 @@ import { OperatorRulesPanel } from "./OperatorRulesPanel";
 import { FieldGroup } from "./FieldGroup";
 import { NetworkSettings } from "./NetworkSettings";
 import { OidcSettings } from "./OidcSettings";
+import { CaddyHealth } from "./CaddyHealth";
 import { SearchHealth } from "./SearchHealth";
-import { ARTIFACTS_NOTE, AUTH_NOTE, BOOTSTRAP_NOTE, CHANGES_NOTE, CONTENT_NOTE, FILTER_NOTE, CONTAINERS_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MAIL_NOTE, MEMORY_NOTE, OUTBOUND_NOTE, READER_NOTE, RULES_NOTE, RUNS_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
+import { ARTIFACTS_NOTE, AUTH_NOTE, HTTPS_NOTE, BOOTSTRAP_NOTE, CHANGES_NOTE, CONTENT_NOTE, FILTER_NOTE, CONTAINERS_NOTE, CONTEXT_NOTE, KNOWLEDGE_NOTE, MAIL_NOTE, MEMORY_NOTE, OUTBOUND_NOTE, READER_NOTE, RULES_NOTE, RUNS_NOTE, TUNNELS_NOTE, groupOf } from "./fields";
 import { isSection, type SectionId } from "./sections";
 import { useSettingsForm } from "./useAdminSettings";
 import { t } from "../i18n.ts";
@@ -50,6 +51,7 @@ const pages: Record<SectionId, () => React.ReactNode> = {
   tunnels: () => <Tunnels />,
   mail: () => <Group title={t("Mail")} note={t(MAIL_NOTE)} id="mail" />,
   network: () => <NetworkSettings />,
+  https: () => <HttpsSettings />,
   signin: () => (
     <>
       <Group title={t("Password sign-in")} note={t(AUTH_NOTE)} id="auth" />
@@ -82,6 +84,32 @@ function Tunnels() {
         placeholders={{ "content.host": contentHost || "content.example.com" }}
       />
       <FieldGroup title={t("Tunnels")} note={t(TUNNELS_NOTE)} rows={fields.filter((f) => groupOf(f.key) === "tunnels")} />
+    </>
+  );
+}
+
+// Caddy's mode, then only what that mode uses: the email and the DNS
+// provider for Let's Encrypt, and only the picked provider's settings.
+function HttpsSettings() {
+  const { fields, values, dnsProviders } = useSettingsForm();
+  const mode = values["caddy.mode"] || "auto";
+  const acme = mode === "auto" || mode === "acme";
+  const provider = values["caddy.dns_provider"] || "";
+  const rows = fields.filter(
+    (f) =>
+      f.key === "caddy.admin" ||
+      f.key === "caddy.mode" ||
+      (acme && (f.key === "caddy.email" || f.key === "caddy.dns_provider" || (provider !== "" && f.key.startsWith(`caddy.dns.${provider}.`)))),
+  );
+  return (
+    <>
+      <FieldGroup
+        title={t("HTTPS")}
+        note={t(HTTPS_NOTE)}
+        rows={rows}
+        hints={{ "caddy.dns_provider": dnsProviders.find((d) => d.id === provider)?.description || t("With a DNS provider, Let's Encrypt needs no inbound connection, and the content domain gets one wildcard certificate.") }}
+      />
+      <CaddyHealth />
     </>
   );
 }

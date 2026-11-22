@@ -107,3 +107,9 @@ eq(crestState(face("stopped", "stopped")), "asleep", "a stopped box sleeps");
 eq(crestState(face("waiting")), "asleep", "paused on someone else");
 eq(crestState(face("online")), "idle", "at rest");
 eq(crestState(face("starting", "starting")), "idle", "a box on its way up is not asleep");
+
+// SiloOS: Caddy, a network device, an update job.
+import { netDeviceLook, proxyLook, updateJobLook } from "./statusLook.ts";
+eq([proxyLook("ok").lamp, proxyLook("error").lamp, proxyLook("off").word, proxyLook("").word], ["online", "needs_you", "Serving nothing", "Not set up"], "Caddy");
+eq([netDeviceLook("connected").word, netDeviceLook("connecting (getting IP configuration)").lamp, netDeviceLook("unavailable").word], ["Connected", "starting", "No cable"], "a device");
+eq([updateJobLook({ running: true, error: "" }).word, updateJobLook({ running: false, error: "x" }).word, updateJobLook({ running: false, error: "" }).word], ["Working", "Failed", "Done"], "an update job");

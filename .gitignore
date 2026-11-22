@@ -11,6 +11,9 @@ web/.playwright/
 /silo-worker
 .env
 silo.yaml
+# Everything make builds: build/bin (binaries), build/os (SiloOS media), build/claude
+/build/
+# (before build/)
 bin
 __pycache__
 tmp
@@ -18,3 +21,10 @@ scratchpad.txt
 .DS_Store
 **/xcuserdata/
 **/.swiftpm/
+# SiloOS: bootc-image-builder options of your own (os/bib.toml.example)
+os/bib.toml
+# (the old name, before media stopped carrying a login)
+os/config.toml
+# Cloud-init user-data and meta-data for a local VM (`make os-seed`)
+os/cloud-init/user-data.yaml
+os/cloud-init/meta-data.yaml

@@ -63,7 +63,7 @@ import { SpaceIndex, SpaceLayout } from "./space/Workspace";
 //       settings/$section          Settings and its categories
 //       settings/models[/$page]    the model map, and its pages: providers text decision embedding image voice
 //       users[/invite|/$userId]
-//       connectors[/new|/$id]  skills  drives  audit  debug
+//       connectors[/new|/$id]  skills  drives  audit  siloos (on SiloOS)  debug
 //     /bots/$botId                 BotPage: the tab bar, the right rail, what survives a page change
 //       _chat                      the conversations (the tabs) and the pages beside them (the rail)
 //         run[/new|/$chatId[/agent/$agentId]]  dashboard  automations[/new|/$id]  artifacts  memories  knowledge  feed  runs
@@ -156,7 +156,7 @@ const roomPage = createRoute({ getParentRoute: () => authed, path: "rooms/$roomI
 
 // Everything under /admin is one chunk, loaded the first time an admin opens it.
 const adminPage = (
-  name: "AdminLayout" | "AdminSettings" | "SettingsSection" | "ModelMapPage" | "ModelsPage" | "AdminAudit" | "AdminSkills" | "AdminDrives" | "AdminContainers" | "AdminDebug" | "CatalogList" | "LibraryForm" | "UsersList" | "UserPage" | "InviteUser",
+  name: "AdminLayout" | "AdminSettings" | "SettingsSection" | "ModelMapPage" | "ModelsPage" | "AdminAudit" | "AdminSkills" | "AdminDrives" | "AdminContainers" | "SiloOSPage" | "AdminDebug" | "CatalogList" | "LibraryForm" | "UsersList" | "UserPage" | "InviteUser",
 ) =>
   lazyRouteComponent(() => import("./AdminApp"), name);
 
@@ -222,6 +222,7 @@ const adminSearch = createRoute({
 const adminDrives = createRoute({ getParentRoute: () => admin, path: "drives", component: adminPage("AdminDrives") });
 const adminContainers = createRoute({ getParentRoute: () => admin, path: "containers", component: adminPage("AdminContainers") });
 const adminAudit = createRoute({ getParentRoute: () => admin, path: "audit", component: adminPage("AdminAudit") });
+const adminSiloOS = createRoute({ getParentRoute: () => admin, path: "siloos", component: adminPage("SiloOSPage") });
 const adminDebug = createRoute({ getParentRoute: () => admin, path: "debug", component: adminPage("AdminDebug") });
 const adminElse = createRoute({
   getParentRoute: () => admin,
@@ -318,7 +319,7 @@ const routeTree = root.addChildren([
       spaceSettings,
     ]),
     account,
-    admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminModels.addChildren([adminModelsIndex, adminModelsPage]), adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminContainers, adminAudit, adminDebug, adminElse]),
+    admin.addChildren([adminIndex, adminSettings.addChildren([adminSettingsIndex, adminModels.addChildren([adminModelsIndex, adminModelsPage]), adminSettingsSection]), adminUsers, adminUserInvite, adminUser, adminConnectors, adminConnectorNew, adminConnector, adminSkills, adminSearch, adminDrives, adminContainers, adminAudit, adminSiloOS, adminDebug, adminElse]),
     bot.addChildren([
       botIndex,
       chat.addChildren([run, runNew, runChat, runAgent, dashboard, automations.addChildren([automationsIndex, automationNew, automation]), artifacts, memories, knowledge, feed, runs]),

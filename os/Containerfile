@@ -1,0 +1,101 @@
+# syntax=docker/dockerfile:1
+#
+# SiloOS: a bootable image (bootc) whose only job is to run Silo. The host is
+# Fedora's bootc base; everything Silo is runs in containers under one
+# unprivileged user, `silo` (uid 1000), on its rootless Podman:
+#
+#   silodb     Postgres + pgvector (silodb.container)
+#   silo       the control plane, console inside (silo.container), which makes
+#              every Bot's box and sidecar through that user's Podman socket
+#   silocaddy  silo-caddy (caddyimage/): HTTPS, configured by the control
+#              plane through its admin socket (silocaddy.container,
+#              internal/caddy)
+#
+# and on the host, as root, siloosd (cmd/siloosd): the one way the control
+# plane changes the machine (network, host name, time, updates, power), on a
+# socket only the control plane's container has.
+#
+# The OS is the release: SILO_IMAGE names the control plane it runs, and the
+# control plane names the bot, STDIO, drive and egress images of its own
+# commit, so one OS image is one matched set. Updating Silo is `bootc upgrade`.
+#
+# One image for every install: an installer ISO or a disk for a machine you
+# set up yourself, and a cloud image configured at first boot by cloud-init
+# (which turns itself off where no cloud answers). Which channel a machine
+# follows is the image name it was installed from (os/README.md § Channels).
+#
+# Build with `make os-image`: the context is os/ and build/bin/siloosd only
+# (os/Containerfile.dockerignore). See os/README.md.
+# The base is pinned by digest: move it on purpose.
+FROM quay.io/fedora/fedora-bootc:43@sha256:840da31a3e3e8055a8d1c8c0f378e66e5c7de6ebe39037bbf7e5b252f138f04d
+
+# cloud-init, for cloud images and VMs that hand a user, a key and settings
+# at first boot. On a machine with no cloud metadata ds-identify turns it off
+# (etc/cloud/cloud.cfg.d/05_siloos.cfg lists no "None" datasource).
+RUN dnf -y install cloud-init \
+    && dnf clean all \
+    && ln -s ../cloud-init.target /usr/lib/systemd/system/default.target.wants/cloud-init.target \
+    && rm -rf /var/cache/* /var/log/* /var/lib/dnf /var/lib/cloud /run/cloud-init /run/dnf
+
+COPY os/rootfs/ /
+
+# The user every Silo container runs under. Made now, not only by sysusers at
+# first boot, so a user made at install (cloud-init, a kickstart)
+# never takes uid 1000. Its subordinate ids are what its containers' users map
+# to; the range is Fedora's first default one.
+RUN set -e; \
+    systemd-sysusers; \
+    for f in /etc/subuid /etc/subgid; do \
+      grep -q '^silo:' "$f" 2>/dev/null || echo 'silo:524288:65536' >> "$f"; \
+    done
+
+# Bot boxes bind folders of data/ unlabelled (internal/dockerx), so those
+# folders carry the label every container may use; what the control plane
+# makes under them inherits it.
+RUN semodule -i /usr/share/siloos/selinux/siloos.cil
+
+# siloosd keeps the update policy in place of bootc's own timer, masked here,
+# which reboots whenever it finds a new image: an admin chooses that in
+# Admin → SiloOS.
+RUN chmod 0755 /usr/libexec/siloos/init \
+    && systemctl enable siloos-init.service siloosd.service \
+    && systemctl mask bootc-fetch-apply-updates.timer
+
+# What this image is. REGISTRY and VERSION are the release's (`make
+# release`/`nightly`, .github/workflows/images.yml): the OS runs the control
+# plane and the Caddy of the same tag, and its channels are tags of
+# <registry>/silo-os. A dev build (no registry) runs the nightly's and may be
+# moved to a channel of the published repository. SILO_IMAGE, CADDY_IMAGE and
+# OS_REPOSITORY override one each.
+ARG REGISTRY=
+ARG VERSION=dev
+ARG REVISION=unknown
+ARG SILO_IMAGE=
+ARG CADDY_IMAGE=
+ARG OS_REPOSITORY=
+RUN set -e; \
+    reg="${REGISTRY:-ghcr.io/d-513}"; \
+    tag="$VERSION"; [ "$tag" = dev ] && tag=master; \
+    silo="${SILO_IMAGE:-$reg/silo:$tag}"; \
+    caddy="${CADDY_IMAGE:-$reg/silo-caddy:$tag}"; \
+    repo="${OS_REPOSITORY:-$reg/silo-os}"; \
+    sed -i "s|@SILO_IMAGE@|$silo|" /etc/containers/systemd/users/1000/silo.container; \
+    sed -i "s|@CADDY_IMAGE@|$caddy|" /etc/containers/systemd/users/1000/silocaddy.container; \
+    install -d /usr/lib/siloos; \
+    printf 'SILOOS_VERSION=%s\nSILOOS_REVISION=%s\nSILOOS_REPOSITORY=%s\nSILOOS_SILO_IMAGE=%s\nSILOOS_CADDY_IMAGE=%s\n' \
+      "$VERSION" "$REVISION" "$repo" "$silo" "$caddy" > /usr/lib/siloos/release; \
+    cat /usr/lib/siloos/release
+
+# The host daemon changes with every commit: late, so it rebuilds little.
+COPY --chmod=0755 build/bin/siloosd /usr/bin/siloosd
+
+RUN bootc container lint
+
+LABEL org.opencontainers.image.title="silo-os" \
+      org.opencontainers.image.description="SiloOS: a bootable image that runs Silo" \
+      org.opencontainers.image.source="https://github.com/d-513/silo-agent" \
+      org.opencontainers.image.version="$VERSION" \
+      org.opencontainers.image.revision="$REVISION" \
+      org.opencontainers.image.base.name="quay.io/fedora/fedora-bootc:43" \
+      containers.bootc="1" \
+      ostree.bootable="1"

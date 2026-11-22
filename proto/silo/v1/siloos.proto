@@ -1,0 +1,295 @@
+syntax = "proto3";
+
+package silo.v1;
+
+option go_package = "silo.agent/gen/silo/v1;silov1";
+
+// SiloOSD is siloosd, the SiloOS host daemon (cmd/siloosd, internal/siloosd):
+// the one way Silo changes the machine it runs on. It listens on a unix
+// socket (/run/siloosd/siloosd.sock) that only the control plane's container
+// has, and answers only root and the silo user. Every call is one specific,
+// validated operation; there is no generic command, file write or package
+// install, and there must never be one: the control plane faces the internet
+// and runs tools models choose, so what siloosd offers is what a compromised
+// control plane gets on the host.
+//
+// The control plane calls it only from instance admins' UI RPCs (the
+// SiloOS* ones in ui.proto, which reuse these messages), never from a Bot
+// tool. api_version moves when a call changes meaning; a rollback can pair an
+// older siloosd with a newer database, never with a newer control plane (both
+// ship in one OS image).
+service SiloOSD {
+  rpc GetSystem(GetSystemRequest) returns (SystemInfo);
+  rpc SetHostname(SetHostnameRequest) returns (SystemInfo);
+  rpc SetTime(SetTimeRequest) returns (SystemInfo);
+
+  rpc GetNetwork(GetNetworkRequest) returns (Network);
+  // ApplyConnection changes one wired connection under a NetworkManager
+  // checkpoint that rolls itself back unless ConfirmNetwork comes within
+  // Network.pending.expires_at, so a change that cuts the admin off undoes
+  // itself.
+  rpc ApplyConnection(ApplyConnectionRequest) returns (Network);
+  rpc ConfirmNetwork(ConfirmNetworkRequest) returns (Network);
+  rpc RollBackNetwork(RollBackNetworkRequest) returns (Network);
+
+  rpc GetUpdates(GetUpdatesRequest) returns (Updates);
+  // RunUpdate starts a job (check, download, rollback) and answers at once;
+  // GetUpdates shows it. One job at a time.
+  rpc RunUpdate(RunUpdateRequest) returns (Updates);
+  rpc SetUpdatePolicy(SetUpdatePolicyRequest) returns (Updates);
+  // SetUpdateChannel moves the machine to another channel of the SiloOS
+  // repository it was built for (/usr/lib/siloos/release): latest, master or
+  // a version tag, never an image the caller names. It downloads the new
+  // image as a job (action "switch"), used at the next boot.
+  rpc SetUpdateChannel(SetUpdateChannelRequest) returns (Updates);
+
+  // Power reboots or powers off a few seconds after answering.
+  rpc Power(PowerRequest) returns (PowerResponse);
+  rpc ReadLogs(ReadLogsRequest) returns (ReadLogsResponse);
+}
+
+message GetSystemRequest {}
+
+message SystemInfo {
+  int32 api_version = 1;
+  string hostname = 2;
+  // PRETTY_NAME of the running image's os-release.
+  string os_name = 3;
+  // The image the machine booted (bootc), and its version label.
+  string image = 4;
+  string image_version = 5;
+  string kernel = 6;
+  int64 uptime_seconds = 7;
+  int32 cpus = 8;
+  double load1 = 9;
+  int64 memory_total = 10;
+  int64 memory_available = 11;
+  repeated SystemDisk disks = 12;
+  // The machine's own clock: its zone (IANA), whether NTP is on and synced.
+  string time_zone = 13;
+  bool ntp = 14;
+  bool ntp_synced = 15;
+  // RFC 3339, so the page can show how far the machine's clock is off.
+  string now = 16;
+}
+
+message SystemDisk {
+  // What it holds ("system", "data"), and where.
+  string label = 1;
+  string path = 2;
+  int64 total = 3;
+  int64 free = 4;
+}
+
+message SetHostnameRequest {
+  string hostname = 1;
+}
+
+message SetTimeRequest {
+  // An IANA zone; empty leaves it.
+  string time_zone = 1;
+  optional bool ntp = 2;
+}
+
+message GetNetworkRequest {}
+
+message Network {
+  repeated NetDevice devices = 1;
+  // A change waiting for ConfirmNetwork, if any.
+  PendingNetwork pending = 2;
+}
+
+message NetDevice {
+  string name = 1;
+  // ethernet, wifi, bridge, … as NetworkManager says.
+  string type = 2;
+  // connected, disconnected, unavailable, …
+  string state = 3;
+  string mac = 4;
+  // What the device has now, CIDR form.
+  repeated string addresses = 5;
+  string gateway = 6;
+  repeated string dns = 7;
+  // The connection profile on it, when it has one.
+  NetConnection connection = 8;
+}
+
+message NetConnection {
+  string uuid = 1;
+  string name = 2;
+  // auto (DHCP) or manual.
+  string method = 3;
+  repeated string addresses = 4;
+  string gateway = 5;
+  // DNS servers set on the profile (with auto, used beside DHCP's unless
+  // ignore_auto_dns).
+  repeated string dns = 6;
+  bool ignore_auto_dns = 7;
+}
+
+message PendingNetwork {
+  // RFC 3339: when NetworkManager rolls the change back by itself.
+  string expires_at = 1;
+  string connection = 2;
+}
+
+message ApplyConnectionRequest {
+  // An existing ethernet connection's UUID.
+  string uuid = 1;
+  // auto or manual. manual needs at least one address (CIDR) and may name a
+  // gateway; DNS servers are IP addresses.
+  string method = 2;
+  repeated string addresses = 3;
+  string gateway = 4;
+  repeated string dns = 5;
+  bool ignore_auto_dns = 6;
+  // Seconds before the change rolls back unconfirmed (30 to 600, default 120).
+  int32 confirm_within = 7;
+}
+
+message ConfirmNetworkRequest {}
+
+message RollBackNetworkRequest {}
+
+message GetUpdatesRequest {}
+
+message Updates {
+  BootImage booted = 1;
+  // Downloaded, used at the next boot.
+  BootImage staged = 2;
+  // The previous image, which a rollback boots.
+  BootImage rollback = 3;
+  // What the last check found on the registry, when newer than booted.
+  BootImage available = 4;
+  UpdateJob job = 5;
+  UpdatePolicy policy = 6;
+  // The next boot goes back to the rollback image.
+  bool rollback_queued = 7;
+  // RFC 3339; empty when the policy does nothing by itself.
+  string next_run_at = 8;
+  // What the machine follows: local (built on someone's machine, follows
+  // nothing), latest (stable releases), master (a build of every commit),
+  // pinned (one version, which never changes) or custom (an image of
+  // another repository).
+  string channel = 9;
+  // The tag it follows (latest, master, v0.4.2), and the repository its
+  // channels are tags of.
+  string tag = 10;
+  string repository = 11;
+  // The SiloOS release it runs (v0.4.2, master-<sha>, dev).
+  string version = 12;
+}
+
+message BootImage {
+  string image = 1;
+  string version = 2;
+  string digest = 3;
+  string timestamp = 4;
+}
+
+message UpdateJob {
+  // check, download or rollback.
+  string action = 1;
+  bool running = 2;
+  string started_at = 3;
+  string ended_at = 4;
+  string error = 5;
+  // The tail of what the command printed.
+  string output = 6;
+  // Started by the policy rather than an admin.
+  bool scheduled = 7;
+}
+
+message UpdatePolicy {
+  // off: nothing by itself. download: check daily and download a new image,
+  // used at the next reboot. reboot: the same, and reboot into it.
+  string mode = 1;
+  // The hour (0-23, the machine's zone) the daily run starts.
+  int32 hour = 2;
+}
+
+message RunUpdateRequest {
+  // check, download or rollback.
+  string action = 1;
+}
+
+message SetUpdateChannelRequest {
+  // latest, master, or a version tag (v0.4.2). Going back to an older
+  // version than the one running is refused: Silo's database may already be
+  // newer than it understands.
+  string channel = 1;
+}
+
+message SetUpdatePolicyRequest {
+  UpdatePolicy policy = 1;
+}
+
+message PowerRequest {
+  // reboot or poweroff.
+  string action = 1;
+}
+
+message PowerResponse {
+  // RFC 3339: when it happens.
+  string at = 1;
+}
+
+message ReadLogsRequest {
+  // silo, silodb, silocaddy, siloosd, updates or system.
+  string source = 1;
+  // At most this many of the newest lines (default 200, at most 2000).
+  int32 lines = 2;
+}
+
+message ReadLogsResponse {
+  repeated LogLine lines = 1;
+}
+
+message LogLine {
+  string time = 1;
+  string unit = 2;
+  // syslog priority: 0 emerg … 7 debug.
+  int32 priority = 3;
+  string message = 4;
+}
+
+// --- the control plane's view, for the UI service ---------------------------
+
+message GetSiloOSRequest {}
+
+message SiloOSStatus {
+  // The control plane was given siloosd's socket (siloos.socket): it runs on
+  // SiloOS, and Admin shows the SiloOS page.
+  bool available = 1;
+  // siloosd did not answer; everything else is empty.
+  string error = 2;
+  SystemInfo system = 3;
+  ProxyStatus proxy = 4;
+}
+
+// ProxyStatus is the HTTPS proxy (Caddy) as the control plane configures it
+// (caddy.*): which names it serves, where their certificates come from, and
+// whether the last push took.
+message ProxyStatus {
+  bool configured = 1;
+  // ok, off (nothing to serve) or error.
+  string state = 2;
+  string error = 3;
+  // The control plane's own name, and its issuer: acme (Let's Encrypt) or
+  // internal (Caddy's own authority).
+  string host = 4;
+  // *.<content.host>, served under host's issuer.
+  string content_host = 5;
+  string synced_at = 6;
+  string issuer = 7;
+  // The DNS provider Let's Encrypt is answered through; empty is port 80.
+  string dns_provider = 8;
+  // The machine's own names and addresses (SiloOS), always under Caddy's
+  // own authority.
+  repeated string local = 9;
+  // Why the control plane's name is not served, when it is not.
+  string note = 10;
+  // The root certificate of Caddy's own authority (PEM), while it certifies
+  // anything: what people trust on their devices to stop the warnings.
+  string root_ca = 11;
+}

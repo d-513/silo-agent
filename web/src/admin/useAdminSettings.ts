@@ -3,13 +3,14 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { ui } from "../api";
 import { fail } from "../errors";
 import { useSave } from "../Feedback";
-import { ConfigSource, UI, type ConfigField, type ConnectorVar, type ModelOption, type Provider, type SearchEngine, type Settings } from "../gen/silo/v1/ui_pb";
+import { ConfigSource, UI, type CaddyDNSProvider, type ConfigField, type ConnectorVar, type ModelOption, type Provider, type SearchEngine, type Settings } from "../gen/silo/v1/ui_pb";
 import { peek, put, reload } from "../query";
 import { withModel, type ModelKind } from "./providerModels";
 
 const noFields: ConfigField[] = [];
 const noEngines: SearchEngine[] = [];
 const noProviders: Provider[] = [];
+const noDNS: CaddyDNSProvider[] = [];
 const noModels: ModelOption[] = [];
 const noListed: string[] = [];
 const noVars: ConnectorVar[] = [];
@@ -171,6 +172,8 @@ export function useAdminSettings() {
     setValue,
     engines: server?.searchEngines ?? noEngines,
     providers: server?.providers ?? noProviders,
+    // The DNS providers silo-caddy has (Settings → HTTPS).
+    dnsProviders: server?.dnsProviders ?? noDNS,
     // The two allowlists the role pickers read most: text and decision.
     models: server?.models ?? noModels,
     decisionModels: server?.decisionModels ?? noModels,

@@ -19,7 +19,7 @@ import (
 // dead end, the denial and what is still running. Run it after touching
 // COMPACT.md or how the request is built:
 //
-//	SILO_CLAUDE_DIR=data/claude SILO_CLAUDE_BIN=tmp/claude-bin/package/claude \
+//	SILO_CLAUDE_DIR=data/claude SILO_CLAUDE_BIN=build/claude/package/claude \
 //	  go test -tags live ./internal/app -run TestLiveCompact -v
 //
 // SILO_LIVE_MODEL names another model as provider/model, with the provider's
