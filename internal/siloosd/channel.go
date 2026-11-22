@@ -55,6 +55,8 @@ type release struct {
 func (s *Server) release() release {
 	kv := keyValues(s.readFile(releaseFile))
 	r := release{Version: kv["SILOOS_VERSION"], Repository: kv["SILOOS_REPOSITORY"]}
+	// (The release file is read again each time: a staged image's applies
+	// only after the reboot that boots it, when siloosd starts anew anyway.)
 	if !repositoryRE.MatchString(r.Repository) {
 		r.Repository = ""
 	}

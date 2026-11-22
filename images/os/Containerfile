@@ -37,10 +37,21 @@ FROM quay.io/fedora/fedora-bootc:43
 # cloud-init, for cloud images and VMs that hand a user, a key and settings
 # at first boot. On a machine with no cloud metadata ds-identify turns it off
 # (etc/cloud/cloud.cfg.d/05_siloos.cfg lists no "None" datasource).
-RUN dnf -y install cloud-init \
+#
+# And every hypervisor's guest agent, since SiloOS often runs as a VM: each
+# starts only on its own hypervisor, so a bare-metal install runs none.
+#   qemu-guest-agent  Proxmox, libvirt, OpenStack (udev, on its virtio port)
+#   open-vm-tools     VMware (ConditionVirtualization=vmware)
+#   hyperv-daemons    Hyper-V, Azure (ConditionVirtualization=microsoft)
+#   incus-agent       Incus: `incus exec`, and the guest API cloud-init reads
+#                     (the binary; incus-agent.service starts it, udev on
+#                     Incus's port)
+# Weak dependencies stay out: with them open-vm-tools and friends bring a
+# hundred desktop libraries (X11, Wayland) a server has no use for.
+RUN dnf -y install --setopt=install_weak_deps=False cloud-init qemu-guest-agent open-vm-tools hyperv-daemons incus-agent \
     && dnf clean all \
     && ln -s ../cloud-init.target /usr/lib/systemd/system/default.target.wants/cloud-init.target \
-    && rm -rf /var/cache/* /var/log/* /var/lib/dnf /var/lib/cloud /run/cloud-init /run/dnf
+    && rm -rf /var/cache/* /var/log/* /var/lib/dnf /var/lib/cloud /var/lib/hyperv /run/cloud-init /run/dnf
 
 COPY images/os/rootfs/ /
 
@@ -63,7 +74,7 @@ RUN semodule -i /usr/share/siloos/selinux/siloos.cil
 # which reboots whenever it finds a new image: an admin chooses that in
 # Admin → SiloOS.
 RUN chmod 0755 /usr/libexec/siloos/init \
-    && systemctl enable siloos-init.service siloosd.service \
+    && systemctl enable siloos-init.service siloosd.service vmtoolsd.service \
     && systemctl mask bootc-fetch-apply-updates.timer
 
 # What this image is. REGISTRY and VERSION are the release's (`make

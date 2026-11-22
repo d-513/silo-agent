@@ -53,10 +53,12 @@ func (s *Server) system(ctx context.Context) *v1.SystemInfo {
 		kv := keyValues(string(raw))
 		out.TimeZone, out.Ntp, out.NtpSynced = kv["Timezone"], kv["NTP"] == "yes", kv["NTPSynchronized"] == "yes"
 	}
-	if st, err := s.bootcStatus(ctx); err == nil && st.Status.Booted != nil && st.Status.Booted.Image != nil {
-		out.Image = st.Status.Booted.Image.Image.Image
-		out.ImageVersion = st.Status.Booted.Image.Version
-	}
+	// What the image is, from its own release file, not `bootc status`: the
+	// control plane asks for this every minute, and bootc probes SELinux on
+	// each run (a denied chcon of a test label, two audit lines on the
+	// console every time). The Updates page still asks bootc.
+	rel := s.release()
+	out.Image, out.ImageVersion = rel.Repository, rel.Version
 	return out
 }
 

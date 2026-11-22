@@ -46,6 +46,7 @@ updating Silo is updating the OS.
 | `/var/lib/siloosd` | siloosd's update policy and a network change waiting to be kept |
 | `/usr/lib/siloos/release` | What the image is: its version, commit, the repository its channels are tags of, and the `silo` and `silo-caddy` it runs |
 | `/etc/cloud/cloud.cfg.d/05_siloos.cfg` | cloud-init: only where a cloud answers, `admin` as the default user |
+| Guest agents | `qemu-guest-agent` (Proxmox, libvirt, OpenStack), `open-vm-tools` (VMware), `hyperv-daemons` (Hyper-V, Azure) and the Incus agent (`incus-agent.service`, started by `99-incus-agent.rules`, set up by `/usr/libexec/siloos/incus-agent-setup`): each starts only on its own hypervisor |
 | `/usr/lib/bootc/kargs.d/10-siloos-console-*.toml` | The console on the screen and the first serial port, where the banner shows |
 
 `siloos-init.service` (`rootfs/usr/libexec/siloos/init`) runs before `silo`'s
@@ -165,8 +166,10 @@ incus start silo
 ssh admin@$(incus list silo -c 4 -f csv | cut -d' ' -f1)
 ```
 
-- `cloud-init:config` is Incus's NoCloud drive, which SiloOS's cloud-init
-  reads (it has no Incus agent).
+- `cloud-init:config` is Incus's NoCloud drive, which cloud-init reads
+  whether or not the Incus agent is up yet.
+- The Incus agent is in the image, so `incus exec silo -- bash` gives you a
+  root shell without SSH, and `incus file push/pull` works.
 - Bots run as containers inside the VM, on its rootless Podman: nested in a
   VM they need no setting on Incus's side.
 - A new build is `make os-image os-disk os-incus` again (`--reuse` replaces

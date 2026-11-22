@@ -1,0 +1,21 @@
+# The Incus agent (`incus exec`, `incus file`, the instance's state, and the
+# guest API cloud-init's LXD datasource reads), as Incus's own images run it.
+# Fedora packages only the binary; this unit starts it when Incus offers its
+# virtio port (99-incus-agent.rules), so it never runs outside an Incus VM.
+[Unit]
+Description=Incus agent
+Documentation=https://linuxcontainers.org/incus/docs/main/
+ConditionPathExists=/dev/virtio-ports/org.linuxcontainers.incus
+# Before cloud-init, so the guest API is there when it looks for a datasource.
+Before=multi-user.target cloud-init.target cloud-init-local.service cloud-init.service cloud-init-network.service
+DefaultDependencies=no
+
+[Service]
+Type=notify
+WorkingDirectory=-/run/incus_agent
+ExecStartPre=/usr/libexec/siloos/incus-agent-setup
+ExecStart=/usr/bin/incus-agent
+Restart=on-failure
+RestartSec=5s
+StartLimitIntervalSec=60
+StartLimitBurst=10

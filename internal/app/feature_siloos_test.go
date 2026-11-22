@@ -72,7 +72,14 @@ func siloOSD(t *testing.T, run *osRun) string {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	srv := siloosd.New(siloosd.Config{Run: run, StateDir: t.TempDir(), Root: t.TempDir(), After: func(_ time.Duration, fn func()) { fn() }})
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "usr/lib/siloos"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "usr/lib/siloos/release"), []byte("SILOOS_VERSION=v1\nSILOOS_REPOSITORY=ghcr.io/d-513/silo-os\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	srv := siloosd.New(siloosd.Config{Run: run, StateDir: t.TempDir(), Root: root, After: func(_ time.Duration, fn func()) { fn() }})
 	done := make(chan struct{})
 	go func() { siloosd.Serve(ctx, ln, srv, []int{os.Getuid()}); close(done) }()
 	t.Cleanup(func() { cancel(); <-done; os.RemoveAll(dir) })
@@ -101,6 +108,9 @@ func TestSiloOSIsTheAdminsOnly(t *testing.T) {
 	st, err := h.Client.GetSiloOS(h.Ctx(), connect.NewRequest(&v1.GetSiloOSRequest{}))
 	if err != nil || !st.Msg.Available || st.Msg.Error != "" || st.Msg.System.GetHostname() != "silo-box" || st.Msg.System.GetImageVersion() != "v1" {
 		t.Fatalf("GetSiloOS = %v, %v", st.Msg, err)
+	}
+	if run.ran("bootc status --format=json") {
+		t.Error("the summary ran bootc (it audits a denied chcon each time)")
 	}
 	if _, err := h.Client.SetSiloOSHostname(h.Ctx(), connect.NewRequest(&v1.SetHostnameRequest{Hostname: "Silo-2"})); err != nil {
 		t.Fatal(err)

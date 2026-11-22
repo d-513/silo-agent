@@ -1,5 +1,7 @@
 # The console on the screen and on the first serial port, so a VM's serial
 # console (`incus console`, `virsh console`) and a headless server's show the
 # login banner: where Silo is and its first admin. The last is /dev/console.
-kargs = ["console=tty0", "console=ttyS0,115200n8"]
+# quiet: kernel notices (without an audit daemon, every audit record) and
+# systemd's per-service status stay off the console; journalctl has them all.
+kargs = ["quiet", "console=tty0", "console=ttyS0,115200n8"]
 match-architectures = ["x86_64"]

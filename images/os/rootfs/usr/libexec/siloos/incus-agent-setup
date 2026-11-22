@@ -1,0 +1,18 @@
+#!/bin/sh
+# incus-agent-setup: the Incus agent's certificates and settings, from the
+# share Incus gives every VM (tag "config", virtiofs or 9p), copied into
+# /run/incus_agent, where the agent reads them. The agent itself is Fedora's
+# (/usr/bin/incus-agent, labelled for SELinux) rather than the copy on the
+# share, which /run would leave unlabelled.
+set -eu
+dir=/run/incus_agent
+mkdir -p "$dir"
+mountpoint -q "$dir" || mount -t tmpfs tmpfs "$dir" -o mode=0700,size=50M
+mkdir -p "$dir/.mnt"
+mount -t virtiofs config "$dir/.mnt" -o ro 2>/dev/null ||
+	{ modprobe 9pnet_virtio 2>/dev/null || true; mount -t 9p config "$dir/.mnt" -o ro,access=0,trans=virtio,size=1048576; }
+cp -Ra "$dir/.mnt/." "$dir/"
+umount "$dir/.mnt"
+rmdir "$dir/.mnt"
+rm -f "$dir/incus-agent"
+chown -R root:root "$dir"
