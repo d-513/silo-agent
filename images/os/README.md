@@ -203,7 +203,7 @@ sudo bootc switch ghcr.io/d-513/silo-os:latest && sudo reboot
    shows no password, only where to find it (`/etc/silo/secrets.env`).
 
    The first start pulls the images, which takes a few minutes. With a shell
-   (`ssh admin@…`), `journalctl --user -M silo@ -u silo -f` shows it, and
+   (`ssh admin@…`), `siloctl logs` shows it, and
    `sudo cat /etc/silo/secrets.env` has the same first admin.
 2. Open `https://<address>` (the browser warns once: the certificate is Silo's
    own until there is a domain; `http://<address>:8080` also answers) and
@@ -289,9 +289,10 @@ on purpose, and must stay that way:
 ## Operate
 
 ```sh
-sudo systemctl --user -M silo@ status silo silodb silocaddy
-sudo journalctl --user -M silo@ -u silo -f
-sudo -u silo XDG_RUNTIME_DIR=/run/user/1000 podman ps -a
+siloctl status           # silo, silodb, silocaddy (Silo's user units; sudo by itself)
+siloctl logs [silo]      # their journal, followed
+siloctl restart silo     # after editing /etc/silo/silo.env
+siloctl ps               # every container, the Bots' boxes and sidecars too
 sudo bootc status          # the image this machine runs, and the next one
 sudo bootc upgrade --apply # update now (and reboot)
 sudo bootc rollback        # back to the previous image
