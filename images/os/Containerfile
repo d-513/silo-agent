@@ -105,7 +105,9 @@ RUN set -e; \
 # The host daemon changes with every commit: late, so it rebuilds little.
 COPY --chmod=0755 build/bin/siloosd /usr/bin/siloosd
 
-RUN bootc container lint
+# siloosd asks the registry about channels with skopeo (bootc's own image
+# proxy needs it, so it is in the base).
+RUN test -x /usr/bin/skopeo && bootc container lint
 
 LABEL org.opencontainers.image.title="silo-os" \
       org.opencontainers.image.description="SiloOS: a bootable image that runs Silo" \

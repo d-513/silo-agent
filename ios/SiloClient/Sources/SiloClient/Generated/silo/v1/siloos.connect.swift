@@ -64,9 +64,16 @@ public protocol Silo_V1_SiloOsdClientInterface: Sendable {
     /// SetUpdateChannel moves the machine to another channel of the SiloOS
     /// repository it was built for (/usr/lib/siloos/release): latest, master or
     /// a version tag, never an image the caller names. It downloads the new
-    /// image as a job (action "switch"), used at the next boot.
+    /// image as a job (action "switch"), used at the next boot. A move to an
+    /// image older than the one running is refused (see UpdateChannel.older).
     @available(iOS 13, *)
     func `setUpdateChannel`(request: Silo_V1_SetUpdateChannelRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Updates>
+
+    /// ListUpdateChannels asks the registry which tags of that repository the
+    /// machine may move to: latest, master and the release versions not older
+    /// than the one running.
+    @available(iOS 13, *)
+    func `listUpdateChannels`(request: Silo_V1_ListUpdateChannelsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_UpdateChannels>
 
     /// Power reboots or powers off a few seconds after answering.
     @available(iOS 13, *)
@@ -140,6 +147,11 @@ public final class Silo_V1_SiloOsdClient: Silo_V1_SiloOsdClientInterface, Sendab
     }
 
     @available(iOS 13, *)
+    public func `listUpdateChannels`(request: Silo_V1_ListUpdateChannelsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_UpdateChannels> {
+        return await self.client.unary(path: "/silo.v1.SiloOSD/ListUpdateChannels", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `power`(request: Silo_V1_PowerRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_PowerResponse> {
         return await self.client.unary(path: "/silo.v1.SiloOSD/Power", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -162,6 +174,7 @@ public final class Silo_V1_SiloOsdClient: Silo_V1_SiloOsdClientInterface, Sendab
             public static let runUpdate = Connect.MethodSpec(name: "RunUpdate", service: "silo.v1.SiloOSD", type: .unary)
             public static let setUpdatePolicy = Connect.MethodSpec(name: "SetUpdatePolicy", service: "silo.v1.SiloOSD", type: .unary)
             public static let setUpdateChannel = Connect.MethodSpec(name: "SetUpdateChannel", service: "silo.v1.SiloOSD", type: .unary)
+            public static let listUpdateChannels = Connect.MethodSpec(name: "ListUpdateChannels", service: "silo.v1.SiloOSD", type: .unary)
             public static let power = Connect.MethodSpec(name: "Power", service: "silo.v1.SiloOSD", type: .unary)
             public static let readLogs = Connect.MethodSpec(name: "ReadLogs", service: "silo.v1.SiloOSD", type: .unary)
         }

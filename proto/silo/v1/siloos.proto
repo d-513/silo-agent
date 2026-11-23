@@ -40,8 +40,13 @@ service SiloOSD {
   // SetUpdateChannel moves the machine to another channel of the SiloOS
   // repository it was built for (/usr/lib/siloos/release): latest, master or
   // a version tag, never an image the caller names. It downloads the new
-  // image as a job (action "switch"), used at the next boot.
+  // image as a job (action "switch"), used at the next boot. A move to an
+  // image older than the one running is refused (see UpdateChannel.older).
   rpc SetUpdateChannel(SetUpdateChannelRequest) returns (Updates);
+  // ListUpdateChannels asks the registry which tags of that repository the
+  // machine may move to: latest, master and the release versions not older
+  // than the one running.
+  rpc ListUpdateChannels(ListUpdateChannelsRequest) returns (UpdateChannels);
 
   // Power reboots or powers off a few seconds after answering.
   rpc Power(PowerRequest) returns (PowerResponse);
@@ -214,10 +219,31 @@ message RunUpdateRequest {
 }
 
 message SetUpdateChannelRequest {
-  // latest, master, or a version tag (v0.4.2). Going back to an older
-  // version than the one running is refused: Silo's database may already be
-  // newer than it understands.
+  // latest, master, a version tag (v0.4.2) or a commit (master-<sha>). Going
+  // back to an image older than the one running is refused: it may carry
+  // fixed security holes, and Silo's database may already be newer than it
+  // understands.
   string channel = 1;
+}
+
+message ListUpdateChannelsRequest {}
+
+message UpdateChannels {
+  // latest and master first, then release versions newest first.
+  repeated UpdateChannel channels = 1;
+}
+
+message UpdateChannel {
+  // The tag: latest, master or vX.Y.Z.
+  string tag = 1;
+  // The image's version label and build time (RFC 3339), when the registry
+  // was asked about it (latest and master).
+  string version = 2;
+  string created = 3;
+  // The image is older than the one running, so the machine may not move to
+  // it; reason says why in words.
+  bool older = 4;
+  string reason = 5;
 }
 
 message SetUpdatePolicyRequest {

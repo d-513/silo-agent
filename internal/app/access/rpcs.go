@@ -230,6 +230,7 @@ var RPCs = map[string]RPCNeed{
 	"RunSiloOSUpdate":          InstanceAdmin,
 	"SetSiloOSUpdatePolicy":    InstanceAdmin,
 	"SetSiloOSUpdateChannel":   InstanceAdmin,
+	"ListSiloOSUpdateChannels": InstanceAdmin,
 	"SiloOSPower":              InstanceAdmin,
 	"ReadSiloOSLogs":           InstanceAdmin,
 	"RotateEgressCA":           InstanceAdmin,

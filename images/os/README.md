@@ -71,8 +71,19 @@ between tags of the repository the image names in `/usr/lib/siloos/release`).
 The OS and Silo are one release: a `silo-os` image runs the `silo` and
 `silo-caddy` of its own tag (`master-<sha>` or `vX.Y.Z`), never a moving one,
 just as a control plane runs the Bot images of its own commit. A local build
-runs the nightly's (`silo:master`). Moving back to an older version is refused
-(the database may already be newer than it understands); roll back instead.
+runs the nightly's (`silo:master`).
+
+**Never backwards.** Admin → SiloOS → Updates → Channel lists what the
+registry has (`latest`, `master`, and release versions not older than the one
+running; siloosd asks with `skopeo`, using bootc's own `auth.json`), and a move
+to an image older than the one running is refused, whatever its tag is
+called: a lower version label, or, between builds of this repository, an
+image built before the running one (which is what orders `master-<sha>`
+builds, and keeps a machine on a new `master` build from moving to a `latest`
+that is behind it). An old image may carry security holes since fixed, and
+the database may already be newer than it understands. To go back on purpose,
+roll back to the previous image. A local build is no release, so any channel
+takes it back to the published ones.
 
 ## Build
 
@@ -267,8 +278,9 @@ on purpose, and must stay that way:
   list of sources. There is no generic command, file write or package
   install, and no switch to an image the caller names (that would boot any
   image: root code). A channel is only ever a tag (`latest`, `master`,
-  `vX.Y.Z`) of the repository the running image itself names
-  (`/usr/lib/siloos/release`).
+  `vX.Y.Z`, `master-<sha>`) of the repository the running image itself names
+  (`/usr/lib/siloos/release`), and never one whose image is older than the
+  running one (§ Channels): no going back to a version with known holes.
 - **Who may call.** The socket's folder is `root:silo 0750` and only the
   control plane's container binds it; siloosd also checks the caller's uid
   (`SO_PEERCRED`: root or `silo`). In the control plane only instance admins'
@@ -299,7 +311,8 @@ sudo bootc rollback        # back to the previous image
 ```
 
 Updates follow the machine's channel (§ Channels). Admin → SiloOS → Updates
-moves it between `latest`, `master` and the version it runs; `bootc switch`
+moves it between `latest`, `master` and the release versions the registry has,
+never to an older image; `bootc switch`
 from a shell can point it anywhere, which on purpose the console cannot.
 
 ## Not done yet

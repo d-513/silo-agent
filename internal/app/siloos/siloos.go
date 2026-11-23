@@ -154,6 +154,10 @@ func (s *Service) SetSiloOSUpdateChannel(ctx context.Context, req *connect.Reque
 	return call(ctx, s, req, silov1connect.SiloOSDClient.SetUpdateChannel)
 }
 
+func (s *Service) ListSiloOSUpdateChannels(ctx context.Context, req *connect.Request[v1.ListUpdateChannelsRequest]) (*connect.Response[v1.UpdateChannels], error) {
+	return call(ctx, s, req, silov1connect.SiloOSDClient.ListUpdateChannels)
+}
+
 func (s *Service) SiloOSPower(ctx context.Context, req *connect.Request[v1.PowerRequest]) (*connect.Response[v1.PowerResponse], error) {
 	return call(ctx, s, req, silov1connect.SiloOSDClient.Power)
 }

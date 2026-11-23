@@ -720,6 +720,9 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     func `setSiloOsupdateChannel`(request: Silo_V1_SetUpdateChannelRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Updates>
 
     @available(iOS 13, *)
+    func `listSiloOsupdateChannels`(request: Silo_V1_ListUpdateChannelsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_UpdateChannels>
+
+    @available(iOS 13, *)
     func `siloOspower`(request: Silo_V1_PowerRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_PowerResponse>
 
     @available(iOS 13, *)
@@ -1885,6 +1888,11 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `listSiloOsupdateChannels`(request: Silo_V1_ListUpdateChannelsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_UpdateChannels> {
+        return await self.client.unary(path: "/silo.v1.UI/ListSiloOSUpdateChannels", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `siloOspower`(request: Silo_V1_PowerRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_PowerResponse> {
         return await self.client.unary(path: "/silo.v1.UI/SiloOSPower", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -2339,6 +2347,7 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let runSiloOsupdate = Connect.MethodSpec(name: "RunSiloOSUpdate", service: "silo.v1.UI", type: .unary)
             public static let setSiloOsupdatePolicy = Connect.MethodSpec(name: "SetSiloOSUpdatePolicy", service: "silo.v1.UI", type: .unary)
             public static let setSiloOsupdateChannel = Connect.MethodSpec(name: "SetSiloOSUpdateChannel", service: "silo.v1.UI", type: .unary)
+            public static let listSiloOsupdateChannels = Connect.MethodSpec(name: "ListSiloOSUpdateChannels", service: "silo.v1.UI", type: .unary)
             public static let siloOspower = Connect.MethodSpec(name: "SiloOSPower", service: "silo.v1.UI", type: .unary)
             public static let readSiloOslogs = Connect.MethodSpec(name: "ReadSiloOSLogs", service: "silo.v1.UI", type: .unary)
             public static let listConnectors = Connect.MethodSpec(name: "ListConnectors", service: "silo.v1.UI", type: .unary)

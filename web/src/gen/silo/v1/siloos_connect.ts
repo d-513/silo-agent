@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ApplyConnectionRequest, ConfirmNetworkRequest, GetNetworkRequest, GetSystemRequest, GetUpdatesRequest, Network, PowerRequest, PowerResponse, ReadLogsRequest, ReadLogsResponse, RollBackNetworkRequest, RunUpdateRequest, SetHostnameRequest, SetTimeRequest, SetUpdateChannelRequest, SetUpdatePolicyRequest, SystemInfo, Updates } from "./siloos_pb.js";
+import { ApplyConnectionRequest, ConfirmNetworkRequest, GetNetworkRequest, GetSystemRequest, GetUpdatesRequest, ListUpdateChannelsRequest, Network, PowerRequest, PowerResponse, ReadLogsRequest, ReadLogsResponse, RollBackNetworkRequest, RunUpdateRequest, SetHostnameRequest, SetTimeRequest, SetUpdateChannelRequest, SetUpdatePolicyRequest, SystemInfo, UpdateChannels, Updates } from "./siloos_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -129,7 +129,8 @@ export const SiloOSD = {
      * SetUpdateChannel moves the machine to another channel of the SiloOS
      * repository it was built for (/usr/lib/siloos/release): latest, master or
      * a version tag, never an image the caller names. It downloads the new
-     * image as a job (action "switch"), used at the next boot.
+     * image as a job (action "switch"), used at the next boot. A move to an
+     * image older than the one running is refused (see UpdateChannel.older).
      *
      * @generated from rpc silo.v1.SiloOSD.SetUpdateChannel
      */
@@ -137,6 +138,19 @@ export const SiloOSD = {
       name: "SetUpdateChannel",
       I: SetUpdateChannelRequest,
       O: Updates,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListUpdateChannels asks the registry which tags of that repository the
+     * machine may move to: latest, master and the release versions not older
+     * than the one running.
+     *
+     * @generated from rpc silo.v1.SiloOSD.ListUpdateChannels
+     */
+    listUpdateChannels: {
+      name: "ListUpdateChannels",
+      I: ListUpdateChannelsRequest,
+      O: UpdateChannels,
       kind: MethodKind.Unary,
     },
     /**

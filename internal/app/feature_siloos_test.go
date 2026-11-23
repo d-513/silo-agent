@@ -42,7 +42,21 @@ func (r *osRun) Run(_ context.Context, name string, args ...string) ([]byte, err
 	case strings.HasPrefix(line, "timedatectl show"):
 		return []byte("Timezone=UTC\nNTP=yes\nNTPSynchronized=yes\n"), nil
 	case line == "bootc status --format=json":
-		return []byte(`{"status":{"booted":{"image":{"image":{"image":"ghcr.io/d-513/silo-os:v1"},"version":"v1","imageDigest":"sha256:a"}}}}`), nil
+		return []byte(`{"status":{"booted":{"image":{"image":{"image":"ghcr.io/d-513/silo-os:v1.0.0","transport":"registry"},"version":"v1.0.0","timestamp":"2026-11-01T00:00:00Z","imageDigest":"sha256:a"}}}}`), nil
+	case line == "skopeo list-tags docker://ghcr.io/d-513/silo-os":
+		return []byte(`{"Tags":["v0.9.0","v1.0.0","v1.1.0","latest","master"]}`), nil
+	case strings.HasPrefix(line, "skopeo inspect --no-tags docker://ghcr.io/d-513/silo-os:"):
+		tag := strings.TrimPrefix(line, "skopeo inspect --no-tags docker://ghcr.io/d-513/silo-os:")
+		version, built := map[string]string{"latest": "v1.1.0", "master": "master-abc1234"}[tag], "2026-11-20T00:00:00Z"
+		if version == "" {
+			version = tag
+		}
+		if tag == "v0.9.0" {
+			built = "2026-10-01T00:00:00Z"
+		}
+		return []byte(`{"Created":"` + built + `","Labels":{"org.opencontainers.image.version":"` + version + `"}}`), nil
+	case strings.HasPrefix(line, "bootc switch "):
+		return nil, nil
 	}
 	return nil, errors.New("unscripted: " + line)
 }
@@ -76,7 +90,7 @@ func siloOSD(t *testing.T, run *osRun) string {
 	if err := os.MkdirAll(filepath.Join(root, "usr/lib/siloos"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "usr/lib/siloos/release"), []byte("SILOOS_VERSION=v1\nSILOOS_REPOSITORY=ghcr.io/d-513/silo-os\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "usr/lib/siloos/release"), []byte("SILOOS_VERSION=v1.0.0\nSILOOS_REPOSITORY=ghcr.io/d-513/silo-os\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	srv := siloosd.New(siloosd.Config{Run: run, StateDir: t.TempDir(), Root: root, After: func(_ time.Duration, fn func()) { fn() }})
@@ -106,7 +120,7 @@ func TestSiloOSIsTheAdminsOnly(t *testing.T) {
 	h := apptest.New(t, apptest.WithYAML("siloos:\n  socket: "+sock+"\n"))
 
 	st, err := h.Client.GetSiloOS(h.Ctx(), connect.NewRequest(&v1.GetSiloOSRequest{}))
-	if err != nil || !st.Msg.Available || st.Msg.Error != "" || st.Msg.System.GetHostname() != "silo-box" || st.Msg.System.GetImageVersion() != "v1" {
+	if err != nil || !st.Msg.Available || st.Msg.Error != "" || st.Msg.System.GetHostname() != "silo-box" || st.Msg.System.GetImageVersion() != "v1.0.0" {
 		t.Fatalf("GetSiloOS = %v, %v", st.Msg, err)
 	}
 	if run.ran("bootc status --format=json") {
@@ -135,6 +149,40 @@ func TestSiloOSIsTheAdminsOnly(t *testing.T) {
 	}
 	if _, err := h.Client.SiloOSPower(h.Ctx(), connect.NewRequest(&v1.PowerRequest{Action: "reboot"})); err != nil || !run.ran("systemctl reboot") {
 		t.Errorf("the admin's reboot: %v", err)
+	}
+}
+
+// An admin moves the machine between the channels the registry lists, never
+// back to an older image; a user does not see them.
+func TestSiloOSChannelsMoveOnlyForward(t *testing.T) {
+	run := &osRun{}
+	sock := siloOSD(t, run)
+	h := apptest.New(t, apptest.WithYAML("siloos:\n  socket: "+sock+"\n"))
+
+	res, err := h.Client.ListSiloOSUpdateChannels(h.Ctx(), connect.NewRequest(&v1.ListUpdateChannelsRequest{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tags []string
+	for _, c := range res.Msg.Channels {
+		tags = append(tags, c.Tag)
+	}
+	if strings.Join(tags, " ") != "latest master v1.1.0 v1.0.0" {
+		t.Errorf("channels = %v", tags)
+	}
+	if _, err := h.Client.SetSiloOSUpdateChannel(h.Ctx(), connect.NewRequest(&v1.SetUpdateChannelRequest{Channel: "v0.9.0"})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Errorf("an older version: %v", err)
+	}
+	if run.ran("bootc switch ghcr.io/d-513/silo-os:v0.9.0") {
+		t.Fatal("moved to an older version")
+	}
+	if _, err := h.Client.SetSiloOSUpdateChannel(h.Ctx(), connect.NewRequest(&v1.SetUpdateChannelRequest{Channel: "v1.1.0"})); err != nil {
+		t.Fatal(err)
+	}
+
+	user, _, _ := h.Person("someone@test.local")
+	if _, err := user.ListSiloOSUpdateChannels(h.Ctx(), connect.NewRequest(&v1.ListUpdateChannelsRequest{})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Errorf("a user listed the channels: %v", err)
 	}
 }
 

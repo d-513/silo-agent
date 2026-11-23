@@ -85,20 +85,37 @@ export function clock(iso: string, now: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${time}`;
 }
 
-// The channels a machine can be moved to: the two moving tags, and the
-// version it runs when that is a release (staying put).
-export type ChannelChoice = { value: string; label: string };
+// The channels a machine can be moved to. With the registry's list
+// (ListSiloOSUpdateChannels): latest, master and the release versions not
+// older than the one running, each image older than it shown but not
+// choosable. Without it (still asking, or the registry did not answer): the
+// two moving tags and the version it runs when that is a release.
+export type ChannelChoice = { value: string; label: string; hint?: string; disabled?: boolean };
+
+type Listed = { tag: string; version: string; older: boolean; reason: string };
+
+const release = /^v\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/;
 
 // channelChoices are the choices for a machine on channel/tag running
 // version; current is the one it follows now ("" when none of them).
-export function channelChoices(channel: string, tag: string, version: string): { choices: ChannelChoice[]; current: string } {
-  const choices: ChannelChoice[] = [
-    { value: "latest", label: "latest" },
-    { value: "master", label: "master" },
-  ];
-  const release = /^v\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/;
-  const pin = channel === "pinned" && release.test(tag) ? tag : release.test(version) ? version : "";
-  if (pin) choices.push({ value: pin, label: pin });
+export function channelChoices(channel: string, tag: string, version: string, listed?: Listed[]): { choices: ChannelChoice[]; current: string } {
   const current = channel === "latest" || channel === "master" ? channel : channel === "pinned" ? tag : "";
+  let choices: ChannelChoice[];
+  if (listed && listed.length) {
+    choices = listed.map((c) => ({
+      value: c.tag,
+      label: c.version && c.version !== c.tag ? `${c.tag} · ${c.version}` : c.tag,
+      hint: c.older ? c.reason : undefined,
+      disabled: c.older && c.tag !== current,
+    }));
+  } else {
+    choices = [
+      { value: "latest", label: "latest" },
+      { value: "master", label: "master" },
+    ];
+    const pin = channel === "pinned" && release.test(tag) ? tag : release.test(version) ? version : "";
+    if (pin) choices.push({ value: pin, label: pin });
+  }
+  if (current && !choices.some((c) => c.value === current)) choices.push({ value: current, label: current });
   return { choices, current };
 }

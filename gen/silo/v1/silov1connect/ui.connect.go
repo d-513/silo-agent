@@ -436,6 +436,9 @@ const (
 	// UISetSiloOSUpdateChannelProcedure is the fully-qualified name of the UI's SetSiloOSUpdateChannel
 	// RPC.
 	UISetSiloOSUpdateChannelProcedure = "/silo.v1.UI/SetSiloOSUpdateChannel"
+	// UIListSiloOSUpdateChannelsProcedure is the fully-qualified name of the UI's
+	// ListSiloOSUpdateChannels RPC.
+	UIListSiloOSUpdateChannelsProcedure = "/silo.v1.UI/ListSiloOSUpdateChannels"
 	// UISiloOSPowerProcedure is the fully-qualified name of the UI's SiloOSPower RPC.
 	UISiloOSPowerProcedure = "/silo.v1.UI/SiloOSPower"
 	// UIReadSiloOSLogsProcedure is the fully-qualified name of the UI's ReadSiloOSLogs RPC.
@@ -854,6 +857,7 @@ type UIClient interface {
 	RunSiloOSUpdate(context.Context, *connect.Request[v1.RunUpdateRequest]) (*connect.Response[v1.Updates], error)
 	SetSiloOSUpdatePolicy(context.Context, *connect.Request[v1.SetUpdatePolicyRequest]) (*connect.Response[v1.Updates], error)
 	SetSiloOSUpdateChannel(context.Context, *connect.Request[v1.SetUpdateChannelRequest]) (*connect.Response[v1.Updates], error)
+	ListSiloOSUpdateChannels(context.Context, *connect.Request[v1.ListUpdateChannelsRequest]) (*connect.Response[v1.UpdateChannels], error)
 	SiloOSPower(context.Context, *connect.Request[v1.PowerRequest]) (*connect.Response[v1.PowerResponse], error)
 	ReadSiloOSLogs(context.Context, *connect.Request[v1.ReadLogsRequest]) (*connect.Response[v1.ReadLogsResponse], error)
 	ListConnectors(context.Context, *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error)
@@ -2119,6 +2123,12 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("SetSiloOSUpdateChannel")),
 			connect.WithClientOptions(opts...),
 		),
+		listSiloOSUpdateChannels: connect.NewClient[v1.ListUpdateChannelsRequest, v1.UpdateChannels](
+			httpClient,
+			baseURL+UIListSiloOSUpdateChannelsProcedure,
+			connect.WithSchema(uIMethods.ByName("ListSiloOSUpdateChannels")),
+			connect.WithClientOptions(opts...),
+		),
 		siloOSPower: connect.NewClient[v1.PowerRequest, v1.PowerResponse](
 			httpClient,
 			baseURL+UISiloOSPowerProcedure,
@@ -2628,6 +2638,7 @@ type uIClient struct {
 	runSiloOSUpdate          *connect.Client[v1.RunUpdateRequest, v1.Updates]
 	setSiloOSUpdatePolicy    *connect.Client[v1.SetUpdatePolicyRequest, v1.Updates]
 	setSiloOSUpdateChannel   *connect.Client[v1.SetUpdateChannelRequest, v1.Updates]
+	listSiloOSUpdateChannels *connect.Client[v1.ListUpdateChannelsRequest, v1.UpdateChannels]
 	siloOSPower              *connect.Client[v1.PowerRequest, v1.PowerResponse]
 	readSiloOSLogs           *connect.Client[v1.ReadLogsRequest, v1.ReadLogsResponse]
 	listConnectors           *connect.Client[v1.ListConnectorsRequest, v1.ListConnectorsResponse]
@@ -3671,6 +3682,11 @@ func (c *uIClient) SetSiloOSUpdateChannel(ctx context.Context, req *connect.Requ
 	return c.setSiloOSUpdateChannel.CallUnary(ctx, req)
 }
 
+// ListSiloOSUpdateChannels calls silo.v1.UI.ListSiloOSUpdateChannels.
+func (c *uIClient) ListSiloOSUpdateChannels(ctx context.Context, req *connect.Request[v1.ListUpdateChannelsRequest]) (*connect.Response[v1.UpdateChannels], error) {
+	return c.listSiloOSUpdateChannels.CallUnary(ctx, req)
+}
+
 // SiloOSPower calls silo.v1.UI.SiloOSPower.
 func (c *uIClient) SiloOSPower(ctx context.Context, req *connect.Request[v1.PowerRequest]) (*connect.Response[v1.PowerResponse], error) {
 	return c.siloOSPower.CallUnary(ctx, req)
@@ -4240,6 +4256,7 @@ type UIHandler interface {
 	RunSiloOSUpdate(context.Context, *connect.Request[v1.RunUpdateRequest]) (*connect.Response[v1.Updates], error)
 	SetSiloOSUpdatePolicy(context.Context, *connect.Request[v1.SetUpdatePolicyRequest]) (*connect.Response[v1.Updates], error)
 	SetSiloOSUpdateChannel(context.Context, *connect.Request[v1.SetUpdateChannelRequest]) (*connect.Response[v1.Updates], error)
+	ListSiloOSUpdateChannels(context.Context, *connect.Request[v1.ListUpdateChannelsRequest]) (*connect.Response[v1.UpdateChannels], error)
 	SiloOSPower(context.Context, *connect.Request[v1.PowerRequest]) (*connect.Response[v1.PowerResponse], error)
 	ReadSiloOSLogs(context.Context, *connect.Request[v1.ReadLogsRequest]) (*connect.Response[v1.ReadLogsResponse], error)
 	ListConnectors(context.Context, *connect.Request[v1.ListConnectorsRequest]) (*connect.Response[v1.ListConnectorsResponse], error)
@@ -5501,6 +5518,12 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("SetSiloOSUpdateChannel")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIListSiloOSUpdateChannelsHandler := connect.NewUnaryHandler(
+		UIListSiloOSUpdateChannelsProcedure,
+		svc.ListSiloOSUpdateChannels,
+		connect.WithSchema(uIMethods.ByName("ListSiloOSUpdateChannels")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uISiloOSPowerHandler := connect.NewUnaryHandler(
 		UISiloOSPowerProcedure,
 		svc.SiloOSPower,
@@ -6205,6 +6228,8 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uISetSiloOSUpdatePolicyHandler.ServeHTTP(w, r)
 		case UISetSiloOSUpdateChannelProcedure:
 			uISetSiloOSUpdateChannelHandler.ServeHTTP(w, r)
+		case UIListSiloOSUpdateChannelsProcedure:
+			uIListSiloOSUpdateChannelsHandler.ServeHTTP(w, r)
 		case UISiloOSPowerProcedure:
 			uISiloOSPowerHandler.ServeHTTP(w, r)
 		case UIReadSiloOSLogsProcedure:
@@ -7106,6 +7131,10 @@ func (UnimplementedUIHandler) SetSiloOSUpdatePolicy(context.Context, *connect.Re
 
 func (UnimplementedUIHandler) SetSiloOSUpdateChannel(context.Context, *connect.Request[v1.SetUpdateChannelRequest]) (*connect.Response[v1.Updates], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SetSiloOSUpdateChannel is not implemented"))
+}
+
+func (UnimplementedUIHandler) ListSiloOSUpdateChannels(context.Context, *connect.Request[v1.ListUpdateChannelsRequest]) (*connect.Response[v1.UpdateChannels], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.ListSiloOSUpdateChannels is not implemented"))
 }
 
 func (UnimplementedUIHandler) SiloOSPower(context.Context, *connect.Request[v1.PowerRequest]) (*connect.Response[v1.PowerResponse], error) {

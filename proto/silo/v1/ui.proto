@@ -338,6 +338,7 @@ service UI {
   rpc RunSiloOSUpdate(RunUpdateRequest) returns (Updates);
   rpc SetSiloOSUpdatePolicy(SetUpdatePolicyRequest) returns (Updates);
   rpc SetSiloOSUpdateChannel(SetUpdateChannelRequest) returns (Updates);
+  rpc ListSiloOSUpdateChannels(ListUpdateChannelsRequest) returns (UpdateChannels);
   rpc SiloOSPower(PowerRequest) returns (PowerResponse);
   rpc ReadSiloOSLogs(ReadLogsRequest) returns (ReadLogsResponse);
 

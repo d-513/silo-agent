@@ -169,10 +169,13 @@ export function UpdatesPanel() {
 }
 
 // ChannelRow says what the machine follows and moves it to another channel
-// of its repository: the new image is downloaded now and used at the next
-// start, like any update.
+// of its repository: latest, master or a release version the registry has,
+// never an image older than the one running (siloosd refuses it; the list
+// shows why). The new image is downloaded now and used at the next start,
+// like any update.
 function ChannelRow({ u, running, onMove }: { u: Updates; running: boolean; onMove: (channel: string) => Promise<void> }) {
-  const { choices, current } = channelChoices(u.channel, u.tag, u.version);
+  const listed = useQuery(UI.method.listSiloOSUpdateChannels, {}, { enabled: !!u.repository, staleTime: 5 * 60_000, refetchInterval: false });
+  const { choices, current } = channelChoices(u.channel, u.tag, u.version, listed.data?.channels);
   const [pick, setPick] = useState(current);
   const words: Record<string, string> = {
     local: t("A local build: it follows no channel, so nothing updates it. Move it to one to get updates."),
@@ -182,11 +185,25 @@ function ChannelRow({ u, running, onMove }: { u: Updates; running: boolean; onMo
     custom: t("An image from another repository: {{image}}", { image: u.booted?.image ?? "" }),
   };
   if (!u.repository) return null;
+  const picked = choices.find((c) => c.value === pick);
+  const hint = [words[u.channel] ?? u.channel, t("Moving to an image older than the one running is not allowed: go back with Previous version instead.")];
   return (
-    <SettingRow label={t("Channel")} hint={words[u.channel] ?? u.channel}>
+    <SettingRow
+      label={t("Channel")}
+      hint={hint.join(" ")}
+      error={listed.error ? t("The registry did not list its versions: {{error}}", { error: fail(listed.error) }) : undefined}
+    >
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <ChipRadio size="sm" label={t("Channel")} value={pick} onChange={setPick} options={choices.map((c) => ({ value: c.value, label: <span className="font-mono">{c.label}</span> }))} />
-        {pick && pick !== current ? (
+        <div className="w-[240px]">
+          <Select
+            ariaLabel={t("Channel")}
+            value={pick}
+            onChange={setPick}
+            placeholder={listed.isLoading ? t("Asking the registry…") : t("Pick a channel")}
+            options={choices.map((c) => ({ value: c.value, label: c.label, hint: c.hint, disabled: c.disabled }))}
+          />
+        </div>
+        {pick && pick !== current && !picked?.disabled ? (
           <ArmedButton size="sm" kind="primary" armedLabel={t("Click again to move")} disabled={running} onConfirm={() => void onMove(pick)}>
             {t("Move to {{channel}}", { channel: pick })}
           </ArmedButton>

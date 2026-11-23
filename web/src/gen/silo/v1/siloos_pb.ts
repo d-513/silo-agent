@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file silo/v1/siloos.proto.
  */
 export const file_silo_v1_siloos: GenFile = /*@__PURE__*/
-  fileDesc("ChRzaWxvL3YxL3NpbG9vcy5wcm90bxIHc2lsby52MSISChBHZXRTeXN0ZW1SZXF1ZXN0IsQCCgpTeXN0ZW1JbmZvEhMKC2FwaV92ZXJzaW9uGAEgASgFEhAKCGhvc3RuYW1lGAIgASgJEg8KB29zX25hbWUYAyABKAkSDQoFaW1hZ2UYBCABKAkSFQoNaW1hZ2VfdmVyc2lvbhgFIAEoCRIOCgZrZXJuZWwYBiABKAkSFgoOdXB0aW1lX3NlY29uZHMYByABKAMSDAoEY3B1cxgIIAEoBRINCgVsb2FkMRgJIAEoARIUCgxtZW1vcnlfdG90YWwYCiABKAMSGAoQbWVtb3J5X2F2YWlsYWJsZRgLIAEoAxIiCgVkaXNrcxgMIAMoCzITLnNpbG8udjEuU3lzdGVtRGlzaxIRCgl0aW1lX3pvbmUYDSABKAkSCwoDbnRwGA4gASgIEhIKCm50cF9zeW5jZWQYDyABKAgSCwoDbm93GBAgASgJIkYKClN5c3RlbURpc2sSDQoFbGFiZWwYASABKAkSDAoEcGF0aBgCIAEoCRINCgV0b3RhbBgDIAEoAxIMCgRmcmVlGAQgASgDIiYKElNldEhvc3RuYW1lUmVxdWVzdBIQCghob3N0bmFtZRgBIAEoCSI9Cg5TZXRUaW1lUmVxdWVzdBIRCgl0aW1lX3pvbmUYASABKAkSEAoDbnRwGAIgASgISACIAQFCBgoEX250cCITChFHZXROZXR3b3JrUmVxdWVzdCJYCgdOZXR3b3JrEiMKB2RldmljZXMYASADKAsyEi5zaWxvLnYxLk5ldERldmljZRIoCgdwZW5kaW5nGAIgASgLMhcuc2lsby52MS5QZW5kaW5nTmV0d29yayKgAQoJTmV0RGV2aWNlEgwKBG5hbWUYASABKAkSDAoEdHlwZRgCIAEoCRINCgVzdGF0ZRgDIAEoCRILCgNtYWMYBCABKAkSEQoJYWRkcmVzc2VzGAUgAygJEg8KB2dhdGV3YXkYBiABKAkSCwoDZG5zGAcgAygJEioKCmNvbm5lY3Rpb24YCCABKAsyFi5zaWxvLnYxLk5ldENvbm5lY3Rpb24ihQEKDU5ldENvbm5lY3Rpb24SDAoEdXVpZBgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBm1ldGhvZBgDIAEoCRIRCglhZGRyZXNzZXMYBCADKAkSDwoHZ2F0ZXdheRgFIAEoCRILCgNkbnMYBiADKAkSFwoPaWdub3JlX2F1dG9fZG5zGAcgASgIIjgKDlBlbmRpbmdOZXR3b3JrEhIKCmV4cGlyZXNfYXQYASABKAkSEgoKY29ubmVjdGlvbhgCIAEoCSKYAQoWQXBwbHlDb25uZWN0aW9uUmVxdWVzdBIMCgR1dWlkGAEgASgJEg4KBm1ldGhvZBgCIAEoCRIRCglhZGRyZXNzZXMYAyADKAkSDwoHZ2F0ZXdheRgEIAEoCRILCgNkbnMYBSADKAkSFwoPaWdub3JlX2F1dG9fZG5zGAYgASgIEhYKDmNvbmZpcm1fd2l0aGluGAcgASgFIhcKFUNvbmZpcm1OZXR3b3JrUmVxdWVzdCIYChZSb2xsQmFja05ldHdvcmtSZXF1ZXN0IhMKEUdldFVwZGF0ZXNSZXF1ZXN0ItcCCgdVcGRhdGVzEiIKBmJvb3RlZBgBIAEoCzISLnNpbG8udjEuQm9vdEltYWdlEiIKBnN0YWdlZBgCIAEoCzISLnNpbG8udjEuQm9vdEltYWdlEiQKCHJvbGxiYWNrGAMgASgLMhIuc2lsby52MS5Cb290SW1hZ2USJQoJYXZhaWxhYmxlGAQgASgLMhIuc2lsby52MS5Cb290SW1hZ2USHwoDam9iGAUgASgLMhIuc2lsby52MS5VcGRhdGVKb2ISJQoGcG9saWN5GAYgASgLMhUuc2lsby52MS5VcGRhdGVQb2xpY3kSFwoPcm9sbGJhY2tfcXVldWVkGAcgASgIEhMKC25leHRfcnVuX2F0GAggASgJEg8KB2NoYW5uZWwYCSABKAkSCwoDdGFnGAogASgJEhIKCnJlcG9zaXRvcnkYCyABKAkSDwoHdmVyc2lvbhgMIAEoCSJOCglCb290SW1hZ2USDQoFaW1hZ2UYASABKAkSDwoHdmVyc2lvbhgCIAEoCRIOCgZkaWdlc3QYAyABKAkSEQoJdGltZXN0YW1wGAQgASgJIoQBCglVcGRhdGVKb2ISDgoGYWN0aW9uGAEgASgJEg8KB3J1bm5pbmcYAiABKAgSEgoKc3RhcnRlZF9hdBgDIAEoCRIQCghlbmRlZF9hdBgEIAEoCRINCgVlcnJvchgFIAEoCRIOCgZvdXRwdXQYBiABKAkSEQoJc2NoZWR1bGVkGAcgASgIIioKDFVwZGF0ZVBvbGljeRIMCgRtb2RlGAEgASgJEgwKBGhvdXIYAiABKAUiIgoQUnVuVXBkYXRlUmVxdWVzdBIOCgZhY3Rpb24YASABKAkiKgoXU2V0VXBkYXRlQ2hhbm5lbFJlcXVlc3QSDwoHY2hhbm5lbBgBIAEoCSI/ChZTZXRVcGRhdGVQb2xpY3lSZXF1ZXN0EiUKBnBvbGljeRgBIAEoCzIVLnNpbG8udjEuVXBkYXRlUG9saWN5Ih4KDFBvd2VyUmVxdWVzdBIOCgZhY3Rpb24YASABKAkiGwoNUG93ZXJSZXNwb25zZRIKCgJhdBgBIAEoCSIwCg9SZWFkTG9nc1JlcXVlc3QSDgoGc291cmNlGAEgASgJEg0KBWxpbmVzGAIgASgFIjMKEFJlYWRMb2dzUmVzcG9uc2USHwoFbGluZXMYASADKAsyEC5zaWxvLnYxLkxvZ0xpbmUiSAoHTG9nTGluZRIMCgR0aW1lGAEgASgJEgwKBHVuaXQYAiABKAkSEAoIcHJpb3JpdHkYAyABKAUSDwoHbWVzc2FnZRgEIAEoCSISChBHZXRTaWxvT1NSZXF1ZXN0InoKDFNpbG9PU1N0YXR1cxIRCglhdmFpbGFibGUYASABKAgSDQoFZXJyb3IYAiABKAkSIwoGc3lzdGVtGAMgASgLMhMuc2lsby52MS5TeXN0ZW1JbmZvEiMKBXByb3h5GAQgASgLMhQuc2lsby52MS5Qcm94eVN0YXR1cyLKAQoLUHJveHlTdGF0dXMSEgoKY29uZmlndXJlZBgBIAEoCBINCgVzdGF0ZRgCIAEoCRINCgVlcnJvchgDIAEoCRIMCgRob3N0GAQgASgJEhQKDGNvbnRlbnRfaG9zdBgFIAEoCRIRCglzeW5jZWRfYXQYBiABKAkSDgoGaXNzdWVyGAcgASgJEhQKDGRuc19wcm92aWRlchgIIAEoCRINCgVsb2NhbBgJIAMoCRIMCgRub3RlGAogASgJEg8KB3Jvb3RfY2EYCyABKAkyyQYKB1NpbG9PU0QSOwoJR2V0U3lzdGVtEhkuc2lsby52MS5HZXRTeXN0ZW1SZXF1ZXN0GhMuc2lsby52MS5TeXN0ZW1JbmZvEj8KC1NldEhvc3RuYW1lEhsuc2lsby52MS5TZXRIb3N0bmFtZVJlcXVlc3QaEy5zaWxvLnYxLlN5c3RlbUluZm8SNwoHU2V0VGltZRIXLnNpbG8udjEuU2V0VGltZVJlcXVlc3QaEy5zaWxvLnYxLlN5c3RlbUluZm8SOgoKR2V0TmV0d29yaxIaLnNpbG8udjEuR2V0TmV0d29ya1JlcXVlc3QaEC5zaWxvLnYxLk5ldHdvcmsSRAoPQXBwbHlDb25uZWN0aW9uEh8uc2lsby52MS5BcHBseUNvbm5lY3Rpb25SZXF1ZXN0GhAuc2lsby52MS5OZXR3b3JrEkIKDkNvbmZpcm1OZXR3b3JrEh4uc2lsby52MS5Db25maXJtTmV0d29ya1JlcXVlc3QaEC5zaWxvLnYxLk5ldHdvcmsSRAoPUm9sbEJhY2tOZXR3b3JrEh8uc2lsby52MS5Sb2xsQmFja05ldHdvcmtSZXF1ZXN0GhAuc2lsby52MS5OZXR3b3JrEjoKCkdldFVwZGF0ZXMSGi5zaWxvLnYxLkdldFVwZGF0ZXNSZXF1ZXN0GhAuc2lsby52MS5VcGRhdGVzEjgKCVJ1blVwZGF0ZRIZLnNpbG8udjEuUnVuVXBkYXRlUmVxdWVzdBoQLnNpbG8udjEuVXBkYXRlcxJECg9TZXRVcGRhdGVQb2xpY3kSHy5zaWxvLnYxLlNldFVwZGF0ZVBvbGljeVJlcXVlc3QaEC5zaWxvLnYxLlVwZGF0ZXMSRgoQU2V0VXBkYXRlQ2hhbm5lbBIgLnNpbG8udjEuU2V0VXBkYXRlQ2hhbm5lbFJlcXVlc3QaEC5zaWxvLnYxLlVwZGF0ZXMSNgoFUG93ZXISFS5zaWxvLnYxLlBvd2VyUmVxdWVzdBoWLnNpbG8udjEuUG93ZXJSZXNwb25zZRI/CghSZWFkTG9ncxIYLnNpbG8udjEuUmVhZExvZ3NSZXF1ZXN0Ghkuc2lsby52MS5SZWFkTG9nc1Jlc3BvbnNlQh9aHXNpbG8uYWdlbnQvZ2VuL3NpbG8vdjE7c2lsb3YxYgZwcm90bzM");
+  fileDesc("ChRzaWxvL3YxL3NpbG9vcy5wcm90bxIHc2lsby52MSISChBHZXRTeXN0ZW1SZXF1ZXN0IsQCCgpTeXN0ZW1JbmZvEhMKC2FwaV92ZXJzaW9uGAEgASgFEhAKCGhvc3RuYW1lGAIgASgJEg8KB29zX25hbWUYAyABKAkSDQoFaW1hZ2UYBCABKAkSFQoNaW1hZ2VfdmVyc2lvbhgFIAEoCRIOCgZrZXJuZWwYBiABKAkSFgoOdXB0aW1lX3NlY29uZHMYByABKAMSDAoEY3B1cxgIIAEoBRINCgVsb2FkMRgJIAEoARIUCgxtZW1vcnlfdG90YWwYCiABKAMSGAoQbWVtb3J5X2F2YWlsYWJsZRgLIAEoAxIiCgVkaXNrcxgMIAMoCzITLnNpbG8udjEuU3lzdGVtRGlzaxIRCgl0aW1lX3pvbmUYDSABKAkSCwoDbnRwGA4gASgIEhIKCm50cF9zeW5jZWQYDyABKAgSCwoDbm93GBAgASgJIkYKClN5c3RlbURpc2sSDQoFbGFiZWwYASABKAkSDAoEcGF0aBgCIAEoCRINCgV0b3RhbBgDIAEoAxIMCgRmcmVlGAQgASgDIiYKElNldEhvc3RuYW1lUmVxdWVzdBIQCghob3N0bmFtZRgBIAEoCSI9Cg5TZXRUaW1lUmVxdWVzdBIRCgl0aW1lX3pvbmUYASABKAkSEAoDbnRwGAIgASgISACIAQFCBgoEX250cCITChFHZXROZXR3b3JrUmVxdWVzdCJYCgdOZXR3b3JrEiMKB2RldmljZXMYASADKAsyEi5zaWxvLnYxLk5ldERldmljZRIoCgdwZW5kaW5nGAIgASgLMhcuc2lsby52MS5QZW5kaW5nTmV0d29yayKgAQoJTmV0RGV2aWNlEgwKBG5hbWUYASABKAkSDAoEdHlwZRgCIAEoCRINCgVzdGF0ZRgDIAEoCRILCgNtYWMYBCABKAkSEQoJYWRkcmVzc2VzGAUgAygJEg8KB2dhdGV3YXkYBiABKAkSCwoDZG5zGAcgAygJEioKCmNvbm5lY3Rpb24YCCABKAsyFi5zaWxvLnYxLk5ldENvbm5lY3Rpb24ihQEKDU5ldENvbm5lY3Rpb24SDAoEdXVpZBgBIAEoCRIMCgRuYW1lGAIgASgJEg4KBm1ldGhvZBgDIAEoCRIRCglhZGRyZXNzZXMYBCADKAkSDwoHZ2F0ZXdheRgFIAEoCRILCgNkbnMYBiADKAkSFwoPaWdub3JlX2F1dG9fZG5zGAcgASgIIjgKDlBlbmRpbmdOZXR3b3JrEhIKCmV4cGlyZXNfYXQYASABKAkSEgoKY29ubmVjdGlvbhgCIAEoCSKYAQoWQXBwbHlDb25uZWN0aW9uUmVxdWVzdBIMCgR1dWlkGAEgASgJEg4KBm1ldGhvZBgCIAEoCRIRCglhZGRyZXNzZXMYAyADKAkSDwoHZ2F0ZXdheRgEIAEoCRILCgNkbnMYBSADKAkSFwoPaWdub3JlX2F1dG9fZG5zGAYgASgIEhYKDmNvbmZpcm1fd2l0aGluGAcgASgFIhcKFUNvbmZpcm1OZXR3b3JrUmVxdWVzdCIYChZSb2xsQmFja05ldHdvcmtSZXF1ZXN0IhMKEUdldFVwZGF0ZXNSZXF1ZXN0ItcCCgdVcGRhdGVzEiIKBmJvb3RlZBgBIAEoCzISLnNpbG8udjEuQm9vdEltYWdlEiIKBnN0YWdlZBgCIAEoCzISLnNpbG8udjEuQm9vdEltYWdlEiQKCHJvbGxiYWNrGAMgASgLMhIuc2lsby52MS5Cb290SW1hZ2USJQoJYXZhaWxhYmxlGAQgASgLMhIuc2lsby52MS5Cb290SW1hZ2USHwoDam9iGAUgASgLMhIuc2lsby52MS5VcGRhdGVKb2ISJQoGcG9saWN5GAYgASgLMhUuc2lsby52MS5VcGRhdGVQb2xpY3kSFwoPcm9sbGJhY2tfcXVldWVkGAcgASgIEhMKC25leHRfcnVuX2F0GAggASgJEg8KB2NoYW5uZWwYCSABKAkSCwoDdGFnGAogASgJEhIKCnJlcG9zaXRvcnkYCyABKAkSDwoHdmVyc2lvbhgMIAEoCSJOCglCb290SW1hZ2USDQoFaW1hZ2UYASABKAkSDwoHdmVyc2lvbhgCIAEoCRIOCgZkaWdlc3QYAyABKAkSEQoJdGltZXN0YW1wGAQgASgJIoQBCglVcGRhdGVKb2ISDgoGYWN0aW9uGAEgASgJEg8KB3J1bm5pbmcYAiABKAgSEgoKc3RhcnRlZF9hdBgDIAEoCRIQCghlbmRlZF9hdBgEIAEoCRINCgVlcnJvchgFIAEoCRIOCgZvdXRwdXQYBiABKAkSEQoJc2NoZWR1bGVkGAcgASgIIioKDFVwZGF0ZVBvbGljeRIMCgRtb2RlGAEgASgJEgwKBGhvdXIYAiABKAUiIgoQUnVuVXBkYXRlUmVxdWVzdBIOCgZhY3Rpb24YASABKAkiKgoXU2V0VXBkYXRlQ2hhbm5lbFJlcXVlc3QSDwoHY2hhbm5lbBgBIAEoCSIbChlMaXN0VXBkYXRlQ2hhbm5lbHNSZXF1ZXN0IjoKDlVwZGF0ZUNoYW5uZWxzEigKCGNoYW5uZWxzGAEgAygLMhYuc2lsby52MS5VcGRhdGVDaGFubmVsIl0KDVVwZGF0ZUNoYW5uZWwSCwoDdGFnGAEgASgJEg8KB3ZlcnNpb24YAiABKAkSDwoHY3JlYXRlZBgDIAEoCRINCgVvbGRlchgEIAEoCBIOCgZyZWFzb24YBSABKAkiPwoWU2V0VXBkYXRlUG9saWN5UmVxdWVzdBIlCgZwb2xpY3kYASABKAsyFS5zaWxvLnYxLlVwZGF0ZVBvbGljeSIeCgxQb3dlclJlcXVlc3QSDgoGYWN0aW9uGAEgASgJIhsKDVBvd2VyUmVzcG9uc2USCgoCYXQYASABKAkiMAoPUmVhZExvZ3NSZXF1ZXN0Eg4KBnNvdXJjZRgBIAEoCRINCgVsaW5lcxgCIAEoBSIzChBSZWFkTG9nc1Jlc3BvbnNlEh8KBWxpbmVzGAEgAygLMhAuc2lsby52MS5Mb2dMaW5lIkgKB0xvZ0xpbmUSDAoEdGltZRgBIAEoCRIMCgR1bml0GAIgASgJEhAKCHByaW9yaXR5GAMgASgFEg8KB21lc3NhZ2UYBCABKAkiEgoQR2V0U2lsb09TUmVxdWVzdCJ6CgxTaWxvT1NTdGF0dXMSEQoJYXZhaWxhYmxlGAEgASgIEg0KBWVycm9yGAIgASgJEiMKBnN5c3RlbRgDIAEoCzITLnNpbG8udjEuU3lzdGVtSW5mbxIjCgVwcm94eRgEIAEoCzIULnNpbG8udjEuUHJveHlTdGF0dXMiygEKC1Byb3h5U3RhdHVzEhIKCmNvbmZpZ3VyZWQYASABKAgSDQoFc3RhdGUYAiABKAkSDQoFZXJyb3IYAyABKAkSDAoEaG9zdBgEIAEoCRIUCgxjb250ZW50X2hvc3QYBSABKAkSEQoJc3luY2VkX2F0GAYgASgJEg4KBmlzc3VlchgHIAEoCRIUCgxkbnNfcHJvdmlkZXIYCCABKAkSDQoFbG9jYWwYCSADKAkSDAoEbm90ZRgKIAEoCRIPCgdyb290X2NhGAsgASgJMpwHCgdTaWxvT1NEEjsKCUdldFN5c3RlbRIZLnNpbG8udjEuR2V0U3lzdGVtUmVxdWVzdBoTLnNpbG8udjEuU3lzdGVtSW5mbxI/CgtTZXRIb3N0bmFtZRIbLnNpbG8udjEuU2V0SG9zdG5hbWVSZXF1ZXN0GhMuc2lsby52MS5TeXN0ZW1JbmZvEjcKB1NldFRpbWUSFy5zaWxvLnYxLlNldFRpbWVSZXF1ZXN0GhMuc2lsby52MS5TeXN0ZW1JbmZvEjoKCkdldE5ldHdvcmsSGi5zaWxvLnYxLkdldE5ldHdvcmtSZXF1ZXN0GhAuc2lsby52MS5OZXR3b3JrEkQKD0FwcGx5Q29ubmVjdGlvbhIfLnNpbG8udjEuQXBwbHlDb25uZWN0aW9uUmVxdWVzdBoQLnNpbG8udjEuTmV0d29yaxJCCg5Db25maXJtTmV0d29yaxIeLnNpbG8udjEuQ29uZmlybU5ldHdvcmtSZXF1ZXN0GhAuc2lsby52MS5OZXR3b3JrEkQKD1JvbGxCYWNrTmV0d29yaxIfLnNpbG8udjEuUm9sbEJhY2tOZXR3b3JrUmVxdWVzdBoQLnNpbG8udjEuTmV0d29yaxI6CgpHZXRVcGRhdGVzEhouc2lsby52MS5HZXRVcGRhdGVzUmVxdWVzdBoQLnNpbG8udjEuVXBkYXRlcxI4CglSdW5VcGRhdGUSGS5zaWxvLnYxLlJ1blVwZGF0ZVJlcXVlc3QaEC5zaWxvLnYxLlVwZGF0ZXMSRAoPU2V0VXBkYXRlUG9saWN5Eh8uc2lsby52MS5TZXRVcGRhdGVQb2xpY3lSZXF1ZXN0GhAuc2lsby52MS5VcGRhdGVzEkYKEFNldFVwZGF0ZUNoYW5uZWwSIC5zaWxvLnYxLlNldFVwZGF0ZUNoYW5uZWxSZXF1ZXN0GhAuc2lsby52MS5VcGRhdGVzElEKEkxpc3RVcGRhdGVDaGFubmVscxIiLnNpbG8udjEuTGlzdFVwZGF0ZUNoYW5uZWxzUmVxdWVzdBoXLnNpbG8udjEuVXBkYXRlQ2hhbm5lbHMSNgoFUG93ZXISFS5zaWxvLnYxLlBvd2VyUmVxdWVzdBoWLnNpbG8udjEuUG93ZXJSZXNwb25zZRI/CghSZWFkTG9ncxIYLnNpbG8udjEuUmVhZExvZ3NSZXF1ZXN0Ghkuc2lsby52MS5SZWFkTG9nc1Jlc3BvbnNlQh9aHXNpbG8uYWdlbnQvZ2VuL3NpbG8vdjE7c2lsb3YxYgZwcm90bzM");
 
 /**
  * @generated from message silo.v1.GetSystemRequest
@@ -694,9 +694,10 @@ export const RunUpdateRequestSchema: GenMessage<RunUpdateRequest> = /*@__PURE__*
  */
 export type SetUpdateChannelRequest = Message<"silo.v1.SetUpdateChannelRequest"> & {
   /**
-   * latest, master, or a version tag (v0.4.2). Going back to an older
-   * version than the one running is refused: Silo's database may already be
-   * newer than it understands.
+   * latest, master, a version tag (v0.4.2) or a commit (master-<sha>). Going
+   * back to an image older than the one running is refused: it may carry
+   * fixed security holes, and Silo's database may already be newer than it
+   * understands.
    *
    * @generated from field: string channel = 1;
    */
@@ -709,6 +710,83 @@ export type SetUpdateChannelRequest = Message<"silo.v1.SetUpdateChannelRequest">
  */
 export const SetUpdateChannelRequestSchema: GenMessage<SetUpdateChannelRequest> = /*@__PURE__*/
   messageDesc(file_silo_v1_siloos, 19);
+
+/**
+ * @generated from message silo.v1.ListUpdateChannelsRequest
+ */
+export type ListUpdateChannelsRequest = Message<"silo.v1.ListUpdateChannelsRequest"> & {
+};
+
+/**
+ * Describes the message silo.v1.ListUpdateChannelsRequest.
+ * Use `create(ListUpdateChannelsRequestSchema)` to create a new message.
+ */
+export const ListUpdateChannelsRequestSchema: GenMessage<ListUpdateChannelsRequest> = /*@__PURE__*/
+  messageDesc(file_silo_v1_siloos, 20);
+
+/**
+ * @generated from message silo.v1.UpdateChannels
+ */
+export type UpdateChannels = Message<"silo.v1.UpdateChannels"> & {
+  /**
+   * latest and master first, then release versions newest first.
+   *
+   * @generated from field: repeated silo.v1.UpdateChannel channels = 1;
+   */
+  channels: UpdateChannel[];
+};
+
+/**
+ * Describes the message silo.v1.UpdateChannels.
+ * Use `create(UpdateChannelsSchema)` to create a new message.
+ */
+export const UpdateChannelsSchema: GenMessage<UpdateChannels> = /*@__PURE__*/
+  messageDesc(file_silo_v1_siloos, 21);
+
+/**
+ * @generated from message silo.v1.UpdateChannel
+ */
+export type UpdateChannel = Message<"silo.v1.UpdateChannel"> & {
+  /**
+   * The tag: latest, master or vX.Y.Z.
+   *
+   * @generated from field: string tag = 1;
+   */
+  tag: string;
+
+  /**
+   * The image's version label and build time (RFC 3339), when the registry
+   * was asked about it (latest and master).
+   *
+   * @generated from field: string version = 2;
+   */
+  version: string;
+
+  /**
+   * @generated from field: string created = 3;
+   */
+  created: string;
+
+  /**
+   * The image is older than the one running, so the machine may not move to
+   * it; reason says why in words.
+   *
+   * @generated from field: bool older = 4;
+   */
+  older: boolean;
+
+  /**
+   * @generated from field: string reason = 5;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message silo.v1.UpdateChannel.
+ * Use `create(UpdateChannelSchema)` to create a new message.
+ */
+export const UpdateChannelSchema: GenMessage<UpdateChannel> = /*@__PURE__*/
+  messageDesc(file_silo_v1_siloos, 22);
 
 /**
  * @generated from message silo.v1.SetUpdatePolicyRequest
@@ -725,7 +803,7 @@ export type SetUpdatePolicyRequest = Message<"silo.v1.SetUpdatePolicyRequest"> &
  * Use `create(SetUpdatePolicyRequestSchema)` to create a new message.
  */
 export const SetUpdatePolicyRequestSchema: GenMessage<SetUpdatePolicyRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_siloos, 20);
+  messageDesc(file_silo_v1_siloos, 23);
 
 /**
  * @generated from message silo.v1.PowerRequest
@@ -744,7 +822,7 @@ export type PowerRequest = Message<"silo.v1.PowerRequest"> & {
  * Use `create(PowerRequestSchema)` to create a new message.
  */
 export const PowerRequestSchema: GenMessage<PowerRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_siloos, 21);
+  messageDesc(file_silo_v1_siloos, 24);
 
 /**
  * @generated from message silo.v1.PowerResponse
@@ -763,7 +841,7 @@ export type PowerResponse = Message<"silo.v1.PowerResponse"> & {
  * Use `create(PowerResponseSchema)` to create a new message.
  */
 export const PowerResponseSchema: GenMessage<PowerResponse> = /*@__PURE__*/
-  messageDesc(file_silo_v1_siloos, 22);
+  messageDesc(file_silo_v1_siloos, 25);
 
 /**
  * @generated from message silo.v1.ReadLogsRequest
@@ -789,7 +867,7 @@ export type ReadLogsRequest = Message<"silo.v1.ReadLogsRequest"> & {
  * Use `create(ReadLogsRequestSchema)` to create a new message.
  */
 export const ReadLogsRequestSchema: GenMessage<ReadLogsRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_siloos, 23);
+  messageDesc(file_silo_v1_siloos, 26);
 
 /**
  * @generated from message silo.v1.ReadLogsResponse
@@ -806,7 +884,7 @@ export type ReadLogsResponse = Message<"silo.v1.ReadLogsResponse"> & {
  * Use `create(ReadLogsResponseSchema)` to create a new message.
  */
 export const ReadLogsResponseSchema: GenMessage<ReadLogsResponse> = /*@__PURE__*/
-  messageDesc(file_silo_v1_siloos, 24);
+  messageDesc(file_silo_v1_siloos, 27);
 
 /**
  * @generated from message silo.v1.LogLine
@@ -840,7 +918,7 @@ export type LogLine = Message<"silo.v1.LogLine"> & {
  * Use `create(LogLineSchema)` to create a new message.
  */
 export const LogLineSchema: GenMessage<LogLine> = /*@__PURE__*/
-  messageDesc(file_silo_v1_siloos, 25);
+  messageDesc(file_silo_v1_siloos, 28);
 
 /**
  * @generated from message silo.v1.GetSiloOSRequest
@@ -853,7 +931,7 @@ export type GetSiloOSRequest = Message<"silo.v1.GetSiloOSRequest"> & {
  * Use `create(GetSiloOSRequestSchema)` to create a new message.
  */
 export const GetSiloOSRequestSchema: GenMessage<GetSiloOSRequest> = /*@__PURE__*/
-  messageDesc(file_silo_v1_siloos, 26);
+  messageDesc(file_silo_v1_siloos, 29);
 
 /**
  * @generated from message silo.v1.SiloOSStatus
@@ -890,7 +968,7 @@ export type SiloOSStatus = Message<"silo.v1.SiloOSStatus"> & {
  * Use `create(SiloOSStatusSchema)` to create a new message.
  */
 export const SiloOSStatusSchema: GenMessage<SiloOSStatus> = /*@__PURE__*/
-  messageDesc(file_silo_v1_siloos, 27);
+  messageDesc(file_silo_v1_siloos, 30);
 
 /**
  * ProxyStatus is the HTTPS proxy (Caddy) as the control plane configures it
@@ -978,7 +1056,7 @@ export type ProxyStatus = Message<"silo.v1.ProxyStatus"> & {
  * Use `create(ProxyStatusSchema)` to create a new message.
  */
 export const ProxyStatusSchema: GenMessage<ProxyStatus> = /*@__PURE__*/
-  messageDesc(file_silo_v1_siloos, 28);
+  messageDesc(file_silo_v1_siloos, 31);
 
 /**
  * SiloOSD is siloosd, the SiloOS host daemon (cmd/siloosd, internal/siloosd):
@@ -1091,7 +1169,8 @@ export const SiloOSD: GenService<{
    * SetUpdateChannel moves the machine to another channel of the SiloOS
    * repository it was built for (/usr/lib/siloos/release): latest, master or
    * a version tag, never an image the caller names. It downloads the new
-   * image as a job (action "switch"), used at the next boot.
+   * image as a job (action "switch"), used at the next boot. A move to an
+   * image older than the one running is refused (see UpdateChannel.older).
    *
    * @generated from rpc silo.v1.SiloOSD.SetUpdateChannel
    */
@@ -1099,6 +1178,18 @@ export const SiloOSD: GenService<{
     methodKind: "unary";
     input: typeof SetUpdateChannelRequestSchema;
     output: typeof UpdatesSchema;
+  },
+  /**
+   * ListUpdateChannels asks the registry which tags of that repository the
+   * machine may move to: latest, master and the release versions not older
+   * than the one running.
+   *
+   * @generated from rpc silo.v1.SiloOSD.ListUpdateChannels
+   */
+  listUpdateChannels: {
+    methodKind: "unary";
+    input: typeof ListUpdateChannelsRequestSchema;
+    output: typeof UpdateChannelsSchema;
   },
   /**
    * Power reboots or powers off a few seconds after answering.

@@ -2456,6 +2456,10 @@ const pl: Record<string, string> = {
   "This one version: nothing newer arrives until you move it.": "Tylko ta wersja: nic nowszego nie przyjdzie, dopóki jej nie przeniesiesz.",
   "An image from another repository: {{image}}": "Obraz z innego repozytorium: {{image}}",
   "Move to {{channel}}": "Przenieś na {{channel}}",
+  "Moving to an image older than the one running is not allowed: go back with Previous version instead.": "Przejście na obraz starszy niż uruchomiony jest niedozwolone: zamiast tego wróć przez Poprzednią wersję.",
+  "The registry did not list its versions: {{error}}": "Rejestr nie podał listy wersji: {{error}}",
+  "Asking the registry…": "Pytam rejestr…",
+  "Pick a channel": "Wybierz kanał",
 };
 
 export default pl;

@@ -25,3 +25,13 @@ eq(channelChoices("latest", "latest", "v0.4.2"), { choices: [{ value: "latest", 
 eq(channelChoices("pinned", "v0.4.1", "v0.4.1").current, "v0.4.1", "pinned");
 eq(channelChoices("master", "master", "master-abc1234").choices.length, 2, "a commit build offers no version to stay on");
 eq(channelChoices("local", "dev", "dev").current, "", "a local build follows nothing");
+eq(channelChoices("pinned", "master-abc1234", "master-abc1234").choices.map((c) => c.value), ["latest", "master", "master-abc1234"], "a pinned commit is still shown as what it follows");
+const listed = [
+  { tag: "latest", version: "v0.4.2", older: true, reason: "latest (v0.4.2) was built before the image running." },
+  { tag: "master", version: "master-abc1234", older: false, reason: "" },
+  { tag: "v0.5.0", version: "v0.5.0", older: false, reason: "" },
+];
+const fromList = channelChoices("master", "master", "master-abc1234", listed);
+eq(fromList.choices.map((c) => [c.value, c.label, !!c.disabled]), [["latest", "latest · v0.4.2", true], ["master", "master · master-abc1234", false], ["v0.5.0", "v0.5.0", false]], "the registry's list, older images not choosable");
+eq(fromList.choices[0].hint, listed[0].reason, "an older image says why");
+eq(channelChoices("latest", "latest", "v0.4.2", [{ ...listed[0], older: true }]).choices[0].disabled, false, "what it follows stays choosable");

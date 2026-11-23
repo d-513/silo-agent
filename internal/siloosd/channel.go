@@ -96,14 +96,25 @@ func splitRef(ref string) (repo, tag string) {
 func (s *Server) SetUpdateChannel(ctx context.Context, req *connect.Request[v1.SetUpdateChannelRequest]) (*connect.Response[v1.Updates], error) {
 	tag := strings.TrimSpace(req.Msg.GetChannel())
 	if tag != channelLatest && tag != channelMaster && !versionTagRE.MatchString(tag) && !commitTagRE.MatchString(tag) {
-		return nil, invalid("The channel is latest, master, or a version (v0.4.2).")
+		return nil, invalid("The channel is latest, master, a version (v0.4.2) or a commit build (master-<sha>).")
 	}
 	rel := s.release()
 	if rel.Repository == "" {
 		return nil, refused("This image does not say which repository its channels are in (/usr/lib/siloos/release).")
 	}
-	if older(tag, rel.Version) {
-		return nil, refused("That version is older than the one running (" + rel.Version + "). Going back would hand Silo a database newer than it understands; roll back instead, if the previous image is the one you want.")
+	// Never to an image older than the one running: it may carry security
+	// holes since fixed, and Silo's database may already be newer than it
+	// understands. A rollback (RunUpdate) is how to go back on purpose.
+	run, err := s.running(ctx, rel)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	img, err := s.inspect(ctx, rel.Repository, tag)
+	if err != nil {
+		return nil, refused("Could not ask the registry about " + tag + ", so it cannot be checked to be no older than what runs: " + clip(err.Error(), 400))
+	}
+	if why := olderThan(tag, img, run); why != "" {
+		return nil, refused(why + " Moving to an older image is not allowed; roll back instead, if the previous image is the one you want.")
 	}
 	ref := rel.Repository + ":" + tag
 	if !s.startJob("switch", []string{"switch", ref}, false, nil) {

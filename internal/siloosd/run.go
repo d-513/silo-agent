@@ -28,6 +28,9 @@ var commands = map[string]string{
 	"timedatectl": "/usr/bin/timedatectl",
 	"journalctl":  "/usr/bin/journalctl",
 	"systemctl":   "/usr/bin/systemctl",
+	// bootc depends on it (its image proxy); siloosd asks the registry with
+	// it about tags of the release's own repository.
+	"skopeo": "/usr/bin/skopeo",
 }
 
 func (Exec) Run(ctx context.Context, name string, args ...string) ([]byte, error) {

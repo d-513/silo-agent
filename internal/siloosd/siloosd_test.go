@@ -394,6 +394,8 @@ func TestChannelSwitchStaysInTheRepository(t *testing.T) {
 	f.out["bootc status --format=json"] = bootcJSON
 	f.out["timedatectl show -p Timezone --value"] = "UTC\n"
 	f.out["bootc switch ghcr.io/d-513/silo-os:master"] = ""
+	f.out["skopeo inspect --no-tags docker://ghcr.io/d-513/silo-os:master"] = remote("master-abc1234", "2026-11-20T10:00:00Z")
+	f.out["skopeo inspect --no-tags docker://ghcr.io/d-513/silo-os:v0.4.1"] = remote("v0.4.1", "2026-10-01T10:00:00Z")
 	s := newServer(t, f)
 	if err := os.MkdirAll(filepath.Join(s.root, "usr/lib/siloos"), 0o755); err != nil {
 		t.Fatal(err)
@@ -435,6 +437,120 @@ func TestChannelSwitchStaysInTheRepository(t *testing.T) {
 	}
 	if !older("v0.4.1", "v0.4.2") || older("v0.5.0", "v0.4.9") || older("master", "v0.4.2") || older("v0.4.2-rc1", "v0.4.2") {
 		t.Error("older")
+	}
+}
+
+// remote is what skopeo inspect says of an image.
+func remote(version, created string) string {
+	return `{"Name":"ghcr.io/d-513/silo-os","Created":"` + created + `","Labels":{"org.opencontainers.image.version":"` + version + `"}}`
+}
+
+// The machine runs v0.4.2, built 2026-11-01: nothing built before it, and no
+// lower version, is a place it may move to, whatever the tag is called.
+func TestNoMoveToAnOlderImage(t *testing.T) {
+	f := newFake()
+	f.out["bootc status --format=json"] = bootcJSON
+	f.out["timedatectl show -p Timezone --value"] = "UTC\n"
+	f.out["bootc switch"] = ""
+	const repo = "docker://ghcr.io/d-513/silo-os:"
+	f.out["skopeo list-tags docker://ghcr.io/d-513/silo-os"] = `{"Repository":"ghcr.io/d-513/silo-os","Tags":["v0.3.0","v0.4.1","v0.4.2","v0.4.3","v0.5.0-rc1","v0.5.0","latest","master","master-0000001","master-abc1234","dev","sha256-0123"]}`
+	f.out["skopeo inspect --no-tags "+repo+"latest"] = remote("v0.4.2", "2026-11-01T10:00:00Z")
+	f.out["skopeo inspect --no-tags "+repo+"master"] = remote("master-abc1234", "2026-11-20T10:00:00Z")
+	f.out["skopeo inspect --no-tags "+repo+"v0.3.0"] = remote("v0.3.0", "2026-09-01T10:00:00Z")
+	f.out["skopeo inspect --no-tags "+repo+"v0.4.1"] = remote("v0.4.1", "2026-10-01T10:00:00Z")
+	f.out["skopeo inspect --no-tags "+repo+"master-0000001"] = remote("master-0000001", "2026-10-20T10:00:00Z")
+	f.out["skopeo inspect --no-tags "+repo+"master-abc1234"] = remote("master-abc1234", "2026-11-20T10:00:00Z")
+	f.out["skopeo inspect --no-tags "+repo+"v0.4.2"] = remote("v0.4.2", "2026-11-01T10:00:00Z")
+	f.out["skopeo inspect --no-tags "+repo+"v0.4.3"] = remote("v0.4.3", "2026-11-10T10:00:00Z")
+	// Rebuilt from an older commit, or mislabelled: its label is what counts.
+	f.out["skopeo inspect --no-tags "+repo+"v0.5.0-rc1"] = remote("v0.4.0", "2026-11-22T10:00:00Z")
+	f.out["skopeo inspect --no-tags "+repo+"v0.5.0"] = remote("v0.5.0", "2026-11-21T10:00:00Z")
+	f.fail["skopeo inspect --no-tags "+repo+"v9.9.9"] = "manifest unknown"
+	s := newServer(t, f)
+	if err := os.MkdirAll(filepath.Join(s.root, "usr/lib/siloos"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(s.root, releaseFile), []byte("SILOOS_VERSION=v0.4.2\nSILOOS_REPOSITORY=ghcr.io/d-513/silo-os\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ask := func(ch string) error {
+		_, err := s.SetUpdateChannel(context.Background(), connect.NewRequest(&v1.SetUpdateChannelRequest{Channel: ch}))
+		s.jobs.Lock()
+		s.jobs.Unlock()
+		return err
+	}
+	for _, old := range []string{"v0.3.0", "v0.4.1", "master-0000001", "v0.5.0-rc1", "v9.9.9"} {
+		if err := ask(old); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Errorf("%s: %v", old, err)
+		}
+	}
+	for _, ok := range []string{"latest", "v0.4.2", "v0.4.3", "v0.5.0", "master", "master-abc1234"} {
+		if err := ask(ok); err != nil {
+			t.Errorf("%s: %v", ok, err)
+		}
+	}
+	if f.ran("bootc switch ghcr.io/d-513/silo-os:v0.4.1") >= 0 || f.ran("bootc switch ghcr.io/d-513/silo-os:master-0000001") >= 0 {
+		t.Error("switched to an older image")
+	}
+
+	res, err := s.ListUpdateChannels(context.Background(), connect.NewRequest(&v1.ListUpdateChannelsRequest{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, c := range res.Msg.Channels {
+		line := c.Tag
+		if c.Older {
+			line += " older"
+			if c.Reason == "" {
+				t.Errorf("%s: older with no reason", c.Tag)
+			}
+		}
+		got = append(got, line)
+	}
+	want := "latest master v0.5.0 v0.5.0-rc1 older v0.4.3 v0.4.2"
+	if strings.Join(got, " ") != want {
+		t.Errorf("channels = %s, want %s", strings.Join(got, " "), want)
+	}
+	if c := res.Msg.Channels[1]; c.Version != "master-abc1234" || c.Created != "2026-11-20T10:00:00Z" {
+		t.Errorf("master = %v", c)
+	}
+
+	// Running a master build newer than every release: latest is behind it.
+	f.mu.Lock()
+	f.out["bootc status --format=json"] = strings.ReplaceAll(strings.ReplaceAll(bootcJSON, "silo-os:latest", "silo-os:master"), `"timestamp":"2026-11-01T10:00:00Z"`, `"timestamp":"2026-11-23T10:00:00Z"`)
+	f.mu.Unlock()
+	if err := os.WriteFile(filepath.Join(s.root, releaseFile), []byte("SILOOS_VERSION=master-fff0000\nSILOOS_REPOSITORY=ghcr.io/d-513/silo-os\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, old := range []string{"latest", "v0.5.0", "master-abc1234"} {
+		if err := ask(old); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Errorf("from a newer master build, %s: %v", old, err)
+		}
+	}
+
+	// A local build is no release: its build time says nothing, so any
+	// channel takes it back to the published ones.
+	f.mu.Lock()
+	f.out["bootc status --format=json"] = strings.ReplaceAll(bootcJSON, "ghcr.io/d-513/silo-os:latest", "localhost/silo-os:dev")
+	f.mu.Unlock()
+	if err := os.WriteFile(filepath.Join(s.root, releaseFile), []byte("SILOOS_VERSION=dev\nSILOOS_REPOSITORY=ghcr.io/d-513/silo-os\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := ask("v0.4.1"); err != nil {
+		t.Errorf("from a local build: %v", err)
+	}
+
+	// Credentials bootc uses are handed to skopeo too.
+	if err := os.MkdirAll(filepath.Join(s.root, "etc/ostree"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(s.root, "etc/ostree/auth.json"), []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f.out["skopeo inspect --authfile /etc/ostree/auth.json"] = remote("v0.5.0", "2026-11-21T10:00:00Z")
+	if err := ask("v0.5.0"); err != nil || f.ran("skopeo inspect --authfile /etc/ostree/auth.json --no-tags "+repo+"v0.5.0") < 0 {
+		t.Errorf("auth file: %v", err)
 	}
 }
 

@@ -1345,9 +1345,10 @@ func (x *RunUpdateRequest) GetAction() string {
 
 type SetUpdateChannelRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// latest, master, or a version tag (v0.4.2). Going back to an older
-	// version than the one running is refused: Silo's database may already be
-	// newer than it understands.
+	// latest, master, a version tag (v0.4.2) or a commit (master-<sha>). Going
+	// back to an image older than the one running is refused: it may carry
+	// fixed security holes, and Silo's database may already be newer than it
+	// understands.
 	Channel       string `protobuf:"bytes,1,opt,name=channel,proto3" json:"channel,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1390,6 +1391,168 @@ func (x *SetUpdateChannelRequest) GetChannel() string {
 	return ""
 }
 
+type ListUpdateChannelsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListUpdateChannelsRequest) Reset() {
+	*x = ListUpdateChannelsRequest{}
+	mi := &file_silo_v1_siloos_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListUpdateChannelsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListUpdateChannelsRequest) ProtoMessage() {}
+
+func (x *ListUpdateChannelsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_siloos_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListUpdateChannelsRequest.ProtoReflect.Descriptor instead.
+func (*ListUpdateChannelsRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{20}
+}
+
+type UpdateChannels struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// latest and master first, then release versions newest first.
+	Channels      []*UpdateChannel `protobuf:"bytes,1,rep,name=channels,proto3" json:"channels,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateChannels) Reset() {
+	*x = UpdateChannels{}
+	mi := &file_silo_v1_siloos_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateChannels) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateChannels) ProtoMessage() {}
+
+func (x *UpdateChannels) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_siloos_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateChannels.ProtoReflect.Descriptor instead.
+func (*UpdateChannels) Descriptor() ([]byte, []int) {
+	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *UpdateChannels) GetChannels() []*UpdateChannel {
+	if x != nil {
+		return x.Channels
+	}
+	return nil
+}
+
+type UpdateChannel struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The tag: latest, master or vX.Y.Z.
+	Tag string `protobuf:"bytes,1,opt,name=tag,proto3" json:"tag,omitempty"`
+	// The image's version label and build time (RFC 3339), when the registry
+	// was asked about it (latest and master).
+	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	Created string `protobuf:"bytes,3,opt,name=created,proto3" json:"created,omitempty"`
+	// The image is older than the one running, so the machine may not move to
+	// it; reason says why in words.
+	Older         bool   `protobuf:"varint,4,opt,name=older,proto3" json:"older,omitempty"`
+	Reason        string `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateChannel) Reset() {
+	*x = UpdateChannel{}
+	mi := &file_silo_v1_siloos_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateChannel) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateChannel) ProtoMessage() {}
+
+func (x *UpdateChannel) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_siloos_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateChannel.ProtoReflect.Descriptor instead.
+func (*UpdateChannel) Descriptor() ([]byte, []int) {
+	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *UpdateChannel) GetTag() string {
+	if x != nil {
+		return x.Tag
+	}
+	return ""
+}
+
+func (x *UpdateChannel) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *UpdateChannel) GetCreated() string {
+	if x != nil {
+		return x.Created
+	}
+	return ""
+}
+
+func (x *UpdateChannel) GetOlder() bool {
+	if x != nil {
+		return x.Older
+	}
+	return false
+}
+
+func (x *UpdateChannel) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
 type SetUpdatePolicyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Policy        *UpdatePolicy          `protobuf:"bytes,1,opt,name=policy,proto3" json:"policy,omitempty"`
@@ -1399,7 +1562,7 @@ type SetUpdatePolicyRequest struct {
 
 func (x *SetUpdatePolicyRequest) Reset() {
 	*x = SetUpdatePolicyRequest{}
-	mi := &file_silo_v1_siloos_proto_msgTypes[20]
+	mi := &file_silo_v1_siloos_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1411,7 +1574,7 @@ func (x *SetUpdatePolicyRequest) String() string {
 func (*SetUpdatePolicyRequest) ProtoMessage() {}
 
 func (x *SetUpdatePolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_siloos_proto_msgTypes[20]
+	mi := &file_silo_v1_siloos_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1424,7 +1587,7 @@ func (x *SetUpdatePolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetUpdatePolicyRequest.ProtoReflect.Descriptor instead.
 func (*SetUpdatePolicyRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{20}
+	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *SetUpdatePolicyRequest) GetPolicy() *UpdatePolicy {
@@ -1444,7 +1607,7 @@ type PowerRequest struct {
 
 func (x *PowerRequest) Reset() {
 	*x = PowerRequest{}
-	mi := &file_silo_v1_siloos_proto_msgTypes[21]
+	mi := &file_silo_v1_siloos_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1456,7 +1619,7 @@ func (x *PowerRequest) String() string {
 func (*PowerRequest) ProtoMessage() {}
 
 func (x *PowerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_siloos_proto_msgTypes[21]
+	mi := &file_silo_v1_siloos_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1469,7 +1632,7 @@ func (x *PowerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PowerRequest.ProtoReflect.Descriptor instead.
 func (*PowerRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{21}
+	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *PowerRequest) GetAction() string {
@@ -1489,7 +1652,7 @@ type PowerResponse struct {
 
 func (x *PowerResponse) Reset() {
 	*x = PowerResponse{}
-	mi := &file_silo_v1_siloos_proto_msgTypes[22]
+	mi := &file_silo_v1_siloos_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1501,7 +1664,7 @@ func (x *PowerResponse) String() string {
 func (*PowerResponse) ProtoMessage() {}
 
 func (x *PowerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_siloos_proto_msgTypes[22]
+	mi := &file_silo_v1_siloos_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1514,7 +1677,7 @@ func (x *PowerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PowerResponse.ProtoReflect.Descriptor instead.
 func (*PowerResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{22}
+	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *PowerResponse) GetAt() string {
@@ -1536,7 +1699,7 @@ type ReadLogsRequest struct {
 
 func (x *ReadLogsRequest) Reset() {
 	*x = ReadLogsRequest{}
-	mi := &file_silo_v1_siloos_proto_msgTypes[23]
+	mi := &file_silo_v1_siloos_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1548,7 +1711,7 @@ func (x *ReadLogsRequest) String() string {
 func (*ReadLogsRequest) ProtoMessage() {}
 
 func (x *ReadLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_siloos_proto_msgTypes[23]
+	mi := &file_silo_v1_siloos_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1561,7 +1724,7 @@ func (x *ReadLogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadLogsRequest.ProtoReflect.Descriptor instead.
 func (*ReadLogsRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{23}
+	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ReadLogsRequest) GetSource() string {
@@ -1587,7 +1750,7 @@ type ReadLogsResponse struct {
 
 func (x *ReadLogsResponse) Reset() {
 	*x = ReadLogsResponse{}
-	mi := &file_silo_v1_siloos_proto_msgTypes[24]
+	mi := &file_silo_v1_siloos_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1599,7 +1762,7 @@ func (x *ReadLogsResponse) String() string {
 func (*ReadLogsResponse) ProtoMessage() {}
 
 func (x *ReadLogsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_siloos_proto_msgTypes[24]
+	mi := &file_silo_v1_siloos_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1612,7 +1775,7 @@ func (x *ReadLogsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadLogsResponse.ProtoReflect.Descriptor instead.
 func (*ReadLogsResponse) Descriptor() ([]byte, []int) {
-	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{24}
+	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ReadLogsResponse) GetLines() []*LogLine {
@@ -1635,7 +1798,7 @@ type LogLine struct {
 
 func (x *LogLine) Reset() {
 	*x = LogLine{}
-	mi := &file_silo_v1_siloos_proto_msgTypes[25]
+	mi := &file_silo_v1_siloos_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1647,7 +1810,7 @@ func (x *LogLine) String() string {
 func (*LogLine) ProtoMessage() {}
 
 func (x *LogLine) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_siloos_proto_msgTypes[25]
+	mi := &file_silo_v1_siloos_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1660,7 +1823,7 @@ func (x *LogLine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogLine.ProtoReflect.Descriptor instead.
 func (*LogLine) Descriptor() ([]byte, []int) {
-	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{25}
+	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *LogLine) GetTime() string {
@@ -1699,7 +1862,7 @@ type GetSiloOSRequest struct {
 
 func (x *GetSiloOSRequest) Reset() {
 	*x = GetSiloOSRequest{}
-	mi := &file_silo_v1_siloos_proto_msgTypes[26]
+	mi := &file_silo_v1_siloos_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1711,7 +1874,7 @@ func (x *GetSiloOSRequest) String() string {
 func (*GetSiloOSRequest) ProtoMessage() {}
 
 func (x *GetSiloOSRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_siloos_proto_msgTypes[26]
+	mi := &file_silo_v1_siloos_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1724,7 +1887,7 @@ func (x *GetSiloOSRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSiloOSRequest.ProtoReflect.Descriptor instead.
 func (*GetSiloOSRequest) Descriptor() ([]byte, []int) {
-	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{26}
+	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{29}
 }
 
 type SiloOSStatus struct {
@@ -1742,7 +1905,7 @@ type SiloOSStatus struct {
 
 func (x *SiloOSStatus) Reset() {
 	*x = SiloOSStatus{}
-	mi := &file_silo_v1_siloos_proto_msgTypes[27]
+	mi := &file_silo_v1_siloos_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1754,7 +1917,7 @@ func (x *SiloOSStatus) String() string {
 func (*SiloOSStatus) ProtoMessage() {}
 
 func (x *SiloOSStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_siloos_proto_msgTypes[27]
+	mi := &file_silo_v1_siloos_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1767,7 +1930,7 @@ func (x *SiloOSStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SiloOSStatus.ProtoReflect.Descriptor instead.
 func (*SiloOSStatus) Descriptor() ([]byte, []int) {
-	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{27}
+	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *SiloOSStatus) GetAvailable() bool {
@@ -1830,7 +1993,7 @@ type ProxyStatus struct {
 
 func (x *ProxyStatus) Reset() {
 	*x = ProxyStatus{}
-	mi := &file_silo_v1_siloos_proto_msgTypes[28]
+	mi := &file_silo_v1_siloos_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1842,7 +2005,7 @@ func (x *ProxyStatus) String() string {
 func (*ProxyStatus) ProtoMessage() {}
 
 func (x *ProxyStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_silo_v1_siloos_proto_msgTypes[28]
+	mi := &file_silo_v1_siloos_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1855,7 +2018,7 @@ func (x *ProxyStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProxyStatus.ProtoReflect.Descriptor instead.
 func (*ProxyStatus) Descriptor() ([]byte, []int) {
-	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{28}
+	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ProxyStatus) GetConfigured() bool {
@@ -2050,7 +2213,16 @@ const file_silo_v1_siloos_proto_rawDesc = "" +
 	"\x10RunUpdateRequest\x12\x16\n" +
 	"\x06action\x18\x01 \x01(\tR\x06action\"3\n" +
 	"\x17SetUpdateChannelRequest\x12\x18\n" +
-	"\achannel\x18\x01 \x01(\tR\achannel\"G\n" +
+	"\achannel\x18\x01 \x01(\tR\achannel\"\x1b\n" +
+	"\x19ListUpdateChannelsRequest\"D\n" +
+	"\x0eUpdateChannels\x122\n" +
+	"\bchannels\x18\x01 \x03(\v2\x16.silo.v1.UpdateChannelR\bchannels\"\x83\x01\n" +
+	"\rUpdateChannel\x12\x10\n" +
+	"\x03tag\x18\x01 \x01(\tR\x03tag\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\tR\aversion\x12\x18\n" +
+	"\acreated\x18\x03 \x01(\tR\acreated\x12\x14\n" +
+	"\x05older\x18\x04 \x01(\bR\x05older\x12\x16\n" +
+	"\x06reason\x18\x05 \x01(\tR\x06reason\"G\n" +
 	"\x16SetUpdatePolicyRequest\x12-\n" +
 	"\x06policy\x18\x01 \x01(\v2\x15.silo.v1.UpdatePolicyR\x06policy\"&\n" +
 	"\fPowerRequest\x12\x16\n" +
@@ -2087,7 +2259,7 @@ const file_silo_v1_siloos_proto_rawDesc = "" +
 	"\x05local\x18\t \x03(\tR\x05local\x12\x12\n" +
 	"\x04note\x18\n" +
 	" \x01(\tR\x04note\x12\x17\n" +
-	"\aroot_ca\x18\v \x01(\tR\x06rootCa2\xc9\x06\n" +
+	"\aroot_ca\x18\v \x01(\tR\x06rootCa2\x9c\a\n" +
 	"\aSiloOSD\x12;\n" +
 	"\tGetSystem\x12\x19.silo.v1.GetSystemRequest\x1a\x13.silo.v1.SystemInfo\x12?\n" +
 	"\vSetHostname\x12\x1b.silo.v1.SetHostnameRequest\x1a\x13.silo.v1.SystemInfo\x127\n" +
@@ -2101,7 +2273,8 @@ const file_silo_v1_siloos_proto_rawDesc = "" +
 	"GetUpdates\x12\x1a.silo.v1.GetUpdatesRequest\x1a\x10.silo.v1.Updates\x128\n" +
 	"\tRunUpdate\x12\x19.silo.v1.RunUpdateRequest\x1a\x10.silo.v1.Updates\x12D\n" +
 	"\x0fSetUpdatePolicy\x12\x1f.silo.v1.SetUpdatePolicyRequest\x1a\x10.silo.v1.Updates\x12F\n" +
-	"\x10SetUpdateChannel\x12 .silo.v1.SetUpdateChannelRequest\x1a\x10.silo.v1.Updates\x126\n" +
+	"\x10SetUpdateChannel\x12 .silo.v1.SetUpdateChannelRequest\x1a\x10.silo.v1.Updates\x12Q\n" +
+	"\x12ListUpdateChannels\x12\".silo.v1.ListUpdateChannelsRequest\x1a\x17.silo.v1.UpdateChannels\x126\n" +
 	"\x05Power\x12\x15.silo.v1.PowerRequest\x1a\x16.silo.v1.PowerResponse\x12?\n" +
 	"\bReadLogs\x12\x18.silo.v1.ReadLogsRequest\x1a\x19.silo.v1.ReadLogsResponseB\x1fZ\x1dsilo.agent/gen/silo/v1;silov1b\x06proto3"
 
@@ -2117,37 +2290,40 @@ func file_silo_v1_siloos_proto_rawDescGZIP() []byte {
 	return file_silo_v1_siloos_proto_rawDescData
 }
 
-var file_silo_v1_siloos_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_silo_v1_siloos_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_silo_v1_siloos_proto_goTypes = []any{
-	(*GetSystemRequest)(nil),        // 0: silo.v1.GetSystemRequest
-	(*SystemInfo)(nil),              // 1: silo.v1.SystemInfo
-	(*SystemDisk)(nil),              // 2: silo.v1.SystemDisk
-	(*SetHostnameRequest)(nil),      // 3: silo.v1.SetHostnameRequest
-	(*SetTimeRequest)(nil),          // 4: silo.v1.SetTimeRequest
-	(*GetNetworkRequest)(nil),       // 5: silo.v1.GetNetworkRequest
-	(*Network)(nil),                 // 6: silo.v1.Network
-	(*NetDevice)(nil),               // 7: silo.v1.NetDevice
-	(*NetConnection)(nil),           // 8: silo.v1.NetConnection
-	(*PendingNetwork)(nil),          // 9: silo.v1.PendingNetwork
-	(*ApplyConnectionRequest)(nil),  // 10: silo.v1.ApplyConnectionRequest
-	(*ConfirmNetworkRequest)(nil),   // 11: silo.v1.ConfirmNetworkRequest
-	(*RollBackNetworkRequest)(nil),  // 12: silo.v1.RollBackNetworkRequest
-	(*GetUpdatesRequest)(nil),       // 13: silo.v1.GetUpdatesRequest
-	(*Updates)(nil),                 // 14: silo.v1.Updates
-	(*BootImage)(nil),               // 15: silo.v1.BootImage
-	(*UpdateJob)(nil),               // 16: silo.v1.UpdateJob
-	(*UpdatePolicy)(nil),            // 17: silo.v1.UpdatePolicy
-	(*RunUpdateRequest)(nil),        // 18: silo.v1.RunUpdateRequest
-	(*SetUpdateChannelRequest)(nil), // 19: silo.v1.SetUpdateChannelRequest
-	(*SetUpdatePolicyRequest)(nil),  // 20: silo.v1.SetUpdatePolicyRequest
-	(*PowerRequest)(nil),            // 21: silo.v1.PowerRequest
-	(*PowerResponse)(nil),           // 22: silo.v1.PowerResponse
-	(*ReadLogsRequest)(nil),         // 23: silo.v1.ReadLogsRequest
-	(*ReadLogsResponse)(nil),        // 24: silo.v1.ReadLogsResponse
-	(*LogLine)(nil),                 // 25: silo.v1.LogLine
-	(*GetSiloOSRequest)(nil),        // 26: silo.v1.GetSiloOSRequest
-	(*SiloOSStatus)(nil),            // 27: silo.v1.SiloOSStatus
-	(*ProxyStatus)(nil),             // 28: silo.v1.ProxyStatus
+	(*GetSystemRequest)(nil),          // 0: silo.v1.GetSystemRequest
+	(*SystemInfo)(nil),                // 1: silo.v1.SystemInfo
+	(*SystemDisk)(nil),                // 2: silo.v1.SystemDisk
+	(*SetHostnameRequest)(nil),        // 3: silo.v1.SetHostnameRequest
+	(*SetTimeRequest)(nil),            // 4: silo.v1.SetTimeRequest
+	(*GetNetworkRequest)(nil),         // 5: silo.v1.GetNetworkRequest
+	(*Network)(nil),                   // 6: silo.v1.Network
+	(*NetDevice)(nil),                 // 7: silo.v1.NetDevice
+	(*NetConnection)(nil),             // 8: silo.v1.NetConnection
+	(*PendingNetwork)(nil),            // 9: silo.v1.PendingNetwork
+	(*ApplyConnectionRequest)(nil),    // 10: silo.v1.ApplyConnectionRequest
+	(*ConfirmNetworkRequest)(nil),     // 11: silo.v1.ConfirmNetworkRequest
+	(*RollBackNetworkRequest)(nil),    // 12: silo.v1.RollBackNetworkRequest
+	(*GetUpdatesRequest)(nil),         // 13: silo.v1.GetUpdatesRequest
+	(*Updates)(nil),                   // 14: silo.v1.Updates
+	(*BootImage)(nil),                 // 15: silo.v1.BootImage
+	(*UpdateJob)(nil),                 // 16: silo.v1.UpdateJob
+	(*UpdatePolicy)(nil),              // 17: silo.v1.UpdatePolicy
+	(*RunUpdateRequest)(nil),          // 18: silo.v1.RunUpdateRequest
+	(*SetUpdateChannelRequest)(nil),   // 19: silo.v1.SetUpdateChannelRequest
+	(*ListUpdateChannelsRequest)(nil), // 20: silo.v1.ListUpdateChannelsRequest
+	(*UpdateChannels)(nil),            // 21: silo.v1.UpdateChannels
+	(*UpdateChannel)(nil),             // 22: silo.v1.UpdateChannel
+	(*SetUpdatePolicyRequest)(nil),    // 23: silo.v1.SetUpdatePolicyRequest
+	(*PowerRequest)(nil),              // 24: silo.v1.PowerRequest
+	(*PowerResponse)(nil),             // 25: silo.v1.PowerResponse
+	(*ReadLogsRequest)(nil),           // 26: silo.v1.ReadLogsRequest
+	(*ReadLogsResponse)(nil),          // 27: silo.v1.ReadLogsResponse
+	(*LogLine)(nil),                   // 28: silo.v1.LogLine
+	(*GetSiloOSRequest)(nil),          // 29: silo.v1.GetSiloOSRequest
+	(*SiloOSStatus)(nil),              // 30: silo.v1.SiloOSStatus
+	(*ProxyStatus)(nil),               // 31: silo.v1.ProxyStatus
 }
 var file_silo_v1_siloos_proto_depIdxs = []int32{
 	2,  // 0: silo.v1.SystemInfo.disks:type_name -> silo.v1.SystemDisk
@@ -2160,41 +2336,44 @@ var file_silo_v1_siloos_proto_depIdxs = []int32{
 	15, // 7: silo.v1.Updates.available:type_name -> silo.v1.BootImage
 	16, // 8: silo.v1.Updates.job:type_name -> silo.v1.UpdateJob
 	17, // 9: silo.v1.Updates.policy:type_name -> silo.v1.UpdatePolicy
-	17, // 10: silo.v1.SetUpdatePolicyRequest.policy:type_name -> silo.v1.UpdatePolicy
-	25, // 11: silo.v1.ReadLogsResponse.lines:type_name -> silo.v1.LogLine
-	1,  // 12: silo.v1.SiloOSStatus.system:type_name -> silo.v1.SystemInfo
-	28, // 13: silo.v1.SiloOSStatus.proxy:type_name -> silo.v1.ProxyStatus
-	0,  // 14: silo.v1.SiloOSD.GetSystem:input_type -> silo.v1.GetSystemRequest
-	3,  // 15: silo.v1.SiloOSD.SetHostname:input_type -> silo.v1.SetHostnameRequest
-	4,  // 16: silo.v1.SiloOSD.SetTime:input_type -> silo.v1.SetTimeRequest
-	5,  // 17: silo.v1.SiloOSD.GetNetwork:input_type -> silo.v1.GetNetworkRequest
-	10, // 18: silo.v1.SiloOSD.ApplyConnection:input_type -> silo.v1.ApplyConnectionRequest
-	11, // 19: silo.v1.SiloOSD.ConfirmNetwork:input_type -> silo.v1.ConfirmNetworkRequest
-	12, // 20: silo.v1.SiloOSD.RollBackNetwork:input_type -> silo.v1.RollBackNetworkRequest
-	13, // 21: silo.v1.SiloOSD.GetUpdates:input_type -> silo.v1.GetUpdatesRequest
-	18, // 22: silo.v1.SiloOSD.RunUpdate:input_type -> silo.v1.RunUpdateRequest
-	20, // 23: silo.v1.SiloOSD.SetUpdatePolicy:input_type -> silo.v1.SetUpdatePolicyRequest
-	19, // 24: silo.v1.SiloOSD.SetUpdateChannel:input_type -> silo.v1.SetUpdateChannelRequest
-	21, // 25: silo.v1.SiloOSD.Power:input_type -> silo.v1.PowerRequest
-	23, // 26: silo.v1.SiloOSD.ReadLogs:input_type -> silo.v1.ReadLogsRequest
-	1,  // 27: silo.v1.SiloOSD.GetSystem:output_type -> silo.v1.SystemInfo
-	1,  // 28: silo.v1.SiloOSD.SetHostname:output_type -> silo.v1.SystemInfo
-	1,  // 29: silo.v1.SiloOSD.SetTime:output_type -> silo.v1.SystemInfo
-	6,  // 30: silo.v1.SiloOSD.GetNetwork:output_type -> silo.v1.Network
-	6,  // 31: silo.v1.SiloOSD.ApplyConnection:output_type -> silo.v1.Network
-	6,  // 32: silo.v1.SiloOSD.ConfirmNetwork:output_type -> silo.v1.Network
-	6,  // 33: silo.v1.SiloOSD.RollBackNetwork:output_type -> silo.v1.Network
-	14, // 34: silo.v1.SiloOSD.GetUpdates:output_type -> silo.v1.Updates
-	14, // 35: silo.v1.SiloOSD.RunUpdate:output_type -> silo.v1.Updates
-	14, // 36: silo.v1.SiloOSD.SetUpdatePolicy:output_type -> silo.v1.Updates
-	14, // 37: silo.v1.SiloOSD.SetUpdateChannel:output_type -> silo.v1.Updates
-	22, // 38: silo.v1.SiloOSD.Power:output_type -> silo.v1.PowerResponse
-	24, // 39: silo.v1.SiloOSD.ReadLogs:output_type -> silo.v1.ReadLogsResponse
-	27, // [27:40] is the sub-list for method output_type
-	14, // [14:27] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	22, // 10: silo.v1.UpdateChannels.channels:type_name -> silo.v1.UpdateChannel
+	17, // 11: silo.v1.SetUpdatePolicyRequest.policy:type_name -> silo.v1.UpdatePolicy
+	28, // 12: silo.v1.ReadLogsResponse.lines:type_name -> silo.v1.LogLine
+	1,  // 13: silo.v1.SiloOSStatus.system:type_name -> silo.v1.SystemInfo
+	31, // 14: silo.v1.SiloOSStatus.proxy:type_name -> silo.v1.ProxyStatus
+	0,  // 15: silo.v1.SiloOSD.GetSystem:input_type -> silo.v1.GetSystemRequest
+	3,  // 16: silo.v1.SiloOSD.SetHostname:input_type -> silo.v1.SetHostnameRequest
+	4,  // 17: silo.v1.SiloOSD.SetTime:input_type -> silo.v1.SetTimeRequest
+	5,  // 18: silo.v1.SiloOSD.GetNetwork:input_type -> silo.v1.GetNetworkRequest
+	10, // 19: silo.v1.SiloOSD.ApplyConnection:input_type -> silo.v1.ApplyConnectionRequest
+	11, // 20: silo.v1.SiloOSD.ConfirmNetwork:input_type -> silo.v1.ConfirmNetworkRequest
+	12, // 21: silo.v1.SiloOSD.RollBackNetwork:input_type -> silo.v1.RollBackNetworkRequest
+	13, // 22: silo.v1.SiloOSD.GetUpdates:input_type -> silo.v1.GetUpdatesRequest
+	18, // 23: silo.v1.SiloOSD.RunUpdate:input_type -> silo.v1.RunUpdateRequest
+	23, // 24: silo.v1.SiloOSD.SetUpdatePolicy:input_type -> silo.v1.SetUpdatePolicyRequest
+	19, // 25: silo.v1.SiloOSD.SetUpdateChannel:input_type -> silo.v1.SetUpdateChannelRequest
+	20, // 26: silo.v1.SiloOSD.ListUpdateChannels:input_type -> silo.v1.ListUpdateChannelsRequest
+	24, // 27: silo.v1.SiloOSD.Power:input_type -> silo.v1.PowerRequest
+	26, // 28: silo.v1.SiloOSD.ReadLogs:input_type -> silo.v1.ReadLogsRequest
+	1,  // 29: silo.v1.SiloOSD.GetSystem:output_type -> silo.v1.SystemInfo
+	1,  // 30: silo.v1.SiloOSD.SetHostname:output_type -> silo.v1.SystemInfo
+	1,  // 31: silo.v1.SiloOSD.SetTime:output_type -> silo.v1.SystemInfo
+	6,  // 32: silo.v1.SiloOSD.GetNetwork:output_type -> silo.v1.Network
+	6,  // 33: silo.v1.SiloOSD.ApplyConnection:output_type -> silo.v1.Network
+	6,  // 34: silo.v1.SiloOSD.ConfirmNetwork:output_type -> silo.v1.Network
+	6,  // 35: silo.v1.SiloOSD.RollBackNetwork:output_type -> silo.v1.Network
+	14, // 36: silo.v1.SiloOSD.GetUpdates:output_type -> silo.v1.Updates
+	14, // 37: silo.v1.SiloOSD.RunUpdate:output_type -> silo.v1.Updates
+	14, // 38: silo.v1.SiloOSD.SetUpdatePolicy:output_type -> silo.v1.Updates
+	14, // 39: silo.v1.SiloOSD.SetUpdateChannel:output_type -> silo.v1.Updates
+	21, // 40: silo.v1.SiloOSD.ListUpdateChannels:output_type -> silo.v1.UpdateChannels
+	25, // 41: silo.v1.SiloOSD.Power:output_type -> silo.v1.PowerResponse
+	27, // 42: silo.v1.SiloOSD.ReadLogs:output_type -> silo.v1.ReadLogsResponse
+	29, // [29:43] is the sub-list for method output_type
+	15, // [15:29] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_silo_v1_siloos_proto_init() }
@@ -2209,7 +2388,7 @@ func file_silo_v1_siloos_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_silo_v1_siloos_proto_rawDesc), len(file_silo_v1_siloos_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   29,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
