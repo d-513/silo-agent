@@ -102,7 +102,7 @@ Every `FROM` is `tag@sha256:digest`; move tag and digest together.
 | `images/egress/Containerfile` | `debian:trixie-slim@…` |
 | `images/mcp-stdio/Containerfile` | `node:<lts>-trixie-slim@…` (and its `base.name` label) |
 | `images/caddy/Containerfile` | `caddy:<ver>-builder@…`, `caddy:<ver>@…` |
-| `images/os/Containerfile` | `quay.io/fedora/fedora-bootc:43`: **tag only on purpose** (quay.io deletes old digests). Check whether a newer Fedora (44) is out; moving it is a deliberate change, say so, do not do it silently |
+| `images/os/Containerfile` | `quay.io/fedora/fedora-bootc:<N>`: **tag only on purpose** (quay.io deletes old digests). Check whether a newer stable Fedora is out (`curl -fsS https://fedoraproject.org/releases.json`; the quay tags run ahead to rawhide); moving it is a deliberate change, say so, do not do it silently |
 
 Also re-check whether Node's Active LTS line moved (an even major turns LTS
 each October; all three `node:` pins, the mcp-stdio `base.name` label,

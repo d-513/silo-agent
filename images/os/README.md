@@ -84,7 +84,7 @@ make caddy-image                 # localhost/silo-caddy:dev, if you are changing
 ```
 
 The context is `images/os/` and `build/bin/siloosd` (`images/os/Containerfile.dockerignore`). The
-Postgres image is pinned by digest; the base follows `fedora-bootc:43` (Fedora
+Postgres image is pinned by digest; the base follows `fedora-bootc:45` (Fedora
 rebuilds it with fixes and quay.io drops old digests within days, so a pin
 stops resolving); the last step is
 `bootc container lint`. `images.yml` builds and publishes `silo-os` for amd64

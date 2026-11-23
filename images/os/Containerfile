@@ -26,13 +26,13 @@
 #
 # Build with `make os-image`: the context is os/ and build/bin/siloosd only
 # (images/os/Containerfile.dockerignore). See images/os/README.md.
-# The base follows Fedora 43's bootc tag, not a digest, unlike every other
+# The base follows Fedora 45's bootc tag, not a digest, unlike every other
 # base in this repository: Fedora rebuilds it about daily with the
 # distribution's fixes, which a SiloOS build should carry, and quay.io
 # deletes the builds it replaced within days, so a pinned digest stops
 # resolving (CI failed on exactly that). The digest a build used is in its
-# build log, and Fedora 44 is a change of this line.
-FROM quay.io/fedora/fedora-bootc:43
+# build log, and Fedora 46 is a change of this line.
+FROM quay.io/fedora/fedora-bootc:45
 
 # cloud-init, for cloud images and VMs that hand a user, a key and settings
 # at first boot. On a machine with no cloud metadata ds-identify turns it off
@@ -112,6 +112,6 @@ LABEL org.opencontainers.image.title="silo-os" \
       org.opencontainers.image.source="https://github.com/d-513/silo-agent" \
       org.opencontainers.image.version="$VERSION" \
       org.opencontainers.image.revision="$REVISION" \
-      org.opencontainers.image.base.name="quay.io/fedora/fedora-bootc:43" \
+      org.opencontainers.image.base.name="quay.io/fedora/fedora-bootc:45" \
       containers.bootc="1" \
       ostree.bootable="1"
