@@ -66,6 +66,9 @@
   "env_auth": {
    "password": false
   },
+  "hns": {
+   "password": false
+  },
   "key": {
    "password": false
   },
@@ -750,6 +753,9 @@
   "tenant": {
    "password": false
   },
+  "tenant_api_version": {
+   "password": false
+  },
   "tenant_url": {
    "password": false
   },
@@ -1198,6 +1204,9 @@
   "md5sum_command": {
    "password": false
   },
+  "multithread_upload": {
+   "password": false
+  },
   "pass": {
    "password": true
   },
@@ -1301,6 +1310,9 @@
   },
   "user": {
    "password": false
+  },
+  "workstation": {
+   "password": false
   }
  },
  "webdav": {
@@ -1351,6 +1363,9 @@
   }
  },
  "yandex": {
+  "app_folder": {
+   "password": false
+  },
   "auth_url": {
    "password": false
   },

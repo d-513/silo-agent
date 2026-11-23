@@ -459,7 +459,7 @@ func (sess *session) remove(ctx context.Context, ref string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := sess.dav.RemoveAll(ctx, p); err != nil {
+	if err := sess.dav.RemoveAll(ctx, p, nil); err != nil {
 		return "", friendly("delete the event", err)
 	}
 	return p, nil

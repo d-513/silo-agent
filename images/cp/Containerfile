@@ -12,8 +12,8 @@
 # --- web --------------------------------------------------------------------
 # The console's production bundle, compiled into the binary below (the webui
 # build tag, internal/webui), so the image serves its own UI on the API's port.
-FROM docker.io/library/node:24-trixie-slim@sha256:af02d57b57719b9657a45199a79264a9437940cd55b3c7b3fc99615654f124a0 AS web
-RUN npm install -g pnpm@11.27.0
+FROM docker.io/library/node:26-trixie-slim@sha256:e6bedef217677b276c591795e169840edd9096dbf13f29df8ef8d1856b8820bc AS web
+RUN npm install -g pnpm@11.28.13
 WORKDIR /web
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml web/.npmrc ./
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
@@ -24,7 +24,7 @@ RUN pnpm exec vite build --outDir /out/dist --emptyOutDir
 # --- build ------------------------------------------------------------------
 # cgo is on (libopus for calls, opened with dlopen at run time), so the binary
 # links glibc: it is built on the same Debian release it runs on.
-FROM docker.io/library/golang:1.26.10-trixie@sha256:fd9a91f0ece5664556f4851d06dce5e5b505a71166dffd385a03ba9d200b6983 AS build
+FROM docker.io/library/golang:1.27.4-trixie@sha256:f18c3d73a184fb0582828510722e723b63a93f7188d11dd223d9be6f6880e65d AS build
 ENV CGO_ENABLED=1 GOTOOLCHAIN=local GOFLAGS=-trimpath
 WORKDIR /src
 COPY go.mod go.sum ./

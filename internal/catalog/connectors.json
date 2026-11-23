@@ -420,7 +420,7 @@
       "prompt": "Use Perplexity for cited answers and research questions.",
       "transport": "stdio",
       "stdio_command": "npx",
-      "stdio_args": ["-y", "server-perplexity-ask"],
+      "stdio_args": ["-y", "@perplexity-ai/mcp-server"],
       "auth": "none",
       "default_mode": "allow",
       "image": "perplexity.svg"

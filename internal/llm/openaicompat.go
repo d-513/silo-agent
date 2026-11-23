@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/openai/openai-go/v2"
-	"github.com/openai/openai-go/v2/option"
-	"github.com/openai/openai-go/v2/packages/ssestream"
-	"github.com/openai/openai-go/v2/shared"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/option"
+	"github.com/openai/openai-go/v3/packages/ssestream"
+	"github.com/openai/openai-go/v3/shared"
 )
 
 const (
@@ -555,7 +555,7 @@ func (c *openAICompatClient) Transcribe(ctx context.Context, model string, audio
 	if lang := strings.TrimSpace(audio.Language); lang != "" {
 		params.Language = openai.String(lang)
 	}
-	var resp *openai.Transcription
+	var resp *openai.AudioTranscriptionNewResponseUnion
 	var err error
 	if audio.Timestamps {
 		// Timings come only in the verbose form, which the newer transcribe

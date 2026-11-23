@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/knadh/koanf/parsers/yaml"
-	"github.com/knadh/koanf/providers/env"
+	"github.com/knadh/koanf/providers/env/v2"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 
@@ -153,7 +153,7 @@ func (s *Store) reloadLocked() error {
 	y := koanf.New(".")
 	_ = y.Load(file.Provider(s.path), yaml.Parser())
 	e := koanf.New(".")
-	if err := e.Load(env.ProviderWithValue("SILO_", ".", envValue), nil); err != nil {
+	if err := e.Load(env.Provider(".", env.Opt{Prefix: "SILO_", TransformFunc: envValue}), nil); err != nil {
 		return err
 	}
 	m := koanf.New(".")

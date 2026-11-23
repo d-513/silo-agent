@@ -683,6 +683,48 @@ public protocol Silo_V1_UiClientInterface: Sendable {
     @available(iOS 13, *)
     func `listLlmlogs`(request: Silo_V1_ListLLMLogsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListLLMLogsResponse>
 
+    /// SiloOS, for admins, when the control plane runs on it (siloos.socket):
+    /// the machine through siloosd (siloos.proto), and the HTTPS proxy.
+    /// GetSiloOS answers available=false anywhere else; the rest refuse.
+    @available(iOS 13, *)
+    func `getSiloOs`(request: Silo_V1_GetSiloOSRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SiloOSStatus>
+
+    @available(iOS 13, *)
+    func `setSiloOshostname`(request: Silo_V1_SetHostnameRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SystemInfo>
+
+    @available(iOS 13, *)
+    func `setSiloOstime`(request: Silo_V1_SetTimeRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_SystemInfo>
+
+    @available(iOS 13, *)
+    func `getSiloOsnetwork`(request: Silo_V1_GetNetworkRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Network>
+
+    @available(iOS 13, *)
+    func `applySiloOsconnection`(request: Silo_V1_ApplyConnectionRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Network>
+
+    @available(iOS 13, *)
+    func `confirmSiloOsnetwork`(request: Silo_V1_ConfirmNetworkRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Network>
+
+    @available(iOS 13, *)
+    func `rollBackSiloOsnetwork`(request: Silo_V1_RollBackNetworkRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Network>
+
+    @available(iOS 13, *)
+    func `getSiloOsupdates`(request: Silo_V1_GetUpdatesRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Updates>
+
+    @available(iOS 13, *)
+    func `runSiloOsupdate`(request: Silo_V1_RunUpdateRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Updates>
+
+    @available(iOS 13, *)
+    func `setSiloOsupdatePolicy`(request: Silo_V1_SetUpdatePolicyRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Updates>
+
+    @available(iOS 13, *)
+    func `setSiloOsupdateChannel`(request: Silo_V1_SetUpdateChannelRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_Updates>
+
+    @available(iOS 13, *)
+    func `siloOspower`(request: Silo_V1_PowerRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_PowerResponse>
+
+    @available(iOS 13, *)
+    func `readSiloOslogs`(request: Silo_V1_ReadLogsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ReadLogsResponse>
+
     @available(iOS 13, *)
     func `listConnectors`(request: Silo_V1_ListConnectorsRequest, headers: Connect.Headers) async -> ResponseMessage<Silo_V1_ListConnectorsResponse>
 
@@ -1788,6 +1830,71 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
     }
 
     @available(iOS 13, *)
+    public func `getSiloOs`(request: Silo_V1_GetSiloOSRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_SiloOSStatus> {
+        return await self.client.unary(path: "/silo.v1.UI/GetSiloOS", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `setSiloOshostname`(request: Silo_V1_SetHostnameRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_SystemInfo> {
+        return await self.client.unary(path: "/silo.v1.UI/SetSiloOSHostname", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `setSiloOstime`(request: Silo_V1_SetTimeRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_SystemInfo> {
+        return await self.client.unary(path: "/silo.v1.UI/SetSiloOSTime", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `getSiloOsnetwork`(request: Silo_V1_GetNetworkRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Network> {
+        return await self.client.unary(path: "/silo.v1.UI/GetSiloOSNetwork", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `applySiloOsconnection`(request: Silo_V1_ApplyConnectionRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Network> {
+        return await self.client.unary(path: "/silo.v1.UI/ApplySiloOSConnection", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `confirmSiloOsnetwork`(request: Silo_V1_ConfirmNetworkRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Network> {
+        return await self.client.unary(path: "/silo.v1.UI/ConfirmSiloOSNetwork", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `rollBackSiloOsnetwork`(request: Silo_V1_RollBackNetworkRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Network> {
+        return await self.client.unary(path: "/silo.v1.UI/RollBackSiloOSNetwork", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `getSiloOsupdates`(request: Silo_V1_GetUpdatesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Updates> {
+        return await self.client.unary(path: "/silo.v1.UI/GetSiloOSUpdates", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `runSiloOsupdate`(request: Silo_V1_RunUpdateRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Updates> {
+        return await self.client.unary(path: "/silo.v1.UI/RunSiloOSUpdate", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `setSiloOsupdatePolicy`(request: Silo_V1_SetUpdatePolicyRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Updates> {
+        return await self.client.unary(path: "/silo.v1.UI/SetSiloOSUpdatePolicy", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `setSiloOsupdateChannel`(request: Silo_V1_SetUpdateChannelRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_Updates> {
+        return await self.client.unary(path: "/silo.v1.UI/SetSiloOSUpdateChannel", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `siloOspower`(request: Silo_V1_PowerRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_PowerResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/SiloOSPower", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `readSiloOslogs`(request: Silo_V1_ReadLogsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ReadLogsResponse> {
+        return await self.client.unary(path: "/silo.v1.UI/ReadSiloOSLogs", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `listConnectors`(request: Silo_V1_ListConnectorsRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Silo_V1_ListConnectorsResponse> {
         return await self.client.unary(path: "/silo.v1.UI/ListConnectors", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -2221,6 +2328,19 @@ public final class Silo_V1_UiClient: Silo_V1_UiClientInterface, Sendable {
             public static let getEgressStatus = Connect.MethodSpec(name: "GetEgressStatus", service: "silo.v1.UI", type: .unary)
             public static let rotateEgressCa = Connect.MethodSpec(name: "RotateEgressCA", service: "silo.v1.UI", type: .unary)
             public static let listLlmlogs = Connect.MethodSpec(name: "ListLLMLogs", service: "silo.v1.UI", type: .unary)
+            public static let getSiloOs = Connect.MethodSpec(name: "GetSiloOS", service: "silo.v1.UI", type: .unary)
+            public static let setSiloOshostname = Connect.MethodSpec(name: "SetSiloOSHostname", service: "silo.v1.UI", type: .unary)
+            public static let setSiloOstime = Connect.MethodSpec(name: "SetSiloOSTime", service: "silo.v1.UI", type: .unary)
+            public static let getSiloOsnetwork = Connect.MethodSpec(name: "GetSiloOSNetwork", service: "silo.v1.UI", type: .unary)
+            public static let applySiloOsconnection = Connect.MethodSpec(name: "ApplySiloOSConnection", service: "silo.v1.UI", type: .unary)
+            public static let confirmSiloOsnetwork = Connect.MethodSpec(name: "ConfirmSiloOSNetwork", service: "silo.v1.UI", type: .unary)
+            public static let rollBackSiloOsnetwork = Connect.MethodSpec(name: "RollBackSiloOSNetwork", service: "silo.v1.UI", type: .unary)
+            public static let getSiloOsupdates = Connect.MethodSpec(name: "GetSiloOSUpdates", service: "silo.v1.UI", type: .unary)
+            public static let runSiloOsupdate = Connect.MethodSpec(name: "RunSiloOSUpdate", service: "silo.v1.UI", type: .unary)
+            public static let setSiloOsupdatePolicy = Connect.MethodSpec(name: "SetSiloOSUpdatePolicy", service: "silo.v1.UI", type: .unary)
+            public static let setSiloOsupdateChannel = Connect.MethodSpec(name: "SetSiloOSUpdateChannel", service: "silo.v1.UI", type: .unary)
+            public static let siloOspower = Connect.MethodSpec(name: "SiloOSPower", service: "silo.v1.UI", type: .unary)
+            public static let readSiloOslogs = Connect.MethodSpec(name: "ReadSiloOSLogs", service: "silo.v1.UI", type: .unary)
             public static let listConnectors = Connect.MethodSpec(name: "ListConnectors", service: "silo.v1.UI", type: .unary)
             public static let createConnector = Connect.MethodSpec(name: "CreateConnector", service: "silo.v1.UI", type: .unary)
             public static let updateConnector = Connect.MethodSpec(name: "UpdateConnector", service: "silo.v1.UI", type: .unary)

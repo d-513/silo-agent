@@ -105,6 +105,9 @@ public nonisolated struct Silo_V1_SignInResponse: Sendable {
   /// Nobody is signed in yet.
   public var needsCode: Bool = false
 
+  /// welcome: the first admin's first sign-in; the console opens Admin.
+  public var welcome: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -6440,60 +6443,105 @@ public nonisolated struct Silo_V1_ConfigField: Sendable {
   public init() {}
 }
 
-public nonisolated struct Silo_V1_Settings: Sendable {
+public nonisolated struct Silo_V1_Settings: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var fields: [Silo_V1_ConfigField] = []
+  public var fields: [Silo_V1_ConfigField] {
+    get {_storage._fields}
+    set {_uniqueStorage()._fields = newValue}
+  }
 
-  public var yaml: String = String()
+  public var yaml: String {
+    get {_storage._yaml}
+    set {_uniqueStorage()._yaml = newValue}
+  }
 
-  public var yamlPath: String = String()
+  public var yamlPath: String {
+    get {_storage._yamlPath}
+    set {_uniqueStorage()._yamlPath = newValue}
+  }
 
-  public var searchEngines: [Silo_V1_SearchEngine] = []
+  public var searchEngines: [Silo_V1_SearchEngine] {
+    get {_storage._searchEngines}
+    set {_uniqueStorage()._searchEngines = newValue}
+  }
 
-  public var providers: [Silo_V1_Provider] = []
+  public var providers: [Silo_V1_Provider] {
+    get {_storage._providers}
+    set {_uniqueStorage()._providers = newValue}
+  }
 
-  public var models: [Silo_V1_ModelOption] = []
+  public var models: [Silo_V1_ModelOption] {
+    get {_storage._models}
+    set {_uniqueStorage()._models = newValue}
+  }
 
-  public var defaultModel: String = String()
+  public var defaultModel: String {
+    get {_storage._defaultModel}
+    set {_uniqueStorage()._defaultModel = newValue}
+  }
 
-  public var titleModel: String = String()
+  public var titleModel: String {
+    get {_storage._titleModel}
+    set {_uniqueStorage()._titleModel = newValue}
+  }
 
-  public var connectorVars: [Silo_V1_ConnectorVar] = []
+  public var connectorVars: [Silo_V1_ConnectorVar] {
+    get {_storage._connectorVars}
+    set {_uniqueStorage()._connectorVars = newValue}
+  }
 
   /// content_host is the effective content.host (explicit or derived), empty
   /// when there is no domain for tunnels, apps and shared links; the form shows
   /// it where the field is unset.
-  public var contentHost: String = String()
+  public var contentHost: String {
+    get {_storage._contentHost}
+    set {_uniqueStorage()._contentHost = newValue}
+  }
 
   public var autoenableConnectors: Silo_V1_AutoenableConnectors {
-    get {_autoenableConnectors ?? Silo_V1_AutoenableConnectors()}
-    set {_autoenableConnectors = newValue}
+    get {_storage._autoenableConnectors ?? Silo_V1_AutoenableConnectors()}
+    set {_uniqueStorage()._autoenableConnectors = newValue}
   }
   /// Returns true if `autoenableConnectors` has been explicitly set.
-  public var hasAutoenableConnectors: Bool {self._autoenableConnectors != nil}
+  public var hasAutoenableConnectors: Bool {_storage._autoenableConnectors != nil}
   /// Clears the value of `autoenableConnectors`. Subsequent reads from it will return its default value.
-  public mutating func clearAutoenableConnectors() {self._autoenableConnectors = nil}
+  public mutating func clearAutoenableConnectors() {_uniqueStorage()._autoenableConnectors = nil}
 
   /// oidc_redirect_url is the callback to register at the OIDC provider.
-  public var oidcRedirectURL: String = String()
+  public var oidcRedirectURL: String {
+    get {_storage._oidcRedirectURL}
+    set {_uniqueStorage()._oidcRedirectURL = newValue}
+  }
 
   /// decision_models is the allowlist of decision models; models (above) is
   /// the allowlist of text models. An id is in one list only.
-  public var decisionModels: [Silo_V1_ModelOption] = []
+  public var decisionModels: [Silo_V1_ModelOption] {
+    get {_storage._decisionModels}
+    set {_uniqueStorage()._decisionModels = newValue}
+  }
 
   /// allowed is every kind's allowlist, text and decision included, in the
   /// order of the kinds registry. A role's model is on its kind's list even
   /// when silo.yaml does not list it.
-  public var allowed: [Silo_V1_KindModels] = []
+  public var allowed: [Silo_V1_KindModels] {
+    get {_storage._allowed}
+    set {_uniqueStorage()._allowed = newValue}
+  }
+
+  /// The DNS providers silo-caddy has, for Admin → Settings → HTTPS.
+  public var dnsProviders: [Silo_V1_CaddyDNSProvider] {
+    get {_storage._dnsProviders}
+    set {_uniqueStorage()._dnsProviders = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _autoenableConnectors: Silo_V1_AutoenableConnectors? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 /// KindModels is the allowlist of one kind of model.
@@ -6827,6 +6875,24 @@ public nonisolated struct Silo_V1_SetAutoenableConnectorsRequest: Sendable {
   // methods supported on all messages.
 
   public var identifiers: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Silo_V1_CaddyDNSProvider: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  public var name: String = String()
+
+  public var description_p: String = String()
+
+  public var fields: [Silo_V1_SearchEngineField] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -10381,7 +10447,7 @@ nonisolated extension Silo_V1_SignInRequest: SwiftProtobuf.Message, SwiftProtobu
 
 nonisolated extension Silo_V1_SignInResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SignInResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}user\0\u{1}created\0\u{3}needs_code\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}user\0\u{1}created\0\u{3}needs_code\0\u{1}welcome\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -10392,6 +10458,7 @@ nonisolated extension Silo_V1_SignInResponse: SwiftProtobuf.Message, SwiftProtob
       case 1: try { try decoder.decodeSingularMessageField(value: &self._user) }()
       case 2: try { try decoder.decodeSingularBoolField(value: &self.created) }()
       case 3: try { try decoder.decodeSingularBoolField(value: &self.needsCode) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.welcome) }()
       default: break
       }
     }
@@ -10411,6 +10478,9 @@ nonisolated extension Silo_V1_SignInResponse: SwiftProtobuf.Message, SwiftProtob
     if self.needsCode != false {
       try visitor.visitSingularBoolField(value: self.needsCode, fieldNumber: 3)
     }
+    if self.welcome != false {
+      try visitor.visitSingularBoolField(value: self.welcome, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -10418,6 +10488,7 @@ nonisolated extension Silo_V1_SignInResponse: SwiftProtobuf.Message, SwiftProtob
     if lhs._user != rhs._user {return false}
     if lhs.created != rhs.created {return false}
     if lhs.needsCode != rhs.needsCode {return false}
+    if lhs.welcome != rhs.welcome {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -23677,98 +23748,167 @@ nonisolated extension Silo_V1_ConfigField: SwiftProtobuf.Message, SwiftProtobuf.
 
 nonisolated extension Silo_V1_Settings: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Settings"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}fields\0\u{1}yaml\0\u{3}yaml_path\0\u{3}search_engines\0\u{1}providers\0\u{1}models\0\u{3}default_model\0\u{3}title_model\0\u{3}connector_vars\0\u{3}content_host\0\u{3}autoenable_connectors\0\u{3}oidc_redirect_url\0\u{3}decision_models\0\u{1}allowed\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}fields\0\u{1}yaml\0\u{3}yaml_path\0\u{3}search_engines\0\u{1}providers\0\u{1}models\0\u{3}default_model\0\u{3}title_model\0\u{3}connector_vars\0\u{3}content_host\0\u{3}autoenable_connectors\0\u{3}oidc_redirect_url\0\u{3}decision_models\0\u{1}allowed\0\u{3}dns_providers\0")
+
+  fileprivate class _StorageClass {
+    var _fields: [Silo_V1_ConfigField] = []
+    var _yaml: String = String()
+    var _yamlPath: String = String()
+    var _searchEngines: [Silo_V1_SearchEngine] = []
+    var _providers: [Silo_V1_Provider] = []
+    var _models: [Silo_V1_ModelOption] = []
+    var _defaultModel: String = String()
+    var _titleModel: String = String()
+    var _connectorVars: [Silo_V1_ConnectorVar] = []
+    var _contentHost: String = String()
+    var _autoenableConnectors: Silo_V1_AutoenableConnectors? = nil
+    var _oidcRedirectURL: String = String()
+    var _decisionModels: [Silo_V1_ModelOption] = []
+    var _allowed: [Silo_V1_KindModels] = []
+    var _dnsProviders: [Silo_V1_CaddyDNSProvider] = []
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _fields = source._fields
+      _yaml = source._yaml
+      _yamlPath = source._yamlPath
+      _searchEngines = source._searchEngines
+      _providers = source._providers
+      _models = source._models
+      _defaultModel = source._defaultModel
+      _titleModel = source._titleModel
+      _connectorVars = source._connectorVars
+      _contentHost = source._contentHost
+      _autoenableConnectors = source._autoenableConnectors
+      _oidcRedirectURL = source._oidcRedirectURL
+      _decisionModels = source._decisionModels
+      _allowed = source._allowed
+      _dnsProviders = source._dnsProviders
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.fields) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.yaml) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.yamlPath) }()
-      case 4: try { try decoder.decodeRepeatedMessageField(value: &self.searchEngines) }()
-      case 5: try { try decoder.decodeRepeatedMessageField(value: &self.providers) }()
-      case 6: try { try decoder.decodeRepeatedMessageField(value: &self.models) }()
-      case 7: try { try decoder.decodeSingularStringField(value: &self.defaultModel) }()
-      case 8: try { try decoder.decodeSingularStringField(value: &self.titleModel) }()
-      case 9: try { try decoder.decodeRepeatedMessageField(value: &self.connectorVars) }()
-      case 10: try { try decoder.decodeSingularStringField(value: &self.contentHost) }()
-      case 11: try { try decoder.decodeSingularMessageField(value: &self._autoenableConnectors) }()
-      case 12: try { try decoder.decodeSingularStringField(value: &self.oidcRedirectURL) }()
-      case 13: try { try decoder.decodeRepeatedMessageField(value: &self.decisionModels) }()
-      case 14: try { try decoder.decodeRepeatedMessageField(value: &self.allowed) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeRepeatedMessageField(value: &_storage._fields) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._yaml) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._yamlPath) }()
+        case 4: try { try decoder.decodeRepeatedMessageField(value: &_storage._searchEngines) }()
+        case 5: try { try decoder.decodeRepeatedMessageField(value: &_storage._providers) }()
+        case 6: try { try decoder.decodeRepeatedMessageField(value: &_storage._models) }()
+        case 7: try { try decoder.decodeSingularStringField(value: &_storage._defaultModel) }()
+        case 8: try { try decoder.decodeSingularStringField(value: &_storage._titleModel) }()
+        case 9: try { try decoder.decodeRepeatedMessageField(value: &_storage._connectorVars) }()
+        case 10: try { try decoder.decodeSingularStringField(value: &_storage._contentHost) }()
+        case 11: try { try decoder.decodeSingularMessageField(value: &_storage._autoenableConnectors) }()
+        case 12: try { try decoder.decodeSingularStringField(value: &_storage._oidcRedirectURL) }()
+        case 13: try { try decoder.decodeRepeatedMessageField(value: &_storage._decisionModels) }()
+        case 14: try { try decoder.decodeRepeatedMessageField(value: &_storage._allowed) }()
+        case 15: try { try decoder.decodeRepeatedMessageField(value: &_storage._dnsProviders) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if !self.fields.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.fields, fieldNumber: 1)
-    }
-    if !self.yaml.isEmpty {
-      try visitor.visitSingularStringField(value: self.yaml, fieldNumber: 2)
-    }
-    if !self.yamlPath.isEmpty {
-      try visitor.visitSingularStringField(value: self.yamlPath, fieldNumber: 3)
-    }
-    if !self.searchEngines.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.searchEngines, fieldNumber: 4)
-    }
-    if !self.providers.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.providers, fieldNumber: 5)
-    }
-    if !self.models.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.models, fieldNumber: 6)
-    }
-    if !self.defaultModel.isEmpty {
-      try visitor.visitSingularStringField(value: self.defaultModel, fieldNumber: 7)
-    }
-    if !self.titleModel.isEmpty {
-      try visitor.visitSingularStringField(value: self.titleModel, fieldNumber: 8)
-    }
-    if !self.connectorVars.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.connectorVars, fieldNumber: 9)
-    }
-    if !self.contentHost.isEmpty {
-      try visitor.visitSingularStringField(value: self.contentHost, fieldNumber: 10)
-    }
-    try { if let v = self._autoenableConnectors {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
-    } }()
-    if !self.oidcRedirectURL.isEmpty {
-      try visitor.visitSingularStringField(value: self.oidcRedirectURL, fieldNumber: 12)
-    }
-    if !self.decisionModels.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.decisionModels, fieldNumber: 13)
-    }
-    if !self.allowed.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.allowed, fieldNumber: 14)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._fields.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._fields, fieldNumber: 1)
+      }
+      if !_storage._yaml.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._yaml, fieldNumber: 2)
+      }
+      if !_storage._yamlPath.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._yamlPath, fieldNumber: 3)
+      }
+      if !_storage._searchEngines.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._searchEngines, fieldNumber: 4)
+      }
+      if !_storage._providers.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._providers, fieldNumber: 5)
+      }
+      if !_storage._models.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._models, fieldNumber: 6)
+      }
+      if !_storage._defaultModel.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._defaultModel, fieldNumber: 7)
+      }
+      if !_storage._titleModel.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._titleModel, fieldNumber: 8)
+      }
+      if !_storage._connectorVars.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._connectorVars, fieldNumber: 9)
+      }
+      if !_storage._contentHost.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._contentHost, fieldNumber: 10)
+      }
+      try { if let v = _storage._autoenableConnectors {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
+      } }()
+      if !_storage._oidcRedirectURL.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._oidcRedirectURL, fieldNumber: 12)
+      }
+      if !_storage._decisionModels.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._decisionModels, fieldNumber: 13)
+      }
+      if !_storage._allowed.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._allowed, fieldNumber: 14)
+      }
+      if !_storage._dnsProviders.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._dnsProviders, fieldNumber: 15)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Silo_V1_Settings, rhs: Silo_V1_Settings) -> Bool {
-    if lhs.fields != rhs.fields {return false}
-    if lhs.yaml != rhs.yaml {return false}
-    if lhs.yamlPath != rhs.yamlPath {return false}
-    if lhs.searchEngines != rhs.searchEngines {return false}
-    if lhs.providers != rhs.providers {return false}
-    if lhs.models != rhs.models {return false}
-    if lhs.defaultModel != rhs.defaultModel {return false}
-    if lhs.titleModel != rhs.titleModel {return false}
-    if lhs.connectorVars != rhs.connectorVars {return false}
-    if lhs.contentHost != rhs.contentHost {return false}
-    if lhs._autoenableConnectors != rhs._autoenableConnectors {return false}
-    if lhs.oidcRedirectURL != rhs.oidcRedirectURL {return false}
-    if lhs.decisionModels != rhs.decisionModels {return false}
-    if lhs.allowed != rhs.allowed {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._fields != rhs_storage._fields {return false}
+        if _storage._yaml != rhs_storage._yaml {return false}
+        if _storage._yamlPath != rhs_storage._yamlPath {return false}
+        if _storage._searchEngines != rhs_storage._searchEngines {return false}
+        if _storage._providers != rhs_storage._providers {return false}
+        if _storage._models != rhs_storage._models {return false}
+        if _storage._defaultModel != rhs_storage._defaultModel {return false}
+        if _storage._titleModel != rhs_storage._titleModel {return false}
+        if _storage._connectorVars != rhs_storage._connectorVars {return false}
+        if _storage._contentHost != rhs_storage._contentHost {return false}
+        if _storage._autoenableConnectors != rhs_storage._autoenableConnectors {return false}
+        if _storage._oidcRedirectURL != rhs_storage._oidcRedirectURL {return false}
+        if _storage._decisionModels != rhs_storage._decisionModels {return false}
+        if _storage._allowed != rhs_storage._allowed {return false}
+        if _storage._dnsProviders != rhs_storage._dnsProviders {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -24509,6 +24649,51 @@ nonisolated extension Silo_V1_SetAutoenableConnectorsRequest: SwiftProtobuf.Mess
 
   public static func ==(lhs: Silo_V1_SetAutoenableConnectorsRequest, rhs: Silo_V1_SetAutoenableConnectorsRequest) -> Bool {
     if lhs.identifiers != rhs.identifiers {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Silo_V1_CaddyDNSProvider: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CaddyDNSProvider"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}description\0\u{1}fields\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.description_p) }()
+      case 4: try { try decoder.decodeRepeatedMessageField(value: &self.fields) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    }
+    if !self.description_p.isEmpty {
+      try visitor.visitSingularStringField(value: self.description_p, fieldNumber: 3)
+    }
+    if !self.fields.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.fields, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Silo_V1_CaddyDNSProvider, rhs: Silo_V1_CaddyDNSProvider) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.description_p != rhs.description_p {return false}
+    if lhs.fields != rhs.fields {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

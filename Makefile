@@ -52,7 +52,7 @@ OS_INCUS_ALIAS ?= silo-os
 # bootc-image-builder publishes only :latest, and quay.io drops the digests
 # it replaces, so it is followed by tag (--pull=newer).
 BIB_IMAGE     ?= quay.io/centos-bootc/bootc-image-builder:latest
-SEED_IMAGE    ?= docker.io/library/alpine:3.22@sha256:49340b346798875b5592e5d420241f2f9cfba5f47e62ebb1446a1b34734e898f
+SEED_IMAGE    ?= docker.io/library/alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 # Packages the control plane image compiles at once (go build -p); empty is
 # one per CPU. Its builder needs about 4 GB of memory whatever this says.
 CP_BUILD_JOBS ?=
