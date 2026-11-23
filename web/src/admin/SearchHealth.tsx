@@ -7,7 +7,7 @@ import { Panel, SkeletonRows, inputClass } from "../Field";
 import { UI, type SearchSource, type SearchTest } from "../gen/silo/v1/ui_pb";
 import { Lamp } from "../Lamp";
 import { reload } from "../query";
-import { sourceLook, testLine } from "./searchHealth";
+import { sourceLook, testLine } from "./sourceHealth";
 import { useSettingsForm } from "./useAdminSettings";
 import { t } from "../i18n.ts";
 

@@ -1,5 +1,5 @@
 import { eq } from "../testing.ts";
-import { sourceLook, testLine, waitWord } from "./searchHealth.ts";
+import { sourceLook, testLine, waitWord } from "./sourceHealth.ts";
 
 const now = new Date("2026-11-21T12:00:00Z");
 const src = (over: object) => ({ on: true, offReason: "", state: "", reason: "", restingUntil: "", lastOk: "", ...over });
