@@ -55,6 +55,18 @@ RUN dnf -y install --setopt=install_weak_deps=False cloud-init qemu-guest-agent 
 
 COPY images/os/rootfs/ /
 
+# Fedora 45 keeps its repositories in /usr/share/dnf5/repos.d only, and
+# bootc-image-builder's anaconda-iso resolves the installer's packages from
+# /etc/yum.repos.d alone ("There are no enabled repositories"). Relative
+# links, so they resolve inside the builder's view of this image as well as
+# on the machine, where dnf5 reads the same files either way and they follow
+# fedora-repos updates.
+RUN set -e; install -d /etc/yum.repos.d; \
+    for r in fedora fedora-updates; do \
+      test -f /usr/share/dnf5/repos.d/$r.repo; \
+      ln -sf ../../usr/share/dnf5/repos.d/$r.repo /etc/yum.repos.d/$r.repo; \
+    done
+
 # The user every Silo container runs under. Made now, not only by sysusers at
 # first boot, so a user made at install (cloud-init, a kickstart)
 # never takes uid 1000. Its subordinate ids are what its containers' users map
