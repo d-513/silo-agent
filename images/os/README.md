@@ -107,6 +107,16 @@ Then the media, with [bootc-image-builder](https://github.com/osbuild/bootc-imag
 default, installs your `make os-image`; `latest`, `master` or `v0.4.2` pull
 that tag from ghcr.io) and writes under `build/os/`.
 
+**A release carries them.** On a `vX.Y.Z` tag `images.yml` builds every
+medium for both architectures from the published image (ISO, qcow2 and its
+Incus metadata, raw and vhd compressed with zstd, vmdk, gce), named
+`silo-os-<version>-<x86_64|aarch64>.<ext>`, and attaches them with
+`SHA256SUMS` to the GitHub Release, which stays a draft until all are in
+(`scripts/os-media.sh` names, compresses and, past GitHub's 2 GiB limit,
+splits them into `.partNN`). The newest full release's media are built from
+`:latest`, so what they install keeps updating; a prerelease's or an older
+line's stay on their version.
+
 **The media are the same for everyone.** No user, key or setting is baked
 in: one ISO or one qcow2 installs any number of machines. A machine learns
 who you are at first boot, from cloud-init when something hands it user-data
@@ -320,8 +330,9 @@ from a shell can point it anywhere, which on purpose the console cannot.
 - **Signed images.** Nothing signs `silo-os` yet, so a machine trusts the
   registry: sign in CI (cosign) and have bootc require it
   (`/etc/containers/policy.json`).
-- **Built media in CI.** `images.yml` publishes the image; the ISO and the
-  cloud images are made with `make` (sudo) and not attached to a release.
+- **AMIs in a release.** A release carries the raw disk; an AMI is that disk
+  imported into AWS (`make os-disk OS_DISK_TYPE=ami` does it with your
+  credentials).
 - **Wi-Fi, IPv6, bonds and VLANs** are shown, not edited: siloosd changes a
   wired connection's IPv4 only.
 - **SSH keys and a firewall** are not managed from the console yet.

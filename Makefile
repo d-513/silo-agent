@@ -93,7 +93,7 @@ WATCH_OPTS  := \
 
 .PHONY: help claude-bin install deps web-install brand build build-cp build-worker \
 	build-bridge build-drive build-egress build-siloosd build-all images bot-image stdio-image drive-image egress-image run run-control \
-	run-frontend watch-control dev attach release nightly publish cp-image caddy-image os-image os-disk os-iso os-incus os-seed web-build build-cp-ui test-unit test-web test test-fast test-containers \
+	run-frontend watch-control dev attach release nightly publish cp-image caddy-image os-image os-disk os-iso os-incus os-incus-meta os-seed web-build build-cp-ui test-unit test-web test test-fast test-containers \
 	test-integration e2e fmt vet tidy proto rebuild \
 	clean clean-images cleanup reset-data db-up db-down db-psql db-reset \
 	db-check
@@ -251,12 +251,16 @@ os-disk: os-source ## A disk image (OS_DISK_TYPE=qcow2|raw|vmdk|vhd|ami|gce, OS_
 os-iso: os-source ## An installer ISO for bare metal; it erases the disk it installs to (OS_CHANNEL; sudo)
 	$(call bib,iso,anaconda-iso)
 
-# The qcow2 os-disk made, as an Incus VM image (metadata + disk).
-os-incus: ## Import the qcow2 from os-disk into Incus as OS_INCUS_ALIAS (images/os/README.md § Incus)
+# The metadata that makes the qcow2 an Incus VM image; a release carries it
+# too (.github/workflows/images.yml).
+os-incus-meta: ## Write the Incus metadata for the qcow2 from os-disk (OS_OUT/qcow2/metadata.tar.xz)
 	@test -f $(OS_OUT)/qcow2/qcow2/disk.qcow2 || { echo "no $(OS_OUT)/qcow2/qcow2/disk.qcow2: run make os-disk first"; exit 1; }
 	printf 'architecture: %s\ncreation_date: %s\nproperties:\n  os: SiloOS\n  release: %s\n  description: SiloOS (%s)\n' \
 		"$$(uname -m)" "$$(date +%s)" "$(OS_CHANNEL)" "$(OS_SOURCE)" > $(OS_OUT)/qcow2/metadata.yaml
 	tar -C $(OS_OUT)/qcow2 -cJf $(OS_OUT)/qcow2/metadata.tar.xz metadata.yaml
+
+# The qcow2 os-disk made, as an Incus VM image (metadata + disk).
+os-incus: os-incus-meta ## Import the qcow2 from os-disk into Incus as OS_INCUS_ALIAS (images/os/README.md § Incus)
 	incus image import $(OS_OUT)/qcow2/metadata.tar.xz $(OS_OUT)/qcow2/qcow2/disk.qcow2 --alias $(OS_INCUS_ALIAS) --reuse
 
 # A NoCloud seed: the user-data and meta-data a VM's cloud-init reads from a
