@@ -140,7 +140,7 @@ export const HINTS: Record<string, string> = {
   "egress.dns":
     msg("The resolvers the gateway looks names up with, comma-separated IPs, each optionally with a port (1.1.1.1, 9.9.9.9, 10.0.0.53:5353). Empty uses the system's, as this server's own resolv.conf names them."),
   "egress.feeds":
-    msg("Threat lists the gateway downloads and keeps current on its own. Four are built in, none needing a key: abuse.ch's URLhaus and Spamhaus DROP, Emerging Threats' compromised IPs, and Hagezi's threat-intelligence domains. A host on one is blocked and recorded on the Bot's timeline."),
+    msg("Threat lists the gateway downloads and keeps current on its own. Three are built in, none needing a key: Spamhaus DROP, Emerging Threats' compromised IPs, and Hagezi's threat-intelligence domains. A host on one is blocked and recorded on the Bot's timeline."),
   "reader.render":
     msg("A page that is empty until its scripts run is loaded in the headless browser (Lightpanda) on the Bot's own machine, never on this server. Off, such a page is reported as needing a browser."),
   "reader.block_private":

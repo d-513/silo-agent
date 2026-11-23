@@ -215,8 +215,11 @@ may change).
   and behaviour), and `docs/CONFIGURATION.md` and AGENTS.md name them.
 - `internal/config/egress.go`: the built-in threat feed URLs: fetch each
   (`curl -s -o /dev/null -w '%{http_code}' -r 0-100 <url>`) and check that it
-  is maintained. abuse.ch's URLhaus and ThreatFox hostfiles answered 410 Gone
-  in 2026-11; replacing a feed is a security-policy choice: report it.
+  is maintained. A feed that is gone (abuse.ch's URLhaus and ThreatFox host files
+  answered 410 Gone in 2026-11 and were removed) comes out of the list and
+  out of every sentence that counts the feeds (CONFIGURATION.md, AGENTS.md,
+  the Network settings help in `web/src/admin/fields.ts` and both locales);
+  adding a new feed is a security-policy choice: report it.
 - `internal/catalog/connectors.json`: STDIO presets run `npx -y <package>`
   unversioned (`server-perplexity-ask`, `mongodb-mcp-server`,
   `@bytebase/dbhub`, `@azure/mcp`, `@heroku/mcp-server`,

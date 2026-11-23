@@ -54,8 +54,6 @@ const (
 // DefaultEgressFeeds is the built-in threat list set, used when the operator
 // names none.
 var DefaultEgressFeeds = []EgressFeed{
-	{ID: "urlhaus", URL: "https://urlhaus.abuse.ch/downloads/hostfile/", Format: egress.FormatHosts},
-	{ID: "threatfox", URL: "https://threatfox.abuse.ch/downloads/hostfile/", Format: egress.FormatHosts},
 	{ID: "spamhaus_drop", URL: "https://www.spamhaus.org/drop/drop_v4.json", Format: egress.FormatCIDRJSON},
 	{ID: "et_open", URL: "https://rules.emergingthreats.net/blockrules/compromised-ips.txt", Format: egress.FormatIPs},
 	{ID: "hagezi_tif", URL: "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/tif.mini-onlydomains.txt", Format: egress.FormatDomains},
