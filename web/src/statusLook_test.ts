@@ -77,11 +77,12 @@ eq([folderPhase("syncing"), folderPhase("error"), folderPhase("idle"), folderPha
 eq([offerPhase("open"), offerPhase("done"), offerPhase("skipped")], ["open", "done", "skipped"], "offer phases");
 eq([askPhase("open"), askPhase("submitted"), askPhase("dismissed")], ["open", "answered", "put_away"], "ask phases");
 
-// Bot state is read through statusLook, or the copies grow back.
+// Bot state is read through statusLook, or the copies grow back. The demo
+// folder is left out: it stands in for the server, which decides that state.
 const walk = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const p = join(dir, e.name);
-    if (e.isDirectory()) return e.name === "gen" ? [] : walk(p);
+    if (e.isDirectory()) return e.name === "gen" || e.name === "demo" ? [] : walk(p);
     return /\.tsx?$/.test(e.name) && !/_test\.ts$/.test(e.name) ? [p] : [];
   });
 const src = fileURLToPath(new URL(".", import.meta.url));

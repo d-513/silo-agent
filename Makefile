@@ -93,7 +93,7 @@ WATCH_OPTS  := \
 
 .PHONY: help claude-bin install deps web-install brand build build-cp build-worker \
 	build-bridge build-drive build-egress build-siloosd build-all images bot-image stdio-image drive-image egress-image run run-control \
-	run-frontend watch-control dev attach release nightly publish cp-image caddy-image os-image os-disk os-iso os-incus os-incus-meta os-seed web-build build-cp-ui test-unit test-web test test-fast test-containers \
+	run-frontend watch-control dev attach release nightly publish cp-image caddy-image os-image os-disk os-iso os-incus os-incus-meta os-seed web-build site-demo site-build build-cp-ui test-unit test-web test test-fast test-containers \
 	test-integration e2e fmt vet tidy proto rebuild \
 	clean clean-images cleanup reset-data db-up db-down db-psql db-reset \
 	db-check
@@ -129,6 +129,13 @@ build-cp: ## Build the control plane to build/bin/silo
 
 web-build: web-install ## Build the web console into internal/webui/dist, where the webui build tag embeds it
 	$(PNPM) --dir web exec vite build --outDir ../internal/webui/dist --emptyOutDir
+
+site-demo: web-install ## Build the console demo (the real console over a scripted backend, web/src/demo) into site/public/demo
+	$(PNPM) --dir web build:demo
+
+site-build: site-demo ## Build the website (site/: landing and docs, Astro) into site/dist, for Cloudflare Pages
+	$(PNPM) --dir site install --frozen-lockfile
+	$(PNPM) --dir site build
 
 build-cp-ui: web-build ## Build build/bin/silo with the web console inside (what a release runs; dev builds use Vite)
 	$(MAKE) build-cp TAGS=webui VERSION=$(VERSION) REGISTRY=$(REGISTRY)

@@ -1,0 +1,45 @@
+---
+title: Code in the box goes for a key
+description: What an attacker who runs code inside a Bot's container can and cannot take.
+---
+
+Assume the worst about the box: a package the Bot installed is malicious and now runs as the same user as everything else there, with `sudo`.
+
+## What it finds
+
+**No model keys.** The agent loop runs on the control plane. The box never talks to a model provider.
+
+**No connector tokens.** When the Bot's code calls a connector, the call goes to the control plane, which checks the rule, adds the credential and makes the request. STDIO connectors run in their own sidecar container, one per Bot.
+
+**No drive credentials.** Cloud drives are mounted by a separate sidecar. The Bot sees folders.
+
+**One token of its own.** The worker's token is readable in the box. It opens the worker API only, and only while that Bot's box is running.
+
+## What it can ask for
+
+It can call `get_secret`, like the Bot's own code. That goes through the rule for that secret, so an Ask rule puts a slip in front of you naming it.
+
+For a secret in **surrogate mode** it gets a stand-in: same shape, same length, different characters.
+
+## What it can send
+
+Everything leaves through the gateway.
+
+| It tries | The gateway |
+| --- | --- |
+| The stand-in to the host you allowed, over HTTPS | Swaps in the real value on the way out and back to the stand-in in the response |
+| The stand-in to any other host | Blocks it: `surrogate_leak` |
+| The stand-in over plain HTTP | Blocks it: `surrogate_insecure` |
+| A private address, your LAN, the cloud metadata address | Blocks it, checked after DNS and again at the dial |
+| A host on a threat list or your block list | `403 Blocked by the Silo network filter.` |
+| Large uploads, key-shaped strings, odd DNS | Lets them through and flags them for the Audit tab |
+
+## What it can still do
+
+It can read and change the workspace, which is why **Changes** keeps a history you can restore from. It can use whatever the Bot's rules allow without asking, which is why outward actions default to Ask.
+
+## Known ceilings
+
+- Anyone who can run `docker inspect` on the host can read a Bot's token. Host access is outside this model.
+- The network filter needs Podman. On a plain Docker engine it is off.
+- A host service bound on every interface can be reachable from a rootful engine's bridge.

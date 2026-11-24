@@ -1,0 +1,41 @@
+/* The landing pages: Tailwind over the console's own tokens, so a class here
+ * (`bg-well`, `text-ink-2`, `rounded-card`) means what it means in the app. */
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "@fontsource-variable/source-serif-4";
+@import "tailwindcss";
+@import "../../../web/src/tokens.css";
+
+@source "../";
+
+html {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+.crest svg {
+  display: block;
+}
+
+/* DESIGN.md §5: a button answers a press. */
+.press {
+  transition: transform 70ms var(--ease-quiet), background-color 120ms var(--ease-quiet);
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-cobalt);
+  outline-offset: 2px;
+}

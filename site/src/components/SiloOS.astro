@@ -1,0 +1,139 @@
+---
+// The SiloOS section, told in pictures: the first-boot console beside what
+// the OS hardens, where it runs, and how an update moves the machine. The console's
+// lines are the ones SiloOS prints (images/os/README.md).
+
+const guards = [
+  { title: "Nothing runs as root", text: "Silo, its database and every agent's machine run under one unprivileged user, on rootless Podman." },
+  { title: "Immutable", text: "The system is a read-only image. Nothing installs onto it or changes it between updates." },
+  { title: "No login to attack", text: "Installed from the ISO, it has no user account and no password. The web console is the only way in." },
+  { title: "Patched in one piece", text: "Fixes for the system and for Silo arrive as one image, on the schedule you set, with the last one kept to fall back on." },
+];
+
+const hosts = ["QEMU / KVM", "VMware", "Hyper-V", "Incus", "Bare metal"];
+const arches = ["AMD64", "ARM64"];
+
+const track = [
+  { word: "Previous", text: "Kept, to roll back to", kind: "kept" },
+  { word: "Running", text: "What the machine booted", kind: "now" },
+  { word: "Next", text: "Applied on a reboot you pick", kind: "next" },
+];
+
+const gains = [
+  { title: "The OS is the release", text: "Each version is one matched set: the control plane and the agent, gateway and sidecar images of the same build." },
+  { title: "HTTPS from the first minute", text: "Its own certificate at once, and a Let's Encrypt one seconds after you point a domain at it." },
+  { title: "Run from the console", text: "Name, network, updates, power and logs are a page in Admin. No shell needed." },
+];
+---
+
+<section class="mx-auto mt-28 max-w-[1200px] px-5">
+  <p class="text-[13px] font-medium text-ink-3">The easy way to run it</p>
+  <h2 class="mt-2 text-[44px] font-semibold leading-[1.05] tracking-[-0.03em]">SiloOS</h2>
+  <p class="mt-3 max-w-[56ch] text-[18px] leading-[1.55] text-ink-2">
+    An operating system that only runs Silo, locked down for that one job. Give it a VM or a machine and it boots into Silo with its database and HTTPS.
+  </p>
+
+  <div class="mt-9 grid items-stretch gap-3 lg:grid-cols-2">
+    <figure class="flex flex-col justify-between overflow-hidden rounded-panel bg-hatch p-5 text-on-hatch">
+      <figcaption class="font-mono text-[12px] text-on-hatch/60">the machine's screen, first boot</figcaption>
+      <pre class="mt-8 overflow-x-auto font-mono text-[12.5px] leading-[1.8]"><code><span class="block">SiloOS  ·  https://192.168.1.20</span><span class="block text-on-hatch/70">First sign-in: admin@silo.local / k7mp-x3qa-9ten</span></code></pre>
+    </figure>
+
+    <ul class="grid gap-1.5 sm:grid-cols-2">
+      {
+        guards.map((g) => (
+          <li class="rounded-card bg-well px-5 py-4">
+            <p class="flex items-center gap-2 text-[15px] font-semibold">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-ink-3" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path></svg>
+              {g.title}
+            </p>
+            <p class="mt-1 text-[14px] leading-[1.5] text-ink-2">{g.text}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+
+  <div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-panel bg-well p-5">
+    <p class="min-w-[16ch] flex-1">
+      <span class="block text-[15px] font-semibold">Runs as a VM</span>
+      <span class="mt-0.5 block text-[14px] leading-[1.5] text-ink-2">Give it a VM on the server you already have. Each hypervisor's guest agent is built in.</span>
+    </p>
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <ul class="flex flex-wrap gap-1.5" aria-label="Where it runs">
+        {hosts.map((h) => <li class="rounded-control bg-surface px-3 py-1.5 font-mono text-[12.5px] shadow-card">{h}</li>)}
+      </ul>
+      <span class="hidden h-5 w-px bg-line-strong sm:block" aria-hidden="true"></span>
+      <ul class="flex flex-wrap gap-1.5" aria-label="Processor architectures">
+        {arches.map((a) => <li class="rounded-control bg-hatch px-3 py-1.5 font-mono text-[12.5px] text-on-hatch">{a}</li>)}
+      </ul>
+    </div>
+  </div>
+
+  <figure class="mt-3 rounded-panel bg-well p-5">
+    <figcaption class="text-[14px] font-semibold">An update replaces the whole image</figcaption>
+    <ol class="siloos-track mt-5 grid gap-4 sm:grid-cols-3 sm:gap-0">
+      {
+        track.map((t) => (
+          <li class="siloos-stop relative sm:pt-7" data-kind={t.kind}>
+            <span class="siloos-dot" aria-hidden="true" />
+            <p class="text-[14px] font-semibold">{t.word}</p>
+            <p class="mt-0.5 text-[13px] leading-[1.5] text-ink-2">{t.text}</p>
+          </li>
+        ))
+      }
+    </ol>
+  </figure>
+
+  <ul class="mt-3 grid gap-3 sm:grid-cols-3">
+    {
+      gains.map((g) => (
+        <li class="rounded-card bg-well p-5">
+          <p class="text-[15px] font-semibold">{g.title}</p>
+          <p class="mt-1.5 text-[13.5px] leading-[1.55] text-ink-2">{g.text}</p>
+        </li>
+      ))
+    }
+  </ul>
+
+  <a href="/docs/run/install/" class="mt-6 inline-block text-[15px] font-medium text-cobalt hover:text-cobalt-deep">Install SiloOS</a>
+</section>
+
+<style is:global>
+  /* The update track: three stops on one line, the running one filled. */
+  .siloos-dot {
+    display: none;
+  }
+  @media (min-width: 640px) {
+    .siloos-stop::before {
+      content: "";
+      position: absolute;
+      top: 6px;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--color-line-strong);
+    }
+    .siloos-stop[data-kind="next"]::before {
+      background: repeating-linear-gradient(to right, var(--color-line-strong) 0 5px, transparent 5px 10px);
+    }
+    .siloos-dot {
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 13px;
+      height: 13px;
+      border-radius: 9999px;
+      background: var(--color-well);
+      box-shadow: inset 0 0 0 1.5px var(--color-ink-3);
+    }
+    .siloos-stop[data-kind="now"] .siloos-dot {
+      background: var(--color-ink);
+      box-shadow: none;
+    }
+    .siloos-stop[data-kind="next"] .siloos-dot {
+      box-shadow: inset 0 0 0 1.5px var(--color-line-strong);
+    }
+  }
+</style>

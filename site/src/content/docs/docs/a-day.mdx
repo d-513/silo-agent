@@ -1,0 +1,48 @@
+---
+title: A day in a Bot's life
+description: One Bot from morning to evening, with every part of Silo named where it shows up.
+---
+
+Meet Atlas. It belongs to a small print studio and has been running for a month. Following it through one day is the shortest way to see how the parts of Silo fit.
+
+## 09:00 · The Heartbeat fires
+
+Nobody is at their desk. Atlas has **proactivity** set to *active*, so its **Heartbeat**, a pinned automation, runs every three hours. An automation is a prompt on a schedule, and each firing starts from a fresh context, so the log does not grow forever.
+
+The run needs the machine, so the control plane starts Atlas's **box**: a container with a desktop, a workspace at `/workspace`, and a small **worker** process that dials the control plane and waits for commands.
+
+Atlas checks the inbox through its Email connector and finds two quotes. It files them and posts to the **Feed**, the owner's read-only inbox of what happened.
+
+## 09:20 · A question waits
+
+The studio's domain expires in twelve days. Renewing costs money, so Atlas does not decide. It calls `ask_owner`, which puts a card on the **Dashboard** with the options. The run ends there. The answer, whenever it comes, arrives as the owner's turn.
+
+## 10:40 · You send a message
+
+*"Compare the three printers we shortlisted and tell me which to pick."*
+
+This starts a **run** in the main chat. The control plane builds the request: the system prompt, Atlas's **memories** (it knows you compare prices per unit at 2,000 copies), and the conversation so far. The history is [append-only](/docs/concepts/context/), so most of that request is read from the provider's cache.
+
+Atlas reads a CSV with the `read` tool, then writes one Python cell that runs three web searches at once. Python is where bulk work goes: the cell prints only what the next step needs, so thirty search results never enter the context.
+
+What the searches return is **outside content**. Before Atlas reads it, the [output filter](/docs/attacks/injected-page/) judges it.
+
+## 10:42 · A slip
+
+You ask Atlas to mail the comparison to Sam. Sending mail is set to **Ask** on this Bot. The call stops at the control plane and an **approval slip** appears: who it goes to, the subject, Allow once or Deny. The Bot's code is still waiting inside its Python cell; nothing has reached the mail server.
+
+You allow it. A **receipt** stays in the thread.
+
+## 14:00 · A big job, split
+
+*"Plan the spring catalogue launch."* Atlas writes a **taskboard**, then starts two **subagents**: one prices the stock, one cleans the mailing list. Each runs in the same box with its own context and reports back only its result. Atlas ends its turn and is woken when they finish.
+
+## 16:30 · Telegram
+
+You are out. You send Atlas a voice memo on Telegram. The **channel** hands the audio to the control plane, which transcribes it and starts a run. The reply comes back in Telegram; the tool output stays in the log.
+
+## 22:00 · Quiet
+
+The chat has been still for ten minutes. The **memory keeper**, a small background job with its own narrow tool list, reads what was said and saves two sentences: a preference you stated, and where the launch plan lives. Tomorrow's first message starts with them.
+
+Nobody stopped the box, so it is still there, with the files where Atlas left them.

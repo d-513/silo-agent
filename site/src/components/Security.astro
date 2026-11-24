@@ -1,0 +1,242 @@
+---
+// The security section: a shield of nested layers around one agent, and what
+// each layer is. The layers are numbered from the agent outward; pointing at
+// one in the list lights its band of the shield (CSS :has, no script). Each
+// card says its layer in a sentence and shows it in a small picture: the rule
+// card's four modes are a real control, the rest are read-only.
+import Crest from "./Crest.astro";
+
+const layers = [
+  { title: "A container of its own", text: "Each agent has its own machine and its own network. It cannot reach another agent or your LAN." },
+  { title: "No keys inside", text: "Credentials stay on the control plane. The agent's code gets a stand-in that opens nothing." },
+  { title: "A rule on every action", text: "Set by the operator, the Workspace and the Bot. The strictest wins." },
+  { title: "What it reads is judged first", text: "A language or decision model checks outside content for attempts to steer the agent." },
+  { title: "One way out", text: "Every connection leaves through a gateway that decides host by host." },
+  { title: "Everything leaves a trace", text: "Nothing an agent did is hidden from its owner, and file changes can be undone." },
+];
+
+const boxes = [
+  { index: 25, name: "Atlas" },
+  { index: 4, name: "Ledger" },
+  { index: 22, name: "Scout" },
+];
+
+const modes = [
+  { id: "allow", name: "Allow", says: "Runs without asking." },
+  { id: "auto", name: "Auto", says: "A second model reads your policy and the call. If it is not sure, you are asked." },
+  { id: "ask", name: "Ask", says: "Waits on a slip until someone who may answer does." },
+  { id: "deny", name: "Deny", says: "Never runs. The agent is told so and does not retry." },
+];
+
+const verdicts = [
+  { word: "Clean", does: "passes as it is", tone: "bg-ink-3" },
+  { word: "Suspicious", does: "arrives marked untrusted", tone: "bg-ink" },
+  { word: "Malicious", does: "never arrives", tone: "bg-vermilion" },
+];
+
+const requests = [
+  { host: "api.shop.example", does: "real key swapped in", ok: true },
+  { host: "collect.example", does: "blocked · stand-in leak", ok: false },
+  { host: "192.168.1.20", does: "blocked · private address", ok: false },
+];
+
+const traces = [
+  { kind: "receipt", text: "Allowed once · Send an email" },
+  { kind: "audit", text: "Blocked collect.example" },
+  { kind: "diff", text: "vendors/comparison.md · Restore" },
+];
+
+// The shield, drawn once and scaled about its centre for each layer: the
+// outermost is layer 6, the innermost layer 1, with the agent inside it.
+const shield = "M160 20 290 62V170C290 250 235 310 160 340 85 310 30 250 30 170V62Z";
+const cx = 160;
+const cy = 185;
+const scale = (n: number) => 0.28 + 0.12 * n;
+const top = (n: number) => cy - (cy - 20) * scale(n);
+const order = layers.map((_, i) => layers.length - i);
+const row = "flex items-center gap-2.5 rounded-sm bg-surface px-3 py-2 shadow-card";
+---
+
+<section class="security mx-auto mt-28 max-w-[1200px] px-5">
+  <p class="text-[13px] font-medium text-ink-3">Security</p>
+  <h2 class="mt-2 max-w-[24ch] text-[30px] font-semibold leading-[1.15] tracking-[-0.02em]">Safe when the agent is wrong.</h2>
+  <p class="mt-4 max-w-[62ch] text-[16px] leading-[1.65] text-ink-2">
+    An agent that reads the web will sooner or later be told to do something it should not. Silo does not rely on the model refusing. Six layers stand between a misled agent and anything you would mind, and each one works without the others.
+  </p>
+
+  <div class="mt-10 grid items-start gap-8 lg:grid-cols-[minmax(0,340px)_1fr] lg:gap-12">
+    <figure class="relative mx-auto w-full max-w-[340px] lg:sticky lg:top-8">
+      <svg viewBox="0 0 320 360" class="block h-auto w-full" role="img" aria-label="A shield of six nested layers around one agent">
+        {
+          order.map((n) => (
+            <g class={`security-ring security-ring-${n}`}>
+              <path d={shield} transform={`translate(${cx} ${cy}) scale(${scale(n)}) translate(${-cx} ${-cy})`} vector-effect="non-scaling-stroke" />
+              <text x={cx} y={top(n) + 14.5} text-anchor="middle">{n}</text>
+            </g>
+          ))
+        }
+      </svg>
+      <span class="absolute left-1/2 top-[53.5%] -translate-x-1/2 -translate-y-1/2">
+        <Crest index={25} size={52} label="An agent" />
+      </span>
+    </figure>
+
+    <ol class="grid gap-3 sm:grid-cols-2">
+      {
+        layers.map((l, i) => (
+          <li class="security-layer flex flex-col rounded-card bg-well p-5" data-layer={i + 1}>
+            <p class="flex items-baseline gap-3">
+              <span class="font-mono text-[12.5px] text-ink-3">{i + 1}</span>
+              <span class="text-[15px] font-semibold">{l.title}</span>
+            </p>
+            <p class="mt-1.5 text-[14px] leading-[1.55] text-ink-2">{l.text}</p>
+
+            <div class="mt-4 grid gap-1.5 text-[13px]">
+              {i === 0 && (
+                <div class="flex gap-1.5" aria-hidden="true">
+                  {boxes.map((b) => (
+                    <span class="flex flex-1 flex-col items-center gap-1.5 rounded-sm bg-surface px-2 py-3 shadow-card">
+                      <Crest index={b.index} size={28} />
+                      <span class="font-mono text-[11.5px] text-ink-3">{b.name}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {i === 1 && (
+                <>
+                  <p class={row}>
+                    <span class="w-[88px] shrink-0 text-ink-3">Control plane</span>
+                    <span class="min-w-0 truncate font-mono text-[12.5px]">sk_live_••••••••</span>
+                    <span class="ml-auto shrink-0 text-[12px] text-ink-3">the real key</span>
+                  </p>
+                  <p class="flex items-center gap-2.5 rounded-sm bg-hatch px-3 py-2 text-on-hatch">
+                    <span class="w-[88px] shrink-0 text-on-hatch/60">In the box</span>
+                    <span class="min-w-0 truncate font-mono text-[12.5px]">sk_live_x7Qp…k2Rz</span>
+                    <span class="ml-auto shrink-0 text-[12px] text-on-hatch/60">a stand-in</span>
+                  </p>
+                </>
+              )}
+
+              {i === 2 && (
+                <div class="security-rule">
+                  <p class="mb-1.5 flex items-center justify-between gap-3">
+                    <span class="truncate font-mono text-[12.5px] text-ink-2">email.send</span>
+                    <span class="shrink-0 text-[12px] text-ink-3">try one</span>
+                  </p>
+                  <fieldset class="flex gap-0.5 rounded-control bg-pressed p-0.5">
+                    <legend class="sr-only">What happens when the agent sends an email</legend>
+                    {modes.map((m) => (
+                      <label class="security-mode flex-1 cursor-pointer">
+                        <input type="radio" name="security-mode" value={m.id} checked={m.id === "ask"} class="sr-only" />
+                        <span class="block rounded-sm px-1 py-1.5 text-center text-[13px] font-medium text-ink-2">{m.name}</span>
+                      </label>
+                    ))}
+                  </fieldset>
+                  {modes.map((m) => (
+                    <p class="security-says mt-2 min-h-[3.1em] text-[13.5px] leading-[1.55] text-ink-2" data-mode={m.id}>{m.says}</p>
+                  ))}
+                </div>
+              )}
+
+              {i === 3 && verdicts.map((v) => (
+                <p class={row}>
+                  <span class={`h-2 w-2 shrink-0 rounded-full ${v.tone}`} aria-hidden="true" />
+                  <span class="font-medium">{v.word}</span>
+                  <span class="ml-auto min-w-0 truncate text-ink-2">{v.does}</span>
+                </p>
+              ))}
+
+              {i === 4 && requests.map((r) => (
+                <p class={row}>
+                  <span class="min-w-0 truncate font-mono text-[12.5px]">{r.host}</span>
+                  <span class:list={["ml-auto shrink-0 text-[12.5px]", r.ok ? "text-ink-2" : "text-vermilion"]}>{r.does}</span>
+                </p>
+              ))}
+
+              {i === 5 && traces.map((t) => (
+                <p class={row}>
+                  <span class="w-[52px] shrink-0 font-mono text-[11.5px] text-ink-3">{t.kind}</span>
+                  <span class="min-w-0 truncate">{t.text}</span>
+                </p>
+              ))}
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+
+  <p class="mt-8 max-w-[70ch] text-[14.5px] leading-[1.6] text-ink-2">
+    No layer is complete, and the docs say where each one stops. See them at work in two attacks:{" "}
+    <a href="/docs/attacks/injected-page/" class="font-medium text-cobalt hover:text-cobalt-deep">a web page that tries to steer the agent</a> and{" "}
+    <a href="/docs/attacks/stolen-key/" class="font-medium text-cobalt hover:text-cobalt-deep">code in the container that goes for a key</a>. Or read{" "}
+    <a href="/docs/concepts/rules/" class="font-medium text-cobalt hover:text-cobalt-deep">how rules decide</a>.
+  </p>
+</section>
+
+<style is:global>
+  .security-ring path {
+    fill: var(--color-well);
+    stroke: var(--color-line-strong);
+    stroke-width: 1;
+    transition:
+      fill 160ms var(--ease-quiet),
+      stroke 160ms var(--ease-quiet);
+  }
+  .security-ring:nth-child(even) path {
+    fill: var(--color-canvas);
+  }
+  .security-ring text {
+    fill: var(--color-ink-3);
+    font: 500 10px "Geist Mono Variable", ui-monospace, monospace;
+    transition: fill 160ms var(--ease-quiet);
+  }
+
+  /* Pointing at a layer (or working its control) lights its band. */
+  .security:has([data-layer="1"]:is(:hover, :focus-within)) .security-ring-1 path,
+  .security:has([data-layer="2"]:is(:hover, :focus-within)) .security-ring-2 path,
+  .security:has([data-layer="3"]:is(:hover, :focus-within)) .security-ring-3 path,
+  .security:has([data-layer="4"]:is(:hover, :focus-within)) .security-ring-4 path,
+  .security:has([data-layer="5"]:is(:hover, :focus-within)) .security-ring-5 path,
+  .security:has([data-layer="6"]:is(:hover, :focus-within)) .security-ring-6 path {
+    stroke: var(--color-cobalt);
+    stroke-width: 2;
+  }
+  .security:has([data-layer="1"]:is(:hover, :focus-within)) .security-ring-1 text,
+  .security:has([data-layer="2"]:is(:hover, :focus-within)) .security-ring-2 text,
+  .security:has([data-layer="3"]:is(:hover, :focus-within)) .security-ring-3 text,
+  .security:has([data-layer="4"]:is(:hover, :focus-within)) .security-ring-4 text,
+  .security:has([data-layer="5"]:is(:hover, :focus-within)) .security-ring-5 text,
+  .security:has([data-layer="6"]:is(:hover, :focus-within)) .security-ring-6 text {
+    fill: var(--color-cobalt);
+  }
+
+  /* The rule's four modes: the picked one is lifted, and says what it does. */
+  .security-mode span {
+    transition:
+      background-color 160ms var(--ease-quiet),
+      color 160ms var(--ease-quiet);
+  }
+  .security-mode:hover span {
+    color: var(--color-ink);
+  }
+  .security-mode input:checked + span {
+    background: var(--color-surface);
+    color: var(--color-ink);
+    box-shadow: 0 0 0 1px var(--color-line);
+  }
+  .security-mode input:focus-visible + span {
+    outline: 2px solid var(--color-cobalt);
+    outline-offset: 1px;
+  }
+  .security-says {
+    display: none;
+  }
+  .security-rule:has(input[value="allow"]:checked) [data-mode="allow"],
+  .security-rule:has(input[value="auto"]:checked) [data-mode="auto"],
+  .security-rule:has(input[value="ask"]:checked) [data-mode="ask"],
+  .security-rule:has(input[value="deny"]:checked) [data-mode="deny"] {
+    display: block;
+  }
+</style>

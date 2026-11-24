@@ -1,0 +1,67 @@
+/* The docs in Silo's look: Starlight's variables set from the console's
+ * tokens (web/src/tokens.css), so a palette change there reaches here. Both
+ * use `data-theme` on <html>, so the dark palette applies as it stands. */
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+/* Tailwind is here only to read the tokens' @theme block into variables. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "../../../web/src/tokens.css";
+
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --sl-font: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --sl-font-mono: "Geist Mono Variable", ui-monospace, monospace;
+
+  --sl-color-white: var(--color-ink);
+  --sl-color-gray-1: var(--color-ink);
+  --sl-color-gray-2: var(--color-ink-2);
+  --sl-color-gray-3: var(--color-ink-3);
+  --sl-color-gray-4: var(--color-ink-3);
+  --sl-color-gray-5: var(--color-line-strong);
+  --sl-color-gray-6: var(--color-well);
+  --sl-color-gray-7: var(--color-well);
+  --sl-color-black: var(--color-canvas);
+
+  --sl-color-accent: var(--color-cobalt);
+  --sl-color-accent-high: var(--color-cobalt-deep);
+  --sl-color-accent-low: var(--color-cobalt-pale);
+  --sl-color-text-accent: var(--color-cobalt);
+  --sl-color-text-invert: var(--color-on-accent);
+
+  --sl-color-bg: var(--color-canvas);
+  --sl-color-bg-nav: var(--color-canvas);
+  --sl-color-bg-sidebar: var(--color-well);
+  --sl-color-bg-inline-code: var(--color-pressed);
+  --sl-color-hairline: var(--color-line);
+  --sl-color-hairline-light: var(--color-line);
+  --sl-color-hairline-shade: var(--color-line-strong);
+
+  --sl-shadow-sm: 0 0 0 1px var(--color-line);
+  --sl-shadow-md: 0 0 0 1px var(--color-line), 0 6px 20px -8px var(--shade-soft);
+  --sl-shadow-lg: 0 0 0 1px var(--color-line), 0 24px 60px -20px var(--shade-deep);
+
+  --sl-text-h1: 2rem;
+  --sl-text-h2: 1.375rem;
+  --sl-text-h3: 1.125rem;
+  --sl-line-height: 1.7;
+}
+
+/* One ink: headings are weight, not size or color. */
+.sl-markdown-content :is(h1, h2, h3, h4) {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+h1#_top {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.sl-markdown-content code {
+  border-radius: 6px;
+}
+
+/* The console in a frame (components/Demo.astro), in a docs page. */
+.silo-demo {
+  margin-block: 1.5rem;
+}

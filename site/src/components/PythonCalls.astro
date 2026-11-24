@@ -1,0 +1,144 @@
+---
+// A piece of a Silo chat, drawn with the thread's own classes and measures
+// (web/src/thread: UserBubble, ToolRow, FoldRow, CodeBlock, the reply serif):
+// a message, the connector calls one Python cell made stacked above that
+// cell's row, the row open on its code and output, then the reply. The
+// console's root is 14px, so `--spacing` is set to its step here and every
+// spacing class measures what it does in the app. The rows arrive in the
+// order a live run shows them, once, when the figure scrolls into view.
+import gmail from "../../../internal/catalog/images/gmail.svg?url";
+import linear from "../../../internal/catalog/images/linear.svg?url";
+import stripe from "../../../internal/catalog/images/stripe.svg?url";
+import { PYTHON_MARK } from "../../../web/src/thread/pythonMark.ts";
+
+// [text, tone] pieces per line, in the thread's highlight colours:
+// k keyword, s string, b built-in.
+type Piece = [string, ("k" | "s" | "b")?];
+const code: Piece[][] = [
+  [["from", "k"], [" tools "], ["import", "k"], [" stripe, linear, gmail"]],
+  [],
+  [["overdue = stripe.list_invoices(status="], ['"open"', "s"], [", overdue="], ["True", "k"], [")"]],
+  [["tickets = linear.list_issues(state="], ['"open"', "s"], [", label="], ['"customer"', "s"], [")"]],
+  [],
+  [["late = {i["], ['"customer_email"', "s"], ["] "], ["for", "k"], [" i "], ["in", "k"], [" overdue}"]],
+  [["both = [t "], ["for", "k"], [" t "], ["in", "k"], [" tickets "], ["if", "k"], [" t["], ['"reporter"', "s"], ["] "], ["in", "k"], [" late]"]],
+  [],
+  [["for", "k"], [" t "], ["in", "k"], [" both:"]],
+  [["    gmail.create_draft(to=t["], ['"reporter"', "s"], ["], subject=subject(t), body=note(t))"]],
+  [],
+  [["print", "b"], ["("], ["len", "b"], ["(overdue), "], ['"overdue,"', "s"], [" "], ["len", "b"], ["(both), "], ['"with an open ticket"', "s"], [")"]],
+];
+const tone = { k: "text-cobalt", s: "text-emerald", b: "text-ink-3" };
+
+const calls = [
+  { mark: stripe, title: "List invoices", action: "stripe.list_invoices" },
+  { mark: linear, title: "List issues", action: "linear.list_issues" },
+  { mark: gmail, title: "Create draft", action: "gmail.create_draft" },
+  { mark: gmail, title: "Create draft", action: "gmail.create_draft" },
+];
+const row = "flex h-8 w-full min-w-0 items-center gap-2 rounded-control px-2 text-small";
+---
+
+<figure class="pycalls min-w-0" data-pycalls>
+  <div class="rounded-panel bg-canvas px-6 py-6 shadow-card">
+    <div class="flex w-full justify-end">
+      <div class="max-w-[88%] rounded-bubble rounded-br-[6px] bg-well px-4 py-2.5 text-body-lg leading-6 sm:max-w-[80%]">Which customers with an overdue invoice also have an open ticket? Draft each of them a note.</div>
+    </div>
+
+    <div class="-mx-2 mt-5 space-y-0.5">
+      {
+        calls.map((c, i) => (
+          <div class:list={[row, "pycalls-step"]} style={`--step:${i + 1}`}>
+            <span class="flex h-4 w-4 shrink-0 items-center justify-center">
+              <img src={c.mark} alt="" width="16" height="16" class="pycalls-brand h-4 w-4 rounded-[3px] object-cover" />
+            </span>
+            <span class="shrink-0 font-medium">
+              <span class="text-ink-3">Used</span> <span class="text-ink-2">{c.title}</span>
+            </span>
+            <span class="min-w-0 truncate font-mono text-meta text-ink-3">{c.action}</span>
+          </div>
+        ))
+      }
+
+      <div class="pycalls-step" style="--step:0">
+        <div class={row}>
+          <span class="flex h-4 w-4 shrink-0 items-center justify-center text-ink-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={PYTHON_MARK}></path></svg>
+          </span>
+          <span class="shrink-0 font-medium">
+            <span class="text-ink-3">Used</span> <span class="text-ink-2">Python</span>
+          </span>
+          <span class="min-w-0 truncate font-mono text-meta text-ink-3">from tools import stripe, linear, gmail</span>
+          <span class="min-w-2 flex-1"></span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 rotate-90 text-ink-3" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+        </div>
+        <div class="mr-2 ml-[15px] space-y-2 border-l border-line pt-0.5 pb-2 pl-4">
+          <div class="overflow-hidden rounded-sm bg-well">
+            <div class="flex h-8 items-center pl-3 shadow-[inset_0_-1px_0_var(--color-line)]">
+              <span class="text-section leading-4 text-ink-3">python</span>
+            </div>
+            <pre class="overflow-x-auto p-3 font-mono text-meta leading-5"><code>{code.map((line) => <span class="block min-h-[1lh] whitespace-pre">{line.map(([text, t]) => <span class={t ? tone[t] : undefined}>{text}</span>)}</span>)}</code></pre>
+          </div>
+          <pre class="pycalls-step whitespace-pre-wrap font-mono text-meta leading-5 text-ink-2" style={`--step:${calls.length + 1}`}>212 overdue, 2 with an open ticket</pre>
+        </div>
+      </div>
+    </div>
+
+    <p class="pycalls-step pycalls-reply mt-3" style={`--step:${calls.length + 2}`}>Two customers have both an overdue invoice and an open ticket. I drafted a note to each of them; the drafts are in Gmail for you to read before anything is sent.</p>
+  </div>
+  <figcaption class="mt-3 px-1 text-[13px] leading-[1.55] text-ink-3">
+    One cell made four calls. The 299 records they returned stayed in variables on the agent's machine, and the model read the one line the cell printed.
+  </figcaption>
+</figure>
+
+<script>
+  const figs = document.querySelectorAll<HTMLElement>("[data-pycalls]");
+  if (figs.length && "IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const seen = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          e.target.classList.add("is-seen");
+          seen.unobserve(e.target);
+        }
+      },
+      { threshold: 0.35 },
+    );
+    for (const f of figs) {
+      f.classList.add("is-waiting");
+      seen.observe(f);
+    }
+  }
+</script>
+
+<style is:global>
+  /* The console's root is 14px, so its spacing step is 3.5px. */
+  .pycalls {
+    --spacing: 3.5px;
+  }
+  /* The thread's reply face (.silo-reply in the console). */
+  .pycalls-reply {
+    font-family: var(--font-serif);
+    font-size: 16.5px;
+    line-height: 28px;
+    letter-spacing: -0.003em;
+    font-optical-sizing: auto;
+  }
+  /* A brand's logo keeps a paper tile in the dark, as in the console. */
+  [data-theme="dark"] .pycalls-brand {
+    background: var(--color-mark);
+    box-shadow: 0 0 0 2px var(--color-mark);
+  }
+  .pycalls.is-waiting .pycalls-step {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  .pycalls.is-waiting.is-seen .pycalls-step {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 320ms var(--ease-settle),
+      transform 320ms var(--ease-settle);
+    transition-delay: calc(250ms + var(--step) * 380ms);
+  }
+</style>

@@ -10,10 +10,11 @@ A token-conserving, self-hosted, multi-user agent. Each **Bot** is a durable con
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Prerequisites, setup, build, run, "after you change…" table |
 | [docs/TESTING.md](docs/TESTING.md) | Test tiers, the harness, environment knobs, live checks |
 | [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Every operator setting |
+| [site/README.md](site/README.md) | The website (landing and docs) and the console demo it shows |
 | [images/os/README.md](images/os/README.md) | SiloOS: the bootc image that runs Silo and nothing else |
 | `internal/prompts/SYSTEM.md`, `LEAD.md` | The Bot's base system prompt: the core every run gets, then what only a lead does (prompt paths below like `prompts/X.md` mean `internal/prompts/X.md`) |
 
-The tree: Go in `cmd/` and `internal/`, the API in `proto/` (buf config there too; output in `gen/`), `web/`, `ios/`, every container image in `images/<name>` (built as `silo-<name>`; `cp` is the control plane's, `os` SiloOS), dev dependencies in `dev/` (`dev/compose.yml`), prose in `docs/` (`docs/research/` for research notes, `docs/architecture/` for the generated architecture page), stack tests in `test/integration/`. README.md has the same as a table.
+The tree: Go in `cmd/` and `internal/`, the API in `proto/` (buf config there too; output in `gen/`), `web/`, `site/` (the website), `ios/`, every container image in `images/<name>` (built as `silo-<name>`; `cp` is the control plane's, `os` SiloOS), dev dependencies in `dev/` (`dev/compose.yml`), prose in `docs/` (`docs/research/` for research notes, `docs/architecture/` for the generated architecture page), stack tests in `test/integration/`. README.md has the same as a table.
 
 This file is the map of how things work and what must not be broken. Each section names the package, the types and the tests that pin the behaviour; when you change a behaviour described here, update its paragraph in the same commit.
 
@@ -46,6 +47,7 @@ This file is the map of how things work and what must not be broken. Each sectio
 | `make proto` | `buf generate` (Go + TS) after a `.proto` change, then rebuild the CP and whatever uses that proto (worker, drive sidecar, egress gateway). iOS stubs: `buf generate proto --template proto/buf.gen.swift.yaml` |
 | `make cleanup` / `make clean-images` | `podman rm -f` every `silo-*` container / remove the local images |
 | `make web-build` / `make build-cp-ui` | The console's production bundle into `internal/webui/dist` (ignored by git) / `build/bin/silo` with it compiled in (`-tags webui`). Dev builds carry no console and use Vite |
+| `make site-demo` / `make site-build` | The console demo into `site/public/demo` (`web/vite.demo.config.ts`) / that, then the website into `site/dist` (see Website). CI's Web check runs `site-build` |
 | `make test-unit` / `make test-web` | What CI's Checks run (`.github/workflows/checks.yml`): the Go packages that need no database, and the web typecheck with its node tests. `images.yml` publishes the seven images (silo-caddy and silo-os included) on a push to `master` (`:master-<sha>`, `:master`) and on a `v*` tag (`:vX.Y.Z`, `:latest` for the highest full release), and on a tag makes a draft GitHub Release that SiloOS's media for both architectures fill (`scripts/os-media.sh`) before it is published; DEVELOPMENT.md § Releases |
 | `make cp-image` | The control plane's own image, console included (`images/cp/`: built inside the image with cgo, context narrowed by `images/cp/Containerfile.dockerignore`, not the root `.containerignore`; its builder needs about 4 GB). Deployment rules (same-path data mount, the socket, uid 1000): docs/CONFIGURATION.md § Running the control plane in a container |
 | `make os-image` / `os-iso` / `os-disk` / `os-incus` / `os-seed` | SiloOS (`images/os/`, a bootc image) / an installer ISO, a disk image (`OS_DISK_TYPE` qcow2, raw, ami, …; bootc-image-builder, sudo; `OS_CHANNEL=local|latest|master|vX.Y.Z`) / that qcow2 imported into Incus / a NoCloud seed for a plain VM. images/os/README.md |
@@ -886,8 +888,17 @@ pnpm + React + Tailwind in `web/`, ConnectRPC to the CP plus WebSockets. DESIGN.
 
 ## Theme
 
-- Light and dark are one set of token names in `web/src/index.css` (`@theme` is light, `[data-theme="dark"]` re-inks it; DESIGN.md §2 Dark). `web/src/theme.ts` is the store (localStorage `silo.theme`, else the system setting); the inline script in `index.html` sets `data-theme` before the first paint.
+- Light and dark are one set of token names in `web/src/tokens.css`, which `index.css` and the website both import (`@theme` is light, `[data-theme="dark"]` re-inks it; DESIGN.md §2 Dark). `web/src/theme.ts` is the store (localStorage `silo.theme`, else the system setting); the inline script in `index.html` sets `data-theme` before the first paint.
 - **Never write `white`, `black` or a hex in a component.** A label on an ink fill is `on-ink`, on a cobalt/emerald/vermilion fill `on-accent`, on the hatch `on-hatch`; shadows take `--shade-*`. Reach for a type token (`text-title`, …) before pixel values. `theme_test.ts` checks both palettes' contrast and that the boot script agrees with the store.
+
+# Website
+
+`site/` (site/README.md): the landing page and the docs, Astro with Starlight, built to static files for Cloudflare Pages (`make site-build` → `site/dist`). It is its own pnpm package, never part of an image or of the control plane.
+
+- **The demo on the landing page is the console itself**, not a copy: `web/vite.demo.config.ts` builds `web/` with three modules swapped (its `swaps` map) for ones in `web/src/demo/`: `api.ts` (the same client over `createRouterTransport`, answered in the page by `backend.ts`), `history.ts` (the router's history, in memory, so the frame does not fill the visitor's Back button; `?at=/bots/…` opens a page) and `bot/MachinePane.tsx` (the Desktop and Console need a machine). **The console's own build carries none of it**: a new thing the demo must replace is another line in `swaps`, never a flag read in a component.
+- **The demo backend** (`web/src/demo/`): `world.ts` is the seeded state, typed by the generated API so a proto change fails `tsc`; `runs.ts` the run engine (a log per chat, the bus `StreamRun` follows, approvals a run waits on); `scenes.ts` what the Bots say, written by hand and picked by a message's words, with an honest "this is a demo" answer for anything else; `backend.ts` the handlers. A read it does not write answers empty and any other change is refused in words (`fallback`), so nothing looks done that was not. It computes a Bot's state when read, as the control plane does. `statusLook_test.ts` leaves the folder out: it stands in for the server.
+- **The site shares the look by file, not by copy:** `web/src/tokens.css` (Tailwind on the landing, Starlight's variables in `site/src/styles/docs.css`), crests drawn at build time by `web/src/stack.ts` (`Crest.astro`), favicons and the mark copied in by `site/scripts/assets.mjs`. Numbers on the landing are counted from `internal/catalog` at build time. The docs live in `site/src/content/docs/docs/`; a page embeds the demo with `<Demo at="…" />`. The site's theme key is Starlight's, mirrored to the console's `silo.theme` so the frame follows.
+- The site's copy follows DESIGN.md § Voice, and says what is not covered where the repo's docs do.
 
 # iOS
 

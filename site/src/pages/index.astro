@@ -1,0 +1,136 @@
+---
+import catalog from "../../../internal/catalog/connectors.json";
+import Crest from "../components/Crest.astro";
+import Demo from "../components/Demo.astro";
+import Desktop from "../components/Desktop.astro";
+import Page from "../layouts/Page.astro";
+import PythonCalls from "../components/PythonCalls.astro";
+import Security from "../components/Security.astro";
+import SiloOS from "../components/SiloOS.astro";
+
+// The numbers on this page are counted from the repository at build time, so
+// they are never a claim that went stale.
+const connectors = catalog.connectors as { name: string }[];
+const drives = Object.keys(import.meta.glob("../../../internal/drives/catalog/*/drive.yaml", { query: "?url" })).length;
+const named = ["GitHub", "Linear", "Notion", "Slack", "Gmail", "Google Calendar", "Stripe", "Sentry"].filter((n) => connectors.some((c) => c.name === n));
+
+const states = [
+  { index: 25, state: "idle", word: "Online", note: "Ready for a message." },
+  { index: 22, state: "working", word: "Working", note: "A run is live, and you can watch it." },
+  { index: 4, state: "needs_you", word: "Needs you", note: "Paused until you answer." },
+  { index: 42, state: "asleep", word: "Stopped", note: "Switched off. Its files and memory stay." },
+] as const;
+---
+
+<Page title="Silo: safe agents, done right" description="A self-hosted agent harness. Agents run in monitored containers that hold no credentials, with a real desktop for browsing and graphical work, and connect to the apps and services you use.">
+  <section class="mx-auto max-w-[1200px] px-5 pb-10 pt-14 sm:pt-20">
+    <p class="font-mono text-[12.5px] text-ink-3">Self-hosted · multi-user</p>
+    <h1 class="mt-4 max-w-[18ch] text-[40px] font-semibold leading-[1.05] tracking-[-0.03em] sm:text-[60px]">Safe agents, done right.</h1>
+    <p class="mt-5 max-w-[60ch] text-[17px] leading-[1.6] text-ink-2">
+      Silo is a batteries-included agent harness that gets out of your way. Each agent works inside its own monitored container, with no credentials in it and a real desktop for browsing and graphical tasks. Connect your apps and services, and decide what each agent may do with them.
+    </p>
+    <div class="mt-7 flex flex-wrap items-center gap-3 text-[15px]">
+      <a href="#try" class="press rounded-control bg-ink px-4 py-2.5 font-medium text-on-ink hover:bg-ink-deep">Try the console</a>
+      <a href="/docs/run/install/" class="press rounded-control bg-well px-4 py-2.5 font-medium hover:bg-pressed">Install</a>
+      <a href="/docs/" class="press rounded-control px-3 py-2.5 text-ink-2 hover:text-ink">Read the docs</a>
+    </div>
+  </section>
+
+  <section id="try" class="mx-auto max-w-[1320px] scroll-mt-6 px-3 sm:px-5">
+    <Demo />
+    <p class="mx-auto mt-4 max-w-[70ch] px-2 text-center text-[13.5px] leading-[1.6] text-ink-3">
+      This is the console that ships, not a mock-up. Its server is replaced by a script in this page: the Bots, their files and their replies are recordings. Type anything, answer the slip on Ledger, or pick a prompt from the Dashboard.
+    </p>
+  </section>
+
+  <section class="mx-auto mt-28 max-w-[1200px] px-5">
+    <p class="text-[13px] font-medium text-ink-3">Bots</p>
+    <h2 class="mt-2 max-w-[24ch] text-[30px] font-semibold leading-[1.15] tracking-[-0.02em]">Each agent is a Bot.</h2>
+    <p class="mt-4 max-w-[62ch] text-[16px] leading-[1.65] text-ink-2">
+      A Bot has its own machine, files and memory, and its crest shows what it is doing.
+    </p>
+    <ul class="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {
+        states.map((s) => (
+          <li class="rounded-card bg-well p-5">
+            <Crest index={s.index} size={56} state={s.state} label={s.word} />
+            <p class="mt-4 text-[15px] font-semibold">{s.word}</p>
+            <p class="mt-1 text-[13.5px] leading-[1.55] text-ink-2">{s.note}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <Desktop />
+
+  <Security />
+
+  <section class="mx-auto mt-28 grid max-w-[1200px] items-start gap-10 px-5 lg:grid-cols-[5fr_6fr]">
+    <div>
+      <p class="text-[13px] font-medium text-ink-3">Tool calling in Python</p>
+      <h2 class="mt-2 text-[30px] font-semibold leading-[1.15] tracking-[-0.02em]">Token-conserving by design.</h2>
+      <p class="mt-4 max-w-[56ch] text-[16px] leading-[1.65] text-ink-2">
+        Most agents call one tool per model turn and read every result in full. A Silo agent writes a Python cell instead. Every connector is a module it can import, so one cell can call several tools, loop over the results and join them. The records stay in variables on its machine, and the model reads only what the cell prints.
+      </p>
+      <p class="mt-4 max-w-[56ch] text-[16px] leading-[1.65] text-ink-2">
+        Each call in that cell still crosses the control plane, which checks its rule, adds the credential and filters what comes back. Code does not get around an approval: the cell waits on it.
+      </p>
+      <p class="mt-6 max-w-[56ch] border-l-2 border-line-strong pl-4 text-[14.5px] leading-[1.6] text-ink-2">
+        Anthropic measured this pattern on one workflow: from 150,000 tokens to 2,000, a saving of 98.7%.{" "}
+        <a href="https://www.anthropic.com/engineering/code-execution-with-mcp" class="font-medium text-cobalt hover:text-cobalt-deep">Code execution with MCP</a>, Anthropic Engineering, November 2025.
+      </p>
+      <a href="/docs/concepts/context/" class="mt-5 inline-block text-[15px] font-medium text-cobalt hover:text-cobalt-deep">How a Bot keeps its context small</a>
+    </div>
+    <PythonCalls />
+  </section>
+
+  <section class="mx-auto mt-28 max-w-[1200px] px-5">
+    <p class="text-[13px] font-medium text-ink-3">What it reaches</p>
+    <h2 class="mt-2 max-w-[24ch] text-[30px] font-semibold leading-[1.15] tracking-[-0.02em]">Your tools, your chats, your files.</h2>
+    <div class="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="rounded-card bg-well p-5">
+        <p class="font-mono text-[28px] font-medium tabular-nums">{connectors.length}</p>
+        <p class="mt-1 text-[15px] font-semibold">Connectors</p>
+        <p class="mt-1 text-[13.5px] leading-[1.55] text-ink-2">{named.join(", ")} and more in the library, or any MCP server over HTTP or STDIO.</p>
+      </div>
+      <div class="rounded-card bg-well p-5">
+        <p class="font-mono text-[28px] font-medium tabular-nums">4</p>
+        <p class="mt-1 text-[15px] font-semibold">Channels</p>
+        <p class="mt-1 text-[13.5px] leading-[1.55] text-ink-2">Telegram, WhatsApp, Discord and Slack. A Bot answers where you already talk, files and voice memos included.</p>
+      </div>
+      <div class="rounded-card bg-well p-5">
+        <p class="font-mono text-[28px] font-medium tabular-nums">{drives}</p>
+        <p class="mt-1 text-[15px] font-semibold">Drive providers</p>
+        <p class="mt-1 text-[13.5px] leading-[1.55] text-ink-2">Cloud storage mounted as folders in the workspace. The credentials stay in a sidecar the Bot cannot enter.</p>
+      </div>
+      <div class="rounded-card bg-well p-5">
+        <p class="font-mono text-[28px] font-medium tabular-nums">1</p>
+        <p class="mt-1 text-[15px] font-semibold">Address of its own</p>
+        <p class="mt-1 text-[13.5px] leading-[1.55] text-ink-2">Each Bot can receive mail, expose a port through a tunnel, and publish a page or a small app.</p>
+      </div>
+    </div>
+  </section>
+
+  <SiloOS />
+
+  <section class="mx-auto mt-28 grid max-w-[1200px] gap-10 px-5 lg:grid-cols-2">
+    <div>
+      <p class="text-[13px] font-medium text-ink-3">Several people</p>
+      <h2 class="mt-2 text-[30px] font-semibold leading-[1.15] tracking-[-0.02em]">One install for the whole team.</h2>
+      <p class="mt-4 max-w-[56ch] text-[16px] leading-[1.65] text-ink-2">
+        A Workspace holds Bots and the people who use them. Connections and drives are added once and granted to the Bots that need them. The wall between people is a separate Bot: each has its own machine, memory and rules. Rooms put several Bots and people in one conversation.
+      </p>
+    </div>
+    <div>
+      <p class="text-[13px] font-medium text-ink-3">Run it</p>
+      <h2 class="mt-2 text-[30px] font-semibold leading-[1.15] tracking-[-0.02em]">Three ways to install.</h2>
+      <ul class="mt-4 grid gap-2 text-[15px]">
+        <li class="rounded-card bg-well px-5 py-4"><strong class="font-semibold">SiloOS.</strong> <span class="text-ink-2">A bootable image that runs Silo and nothing else, with its database and HTTPS.</span></li>
+        <li class="rounded-card bg-well px-5 py-4"><strong class="font-semibold">One container.</strong> <span class="text-ink-2">The control plane with the console inside, next to your own Postgres.</span></li>
+        <li class="rounded-card bg-well px-5 py-4"><strong class="font-semibold">From source.</strong> <span class="text-ink-2">Go, Podman and a Makefile.</span></li>
+      </ul>
+      <a href="/docs/run/install/" class="mt-5 inline-block text-[15px] font-medium text-cobalt hover:text-cobalt-deep">Install Silo</a>
+    </div>
+  </section>
+</Page>

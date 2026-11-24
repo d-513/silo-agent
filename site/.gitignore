@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.astro/
+# Copied in by scripts/assets.mjs (the console's favicons, the mark) and built
+# by `make site-demo` (the console demo).
+public/demo/
+public/favicon*
+public/apple-touch-icon.png
+public/icon-512.png
+src/assets/mark.svg

@@ -1,0 +1,38 @@
+---
+title: Bots and their machines
+description: What a Bot's box contains, what survives a reset, and how the control plane reaches it.
+---
+
+A Bot is a row in the database and a container on your engine. The row is who it is: name, crest, SOUL, memories, rules. The container is where it works.
+
+## What is in the box
+
+- A 1600×900 desktop with Chromium, a file manager and a terminal.
+- A **worker** that dials the control plane and runs file, shell, Python and desktop commands.
+- Python with a session per conversation: variables set in one cell are there in the next.
+- The workspace at `/workspace`. User-facing files live here; the Bot's scratch is `/workspace/bot`.
+- Node, `uv`, ffmpeg, document and OCR tools.
+
+The box holds **no provider keys, no sign-ins and no connector tokens**. Those stay on the control plane.
+
+## What survives what
+
+| You do | The box | The workspace | Memories, chats, rules |
+| --- | --- | --- | --- |
+| Stop | Kept, switched off | Kept | Kept |
+| Reset container | Removed, made new on Start | Kept | Kept |
+| Delete Bot | Removed | Removed | Removed |
+
+A rebuilt image reaches a Bot when it next starts from stopped.
+
+## How the control plane reaches it
+
+The worker opens the connection, not the other way round: the box publishes no port. The control plane never `exec`s into a container. The desktop you watch is the box's own VNC stream, tunnelled through that same connection only while someone is looking.
+
+## Narrowed
+
+A box runs with almost every Linux capability dropped, on a network of its own whose only way out is the [egress gateway](/docs/attacks/stolen-key/). One Bot cannot reach another, and no Bot can reach your LAN.
+
+## The Bot is the unit of trust
+
+Everyone on a Bot shares its memory, files and connections. The wall between people is a separate Bot. If two people should not see each other's work, they should not share one.

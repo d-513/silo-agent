@@ -55,3 +55,7 @@ jobs:
         run: make test-web
       - name: Production build
         run: pnpm --dir web exec vite build
+      # The website shows the console itself over a scripted backend, so a
+      # console change that breaks the demo fails here, not at the deploy.
+      - name: Website (console demo, landing and docs)
+        run: make site-build

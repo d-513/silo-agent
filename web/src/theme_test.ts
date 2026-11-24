@@ -43,14 +43,14 @@ for (const stored of [null, "dark", "light", "sepia"]) {
 }
 
 // ---------------------------------------------------------------- palette
-// Both palettes live in index.css: light in @theme, dark as an override of the
+// Both palettes live in tokens.css (which index.css imports): light in @theme, dark as an override of the
 // same names. Text has to stay readable on every ground it is set on.
 
-const css = fs.readFileSync(new URL("./index.css", import.meta.url), "utf8");
+const css = fs.readFileSync(new URL("./tokens.css", import.meta.url), "utf8");
 
 function block(open: string): string {
   const at = css.indexOf(open);
-  if (at < 0) throw new Error(`index.css has no ${open} block`);
+  if (at < 0) throw new Error(`tokens.css has no ${open} block`);
   const from = css.indexOf("{", at) + 1;
   return css.slice(from, css.indexOf("\n}", from));
 }

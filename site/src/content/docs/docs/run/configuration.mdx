@@ -1,0 +1,36 @@
+---
+title: Configuration
+description: Where Silo's settings live and which ones you will touch first.
+---
+
+Settings are read in this order, later wins: **defaults → `silo.yaml` → `SILO_*` environment variables**.
+
+Most of it is edited in **Admin → Settings**, which writes `silo.yaml` for you. A setting fixed by an environment variable is shown there as locked.
+
+Nested keys use two underscores in the environment:
+
+```sh
+SILO_PROVIDERS__OPENROUTER__API_KEY=…   # providers.openrouter.api_key
+```
+
+## The first five
+
+| Setting | What it is |
+| --- | --- |
+| `public_url` | The address people open. Sign-in links, OAuth callbacks and cookies depend on it. |
+| `database_url` | Postgres. |
+| `providers.<id>.api_key` | A model provider. Ids include `openrouter`, `openai`, `anthropic` and `local` for any OpenAI-compatible server you host. |
+| `models` and `model` | The text models people may pick, and the default. |
+| `bootstrap.*` | The first admin. It acts only while no enabled admin exists. |
+
+## Worth knowing early
+
+- **`content.host`** is a second domain for what Bots publish: tunnels, small apps and shared files. It must not be the same host as `public_url`.
+- **`mail.domain`** gives every Bot a receive-only address. With no domain there is no mail.
+- **`egress.*`** is the network filter: block, trust and pass lists, and the threat feeds.
+- **`search.engine`** picks web search. The built-in one needs no key.
+- **`oidc.*`** adds single sign-on with one provider.
+
+## The full reference
+
+Every key, with its default, is in [`docs/CONFIGURATION.md`](https://github.com/d-513/silo-agent/blob/master/docs/CONFIGURATION.md) in the repository. It will move into these docs.

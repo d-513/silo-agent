@@ -1,0 +1,153 @@
+---
+// The desktop section: the hatch as the console draws it (the Bot's crest and
+// name, "Desktop", Pause Bot) over a drawing of the agent's screen with
+// Chromium on a sign-in page, and under it the actions the agent takes there.
+// The pointer glides to the button once, when the figure scrolls into view.
+import Crest from "./Crest.astro";
+
+const steps = [
+  { name: "look", says: "sees the screen" },
+  { name: "click 742,318", says: "the email field" },
+  { name: "type ••••••••", says: "from its secrets" },
+  { name: "click 742,452", says: "Sign in" },
+  { name: "look", says: "checks it worked" },
+];
+
+const points = [
+  {
+    title: "Nothing to set up.",
+    text: "The desktop and the browser ship in the agent's image. There is no browser service to run beside it, no extension to pair and no port to open.",
+  },
+  {
+    title: "Watch it, or take over.",
+    text: "The screen streams into the console while the agent works. Pause it, do a step yourself, such as a captcha or a two-factor prompt, and hand it back.",
+  },
+  {
+    title: "Logins stay out of the conversation.",
+    text: "A password is typed from the agent's secrets straight into the page, so the model never reads it. The browser keeps its profile, so the session is there next time.",
+  },
+];
+---
+
+<section class="mx-auto mt-28 max-w-[1200px] px-5">
+  <div class="grid items-start gap-10 lg:grid-cols-[6fr_5fr]">
+    <figure class="desktop min-w-0" data-desktop>
+      <div class="overflow-hidden rounded-panel bg-hatch text-on-hatch">
+        <div class="flex h-10 items-center gap-2.5 px-3.5 text-[13px] text-on-hatch/80">
+          <Crest index={25} size={20} state="working" />
+          <span class="truncate">Atlas</span>
+          <span class="font-mono text-[12px] text-on-hatch/60">Desktop</span>
+          <span class="h-[7px] w-[7px] rounded-full bg-lamp" aria-hidden="true"></span>
+          <span class="ml-auto flex items-center gap-1.5 rounded-full bg-on-hatch/10 px-2.5 py-1 text-[12px]">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg>
+            Pause Bot
+          </span>
+        </div>
+
+        <div class="relative mx-2 mb-2 aspect-[16/10] overflow-hidden rounded-card bg-matte" aria-hidden="true">
+          <div class="absolute inset-x-[7%] bottom-[13%] top-[7%] flex flex-col overflow-hidden rounded-sm bg-on-hatch text-hatch shadow-[0_18px_40px_-18px_rgb(0_0_0/0.8)]">
+            <div class="flex h-7 shrink-0 items-center gap-2 bg-hatch/[0.07] px-2.5">
+              <span class="flex gap-1">
+                <span class="h-2 w-2 rounded-full bg-hatch/20"></span>
+                <span class="h-2 w-2 rounded-full bg-hatch/20"></span>
+                <span class="h-2 w-2 rounded-full bg-hatch/20"></span>
+              </span>
+              <span class="min-w-0 flex-1 truncate rounded-xs bg-on-hatch px-2 py-0.5 font-mono text-[10.5px] text-hatch/70">portal.supplier.example/sign-in</span>
+            </div>
+            <div class="flex flex-1 flex-col items-center justify-center gap-[5%] px-[18%]">
+              <span class="text-[13px] font-semibold">Supplier portal</span>
+              <span class="w-full rounded-xs px-2.5 py-1.5 font-mono text-[10.5px] text-hatch/70 shadow-[inset_0_0_0_1px_rgb(20_20_19/0.18)]">ops@harbor.example</span>
+              <span class="w-full rounded-xs px-2.5 py-1.5 font-mono text-[10.5px] tracking-[0.2em] text-hatch/70 shadow-[inset_0_0_0_1px_rgb(20_20_19/0.18)]">••••••••</span>
+              <span class="desktop-button w-full rounded-xs bg-hatch px-2.5 py-1.5 text-center text-[11px] font-medium text-on-hatch">Sign in</span>
+            </div>
+          </div>
+
+          <svg class="desktop-pointer absolute h-[18px] w-[18px]" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 3l14 8-6 1.5L10 19z" fill="#faf9f7" stroke="#141413" stroke-width="1.6" stroke-linejoin="round"></path>
+          </svg>
+
+          <div class="absolute inset-x-0 bottom-[3.5%] flex justify-center gap-1.5">
+            {[0, 1, 2, 3].map((i) => <span class:list={["h-[5.5%] min-h-3 w-[3.4%] min-w-3 rounded-[3px]", i === 3 ? "bg-on-hatch/45" : "bg-on-hatch/15"]} />)}
+          </div>
+        </div>
+      </div>
+
+      <ol class="mt-3 flex flex-wrap gap-1.5">
+        {
+          steps.map((s) => (
+            <li class="flex items-baseline gap-2 rounded-control bg-well px-3 py-1.5">
+              <span class="font-mono text-[12.5px]">{s.name}</span>
+              <span class="text-[12.5px] text-ink-3">{s.says}</span>
+            </li>
+          ))
+        }
+      </ol>
+    </figure>
+
+    <div>
+      <p class="text-[13px] font-medium text-ink-3">A real desktop</p>
+      <h2 class="mt-2 text-[30px] font-semibold leading-[1.15] tracking-[-0.02em]">A real browser, already there.</h2>
+      <p class="mt-4 max-w-[56ch] text-[16px] leading-[1.65] text-ink-2">
+        Every agent's machine has a full desktop with Chromium on it. The agent looks at the screen, clicks, types and scrolls the way a person does. That reaches what an API call or a headless fetch does not: sites behind a login, pages that only work with a real screen, and tools that never had an API.
+      </p>
+      <dl class="mt-6 grid gap-4">
+        {
+          points.map((p) => (
+            <div>
+              <dt class="text-[15px] font-semibold">{p.title}</dt>
+              <dd class="mt-1 max-w-[56ch] text-[14.5px] leading-[1.6] text-ink-2">{p.text}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </div>
+  </div>
+</section>
+
+<script>
+  const figs = document.querySelectorAll<HTMLElement>("[data-desktop]");
+  if (figs.length && "IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const seen = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          e.target.classList.add("is-seen");
+          seen.unobserve(e.target);
+        }
+      },
+      { threshold: 0.5 },
+    );
+    for (const f of figs) {
+      f.classList.add("is-waiting");
+      seen.observe(f);
+    }
+  }
+</script>
+
+<style is:global>
+  /* The pointer rests on the button; when the figure arrives it comes from
+     the email field, and the button answers the press. */
+  .desktop-pointer {
+    left: 56%;
+    top: 68%;
+  }
+  .desktop.is-waiting .desktop-pointer {
+    left: 34%;
+    top: 40%;
+  }
+  .desktop.is-waiting.is-seen .desktop-pointer {
+    left: 56%;
+    top: 68%;
+    transition:
+      left 900ms var(--ease-quiet) 500ms,
+      top 900ms var(--ease-quiet) 500ms;
+  }
+  .desktop.is-waiting.is-seen .desktop-button {
+    animation: desktop-press 260ms var(--ease-quiet) 1500ms;
+  }
+  @keyframes desktop-press {
+    50% {
+      transform: scale(0.97);
+    }
+  }
+</style>

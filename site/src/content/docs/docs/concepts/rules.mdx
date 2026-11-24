@@ -1,0 +1,52 @@
+---
+title: Rules and approvals
+description: How Silo decides whether an action runs, who is asked, and what happens to what comes back.
+---
+
+import Demo from "../../../../components/Demo.astro";
+
+Every action a Bot can take has an address, `connector.action`, and a rule. `email.send` is one. `files.*` is one. Each secret is its own: `secrets.BANK_LOGIN`.
+
+## Four answers
+
+| Mode | What happens |
+| --- | --- |
+| **Allow** | The action runs. |
+| **Auto** | A second model reads your policy, the action and your latest message, and answers allow, deny or unsure. Unsure, an error or a timeout all mean you are asked. |
+| **Ask** | The run pauses on a slip until someone who may answer does. |
+| **Deny** | The action never runs. |
+
+It does not matter how the Bot makes the call. A tool call from the model and a function call from the Bot's own Python go through the same gate.
+
+## See one
+
+Ledger is paused on a slip. Answer it and read the receipt.
+
+<Demo at="/bots/ledger" height={600} />
+
+## Three layers, strictest wins
+
+1. **The operator** sets defaults for the whole install and can lock a rule as a floor.
+2. **The Workspace** sets guardrails: the least strict mode any of its Bots may use.
+3. **The Bot** has its own rows, edited on its Rules page.
+
+An owner can always tighten a rule. Nobody below a locked floor can loosen it.
+
+## Who answers
+
+- You answer approvals from your own chats, with **Allow once** or **Deny**.
+- A Bot's managers answer the rest, and only they can choose **Always**, because that changes the rule.
+- Some actions are the managers' whoever asked: creating an automation, changing the Bot's SOUL, making a tunnel public. Otherwise a user could have the Bot set up something unwatched and approve it themselves.
+
+## The other half: results
+
+A call rule decides whether an action runs. An **output rule** decides what happens to its result before the Bot reads it.
+
+| Mode | What happens |
+| --- | --- |
+| **Pass** | The Bot reads it as is. |
+| **Check** | A filter model judges it: clean, suspicious or malicious. |
+| **Flag** | Always framed as untrusted, no model asked. |
+| **Withhold** | The Bot never sees it. |
+
+By default, whatever comes from outside is checked: web searches, pages, mail, connector results. [What that looks like in an attack](/docs/attacks/injected-page/).

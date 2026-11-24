@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Outlet, redirect } from "@tanstack/react-router";
 import { FIRST_SECTION, isModelPage, isSection } from "./admin/sections";
 import { getSession, onSession, takeLanding } from "./auth";
+import { history } from "./history";
 import { BotPage } from "./bot/BotPage";
 import {
   AgentRoute,
@@ -338,6 +339,7 @@ const routeTree = root.addChildren([
 
 export const router = createRouter({
   routeTree,
+  history,
   // A render crash stays inside the page that threw; the rail and every other
   // page stay usable, and navigating away clears it.
   defaultErrorComponent: ({ error, reset }) => <Snag error={error} onRetry={reset} />,

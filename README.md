@@ -8,6 +8,7 @@ A token-conserving, self-hosted, multi-user agent. Each **Bot** is a durable con
 | `proto/` (+ `gen/`) | The ConnectRPC API and its buf config; `make proto` regenerates `gen/` and `web/src/gen/` |
 | `web/` | The console (Vite + React) |
 | `ios/` | The SwiftUI client |
+| `site/` | The website: landing and docs (Astro), with the console demo built from `web/` |
 | `images/<name>/` | One folder per container image, built as `silo-<name>` (`bot`, `mcp-stdio`, `drive`, `egress`, `caddy`, `cp` = the control plane, `os` = SiloOS) |
 | `dev/` | The dev dependencies `make db-up` starts (`compose.yml`, plus Dex, Postgres and Radicale config) |
 | `docs/` | Design, development, testing, configuration, architecture and research notes |

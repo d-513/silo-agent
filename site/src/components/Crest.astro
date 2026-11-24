@@ -1,0 +1,16 @@
+---
+// A Bot's crest, drawn by the console's own renderer (web/src/stack.ts) at
+// build time: the same shapes and hues the app shows, as static SVG.
+import { renderStack, unpackCrest, type State } from "../../../web/src/stack.ts";
+
+interface Props {
+  index: number;
+  size?: number;
+  state?: State;
+  label?: string;
+}
+const { index, size = 40, state = "idle", label = "" } = Astro.props;
+const svg = renderStack({ ...unpackCrest(index), state, size, label });
+---
+
+<span class="crest inline-block shrink-0" style={`width:${size}px;height:${size}px`} set:html={svg} />

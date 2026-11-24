@@ -1,0 +1,28 @@
+---
+title: What Silo is
+description: A self-hosted agent for several people, where each Bot is a durable machine and the control plane holds every key.
+---
+
+Silo is an agent you host yourself. It is built from two kinds of thing.
+
+- A **Bot** is a durable container with a desktop: a browser, a shell, Python, and a workspace of files. It keeps running between conversations and it remembers.
+- The **control plane** is one Go program on your server. It runs the agent loop, talks to the model providers, holds every key and token, and decides what each Bot may do.
+
+The split is the point. The model's work happens in a box that holds nothing worth stealing, and everything that could hurt you (a key, a sent message, a public link) passes through a place that checks a rule first.
+
+## What you can do with it
+
+- Talk to a Bot in the console, on your phone, or in Telegram, WhatsApp, Discord and Slack.
+- Give it your tools through connectors (MCP servers over HTTP or STDIO, or the library of presets).
+- Let it work on its own on a schedule, and read what it did in the Feed and on its Dashboard.
+- Share it. A Workspace holds Bots and the people who use them, with roles.
+
+## Where to go next
+
+- [A day in a Bot's life](/docs/a-day/) follows one Bot from morning to evening and names every part on the way.
+- [Try the console](/docs/try/) is the real console with a scripted backend, in this page.
+- [Install](/docs/run/install/) gets it running on your server.
+
+:::note
+These docs are new and cover the main ideas first. The repository's `docs/` folder and `AGENTS.md` hold the full detail for operators and contributors.
+:::

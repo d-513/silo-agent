@@ -1,0 +1,85 @@
+---
+// The console demo in a frame: the real console (web/, built with
+// `build:demo`) answered by a scripted backend in the page. `at` opens it on a
+// page of the console ("/bots/ledger"); `height` is the frame's, in px.
+interface Props {
+  at?: string;
+  height?: number;
+  title?: string;
+}
+const { at = "", height = 720, title = "The Silo console, as a demo" } = Astro.props;
+const src = `/demo/index.html${at ? `?at=${encodeURIComponent(at)}` : ""}`;
+---
+
+<figure class="silo-demo" data-demo>
+  <div class="silo-demo-bar">
+    <span class="silo-demo-note">Demo · runs in your browser, nothing behind it</span>
+    <span class="silo-demo-actions">
+      <button type="button" data-demo-reset>Start over</button>
+      <a href={src} target="_blank" rel="noopener">Open full page</a>
+    </span>
+  </div>
+  <iframe src={src} title={title} loading="lazy" style={`height:${height}px`}></iframe>
+</figure>
+
+<script>
+  for (const fig of document.querySelectorAll<HTMLElement>("[data-demo]")) {
+    const frame = fig.querySelector("iframe")!;
+    fig.querySelector("[data-demo-reset]")?.addEventListener("click", () => {
+      frame.src = frame.src;
+    });
+  }
+</script>
+
+<style is:global>
+  .silo-demo {
+    margin-inline: 0;
+    overflow: hidden;
+    border-radius: 16px;
+    background: var(--color-well);
+    box-shadow:
+      0 0 0 1px var(--color-line),
+      0 24px 60px -20px var(--shade-deep),
+      0 2px 8px var(--shade-hair);
+  }
+  .silo-demo-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 14px;
+    font: 500 12px/18px "Geist Mono Variable", ui-monospace, monospace;
+    color: var(--color-ink-3);
+  }
+  .silo-demo-note {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .silo-demo-actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: 14px;
+  }
+  .silo-demo-actions :is(a, button) {
+    all: unset;
+    cursor: pointer;
+    color: var(--color-ink-2);
+  }
+  .silo-demo-actions :is(a, button):hover {
+    color: var(--color-ink);
+  }
+  .silo-demo-actions :is(a, button):focus-visible {
+    outline: 2px solid var(--color-cobalt);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  .silo-demo iframe {
+    display: block;
+    width: 100%;
+    max-height: 86vh;
+    border: 0;
+    background: var(--color-canvas);
+  }
+</style>

@@ -1,0 +1,41 @@
+---
+title: What a Bot remembers
+description: How Silo keeps a conversation cheap, what happens when it gets long, and what carries over between conversations.
+---
+
+"Token-conserving" is a set of concrete choices. This page names them.
+
+## The history only grows
+
+A provider's prompt cache works on prefixes: a request is cheap as far as it starts with the same bytes as the one before. So Silo never rewrites anything it already sent.
+
+- The system prompt is built in tiers, most stable first. The base is the same bytes for every Bot on the install.
+- Nothing that changes per message goes into the prompt. The time is stamped on each message instead, and frozen there.
+- What a turn adds is recorded so that the next run rebuilds the same messages byte for byte.
+
+A test in the repository fails if any request does not extend the previous one.
+
+## Bulk work stays out of the context
+
+- **Python is a tool, not the orchestrator.** Most of Silo's functions are called from code: a search over ten queries is one cell that prints a summary, not ten tool results.
+- **Subagents** run with their own context and report back only a result.
+- The tool list sent to the model is short on purpose (at most 17 by default).
+
+## When a conversation gets long
+
+Two things happen, in order, when the context nears the model's window.
+
+1. **Clearing.** Old tool results become one-line placeholders, if that frees enough. Calls stay, so the Bot knows what it did.
+2. **Compaction.** The model writes a summary: your latest request word for word, standing instructions, what failed, the files by path, and what is still alive on the machine. The conversation continues from it.
+
+Nothing is deleted. The thread you read keeps every event.
+
+## Between conversations
+
+- **Memories** are single sentences: facts, your preferences, lessons about what works, and where pieces of work stand. A background job reads a chat once it goes quiet and saves them. Something nobody said out loud waits as a guess until it is seen twice.
+- **SOUL** is the Bot's standing character, in the prompt on every run.
+- **Files.** A fresh context is normal for automations and subagents, so lasting state belongs in the workspace.
+
+## What you can see
+
+The ring by the composer shows how full the context is. Click it to compact now. Usage events carry what was read from the cache, so the saving is a number you can check.
