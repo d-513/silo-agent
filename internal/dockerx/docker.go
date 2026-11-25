@@ -411,9 +411,10 @@ func (e *Engine) CreateStdio(ctx context.Context, spec StdioSpec) (string, error
 	return resp.ID, nil
 }
 
-// stdioCacheDir is the npm directory a Bot's STDIO sidecars share, so that
-// recreating one does not download again what its siblings already pulled; ""
-// when there is none to give. It is the Bot's own and never wider: a sidecar
+// stdioCacheDir is the npm directory a Bot's STDIO sidecars share (uv keeps
+// its cache inside it too: the image's UV_CACHE_DIR), so that recreating one
+// does not download again what its siblings already pulled; "" when there is
+// none to give. It is the Bot's own and never wider: a sidecar
 // runs, as root, whatever package its Bot's owner named, and npx runs what it
 // finds in this directory (~/.npm/_npx) without asking the registry again. One
 // directory for every Bot would let any owner plant code that the next

@@ -100,7 +100,7 @@ Every `FROM` is `tag@sha256:digest`; move tag and digest together.
 | `images/cp/Containerfile` | `node:<lts>-trixie-slim@…` (web build), `golang:<ver>-trixie@…`, `debian:trixie-slim@…` |
 | `images/drive/Containerfile` | `rclone/rclone:<ver>@…`, `debian:trixie-slim@…` |
 | `images/egress/Containerfile` | `debian:trixie-slim@…` |
-| `images/mcp-stdio/Containerfile` | `node:<lts>-trixie-slim@…` (and its `base.name` label) |
+| `images/mcp-stdio/Containerfile` | `node:<lts>-trixie-slim@…` (and its `base.name` label), `ghcr.io/astral-sh/uv:<v>@…` (the same pin as the bot image's) |
 | `images/caddy/Containerfile` | `caddy:<ver>-builder@…`, `caddy:<ver>@…` |
 | `images/os/Containerfile` | `quay.io/fedora/fedora-bootc:<N>`: **tag only on purpose** (quay.io deletes old digests). Check whether a newer stable Fedora is out (`curl -fsS https://fedoraproject.org/releases.json`; the quay tags run ahead to rawhide); moving it is a deliberate change, say so, do not do it silently |
 
@@ -256,6 +256,7 @@ in the same commit.
 - **Debian `trixie-slim` digest**: the same digest in bot, cp, drive,
   egress. One value everywhere.
 - **`node:<lts>-trixie-slim` digest**: bot, cp, mcp-stdio. One value.
+- **`ghcr.io/astral-sh/uv`**: bot and mcp-stdio. One value.
 - **pnpm**: `images/cp/Containerfile` and `checks.yml` `version:` are the
   same version, and that version must read `web/pnpm-lock.yaml`
   (lockfileVersion). The bot image's pnpm is the Bot's own tool and may be
