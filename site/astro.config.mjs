@@ -11,6 +11,7 @@ const repo = "https://github.com/d-513/silo-agent";
 export default defineConfig({
   // The public address, for the sitemap and canonical links.
   site: process.env.SITE_URL || undefined,
+  redirects: { "/docs/run/install": "/docs/install/" },
   integrations: [
     starlight({
       title: "Silo",
@@ -47,11 +48,17 @@ export default defineConfig({
           ],
         },
         {
-          label: "Running Silo",
+          label: "Install",
           items: [
-            { label: "Install", slug: "docs/run/install" },
-            { label: "Configuration", slug: "docs/run/configuration" },
+            { label: "Ways to install", slug: "docs/install" },
+            { label: "SiloOS", slug: "docs/install/siloos" },
+            { label: "Podman", slug: "docs/install/podman" },
+            { label: "Docker", slug: "docs/install/docker" },
           ],
+        },
+        {
+          label: "Running Silo",
+          items: [{ label: "Configuration", slug: "docs/run/configuration" }],
         },
       ],
     }),

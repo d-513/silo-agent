@@ -1,0 +1,147 @@
+---
+title: Podman
+description: Run Silo and its database on rootless Podman, by hand or with podman-compose.
+---
+
+import { Steps } from "@astrojs/starlight/components";
+
+The `silo` image holds the control plane with the console compiled in. It makes every Bot's machine through Podman's socket, as your own user: nothing here runs as root. This is the install with the network filter.
+
+For a machine that runs Silo and nothing else, [SiloOS](/docs/install/siloos/) does all of this for you.
+
+## Before you start
+
+<Steps>
+
+1. **Turn on your user's Podman socket**, and let it run while you are signed out:
+
+   ```sh
+   systemctl --user enable --now podman.socket
+   sudo loginctl enable-linger "$USER"
+   ```
+
+2. **Make Silo's directory** and give it to your user:
+
+   ```sh
+   sudo mkdir -p /var/lib/silo
+   sudo chown "$USER": /var/lib/silo
+   ```
+
+</Steps>
+
+## With podman-compose
+
+Put these two files in a directory of their own.
+
+```sh title=".env"
+SILO_VERSION=v1.0.0
+SILO_PUBLIC_URL=https://silo.example.com
+SILO_DB_PASSWORD=change-me
+SILO_ADMIN_EMAIL=you@example.com
+SILO_ADMIN_PASSWORD=change-me-too
+```
+
+```yaml title="compose.yaml"
+# Not "silo": compose would name containers silo-…, which is the prefix of
+# the containers Silo makes itself.
+name: silohost
+
+# keep-id below cannot be used inside a pod.
+x-podman:
+  in_pod: false
+
+services:
+  db:
+    image: docker.io/pgvector/pgvector:pg17
+    container_name: silodb
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: silo
+      POSTGRES_PASSWORD: ${SILO_DB_PASSWORD}
+      POSTGRES_DB: silo
+    volumes:
+      - silodb:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U silo -d silo"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  silo:
+    image: ghcr.io/d-513/silo:${SILO_VERSION}
+    container_name: silo
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    # The container's uid 1000 becomes you, who owns the socket and the data.
+    userns_mode: "keep-id:uid=1000,gid=1000"
+    security_opt:
+      - label=disable
+    volumes:
+      - ${XDG_RUNTIME_DIR}/podman/podman.sock:/run/docker.sock
+      # The same path on both sides. Never a named volume.
+      - /var/lib/silo:/var/lib/silo
+    ports:
+      - "8080:8080"       # the console, and the Bots' machines
+      - "3479:3479/udp"   # calls
+      - "3479:3479/tcp"
+      - "2525:2525"       # mail; forward port 25 here if you use it
+    environment:
+      SILO_DATABASE_URL: postgres://silo:${SILO_DB_PASSWORD}@db:5432/silo?sslmode=disable
+      SILO_PUBLIC_URL: ${SILO_PUBLIC_URL}
+      SILO_BOOTSTRAP__EMAIL: ${SILO_ADMIN_EMAIL}
+      SILO_BOOTSTRAP__PASSWORD: ${SILO_ADMIN_PASSWORD}
+
+volumes:
+  silodb:
+```
+
+```sh
+podman-compose up -d
+podman-compose logs -f silo
+```
+
+## With podman run
+
+The same control plane, next to a Postgres 17 with pgvector that you already run:
+
+```sh
+podman run -d --name silo --restart unless-stopped \
+  --userns=keep-id:uid=1000,gid=1000 --security-opt label=disable \
+  -v "$XDG_RUNTIME_DIR/podman/podman.sock:/run/docker.sock" \
+  -v /var/lib/silo:/var/lib/silo \
+  -p 8080:8080 -p 3479:3479/udp -p 3479:3479/tcp -p 2525:2525 \
+  -e SILO_DATABASE_URL=postgres://… \
+  -e SILO_PUBLIC_URL=https://silo.example.com \
+  -e SILO_BOOTSTRAP__EMAIL=you@example.com \
+  -e SILO_BOOTSTRAP__PASSWORD=change-me \
+  ghcr.io/d-513/silo:v1.0.0
+```
+
+## What has to be right
+
+- **The socket** at `/run/docker.sock` inside the container. The control plane makes every other container through it.
+- **The data directory at the same path as on the host** (`/var/lib/silo` on both sides). The engine binds folders under it into the Bots' machines and reads those paths on the host, so a different path or a named volume points every workspace at nothing.
+- **Port 8080 published on the host.** The Bots' machines dial the control plane there. Put TLS in front of it for people, and set `SILO_PUBLIC_URL` to that address.
+- **No container named `silo-…`.** That prefix belongs to the containers Silo makes.
+
+The first admin is made at the first start from `SILO_BOOTSTRAP__*`, and those two settings do nothing once an admin exists. Use the newest version from the [releases](https://github.com/d-513/silo-agent/releases) in place of `v1.0.0`.
+
+Then go on with [After it starts](/docs/install/#after-it-starts).
+
+## Update
+
+Change `SILO_VERSION` and bring it up again:
+
+```sh
+podman-compose pull && podman-compose up -d
+```
+
+A control plane runs the Bot and sidecar images of its own version, and fetches them itself. A running Bot gets its new image the next time it starts from stopped.
+
+## Not covered
+
+- TLS. The image serves plain HTTP on 8080; a reverse proxy in front is yours to run.
+- Mail on port 25. A rootless container cannot publish a port below 1024, so forward 25 to 2525 on the host.
+- Backups of the database volume and `/var/lib/silo`.

@@ -16,9 +16,9 @@ const named = ["GitHub", "Linear", "Notion", "Slack", "Gmail", "Google Calendar"
 
 const states = [
   { index: 25, state: "idle", word: "Online", note: "Ready for a message." },
-  { index: 22, state: "working", word: "Working", note: "A run is live, and you can watch it." },
+  { index: 22, state: "working", word: "Working", note: "A run is live." },
   { index: 4, state: "needs_you", word: "Needs you", note: "Paused until you answer." },
-  { index: 42, state: "asleep", word: "Stopped", note: "Switched off. Its files and memory stay." },
+  { index: 42, state: "asleep", word: "Stopped", note: "Off. Files and memory stay." },
 ] as const;
 ---
 
@@ -31,7 +31,7 @@ const states = [
     </p>
     <div class="mt-7 flex flex-wrap items-center gap-3 text-[15px]">
       <a href="#try" class="press rounded-control bg-ink px-4 py-2.5 font-medium text-on-ink hover:bg-ink-deep">Try the console</a>
-      <a href="/docs/run/install/" class="press rounded-control bg-well px-4 py-2.5 font-medium hover:bg-pressed">Install</a>
+      <a href="/docs/install/" class="press rounded-control bg-well px-4 py-2.5 font-medium hover:bg-pressed">Install</a>
       <a href="/docs/" class="press rounded-control px-3 py-2.5 text-ink-2 hover:text-ink">Read the docs</a>
     </div>
   </section>
@@ -43,19 +43,19 @@ const states = [
     </p>
   </section>
 
-  <section class="mx-auto mt-28 max-w-[1200px] px-5">
-    <p class="text-[13px] font-medium text-ink-3">Bots</p>
-    <h2 class="mt-2 max-w-[24ch] text-[30px] font-semibold leading-[1.15] tracking-[-0.02em]">Each agent is a Bot.</h2>
-    <p class="mt-4 max-w-[62ch] text-[16px] leading-[1.65] text-ink-2">
-      A Bot has its own machine, files and memory, and its crest shows what it is doing.
-    </p>
-    <ul class="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+  <section class="mx-auto mt-28 grid max-w-[1200px] items-center gap-x-10 gap-y-6 px-5 lg:grid-cols-[5fr_7fr]">
+    <div>
+      <p class="text-[13px] font-medium text-ink-3">Bots</p>
+      <h2 class="mt-2 text-[30px] font-semibold leading-[1.15] tracking-[-0.02em]">Each agent is a Bot.</h2>
+      <p class="mt-3 max-w-[44ch] text-[16px] leading-[1.65] text-ink-2">It has its own machine, files and memory, and its crest shows what it is doing.</p>
+    </div>
+    <ul class="grid grid-cols-2 gap-x-5 gap-y-5 rounded-panel bg-well p-5 sm:grid-cols-4">
       {
         states.map((s) => (
-          <li class="rounded-card bg-well p-5">
-            <Crest index={s.index} size={56} state={s.state} label={s.word} />
-            <p class="mt-4 text-[15px] font-semibold">{s.word}</p>
-            <p class="mt-1 text-[13.5px] leading-[1.55] text-ink-2">{s.note}</p>
+          <li>
+            <Crest index={s.index} size={44} state={s.state} label={s.word} />
+            <p class="mt-3 text-[14px] font-semibold">{s.word}</p>
+            <p class="mt-0.5 text-[13px] leading-[1.5] text-ink-2">{s.note}</p>
           </li>
         ))
       }
@@ -114,23 +114,23 @@ const states = [
 
   <SiloOS />
 
-  <section class="mx-auto mt-28 grid max-w-[1200px] gap-10 px-5 lg:grid-cols-2">
-    <div>
-      <p class="text-[13px] font-medium text-ink-3">Several people</p>
-      <h2 class="mt-2 text-[30px] font-semibold leading-[1.15] tracking-[-0.02em]">One install for the whole team.</h2>
-      <p class="mt-4 max-w-[56ch] text-[16px] leading-[1.65] text-ink-2">
-        A Workspace holds Bots and the people who use them. Connections and drives are added once and granted to the Bots that need them. The wall between people is a separate Bot: each has its own machine, memory and rules. Rooms put several Bots and people in one conversation.
-      </p>
+  <section class="mx-auto mt-28 max-w-[1200px] px-5">
+    <p class="text-[13px] font-medium text-ink-3">Run it</p>
+    <h2 class="mt-2 text-[30px] font-semibold leading-[1.15] tracking-[-0.02em]">Install Silo.</h2>
+    <div class="mt-9 grid gap-3 sm:grid-cols-2">
+      <a href="/docs/install/siloos/" class="press flex flex-col rounded-panel bg-well p-5 hover:bg-pressed">
+        <p class="text-[17px] font-semibold">SiloOS</p>
+        <p class="mt-1.5 text-[14.5px] leading-[1.55] text-ink-2">Boot the image on a VM or a spare machine. The database and HTTPS come with it.</p>
+        <p class="mt-5 font-mono text-[12.5px] text-ink-3">ISO and disk images · AMD64, ARM64</p>
+      </a>
+      <a href="/docs/install/podman/" class="press flex flex-col rounded-panel bg-well p-5 hover:bg-pressed">
+        <p class="text-[17px] font-semibold">Container</p>
+        <p class="mt-1.5 text-[14.5px] leading-[1.55] text-ink-2">One image with the control plane and the console, on your own host next to your Postgres.</p>
+        <p class="mt-5 font-mono text-[12.5px] text-ink-3">ghcr.io/d-513/silo · Podman or Docker</p>
+      </a>
     </div>
-    <div>
-      <p class="text-[13px] font-medium text-ink-3">Run it</p>
-      <h2 class="mt-2 text-[30px] font-semibold leading-[1.15] tracking-[-0.02em]">Three ways to install.</h2>
-      <ul class="mt-4 grid gap-2 text-[15px]">
-        <li class="rounded-card bg-well px-5 py-4"><strong class="font-semibold">SiloOS.</strong> <span class="text-ink-2">A bootable image that runs Silo and nothing else, with its database and HTTPS.</span></li>
-        <li class="rounded-card bg-well px-5 py-4"><strong class="font-semibold">One container.</strong> <span class="text-ink-2">The control plane with the console inside, next to your own Postgres.</span></li>
-        <li class="rounded-card bg-well px-5 py-4"><strong class="font-semibold">From source.</strong> <span class="text-ink-2">Go, Podman and a Makefile.</span></li>
-      </ul>
-      <a href="/docs/run/install/" class="mt-5 inline-block text-[15px] font-medium text-cobalt hover:text-cobalt-deep">Install Silo</a>
-    </div>
+    <p class="mt-5 text-[14.5px] text-ink-2">
+      Also on <a href="/docs/install/docker/" class="font-medium text-cobalt hover:text-cobalt-deep">Docker</a>, or <a href="/docs/install/#from-source" class="font-medium text-cobalt hover:text-cobalt-deep">built from source</a>.
+    </p>
   </section>
 </Page>

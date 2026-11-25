@@ -1,0 +1,36 @@
+---
+title: Install
+description: The ways to run Silo, and what each one needs.
+---
+
+Silo is one control plane, a Postgres database, and a container engine it makes the Bots' machines on. Pick how much of that you want to manage.
+
+| | What you run | Use it when |
+| --- | --- | --- |
+| [SiloOS](/docs/install/siloos/) | A bootable image: the control plane, its database and HTTPS, updated as one piece | You can give Silo a VM or a machine of its own |
+| [Podman](/docs/install/podman/) | The `silo` image and Postgres on rootless Podman | You have a Linux host and want Silo beside other things |
+| [Docker](/docs/install/docker/) | The same on Docker | Docker is what the host already runs |
+
+:::caution
+The network filter needs Podman. On Docker, Bots run without it. SiloOS and the Podman install have it on by default.
+:::
+
+## From source
+
+You need Go, pnpm, Podman and `make`.
+
+```sh
+make db-up        # Postgres and the dev services
+make images       # the Bot's image and the sidecars
+make build-cp-ui  # build/bin/silo with the console inside
+```
+
+`docs/DEVELOPMENT.md` in the repository has the prerequisites and the dev loop.
+
+## After it starts
+
+1. Sign in as the first admin (`bootstrap.*` in your settings, or the generated one on SiloOS).
+2. In **Admin → Settings → Models → Providers**, add a provider's key and allow a model.
+3. Create a Bot and say hello.
+
+[Configuration](/docs/run/configuration/) covers the settings you will touch first.

@@ -1,0 +1,136 @@
+---
+title: Docker
+description: Run Silo and its database on Docker, by hand or with Docker Compose.
+---
+
+The `silo` image holds the control plane with the console compiled in. It makes every Bot's machine through Docker's socket.
+
+:::caution
+The network filter needs Podman. On Docker it is off, so a Bot's machine reaches the network unfiltered. If that matters to you, use [Podman](/docs/install/podman/) or [SiloOS](/docs/install/siloos/).
+:::
+
+:::caution
+Whoever holds a rootful engine's socket is root on the host. The control plane runs as uid 1000 inside its container, which is a second line, not the wall.
+:::
+
+## Before you start
+
+Make Silo's directory and give it to uid 1000, the user the control plane runs as:
+
+```sh
+sudo mkdir -p /var/lib/silo
+sudo chown 1000:1000 /var/lib/silo
+```
+
+## With Docker Compose
+
+Put these two files in a directory of their own. `DOCKER_GID` is the group of Docker's socket, which the control plane's user joins: `stat -c %g /var/run/docker.sock` prints it.
+
+```sh title=".env"
+SILO_VERSION=v1.0.0
+SILO_PUBLIC_URL=https://silo.example.com
+SILO_DB_PASSWORD=change-me
+SILO_ADMIN_EMAIL=you@example.com
+SILO_ADMIN_PASSWORD=change-me-too
+DOCKER_GID=999
+```
+
+```yaml title="compose.yaml"
+# Not "silo": compose would name containers silo-…, which is the prefix of
+# the containers Silo makes itself.
+name: silohost
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: silodb
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: silo
+      POSTGRES_PASSWORD: ${SILO_DB_PASSWORD}
+      POSTGRES_DB: silo
+    volumes:
+      - silodb:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U silo -d silo"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  silo:
+    image: ghcr.io/d-513/silo:${SILO_VERSION}
+    container_name: silo
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    # The socket's group, so uid 1000 may use it.
+    group_add:
+      - "${DOCKER_GID}"
+    volumes:
+      - /var/run/docker.sock:/run/docker.sock
+      # The same path on both sides. Never a named volume.
+      - /var/lib/silo:/var/lib/silo
+    ports:
+      - "8080:8080"       # the console, and the Bots' machines
+      - "3479:3479/udp"   # calls
+      - "3479:3479/tcp"
+      - "25:2525"         # mail, if you use it
+    environment:
+      SILO_DATABASE_URL: postgres://silo:${SILO_DB_PASSWORD}@db:5432/silo?sslmode=disable
+      SILO_PUBLIC_URL: ${SILO_PUBLIC_URL}
+      SILO_BOOTSTRAP__EMAIL: ${SILO_ADMIN_EMAIL}
+      SILO_BOOTSTRAP__PASSWORD: ${SILO_ADMIN_PASSWORD}
+
+volumes:
+  silodb:
+```
+
+```sh
+docker compose up -d
+docker compose logs -f silo
+```
+
+## With docker run
+
+The same control plane, next to a Postgres 17 with pgvector that you already run:
+
+```sh
+docker run -d --name silo --restart unless-stopped \
+  -v /var/run/docker.sock:/run/docker.sock \
+  --group-add "$(stat -c %g /var/run/docker.sock)" \
+  -v /var/lib/silo:/var/lib/silo \
+  -p 8080:8080 -p 3479:3479/udp -p 3479:3479/tcp -p 25:2525 \
+  -e SILO_DATABASE_URL=postgres://… \
+  -e SILO_PUBLIC_URL=https://silo.example.com \
+  -e SILO_BOOTSTRAP__EMAIL=you@example.com \
+  -e SILO_BOOTSTRAP__PASSWORD=change-me \
+  ghcr.io/d-513/silo:v1.0.0
+```
+
+## What has to be right
+
+- **The socket** at `/run/docker.sock` inside the container. The control plane makes every other container through it.
+- **The data directory at the same path as on the host** (`/var/lib/silo` on both sides). The engine binds folders under it into the Bots' machines and reads those paths on the host, so a different path or a named volume points every workspace at nothing.
+- **Port 8080 published on the host.** The Bots' machines dial the control plane there. Put TLS in front of it for people, and set `SILO_PUBLIC_URL` to that address.
+- **No container named `silo-…`.** That prefix belongs to the containers Silo makes.
+
+The first admin is made at the first start from `SILO_BOOTSTRAP__*`, and those two settings do nothing once an admin exists. Use the newest version from the [releases](https://github.com/d-513/silo-agent/releases) in place of `v1.0.0`.
+
+Then go on with [After it starts](/docs/install/#after-it-starts).
+
+## Update
+
+Change `SILO_VERSION` and bring it up again:
+
+```sh
+docker compose pull && docker compose up -d
+```
+
+A control plane runs the Bot and sidecar images of its own version, and fetches them itself. A running Bot gets its new image the next time it starts from stopped.
+
+## Not covered
+
+- The network filter, as above.
+- TLS. The image serves plain HTTP on 8080; a reverse proxy in front is yours to run.
+- Backups of the database volume and `/var/lib/silo`.

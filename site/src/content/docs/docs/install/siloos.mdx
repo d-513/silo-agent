@@ -1,0 +1,123 @@
+---
+title: SiloOS
+description: Install the operating system that runs Silo and nothing else.
+---
+
+import { Steps } from "@astrojs/starlight/components";
+
+SiloOS is a bootable image that runs Silo and nothing else: the control plane, its database and Caddy for HTTPS, under one unprivileged user on rootless Podman. The system is read-only and updates as a whole image, with the previous one kept to roll back to.
+
+It runs as a VM (QEMU/KVM, Proxmox, VMware, Hyper-V, Incus, the large clouds) or on bare metal, on AMD64 and ARM64. Each hypervisor's guest agent is built in.
+
+## Get the media
+
+Every [GitHub Release](https://github.com/d-513/silo-agent/releases) carries the media for both architectures, named `silo-os-<version>-<x86_64|aarch64>.<ext>`, with a `SHA256SUMS` file.
+
+| File | For |
+| --- | --- |
+| `.iso` | Bare metal, or any VM you install by hand |
+| `.qcow2` | QEMU, libvirt, Proxmox, Incus, OpenStack |
+| `.raw.zst` | Writing straight onto a drive |
+| `.vmdk` | VMware |
+| `.vhd.zst` | Azure, Hyper-V |
+| `-gce.tar.gz` | Google Cloud |
+
+A file over 2 GiB is split into `.partNN` pieces. Join them with `cat` before use; the checksum is of the whole file.
+
+The media are the same for everyone. No user, key or setting is baked in.
+
+## Install
+
+<Steps>
+
+1. **Boot it.**
+
+   From the ISO: boot the machine from it. The install is unattended.
+
+   From a disk image: attach it as the VM's disk. Its root grows to fill the virtual disk at first boot, so give the VM the size you want.
+
+   :::danger
+   The ISO installs to the first disk it finds and erases it. On a machine with several disks, build an ISO that names the disk (`images/os/README.md` in the repository).
+   :::
+
+2. **Read the console.** The machine's screen and first serial port show where Silo is and the first admin:
+
+   ```
+   SiloOS  ·  https://192.168.1.20
+   First sign-in: admin@silo.local / k7mp-x3qa-9ten  (change the password once in)
+   ```
+
+   The first start pulls Silo's images, which takes a few minutes.
+
+3. **Sign in.** Open `https://<address>`. The browser warns once, because the certificate is Silo's own until there is a domain. The first admin's first sign-in opens Admin. Change the password on the Account page.
+
+4. **Give it a domain.** Point the domain's DNS at the machine and set **Admin → Settings → Server → Public URL** to `https://<that name>`. Within about 15 seconds it has a Let's Encrypt certificate.
+
+</Steps>
+
+Then go on with [After it starts](/docs/install/#after-it-starts).
+
+A machine installed this way has no user account and no password. The web console is the only way in, and it needs no other.
+
+## With a login of your own
+
+SiloOS carries cloud-init. Where something hands it user-data (a cloud's "user data" box, Proxmox's cloud-init tab, Incus, a NoCloud seed), it can set up an SSH login, the host name and Silo's first settings. With nothing to read it turns itself off.
+
+```yaml
+#cloud-config
+users:
+  - default            # the user "admin", with the key your cloud holds
+ssh_authorized_keys:
+  - ssh-ed25519 AAAA… you@laptop
+hostname: silo
+```
+
+The repository's `images/os/cloud-init/user-data.example.yaml` is the full example, including a first admin of your own. When user-data names one, none is generated and none is shown on the console.
+
+## A machine already running bootc
+
+A Fedora, CentOS Stream or RHEL bootc machine switches over in place:
+
+```sh
+sudo bootc switch ghcr.io/d-513/silo-os:latest && sudo reboot
+```
+
+## Updates
+
+A machine follows a **channel**, which is a tag of the `silo-os` image:
+
+| Channel | What it gets |
+| --- | --- |
+| `latest` | Stable releases |
+| `master` | A build of every push to `master` |
+| `vX.Y.Z` | That one version, until you move it |
+
+The media of the newest release follow `latest`. **Admin → SiloOS → Updates** sets the channel and the policy: Off, Download, or Download and restart, at an hour you pick. The default downloads at 04:00 and waits for you to restart.
+
+An update never moves to an older image. To go back, roll back to the previous one, which is kept.
+
+The OS and Silo are one release: each SiloOS version runs the control plane, Bot, gateway and sidecar images of the same build. Updating the OS is how you update Silo.
+
+## Run it from the console
+
+**Admin → SiloOS** holds the host name, the network, updates, power and logs. A network change undoes itself unless you confirm it in time, so one that cuts you off does not strand the machine.
+
+HTTPS is under **Admin → Settings → HTTPS**: the issuer, a DNS provider for wildcard certificates, and the root certificate of Silo's own authority to install on your devices.
+
+With a shell, `siloctl` works the services:
+
+```sh
+siloctl status           # silo, silodb, silocaddy
+siloctl logs silo        # the journal, followed
+siloctl restart silo     # after editing /etc/silo/silo.env
+sudo bootc status        # the image this machine runs, and the next one
+sudo bootc rollback      # back to the previous image
+```
+
+## Not covered
+
+- The images are not signed yet, so a machine trusts the registry.
+- Port 8080 answers plain HTTP on every interface, because the Bots' machines reach the control plane there.
+- The console edits a wired connection's IPv4 only. Wi-Fi, IPv6, bonds and VLANs are shown, not edited.
+- SSH keys, a firewall and backups are not managed from the console.
+- The first start needs the network: Silo's images are pulled then, not carried in the OS.
