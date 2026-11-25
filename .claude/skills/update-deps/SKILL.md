@@ -36,7 +36,7 @@ an update; ask the user when a check needs the running stack (`make e2e`,
 ## Inventory: every place a dependency is declared
 
 ### 1. Go modules and toolchain - `go.mod`, `go.sum`
-- `go 1.26.0` and `toolchain go1.26.10`: move `toolchain` to the newest
+- The `go` line and `toolchain go1.X.Y`: move `toolchain` to the newest
   patch (and the `go` line only when a new minor is wanted). CI reads it
   (`go-version-file: go.mod`).
 - Every `require` (direct and `// indirect`): `go list -m -u all`, then
@@ -44,7 +44,11 @@ an update; ask the user when a check needs the running stack (`make e2e`,
   per module `go get mod@vX`. Then `make tidy`.
 - Majors (`/v2`, `/v3`) are not found by `-u`: check each direct module's
   repository for a newer major. `github.com/docker/docker …+incompatible`
-  follows the Docker engine API: check `github.com/moby/moby` releases.
+  stops at v28.5.2: Docker 29 lives in `github.com/moby/moby/client` and
+  `…/api` (v0.x modules), a migration to report, not a sweep item.
+  `connectrpc.com/connect/v2` exists (no `connect.Request`/`Response`
+  wrappers, `connect.Server` + `connecthttp`): it rewrites every handler and
+  the buf plugin, so it is the user's call.
 - Modules with behaviour pinned by tests or docs, re-check after moving:
   - `github.com/refraction-networking/utls`, `github.com/imroc/req`:
     the search fingerprint (§10).
@@ -90,6 +94,10 @@ an update; ask the user when a check needs the running stack (`make e2e`,
 - `pnpm-workspace.yaml` `allowBuilds`: a new package with an install script
   must be added there deliberately (allow or deny), never blanket-allowed.
 - The pnpm version itself: see §5 (CI and the cp image).
+- **`site/`** (`site/package.json`, `site/pnpm-lock.yaml`) is the website's
+  own pnpm package: `cd site && pnpm outdated` too, with the same
+  TypeScript 7 hold. `web/.npmrc` and `site/.npmrc` carry
+  `dangerouslyAllowAllBuilds=true`, which overrides `allowBuilds`: report it.
 
 ### 3. Container base images - `images/*/Containerfile`
 Every `FROM` is `tag@sha256:digest`; move tag and digest together.
@@ -209,10 +217,8 @@ may change).
   header). Grep `internal/llm` for other dated API versions
   (`grep -rnE '"20[0-9]{2}-[0-9]{2}-[0-9]{2}"' internal/llm`) and check each
   vendor's changelog.
-- `internal/config/config.go`: `DefaultModel`, `DefaultEmbeddingModel`,
-  `DefaultTranscribeModel`, `DefaultSpeechModel`. Report newer models a
-  provider offers; changing a default is the user's call (it changes cost
-  and behaviour), and `docs/CONFIGURATION.md` and AGENTS.md name them.
+- Default models: none is built in any more (AGENTS.md § Configuration,
+  `config_test.go`), so there is nothing to move; never add one.
 - `internal/config/egress.go`: the built-in threat feed URLs: fetch each
   (`curl -s -o /dev/null -w '%{http_code}' -r 0-100 <url>`) and check that it
   is maintained. A feed that is gone (abuse.ch's URLhaus and ThreatFox host files
@@ -330,7 +336,7 @@ Run what the touched sections need, one step at a time:
 | --- | --- |
 | §1 Go | `make tidy`, `make vet`, `make build-cp`, `make build-worker build-bridge build-drive build-egress`, `make test` (needs `make db-up`; container tier needs `make images`) |
 | §2 web | `cd web && npx tsc --noEmit`, `make test-web`, `make web-build`; ask the user to run `make e2e` |
-| §3/§4 images | `make bot-image`, `make stdio-image`, `make drive-image`, `make egress-image`, `make caddy-image`, `make cp-image` (each alone), then `make test-containers`; `make os-image` when §3's Fedora or silodb moved |
+| §3/§4 images | `make bot-image`, `make stdio-image`, `make drive-image`, `make egress-image`, `make caddy-image`, `make cp-image` (each alone), then `make test-containers` (only with the user's stack stopped: the tests replace the engine's one `silo-egress` gateway, which the running control plane takes back, so every box reads "worker never connected"; otherwise ask the user to run it); `make os-image` when §3's Fedora or silodb moved |
 | §5 CI | push nothing; check workflow syntax by reading the diff, the run happens on the user's push |
 | §8 proto | `make proto`, Swift stubs, rebuild CP + worker + drive + egress, `make test-fast` |
 | §9 iOS | `swift test` in `ios/SiloClient`, `xcodebuild` build of scheme `MyApp` |

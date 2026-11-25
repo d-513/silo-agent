@@ -5,7 +5,7 @@
 
 # Node.js comes from the official image (same Debian, right architecture)
 # rather than Debian's older nodejs package.
-FROM docker.io/library/node:26-trixie-slim@sha256:e6bedef217677b276c591795e169840edd9096dbf13f29df8ef8d1856b8820bc AS node
+FROM docker.io/library/node:26-trixie-slim@sha256:abe7e5a82b61a8ef67b315b85497c9e65173387ccf2f4a029248184b8e020be5 AS node
 
 # Lightpanda is the headless browser the page reader renders script-built pages
 # with (cmd/silo-worker/render.go). Pinned to a release by tag and digest: move
@@ -13,9 +13,9 @@ FROM docker.io/library/node:26-trixie-slim@sha256:e6bedef217677b276c591795e16984
 FROM docker.io/lightpanda/browser:1.0.5@sha256:c474699588315f2d5ba1574a0608feeaf29a31663b845b640d2dd87dd2781ce0 AS lightpanda
 
 # uv and uvx: Python packages and one-off tools without touching the system's.
-FROM ghcr.io/astral-sh/uv:0.13.9@sha256:d3b601f0c7b118bc1753febf7c41cc80981df678445e0254284eecf84db79a7d AS uv
+FROM ghcr.io/astral-sh/uv:0.13.10@sha256:a3ea1357342c1a4bf9a0c53a3deb1b55379aefa037338d8113d5771efa01774f AS uv
 
-FROM docker.io/library/debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2
+FROM docker.io/library/debian:trixie-slim@sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af672b0481b35b44a0
 ARG DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8 \
     PATH=/home/silo/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -71,7 +71,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Chromium over CDP, so it never downloads a browser.
 RUN PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 pip3 install --break-system-packages --no-cache-dir \
     playwright==1.65.2 python-pptx==1.0.2 pdfplumber==0.11.11 duckdb==2.0.1 \
-    "yt-dlp[default]==2026.10.26"
+    "yt-dlp[default]==2026.11.23"
 # yt-dlp solves YouTube's player challenges with a JavaScript runtime: the
 # image has Node, not the Deno it looks for by default.
 RUN printf -- '--js-runtimes node\n' > /etc/yt-dlp.conf
@@ -101,14 +101,14 @@ COPY --from=node /usr/local/bin/node /usr/local/bin/node
 COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
-    && npm install -g --no-fund --no-audit pnpm@12.21.0 \
+    && npm install -g --no-fund --no-audit pnpm@12.23.0 \
     && npm cache clean --force \
     && rm -rf /root/.npm
 
 # uBlock Origin Lite, unpacked for --load-extension. Chromium writes its
 # rule indexes into the extension's folder, so the silo user owns it.
-ADD --checksum=sha256:7cd72ae78fe6fa007193de633d2dec085a0da50f53283e821918a77978d105fb \
-    https://github.com/uBlockOrigin/uBOL-home/releases/download/2026.1122.1948/uBOLite_2026.1122.1948.chromium.zip /tmp/ubol.zip
+ADD --checksum=sha256:b0472c07028ced638cc0ae7c57403dd95ad6cdfc7391a37f9fa7aaf6239dfc55 \
+    https://github.com/uBlockOrigin/uBOL-home/releases/download/2026.1124.1811/uBOLite_2026.1124.1811.chromium.zip /tmp/ubol.zip
 RUN mkdir -p /tmp/ubol-src /opt/silo/ubol \
     && unzip -q /tmp/ubol.zip -d /tmp/ubol-src \
     && m=$(find /tmp/ubol-src -name manifest.json | head -1) \
