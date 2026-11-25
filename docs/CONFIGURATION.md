@@ -50,7 +50,7 @@ The `claude` provider runs Claude on a **Claude subscription** instead of an API
 
 > **For your own use only.** Anthropic does not allow a claude.ai sign-in or its rate limits to be offered in a product for other people. Use this provider on an instance only you use, for work you start yourself: not with several people on it, and not for Bots that act unattended (automations, a Heartbeat, channels that answer by themselves). For those, use the `anthropic` provider with an API key. Claude Code also tells the model the signed-in account's email address and the server's operating system and working directory, so a Bot on this provider can read them.
 
-- **Install** Claude Code on the server (or `make claude-bin` for development, then `providers.claude.binary: build/claude/package/claude`).
+- **Install** it under Admin → Settings → Models → Providers → Claude Agent: **Install**. Silo does not include Claude Code, in its binaries, its images or SiloOS: it is Anthropic's program under Anthropic's own terms, not open source and not Silo's to pass on. The button downloads the newest release from Anthropic's own package on npm (`@anthropic-ai/claude-agent-sdk-<os>-<arch>`, about 190 MB), checks it against the checksum npm publishes, runs its `--version`, and keeps it in `<providers.claude.dir>/program/claude`; **Update** does the same again. The control plane's image and SiloOS need nothing more. A program of your own is used instead when `providers.claude.binary` names one (then there is no button), and with neither, `claude` on the server's `PATH` (`make claude-bin` still fetches one into `build/claude` for development).
 - **Sign in** under Admin → Settings → Models → Providers → Claude Agent: **Sign in** runs `claude auth login` (the sign-in is kept in `providers.claude.dir` and renewed by Claude Code), **Create a long-lived token** runs `claude setup-token` and saves the token as `providers.claude.oauth_token`. Either way you open Anthropic's page, sign in there, and paste the code it shows. Silo never uses a sign-in from your own home directory.
 - **What Claude Code may do:** nothing. Its built-in tools are off, it loads no settings, plugins, skills or MCP servers, and it is sent Silo's system prompt in place of its own. The model is offered only the Bot's tools, and each call is run by Silo under the Bot's rules, approvals and output filter, exactly as with any other provider.
 - **Caching** is Claude Code's own (a one-hour cache under a subscription). Silo keeps one Claude Code session per conversation, so a turn sends only what is new; a history Claude Code does not hold (after a compaction, an edit, or turns written by another model) starts a new session that is told the history as text.
@@ -107,9 +107,9 @@ Read aloud (a speaker button on every reply) and **calls** (Talk, in the compose
 | Key | Default | What it does |
 | --- | --- | --- |
 | `voice.enabled` | `true` | Off hides Read aloud and Talk everywhere. |
-| `transcribe_model` | `openrouter/openai/whisper-1` | Dictation, the transcribe tool, and calls unless `voice.transcribe_model` names another. |
+| `transcribe_model` | (none) | Dictation, the transcribe tool, and calls unless `voice.transcribe_model` names another. |
 | `voice.transcribe_model` | empty | What hears a call, when it should differ from dictation. A **live** model (marked Live in Admin) hears you as you speak and has the words ready when you stop; any other is asked once per turn. Live choices: Deepgram (`nova-3`, `flux-general-en`/`-multi`, which also judge when you have finished), Soniox (`stt-rt-v5`, strong Polish), AssemblyAI (`universal-3-6-pro`), ElevenLabs (`scribe_v2_realtime`), Cartesia (`ink-whisper`), OpenAI (`gpt-live-transcribe`, `gpt-4o-transcribe`), or a `local` server with `realtime` set. |
-| `voice.speech_model` | `openrouter/hexgrad/kokoro-82m` | The default voice; a Bot may pick another from `speech_models`, and a voice and speed of it (Bot → Settings → Voice). Through OpenRouter (Kokoro, Fish, Voxtral, Gemini TTS, ElevenLabs) every sentence is one request. A **live** voice stays connected for the whole call and says when each word is spoken: ElevenLabs direct (`eleven_flash_v2_5`, Polish included), Cartesia (`sonic-3.6`), Inworld (`inworld-tts-2-flash`), Deepgram Aura (`aura-2-thalia-en`; the voice is the model, no Polish). Kokoro has no Polish voice. |
+| `voice.speech_model` | (none) | The default voice; a Bot may pick another from `speech_models`, and a voice and speed of it (Bot → Settings → Voice). Through OpenRouter (Kokoro, Fish, Voxtral, Gemini TTS, ElevenLabs) every sentence is one request. A **live** voice stays connected for the whole call and says when each word is spoken: ElevenLabs direct (`eleven_flash_v2_5`, Polish included), Cartesia (`sonic-3.6`), Inworld (`inworld-tts-2-flash`), Deepgram Aura (`aura-2-thalia-en`; the voice is the model, no Polish). Kokoro has no Polish voice. |
 | `model_voice` | empty | The **talker**: a fast text model that hears each turn first, answers small talk itself and hands real work to the Bot, so answers start in under a second. Empty, the Bot answers every turn itself (smarter, slower). Pick it for time to first token and for not guessing; it must be on `models`. |
 | `voice.max_minutes` | `30` | A call ends after this long. |
 | `voice.idle_minutes` | `3` | A call nobody speaks in ends after this long. |
@@ -132,6 +132,8 @@ Audio is never kept: what is said on a call is written into its chat as text, an
 | `docker_host` | `$DOCKER_HOST` | `SILO_DOCKER_HOST` | Docker/Podman socket. Empty falls back to the `DOCKER_HOST` env |
 | `public_url` | (request origin) | `SILO_PUBLIC_URL` | Browser origin for OAuth redirects (`{public_url}/oauth/callback`). Dev: `http://127.0.0.1:5173` |
 | `cp_url` | `http://host.containers.internal:8080` | `SILO_CP_URL` | URL Bot containers and STDIO sidecars use to dial the CP |
+| `worker_addr` | `:8081` | `SILO_WORKER_ADDR` | A second listener that serves only what a Bot's machine and a STDIO sidecar call (the worker and bridge APIs, each opened by its own token). The network filter's gateway forwards them there, at `cp_url`'s host, so nothing behind the filter can open the console, the people's API, an artifact or the sign-in through the control plane's link. It must be reachable from the gateway like `cp_url` is: on the host it is, on `cp_network` it is, and a control plane in a container that publishes 8080 publishes 8081 too. Empty: no such listener, and the gateway forwards to `cp_url`'s own port, console and all. Restart required |
+| `cp_network` | (none) | `SILO_CP_NETWORK` | The container engine's network the control plane itself is on, when it runs as a container there. The network filter's gateway and the drive sidecars (and, with the filter off, the Bots' machines and STDIO sidecars) join it and reach the control plane at `cp_url`, which then names its container (`http://silo:8080`), so its port needs no publishing. Empty: they go through the host (`host.containers.internal`). A change makes the gateway again at once and a drive sidecar at its next start. See Running the control plane in a container |
 | `bot_image` | this build's (see Images) | `SILO_BOT_IMAGE` | A Bot's machine. Leave unset to follow the release |
 | `bot_limits.memory_mb` | `0` (none) | `SILO_BOT_LIMITS__MEMORY_MB` | Memory cap of each Bot's machine in MB, Chromium and all it runs included (`0`, or at least 512). Taken when a machine is created; a stopped machine made under another limit is made again at its next start |
 | `bot_limits.pids` | `4096` | `SILO_BOT_LIMITS__PIDS` | Processes and threads each Bot's machine may hold at once (`0`, or at least 256): a runaway build or a fork bomb stops there instead of starving the host. Taken like `memory_mb` |
@@ -143,6 +145,7 @@ Audio is never kept: what is said on a call is written into its chat as text, an
 | `content.host` | derived (see Content host & tunnels) | `SILO_CONTENT__HOST` | Domain suffix Bot-made content is served under, `host[:port]`: tunnels at `tunnel-<name>.<host>`, live app artifacts at `app-<name>.<host>`, and public shares at `share-<name>.<host>`. Lower-cased; no scheme, path or wildcard. Must differ from the `public_url` host |
 | `content.scheme` | follows `public_url` | `SILO_CONTENT__SCHEME` | `http` or `https`, for the links tunnels, apps and shares are shown with. Set it when TLS ends at a proxy and `public_url` is an internal address |
 | `caddy.admin` | (none) | `SILO_CADDY__ADMIN` | Caddy's admin API (`unix//path/to/admin.sock` or `http://host:port`). Set, the control plane configures that Caddy itself: HTTPS for `public_url`'s name and `content.host` (see Content host & tunnels). SiloOS sets it |
+| `caddy.upstream` | `127.0.0.1:<http_addr port>` | `SILO_CADDY__UPSTREAM` | The control plane's address as that Caddy reaches it (`host:port`). Set it when Caddy is a container of its own (`silo:8080`), and put Caddy's address in `auth.trusted_proxies`: besides `X-Forwarded-For`, that is who may ask before a certificate on demand, once Caddy is no longer a peer on loopback. SiloOS sets both |
 | `caddy.mode` | `auto` | `SILO_CADDY__MODE` | Where certificates come from: `auto` (Let's Encrypt for a public domain, Caddy's own authority for an address or a local name), `acme` (Let's Encrypt), `internal` (Caddy's own authority; browsers warn until its root is installed) or `off` (Caddy serves nothing) |
 | `caddy.email` | (none) | `SILO_CADDY__EMAIL` | The Let's Encrypt account's address, for expiry notices |
 | `caddy.dns_provider` | (none) | `SILO_CADDY__DNS_PROVIDER` | Answer Let's Encrypt through this DNS host instead of on port 80 (no inbound connection; a wildcard for the content host): `cloudflare`, `route53`, `azure`, `bunny`, `desec`, `digitalocean`, `duckdns`, `gandi`, `godaddy`, `hetzner`, `ionos`, `linode`, `namecheap`, `netcup`, `ovh`, `porkbun`, `vultr`. Needs `silo-caddy` (`images/caddy/`) |
@@ -155,7 +158,7 @@ Audio is never kept: what is said on a call is written into its chat as text, an
 | `mail.addr` | `:2525` | `SILO_MAIL__ADDR` | Where the SMTP listener binds, `host:port` or `:port`. The world delivers to port 25: publish or forward 25 to it |
 | `mail.max_size_mb` | `10` | `SILO_MAIL__MAX_SIZE_MB` | Largest message accepted, attachments included (1 to 50). Bigger ones are refused with 552 |
 | `mail.tls_cert` / `mail.tls_key` | self-signed | `SILO_MAIL__TLS_CERT` / `SILO_MAIL__TLS_KEY` | PEM files for STARTTLS. Unset, a self-signed certificate is made at start |
-| `model` | `openrouter/openai/gpt-5.6-luna` | `SILO_MODEL` | Default chat model (`provider/model`) |
+| `model` | (none) | `SILO_MODEL` | Default chat model (`provider/model`). **No model is built in, of any kind:** every allowlist and every model setting starts empty, so a new installation shows no provider's models as allowed until you allow them. Until a chat model is chosen a reply fails saying so; with no embedding model memories and Knowledge wait; with no transcription or speech model the mic, calls and Read aloud are hidden. (Before, `model`, `embedding_model`, `transcribe_model` and `voice.speech_model` defaulted to OpenRouter models: a silo.yaml that relied on that names them now) |
 | `model_title` | (none) | `SILO_MODEL_TITLE` | Chat title model. Empty = `model` |
 | `model_approval` | (none) | `SILO_MODEL_APPROVAL` | Auto-approval model: judges actions whose rule is Auto against the Bot's policy. A text model (in `models`) or a decision model (in `decision_models`). Empty = the title model |
 | `model_filter` | (none) | `SILO_MODEL_FILTER` | Output filter model: judges tool results for actions whose output rule is Check, against the Bot's output policy. A text model (in `models`) or a decision model (in `decision_models`). Empty = the auto-approval model |
@@ -163,8 +166,8 @@ Audio is never kept: what is said on a call is written into its chat as text, an
 | `model_image` | (none) | `SILO_MODEL_IMAGE` | Default image model, for the Bot's `generate_image` tool; the Bot may name another from `image_models`. Empty = no image generation |
 | `model_subagent` | (none) | `SILO_MODEL_SUBAGENT` | Default model for subagents a lead starts with `spawn_agent` (must be in `models`). Empty = the lead's own model. The lead may still name another allowed model |
 | `model_memory` | (none) | `SILO_MODEL_MEMORY` | Memory model: each Bot's Memory automation reads chats and tidies memories with it, and the facts' summary is written with it (must be in `models`, and must call tools). Empty = the title model. A cheap model is enough |
-| `embedding_model` | `openrouter/openai/text-embedding-3-small` | `SILO_EMBEDDING_MODEL` | Embeds memories (`remember`/`recall`) and indexed document chunks (`search_docs`). Must be an OpenAI-compatible provider returning 1536-wide vectors (`dimensions` is sent); changing the width means `make db-reset`. Admin → Settings → Models → Embeddings; a provider that cannot embed (Anthropic) is rejected |
-| `transcribe_model` | `openrouter/openai/whisper-1` | `SILO_TRANSCRIBE_MODEL` | Speech-to-text for composer dictation (the mic, `Transcribe` RPC) and the Bot's `transcribe` tool / `silo_runtime.transcribe`. Any OpenAI-compatible `/audio/transcriptions` model: OpenRouter (`openai/whisper-1`, `openai/whisper-large-v3`, …), OpenAI (`whisper-1`, `gpt-4o-transcribe`), or `local/<model>` for LocalAI / Speaches / vLLM / whisper.cpp (`--inference-path /v1/audio/transcriptions`). 25 MB per recording. `off` disables voice (the mic hides and the tool is not offered). A provider that cannot transcribe (Anthropic) is rejected |
+| `embedding_model` | (none) | `SILO_EMBEDDING_MODEL` | Embeds memories (`remember`/`recall`) and indexed document chunks (`search_docs`). Must be an OpenAI-compatible provider returning 1536-wide vectors (`dimensions` is sent); changing the width means `make db-reset`. Admin → Settings → Models → Embeddings; a provider that cannot embed (Anthropic) is rejected |
+| `transcribe_model` | (none; `off` also disables) | `SILO_TRANSCRIBE_MODEL` | Speech-to-text for composer dictation (the mic, `Transcribe` RPC) and the Bot's `transcribe` tool / `silo_runtime.transcribe`. Any OpenAI-compatible `/audio/transcriptions` model: OpenRouter (`openai/whisper-1`, `openai/whisper-large-v3`, …), OpenAI (`whisper-1`, `gpt-4o-transcribe`), or `local/<model>` for LocalAI / Speaches / vLLM / whisper.cpp (`--inference-path /v1/audio/transcriptions`). 25 MB per recording. `off` disables voice (the mic hides and the tool is not offered). A provider that cannot transcribe (Anthropic) is rejected |
 | `memory.in_prompt` | `true` | `SILO_MEMORY__IN_PROMPT` | Put memories in the system prompt: preferences and lessons always, and every fact while the facts total under 6,000 characters, then a summary of them a background sweep writes with `model_memory` and rewrites (at most every 30 minutes) when they changed. Nothing is embedded when a message arrives; the Bot searches with `recall`. Off keeps memories out of the prompt |
 | `tools.expose_completion` | (none) | `SILO_TOOLS__EXPOSE_COMPLETION` | Built-in tools to also offer the model as chat tools (YAML list, or comma-separated in the environment; `all` for every one). Most built-ins ship reachable from Python only (`silo_runtime.web_search`, `feed`, the taskboard, …) to keep each request small; name the ones a model handles badly that way |
 | `memory.collect` | `true` | `SILO_MEMORY__COLLECT` | Have each Bot's Memory automation read web and channel chats that have been quiet for 10 minutes with new messages and keep what the Bot missed (one short `model_memory` run per chat, each message read once), and tidy the memories when 20 or more wait to be looked over (at most every 6 hours per Bot). The composer's memory button and the automation's own schedule work either way |
@@ -194,8 +197,8 @@ Audio is never kept: what is said on a call is written into its chat as text, an
 | `providers.<id>.cache` | `true` | `SILO_PROVIDERS__<ID>__CACHE` | Prompt caching. `anthropic` adds `cache_control` breakpoints; `openai` sends `prompt_cache_key`; `openrouter` sends `prompt_cache_key` (it keeps a conversation on the upstream that holds its cache) and marks Claude prompts with `cache_control`, without which OpenRouter does not cache Claude at all. Other OpenRouter upstreams (OpenAI, DeepSeek, Grok, Gemini 2.5) cache a stable prefix on their own |
 | `providers.<id>.cache_ttl` | `5m` | `SILO_PROVIDERS__<ID>__CACHE_TTL` | Claude cache lifetime (`5m`/`1h`), on `anthropic` and `openrouter`. `1h` costs more to write and survives the pause between a human's messages |
 | `providers.anthropic.max_tokens` | `8192` | `SILO_PROVIDERS__ANTHROPIC__MAX_TOKENS` | Anthropic per-response output cap |
-| `providers.claude.binary` | `claude` on `PATH` | `SILO_PROVIDERS__CLAUDE__BINARY` | The Claude Code program the Claude Agent provider runs. A relative path is read against the control plane's directory |
-| `providers.claude.dir` | `<data_dir>/claude` | `SILO_PROVIDERS__CLAUDE__DIR` | Where Claude Code keeps its sign-in (`config/`), its sessions and Silo's record of them (`sessions/`). Back it up with the rest of the data |
+| `providers.claude.binary` | the installed copy, else `claude` on `PATH` | `SILO_PROVIDERS__CLAUDE__BINARY` | A Claude Code program of your own for the Claude Agent provider. Empty: the copy Admin's **Install** put in `<providers.claude.dir>/program`, else `claude` on the `PATH`. A relative path is read against the control plane's directory |
+| `providers.claude.dir` | `<data_dir>/claude` | `SILO_PROVIDERS__CLAUDE__DIR` | Where Claude Code keeps its sign-in (`config/`), its sessions and Silo's record of them (`sessions/`), and where the installed program is (`program/`, which need not be backed up). Back it up with the rest of the data |
 | `providers.claude.oauth_token` | (none) | `SILO_PROVIDERS__CLAUDE__OAUTH_TOKEN` | A long-lived token from `claude setup-token`, used instead of the stored sign-in. Admin can have Claude Code issue one |
 | `providers.openrouter.ignore` | `DeepInfra` | `SILO_PROVIDERS__OPENROUTER__IGNORE` | Comma list of upstream hosts OpenRouter must not route to (`provider.ignore`). DeepInfra sends a tool call's arguments in one chunk at the end, so Python/terminal/write input cannot stream into the thread. `none` routes anywhere |
 | `bootstrap.email` | (none) | `SILO_BOOTSTRAP__EMAIL` | The first admin. Used at start only while no admin can sign in (see Sign-in) |
@@ -329,7 +332,7 @@ The control plane makes every other container through the engine's socket, so th
 
 - **The socket** at `/run/docker.sock` (the image's `DOCKER_HOST`). Whoever holds a rootful engine's socket is root on the host; running as uid 1000 inside is a second line, not the wall.
 - **Its directory at the same path as on the host**: `-v /var/lib/silo:/var/lib/silo`. It holds `silo.yaml` (Admin → Settings writes it) and `data/`. The control plane hands the engine paths under `data/` to bind into the Bots' machines, and the engine reads them on the host, so a different path, or a named volume, points every Bot's workspace at nothing. Give it to uid 1000: `chown 1000:1000 /var/lib/silo`.
-- **Its ports published**: 8080 (the Bots' machines dial it at `cp_url`, by default `host.containers.internal:8080`; put TLS in front for people), 3479 UDP and TCP for calls, and 25 → 2525 for mail.
+- **Its ports published**: 8080 (the Bots' machines dial it at `cp_url`, by default `host.containers.internal:8080`; put TLS in front for people), 8081 (`worker_addr`: where the network filter forwards the Bots' machines, and all they can reach of the control plane), 3479 UDP and TCP for calls, and 25 → 2525 for mail. Port 8080 then answers on the host for everyone who can reach it; **On a network of its own** below avoids that.
 - **The database**: `SILO_DATABASE_URL`.
 
 ```sh
@@ -338,7 +341,7 @@ docker run -d --name silo --restart unless-stopped \
   -v /var/run/docker.sock:/run/docker.sock \
   --group-add "$(stat -c %g /var/run/docker.sock)" \
   -v /var/lib/silo:/var/lib/silo \
-  -p 8080:8080 -p 3479:3479/udp -p 3479:3479/tcp -p 25:2525 \
+  -p 8080:8080 -p 8081:8081 -p 3479:3479/udp -p 3479:3479/tcp -p 25:2525 \
   -e SILO_DATABASE_URL=postgres://… -e SILO_PUBLIC_URL=https://silo.example.com \
   ghcr.io/d-513/silo:v0.4.2
 
@@ -347,10 +350,30 @@ podman run -d --name silo --restart unless-stopped \
   --userns=keep-id:uid=1000,gid=1000 --security-opt label=disable \
   -v "$XDG_RUNTIME_DIR/podman/podman.sock:/run/docker.sock" \
   -v /var/lib/silo:/var/lib/silo \
-  -p 8080:8080 -p 3479:3479/udp -p 3479:3479/tcp -p 25:2525 \
+  -p 8080:8080 -p 8081:8081 -p 3479:3479/udp -p 3479:3479/tcp -p 25:2525 \
   -e SILO_DATABASE_URL=postgres://… -e SILO_PUBLIC_URL=https://silo.example.com \
   ghcr.io/d-513/silo:v0.4.2
 ```
+
+**On a network of its own.** Publishing 8080 only so the Bots' machines can come back in through the host is the long way round. Put the control plane on a network of the engine and name it in `cp_network`: the gateway and the drive sidecars join that network and dial the control plane by its container's name, and 8080 is published for your proxy alone, or not at all when the proxy is a container on a network with it.
+
+```sh
+podman network create silo
+podman run -d --name silo --restart unless-stopped --network silo \
+  --userns=keep-id:uid=1000,gid=1000 --security-opt label=disable \
+  -v "$XDG_RUNTIME_DIR/podman/podman.sock:/run/docker.sock" \
+  -v /var/lib/silo:/var/lib/silo \
+  -p 127.0.0.1:8080:8080 -p 3479:3479/udp -p 3479:3479/tcp -p 25:2525 \
+  -e SILO_CP_URL=http://silo:8080 -e SILO_CP_NETWORK=silo \
+  -e SILO_DATABASE_URL=postgres://… -e SILO_PUBLIC_URL=https://silo.example.com \
+  ghcr.io/d-513/silo:v0.4.2
+```
+
+Three things follow from the control plane no longer being on the host:
+
+- **Its resolvers are the network's.** With the network filter on and no `egress.dns`, bind the host's `/run/systemd/resolve` read-only at the same path (a host with systemd-resolved), or set `egress.dns`: the gateway cannot use the DNS of a network it is not on.
+- **Callers' addresses.** A rootless Podman forwards a published port through `rootlessport`, and the container sees its own address in place of the caller's: mail is then never verified (SPF needs the sender's address) and its limits count everyone as one. Podman 6 has a forwarder that keeps the address: `rootless_port_forwarder = "pasta"` under `[network]` in `containers.conf` (experimental; change it only while no container runs). An older Podman has no such option, and works without it, less those addresses. A rootful engine keeps them by itself.
+- **Calls** need the host's addresses in `voice.webrtc.public_ips`: the control plane's own are the network's.
 
 For a machine that runs Silo and nothing else, SiloOS (`images/os/`, see images/os/README.md) is a bootable image that does all of this with rootless Podman.
 
@@ -374,7 +397,7 @@ egress:
 - **`block`** is a floor: no Bot may reach it, and an owner may add to it from the Bot's Rules page but never remove it. `trust` and `pass` are yours too, and shown locked; the Bot's Rules page says "from the operator" on them. Patterns are hosts, `*.` prefixes, IPs and CIDRs, matched case-insensitively; an owner may add at most 200 of their own.
 - **What the lists mean.** `block` refuses the connection (the Bot gets a plain `403` saying it was blocked, and nothing for a flag). `trust` reaches the host without inspection even where an owner's rule would check it — an internal package registry is the case. `pass` forwards it untouched, for a service the gateway would otherwise break (websockets, unusual TLS).
 - **Threat lists** (`feeds`) are downloaded and refreshed by the gateway itself; three are built in and none needs a key (Spamhaus DROP, Emerging Threats' compromised IPs, and Hagezi's threat-intelligence domains; abuse.ch's URLhaus and ThreatFox host files were retired in 2026-11). A host on one is blocked and recorded. Naming any feed replaces the built-in set; each is `id`, `url` and `format` (`hosts`, `domains`, `ips`, `cidrjson`).
-- **DNS** (`dns`): the resolvers the gateway looks every outside name up with, comma-separated IPs, each optionally with a port (`10.0.0.53:5353`); names are not taken. Empty uses the system's: the nameservers in the control plane's own `/etc/resolv.conf`, or systemd-resolved's upstreams (`/run/systemd/resolve/resolv.conf`) when that names only the `127.0.0.53` stub. Either way the control plane hands them to the gateway, which uses them instead of what the container engine wrote into its `resolv.conf`: the engine lists the Bots' internal networks there, and after a restart nothing else. A change reaches the running gateway within 30 seconds, without a restart. Admin → Settings → Network shows the resolvers in use; with none found, set them here.
+- **DNS** (`dns`): the resolvers the gateway looks every outside name up with, comma-separated IPs, each optionally with a port (`10.0.0.53:5353`); names are not taken. Empty uses the system's: systemd-resolved's upstreams (`/run/systemd/resolve/resolv.conf`) where that file is, else the nameservers in the control plane's own `/etc/resolv.conf` (never a loopback stub). Either way the control plane hands them to the gateway, which uses them instead of what the container engine wrote into its `resolv.conf`: the engine lists the Bots' internal networks there, and after a restart nothing else. A change reaches the running gateway within 30 seconds, without a restart. Admin → Settings → Network shows the resolvers in use; with none found, set them here.
 - **Turning it off** (`enabled: false`) leaves Bot machines on today's unfiltered network; Admin warns that nothing is being watched. The lists are kept and take effect again when it is back on.
 - **The gateway** is one container per container engine. Each client's `/24` is carved from `subnet_pool` (`10.213.0.0/16`, enough for 256 Bots without overlap); change it only if it collides with a network you really use. Admin → Settings → Network shows the gateway's certificate and the state of each threat list, and rotates the certificate (running machines pick up a new one on their next start).
 
@@ -487,7 +510,7 @@ export DOCKER_HOST=unix:///run/user/1000/podman/podman.sock
 
 `podman machine` / Docker Desktop: set `docker_host` to that socket instead.
 
-`cp_url` must be reachable from inside the Bot and from STDIO sidecars. Create adds `host.containers.internal:host-gateway` to both. If the worker or a bridge never connects, the container cannot see the CP.
+`cp_url` must be reachable from inside the Bot and from STDIO sidecars. Create adds `host.containers.internal:host-gateway` to both, or with `cp_network` set puts them on that network instead. If the worker or a bridge never connects, the container cannot see the CP.
 
 ## Example
 

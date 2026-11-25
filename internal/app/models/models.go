@@ -7,6 +7,7 @@ package models
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"strings"
@@ -263,10 +264,7 @@ func (s *Service) BotDefault(botID string) string {
 			}
 		}
 	}
-	if m := strings.TrimSpace(cfg.Model); m != "" {
-		return m
-	}
-	return config.DefaultModel
+	return strings.TrimSpace(cfg.Model)
 }
 
 // SwitchTool is the bot-facing switch_model tool. It persists the choice
@@ -301,18 +299,22 @@ func Can[T any](s *Service, modelID, verb string) error {
 	return nil
 }
 
-// EmbedModelID is the operator's embedding model, or the default.
+// ErrNoEmbedding is what memories and Knowledge answer until an admin picks
+// an embedding model: none is built in.
+var ErrNoEmbedding = errors.New("no embedding model is set, so memories and Knowledge search are off: an admin picks one under Admin → Settings → Models → Embeddings")
+
+// EmbedModelID is the operator's embedding model, "" when none is set.
 func (s *Service) EmbedModelID() string {
-	if m := strings.TrimSpace(s.cfg().EmbedModel); m != "" {
-		return m
-	}
-	return config.DefaultEmbeddingModel
+	return strings.TrimSpace(s.cfg().EmbedModel)
 }
 
 // Embed turns texts into vectors with the operator's embedding model, for
 // botID (whose call it is recorded as).
 func (s *Service) Embed(ctx context.Context, botID string, texts []string) ([]pgvector.Vector, string, error) {
 	modelID := s.EmbedModelID()
+	if modelID == "" {
+		return nil, "", ErrNoEmbedding
+	}
 	client, provider, model, err := s.Client(modelID)
 	if err != nil {
 		return nil, modelID, err

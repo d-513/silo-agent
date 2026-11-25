@@ -4,6 +4,8 @@ data_dir: ./data
 database_url: postgres://silo:silo@localhost:5433/silo?sslmode=disable
 docker_host: unix:///run/user/1000/podman/podman.sock
 cp_url: http://host.containers.internal:8080
+# worker_addr: ":8081"   # the Bots' machines' own port (the default); "" forwards them to http_addr's instead
+# cp_network: silo   # only when Silo itself is a container on that engine network; cp_url then names it (http://silo:8080)
 public_url: http://127.0.0.1:5173
 # The images follow the build (localhost/silo-*:dev for a dev build, the
 # release's own on ghcr.io for a release). Name one only to pin it:
@@ -18,8 +20,14 @@ bot_limits:
   pids: 4096
 
 # Model ids are provider/model. Providers: openrouter, openai, anthropic.
+# No model is built in: nothing is called, or shown as allowed, that is not
+# named here or picked under Admin → Settings → Models.
 # The default model must be one of models below.
 model: openrouter/openai/gpt-5.6-luna
+# Memories and Knowledge search need an embedding model (1536-wide vectors).
+embedding_model: openrouter/openai/text-embedding-3-small
+# Dictation (the composer's mic) and the Bot's transcribe tool.
+# transcribe_model: openrouter/openai/whisper-1
 # Chat title model. Leave empty to use the default model.
 model_title: ""
 # Auto-approval model. Decides rules set to "auto". Empty uses model_title.

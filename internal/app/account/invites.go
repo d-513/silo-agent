@@ -149,6 +149,7 @@ func (s *Service) AcceptInvite(ctx context.Context, req *connect.Request[v1.Acce
 		return nil, err
 	}
 	out := &v1.AcceptInviteResponse{}
+	s.changed()
 	if inv.UserID != "" {
 		// Whoever was signed in with the forgotten password is out.
 		if err := auth.EndUserSessions(s.db, u.ID, ""); err != nil {

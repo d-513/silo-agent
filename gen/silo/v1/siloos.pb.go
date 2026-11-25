@@ -2098,6 +2098,78 @@ func (x *ProxyStatus) GetRootCa() string {
 	return ""
 }
 
+type RetireFirstPasswordRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RetireFirstPasswordRequest) Reset() {
+	*x = RetireFirstPasswordRequest{}
+	mi := &file_silo_v1_siloos_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RetireFirstPasswordRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RetireFirstPasswordRequest) ProtoMessage() {}
+
+func (x *RetireFirstPasswordRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_siloos_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RetireFirstPasswordRequest.ProtoReflect.Descriptor instead.
+func (*RetireFirstPasswordRequest) Descriptor() ([]byte, []int) {
+	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{32}
+}
+
+type RetireFirstPasswordResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RetireFirstPasswordResponse) Reset() {
+	*x = RetireFirstPasswordResponse{}
+	mi := &file_silo_v1_siloos_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RetireFirstPasswordResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RetireFirstPasswordResponse) ProtoMessage() {}
+
+func (x *RetireFirstPasswordResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_silo_v1_siloos_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RetireFirstPasswordResponse.ProtoReflect.Descriptor instead.
+func (*RetireFirstPasswordResponse) Descriptor() ([]byte, []int) {
+	return file_silo_v1_siloos_proto_rawDescGZIP(), []int{33}
+}
+
 var File_silo_v1_siloos_proto protoreflect.FileDescriptor
 
 const file_silo_v1_siloos_proto_rawDesc = "" +
@@ -2259,7 +2331,9 @@ const file_silo_v1_siloos_proto_rawDesc = "" +
 	"\x05local\x18\t \x03(\tR\x05local\x12\x12\n" +
 	"\x04note\x18\n" +
 	" \x01(\tR\x04note\x12\x17\n" +
-	"\aroot_ca\x18\v \x01(\tR\x06rootCa2\x9c\a\n" +
+	"\aroot_ca\x18\v \x01(\tR\x06rootCa\"\x1c\n" +
+	"\x1aRetireFirstPasswordRequest\"\x1d\n" +
+	"\x1bRetireFirstPasswordResponse2\xfe\a\n" +
 	"\aSiloOSD\x12;\n" +
 	"\tGetSystem\x12\x19.silo.v1.GetSystemRequest\x1a\x13.silo.v1.SystemInfo\x12?\n" +
 	"\vSetHostname\x12\x1b.silo.v1.SetHostnameRequest\x1a\x13.silo.v1.SystemInfo\x127\n" +
@@ -2276,7 +2350,8 @@ const file_silo_v1_siloos_proto_rawDesc = "" +
 	"\x10SetUpdateChannel\x12 .silo.v1.SetUpdateChannelRequest\x1a\x10.silo.v1.Updates\x12Q\n" +
 	"\x12ListUpdateChannels\x12\".silo.v1.ListUpdateChannelsRequest\x1a\x17.silo.v1.UpdateChannels\x126\n" +
 	"\x05Power\x12\x15.silo.v1.PowerRequest\x1a\x16.silo.v1.PowerResponse\x12?\n" +
-	"\bReadLogs\x12\x18.silo.v1.ReadLogsRequest\x1a\x19.silo.v1.ReadLogsResponseB\x1fZ\x1dsilo.agent/gen/silo/v1;silov1b\x06proto3"
+	"\bReadLogs\x12\x18.silo.v1.ReadLogsRequest\x1a\x19.silo.v1.ReadLogsResponse\x12`\n" +
+	"\x13RetireFirstPassword\x12#.silo.v1.RetireFirstPasswordRequest\x1a$.silo.v1.RetireFirstPasswordResponseB\x1fZ\x1dsilo.agent/gen/silo/v1;silov1b\x06proto3"
 
 var (
 	file_silo_v1_siloos_proto_rawDescOnce sync.Once
@@ -2290,40 +2365,42 @@ func file_silo_v1_siloos_proto_rawDescGZIP() []byte {
 	return file_silo_v1_siloos_proto_rawDescData
 }
 
-var file_silo_v1_siloos_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
+var file_silo_v1_siloos_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_silo_v1_siloos_proto_goTypes = []any{
-	(*GetSystemRequest)(nil),          // 0: silo.v1.GetSystemRequest
-	(*SystemInfo)(nil),                // 1: silo.v1.SystemInfo
-	(*SystemDisk)(nil),                // 2: silo.v1.SystemDisk
-	(*SetHostnameRequest)(nil),        // 3: silo.v1.SetHostnameRequest
-	(*SetTimeRequest)(nil),            // 4: silo.v1.SetTimeRequest
-	(*GetNetworkRequest)(nil),         // 5: silo.v1.GetNetworkRequest
-	(*Network)(nil),                   // 6: silo.v1.Network
-	(*NetDevice)(nil),                 // 7: silo.v1.NetDevice
-	(*NetConnection)(nil),             // 8: silo.v1.NetConnection
-	(*PendingNetwork)(nil),            // 9: silo.v1.PendingNetwork
-	(*ApplyConnectionRequest)(nil),    // 10: silo.v1.ApplyConnectionRequest
-	(*ConfirmNetworkRequest)(nil),     // 11: silo.v1.ConfirmNetworkRequest
-	(*RollBackNetworkRequest)(nil),    // 12: silo.v1.RollBackNetworkRequest
-	(*GetUpdatesRequest)(nil),         // 13: silo.v1.GetUpdatesRequest
-	(*Updates)(nil),                   // 14: silo.v1.Updates
-	(*BootImage)(nil),                 // 15: silo.v1.BootImage
-	(*UpdateJob)(nil),                 // 16: silo.v1.UpdateJob
-	(*UpdatePolicy)(nil),              // 17: silo.v1.UpdatePolicy
-	(*RunUpdateRequest)(nil),          // 18: silo.v1.RunUpdateRequest
-	(*SetUpdateChannelRequest)(nil),   // 19: silo.v1.SetUpdateChannelRequest
-	(*ListUpdateChannelsRequest)(nil), // 20: silo.v1.ListUpdateChannelsRequest
-	(*UpdateChannels)(nil),            // 21: silo.v1.UpdateChannels
-	(*UpdateChannel)(nil),             // 22: silo.v1.UpdateChannel
-	(*SetUpdatePolicyRequest)(nil),    // 23: silo.v1.SetUpdatePolicyRequest
-	(*PowerRequest)(nil),              // 24: silo.v1.PowerRequest
-	(*PowerResponse)(nil),             // 25: silo.v1.PowerResponse
-	(*ReadLogsRequest)(nil),           // 26: silo.v1.ReadLogsRequest
-	(*ReadLogsResponse)(nil),          // 27: silo.v1.ReadLogsResponse
-	(*LogLine)(nil),                   // 28: silo.v1.LogLine
-	(*GetSiloOSRequest)(nil),          // 29: silo.v1.GetSiloOSRequest
-	(*SiloOSStatus)(nil),              // 30: silo.v1.SiloOSStatus
-	(*ProxyStatus)(nil),               // 31: silo.v1.ProxyStatus
+	(*GetSystemRequest)(nil),            // 0: silo.v1.GetSystemRequest
+	(*SystemInfo)(nil),                  // 1: silo.v1.SystemInfo
+	(*SystemDisk)(nil),                  // 2: silo.v1.SystemDisk
+	(*SetHostnameRequest)(nil),          // 3: silo.v1.SetHostnameRequest
+	(*SetTimeRequest)(nil),              // 4: silo.v1.SetTimeRequest
+	(*GetNetworkRequest)(nil),           // 5: silo.v1.GetNetworkRequest
+	(*Network)(nil),                     // 6: silo.v1.Network
+	(*NetDevice)(nil),                   // 7: silo.v1.NetDevice
+	(*NetConnection)(nil),               // 8: silo.v1.NetConnection
+	(*PendingNetwork)(nil),              // 9: silo.v1.PendingNetwork
+	(*ApplyConnectionRequest)(nil),      // 10: silo.v1.ApplyConnectionRequest
+	(*ConfirmNetworkRequest)(nil),       // 11: silo.v1.ConfirmNetworkRequest
+	(*RollBackNetworkRequest)(nil),      // 12: silo.v1.RollBackNetworkRequest
+	(*GetUpdatesRequest)(nil),           // 13: silo.v1.GetUpdatesRequest
+	(*Updates)(nil),                     // 14: silo.v1.Updates
+	(*BootImage)(nil),                   // 15: silo.v1.BootImage
+	(*UpdateJob)(nil),                   // 16: silo.v1.UpdateJob
+	(*UpdatePolicy)(nil),                // 17: silo.v1.UpdatePolicy
+	(*RunUpdateRequest)(nil),            // 18: silo.v1.RunUpdateRequest
+	(*SetUpdateChannelRequest)(nil),     // 19: silo.v1.SetUpdateChannelRequest
+	(*ListUpdateChannelsRequest)(nil),   // 20: silo.v1.ListUpdateChannelsRequest
+	(*UpdateChannels)(nil),              // 21: silo.v1.UpdateChannels
+	(*UpdateChannel)(nil),               // 22: silo.v1.UpdateChannel
+	(*SetUpdatePolicyRequest)(nil),      // 23: silo.v1.SetUpdatePolicyRequest
+	(*PowerRequest)(nil),                // 24: silo.v1.PowerRequest
+	(*PowerResponse)(nil),               // 25: silo.v1.PowerResponse
+	(*ReadLogsRequest)(nil),             // 26: silo.v1.ReadLogsRequest
+	(*ReadLogsResponse)(nil),            // 27: silo.v1.ReadLogsResponse
+	(*LogLine)(nil),                     // 28: silo.v1.LogLine
+	(*GetSiloOSRequest)(nil),            // 29: silo.v1.GetSiloOSRequest
+	(*SiloOSStatus)(nil),                // 30: silo.v1.SiloOSStatus
+	(*ProxyStatus)(nil),                 // 31: silo.v1.ProxyStatus
+	(*RetireFirstPasswordRequest)(nil),  // 32: silo.v1.RetireFirstPasswordRequest
+	(*RetireFirstPasswordResponse)(nil), // 33: silo.v1.RetireFirstPasswordResponse
 }
 var file_silo_v1_siloos_proto_depIdxs = []int32{
 	2,  // 0: silo.v1.SystemInfo.disks:type_name -> silo.v1.SystemDisk
@@ -2355,22 +2432,24 @@ var file_silo_v1_siloos_proto_depIdxs = []int32{
 	20, // 26: silo.v1.SiloOSD.ListUpdateChannels:input_type -> silo.v1.ListUpdateChannelsRequest
 	24, // 27: silo.v1.SiloOSD.Power:input_type -> silo.v1.PowerRequest
 	26, // 28: silo.v1.SiloOSD.ReadLogs:input_type -> silo.v1.ReadLogsRequest
-	1,  // 29: silo.v1.SiloOSD.GetSystem:output_type -> silo.v1.SystemInfo
-	1,  // 30: silo.v1.SiloOSD.SetHostname:output_type -> silo.v1.SystemInfo
-	1,  // 31: silo.v1.SiloOSD.SetTime:output_type -> silo.v1.SystemInfo
-	6,  // 32: silo.v1.SiloOSD.GetNetwork:output_type -> silo.v1.Network
-	6,  // 33: silo.v1.SiloOSD.ApplyConnection:output_type -> silo.v1.Network
-	6,  // 34: silo.v1.SiloOSD.ConfirmNetwork:output_type -> silo.v1.Network
-	6,  // 35: silo.v1.SiloOSD.RollBackNetwork:output_type -> silo.v1.Network
-	14, // 36: silo.v1.SiloOSD.GetUpdates:output_type -> silo.v1.Updates
-	14, // 37: silo.v1.SiloOSD.RunUpdate:output_type -> silo.v1.Updates
-	14, // 38: silo.v1.SiloOSD.SetUpdatePolicy:output_type -> silo.v1.Updates
-	14, // 39: silo.v1.SiloOSD.SetUpdateChannel:output_type -> silo.v1.Updates
-	21, // 40: silo.v1.SiloOSD.ListUpdateChannels:output_type -> silo.v1.UpdateChannels
-	25, // 41: silo.v1.SiloOSD.Power:output_type -> silo.v1.PowerResponse
-	27, // 42: silo.v1.SiloOSD.ReadLogs:output_type -> silo.v1.ReadLogsResponse
-	29, // [29:43] is the sub-list for method output_type
-	15, // [15:29] is the sub-list for method input_type
+	32, // 29: silo.v1.SiloOSD.RetireFirstPassword:input_type -> silo.v1.RetireFirstPasswordRequest
+	1,  // 30: silo.v1.SiloOSD.GetSystem:output_type -> silo.v1.SystemInfo
+	1,  // 31: silo.v1.SiloOSD.SetHostname:output_type -> silo.v1.SystemInfo
+	1,  // 32: silo.v1.SiloOSD.SetTime:output_type -> silo.v1.SystemInfo
+	6,  // 33: silo.v1.SiloOSD.GetNetwork:output_type -> silo.v1.Network
+	6,  // 34: silo.v1.SiloOSD.ApplyConnection:output_type -> silo.v1.Network
+	6,  // 35: silo.v1.SiloOSD.ConfirmNetwork:output_type -> silo.v1.Network
+	6,  // 36: silo.v1.SiloOSD.RollBackNetwork:output_type -> silo.v1.Network
+	14, // 37: silo.v1.SiloOSD.GetUpdates:output_type -> silo.v1.Updates
+	14, // 38: silo.v1.SiloOSD.RunUpdate:output_type -> silo.v1.Updates
+	14, // 39: silo.v1.SiloOSD.SetUpdatePolicy:output_type -> silo.v1.Updates
+	14, // 40: silo.v1.SiloOSD.SetUpdateChannel:output_type -> silo.v1.Updates
+	21, // 41: silo.v1.SiloOSD.ListUpdateChannels:output_type -> silo.v1.UpdateChannels
+	25, // 42: silo.v1.SiloOSD.Power:output_type -> silo.v1.PowerResponse
+	27, // 43: silo.v1.SiloOSD.ReadLogs:output_type -> silo.v1.ReadLogsResponse
+	33, // 44: silo.v1.SiloOSD.RetireFirstPassword:output_type -> silo.v1.RetireFirstPasswordResponse
+	30, // [30:45] is the sub-list for method output_type
+	15, // [15:30] is the sub-list for method input_type
 	15, // [15:15] is the sub-list for extension type_name
 	15, // [15:15] is the sub-list for extension extendee
 	0,  // [0:15] is the sub-list for field type_name
@@ -2388,7 +2467,7 @@ func file_silo_v1_siloos_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_silo_v1_siloos_proto_rawDesc), len(file_silo_v1_siloos_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   32,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

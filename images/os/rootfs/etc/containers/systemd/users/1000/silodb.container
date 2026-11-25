@@ -1,5 +1,7 @@
-# Silo's database: Postgres 17 with pgvector, reachable only on the host's
-# loopback. The control plane makes its extensions and tables itself.
+# Silo's database: Postgres 17 with pgvector, reachable only by name on
+# Silo's front network (silodb:5432), with no port on the host. The control
+# plane makes its extensions and tables itself. For a shell:
+#   siloctl podman exec -it silodb psql -U silo
 # Not named silo-…: that prefix is the control plane's own containers.
 [Unit]
 Description=Silo database (Postgres + pgvector)
@@ -10,7 +12,7 @@ Image=docker.io/pgvector/pgvector:pg17@sha256:b513c48566e4777cd3370451400000c78e
 Volume=silodb.volume:/var/lib/postgresql/data
 Environment=POSTGRES_USER=silo POSTGRES_DB=silo
 EnvironmentFile=/etc/silo/postgres.env
-PublishPort=127.0.0.1:5432:5432
+Network=silofront.network
 # The unit is up once Postgres answers, so the control plane starts after it.
 HealthCmd=pg_isready -U silo -d silo
 HealthInterval=5s

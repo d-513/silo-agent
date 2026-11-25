@@ -1,0 +1,10 @@
+# Silo's front network: Caddy, the control plane and the database, and
+# nothing a Bot's traffic passes through. Caddy has a fixed address on it
+# (silocaddy.container), which is the one proxy the control plane believes.
+#
+# The subnet is fixed for that address, and sits beside the network filter's
+# pool (egress.subnet_pool, 10.213.0.0/16) without touching it.
+[Network]
+NetworkName=silofront
+Subnet=10.212.0.0/24
+Gateway=10.212.0.1

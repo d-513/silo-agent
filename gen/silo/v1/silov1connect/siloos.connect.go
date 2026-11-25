@@ -63,6 +63,9 @@ const (
 	SiloOSDPowerProcedure = "/silo.v1.SiloOSD/Power"
 	// SiloOSDReadLogsProcedure is the fully-qualified name of the SiloOSD's ReadLogs RPC.
 	SiloOSDReadLogsProcedure = "/silo.v1.SiloOSD/ReadLogs"
+	// SiloOSDRetireFirstPasswordProcedure is the fully-qualified name of the SiloOSD's
+	// RetireFirstPassword RPC.
+	SiloOSDRetireFirstPasswordProcedure = "/silo.v1.SiloOSD/RetireFirstPassword"
 )
 
 // SiloOSDClient is a client for the silo.v1.SiloOSD service.
@@ -96,6 +99,11 @@ type SiloOSDClient interface {
 	// Power reboots or powers off a few seconds after answering.
 	Power(context.Context, *connect.Request[v1.PowerRequest]) (*connect.Response[v1.PowerResponse], error)
 	ReadLogs(context.Context, *connect.Request[v1.ReadLogsRequest]) (*connect.Response[v1.ReadLogsResponse], error)
+	// RetireFirstPassword stops the console from showing the first admin's
+	// generated password, now and at every later boot. The control plane calls
+	// it by itself once that password no longer signs anyone in; nobody asks
+	// for it, and it takes nothing: there is nothing to choose.
+	RetireFirstPassword(context.Context, *connect.Request[v1.RetireFirstPasswordRequest]) (*connect.Response[v1.RetireFirstPasswordResponse], error)
 }
 
 // NewSiloOSDClient constructs a client for the silo.v1.SiloOSD service. By default, it uses the
@@ -193,25 +201,32 @@ func NewSiloOSDClient(httpClient connect.HTTPClient, baseURL string, opts ...con
 			connect.WithSchema(siloOSDMethods.ByName("ReadLogs")),
 			connect.WithClientOptions(opts...),
 		),
+		retireFirstPassword: connect.NewClient[v1.RetireFirstPasswordRequest, v1.RetireFirstPasswordResponse](
+			httpClient,
+			baseURL+SiloOSDRetireFirstPasswordProcedure,
+			connect.WithSchema(siloOSDMethods.ByName("RetireFirstPassword")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // siloOSDClient implements SiloOSDClient.
 type siloOSDClient struct {
-	getSystem          *connect.Client[v1.GetSystemRequest, v1.SystemInfo]
-	setHostname        *connect.Client[v1.SetHostnameRequest, v1.SystemInfo]
-	setTime            *connect.Client[v1.SetTimeRequest, v1.SystemInfo]
-	getNetwork         *connect.Client[v1.GetNetworkRequest, v1.Network]
-	applyConnection    *connect.Client[v1.ApplyConnectionRequest, v1.Network]
-	confirmNetwork     *connect.Client[v1.ConfirmNetworkRequest, v1.Network]
-	rollBackNetwork    *connect.Client[v1.RollBackNetworkRequest, v1.Network]
-	getUpdates         *connect.Client[v1.GetUpdatesRequest, v1.Updates]
-	runUpdate          *connect.Client[v1.RunUpdateRequest, v1.Updates]
-	setUpdatePolicy    *connect.Client[v1.SetUpdatePolicyRequest, v1.Updates]
-	setUpdateChannel   *connect.Client[v1.SetUpdateChannelRequest, v1.Updates]
-	listUpdateChannels *connect.Client[v1.ListUpdateChannelsRequest, v1.UpdateChannels]
-	power              *connect.Client[v1.PowerRequest, v1.PowerResponse]
-	readLogs           *connect.Client[v1.ReadLogsRequest, v1.ReadLogsResponse]
+	getSystem           *connect.Client[v1.GetSystemRequest, v1.SystemInfo]
+	setHostname         *connect.Client[v1.SetHostnameRequest, v1.SystemInfo]
+	setTime             *connect.Client[v1.SetTimeRequest, v1.SystemInfo]
+	getNetwork          *connect.Client[v1.GetNetworkRequest, v1.Network]
+	applyConnection     *connect.Client[v1.ApplyConnectionRequest, v1.Network]
+	confirmNetwork      *connect.Client[v1.ConfirmNetworkRequest, v1.Network]
+	rollBackNetwork     *connect.Client[v1.RollBackNetworkRequest, v1.Network]
+	getUpdates          *connect.Client[v1.GetUpdatesRequest, v1.Updates]
+	runUpdate           *connect.Client[v1.RunUpdateRequest, v1.Updates]
+	setUpdatePolicy     *connect.Client[v1.SetUpdatePolicyRequest, v1.Updates]
+	setUpdateChannel    *connect.Client[v1.SetUpdateChannelRequest, v1.Updates]
+	listUpdateChannels  *connect.Client[v1.ListUpdateChannelsRequest, v1.UpdateChannels]
+	power               *connect.Client[v1.PowerRequest, v1.PowerResponse]
+	readLogs            *connect.Client[v1.ReadLogsRequest, v1.ReadLogsResponse]
+	retireFirstPassword *connect.Client[v1.RetireFirstPasswordRequest, v1.RetireFirstPasswordResponse]
 }
 
 // GetSystem calls silo.v1.SiloOSD.GetSystem.
@@ -284,6 +299,11 @@ func (c *siloOSDClient) ReadLogs(ctx context.Context, req *connect.Request[v1.Re
 	return c.readLogs.CallUnary(ctx, req)
 }
 
+// RetireFirstPassword calls silo.v1.SiloOSD.RetireFirstPassword.
+func (c *siloOSDClient) RetireFirstPassword(ctx context.Context, req *connect.Request[v1.RetireFirstPasswordRequest]) (*connect.Response[v1.RetireFirstPasswordResponse], error) {
+	return c.retireFirstPassword.CallUnary(ctx, req)
+}
+
 // SiloOSDHandler is an implementation of the silo.v1.SiloOSD service.
 type SiloOSDHandler interface {
 	GetSystem(context.Context, *connect.Request[v1.GetSystemRequest]) (*connect.Response[v1.SystemInfo], error)
@@ -315,6 +335,11 @@ type SiloOSDHandler interface {
 	// Power reboots or powers off a few seconds after answering.
 	Power(context.Context, *connect.Request[v1.PowerRequest]) (*connect.Response[v1.PowerResponse], error)
 	ReadLogs(context.Context, *connect.Request[v1.ReadLogsRequest]) (*connect.Response[v1.ReadLogsResponse], error)
+	// RetireFirstPassword stops the console from showing the first admin's
+	// generated password, now and at every later boot. The control plane calls
+	// it by itself once that password no longer signs anyone in; nobody asks
+	// for it, and it takes nothing: there is nothing to choose.
+	RetireFirstPassword(context.Context, *connect.Request[v1.RetireFirstPasswordRequest]) (*connect.Response[v1.RetireFirstPasswordResponse], error)
 }
 
 // NewSiloOSDHandler builds an HTTP handler from the service implementation. It returns the path on
@@ -408,6 +433,12 @@ func NewSiloOSDHandler(svc SiloOSDHandler, opts ...connect.HandlerOption) (strin
 		connect.WithSchema(siloOSDMethods.ByName("ReadLogs")),
 		connect.WithHandlerOptions(opts...),
 	)
+	siloOSDRetireFirstPasswordHandler := connect.NewUnaryHandler(
+		SiloOSDRetireFirstPasswordProcedure,
+		svc.RetireFirstPassword,
+		connect.WithSchema(siloOSDMethods.ByName("RetireFirstPassword")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/silo.v1.SiloOSD/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SiloOSDGetSystemProcedure:
@@ -438,6 +469,8 @@ func NewSiloOSDHandler(svc SiloOSDHandler, opts ...connect.HandlerOption) (strin
 			siloOSDPowerHandler.ServeHTTP(w, r)
 		case SiloOSDReadLogsProcedure:
 			siloOSDReadLogsHandler.ServeHTTP(w, r)
+		case SiloOSDRetireFirstPasswordProcedure:
+			siloOSDRetireFirstPasswordHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -501,4 +534,8 @@ func (UnimplementedSiloOSDHandler) Power(context.Context, *connect.Request[v1.Po
 
 func (UnimplementedSiloOSDHandler) ReadLogs(context.Context, *connect.Request[v1.ReadLogsRequest]) (*connect.Response[v1.ReadLogsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.SiloOSD.ReadLogs is not implemented"))
+}
+
+func (UnimplementedSiloOSDHandler) RetireFirstPassword(context.Context, *connect.Request[v1.RetireFirstPasswordRequest]) (*connect.Response[v1.RetireFirstPasswordResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.SiloOSD.RetireFirstPassword is not implemented"))
 }

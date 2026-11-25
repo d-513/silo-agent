@@ -281,6 +281,12 @@ func (a *App) SweepMemories(now time.Time) int {
 	if a.DB == nil || !a.cfg().Memory.Collect || now.UnixNano() < a.collectPause.Load() {
 		return 0
 	}
+	// Nothing can be remembered without an embedding model, and none is
+	// built in: reading chats would only spend the keeper's model on saves
+	// that fail.
+	if a.Models.EmbedModelID() == "" {
+		return 0
+	}
 	type due struct {
 		ID    string
 		BotID string

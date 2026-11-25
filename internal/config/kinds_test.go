@@ -26,15 +26,14 @@ voice:
 	if got := c.KindModels(llm.KindSpeech); len(got) != 2 {
 		t.Fatalf("a listed role is not added twice: %q", got)
 	}
-	// The default embedding model is allowed with no list at all.
-	if got := c.KindModels(llm.KindEmbedding); len(got) != 1 || got[0] != DefaultEmbeddingModel {
+	// With no list and no role, no embedding model is allowed.
+	if got := c.KindModels(llm.KindEmbedding); len(got) != 0 {
 		t.Fatalf("embedding models %q", got)
 	}
 	for id, want := range map[string]string{
 		"openrouter/openai/gpt-4o-transcribe": llm.KindTranscription,
 		"openrouter/openai/whisper-1":         llm.KindTranscription,
 		"openrouter/hexgrad/kokoro-82m":       llm.KindSpeech,
-		DefaultEmbeddingModel:                 llm.KindEmbedding,
 		"openrouter/openai/gpt-5.6-luna":      llm.KindText,
 	} {
 		if got := c.ModelKind(id); got != want {

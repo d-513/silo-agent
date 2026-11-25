@@ -174,20 +174,21 @@ func (e *Engine) CreateDrive(ctx context.Context, spec DriveSpec) (string, error
 		}
 		binds = append(binds, abs+":/cache")
 	}
+	host := &container.HostConfig{
+		Binds:         binds,
+		CapAdd:        []string{"SYS_ADMIN"},
+		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
+		Resources: container.Resources{Devices: []container.DeviceMapping{
+			{PathOnHost: "/dev/fuse", PathInContainer: "/dev/fuse", CgroupPermissions: "rwm"},
+		}},
+	}
+	e.reachCP(host)
 	resp, err := e.create(ctx, &container.Config{
 		Image:    spec.Image,
 		Env:      spec.Env,
 		Hostname: "drives",
 		Labels:   labels("drive", "silo.bot_id", spec.BotID),
-	}, &container.HostConfig{
-		Binds:         binds,
-		CapAdd:        []string{"SYS_ADMIN"},
-		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
-		ExtraHosts:    []string{"host.containers.internal:host-gateway"},
-		Resources: container.Resources{Devices: []container.DeviceMapping{
-			{PathOnHost: "/dev/fuse", PathInContainer: "/dev/fuse", CgroupPermissions: "rwm"},
-		}},
-	}, nil, DriveName(spec.BotID))
+	}, host, nil, DriveName(spec.BotID))
 	if err != nil {
 		return "", fmt.Errorf("drive sidecar create: %w", err)
 	}

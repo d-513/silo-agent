@@ -260,7 +260,7 @@ func (s *Service) Tend(ctx context.Context, now time.Time) int {
 		return 0
 	}
 	s.purge(now)
-	if !s.cfg().Memory.Collect {
+	if !s.cfg().Memory.Collect || s.models.EmbedModelID() == "" {
 		return 0
 	}
 	var bots []string

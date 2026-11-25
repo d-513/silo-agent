@@ -277,7 +277,7 @@ func (e *Engine) Create(ctx context.Context, botID, token string, net *ClientNet
 		host.NetworkMode = container.NetworkMode(net.Network)
 		host.DNS = clientDNS(net)
 	} else {
-		host.ExtraHosts = []string{"host.containers.internal:host-gateway"}
+		e.reachCP(host)
 	}
 	dns, ca := "", ""
 	if net != nil {
@@ -386,7 +386,7 @@ func (e *Engine) CreateStdio(ctx context.Context, spec StdioSpec) (string, error
 		host.NetworkMode = container.NetworkMode(spec.Net.Network)
 		host.DNS = clientDNS(spec.Net)
 	} else {
-		host.ExtraHosts = []string{"host.containers.internal:host-gateway"}
+		e.reachCP(host)
 	}
 	env := spec.Env
 	if spec.Net != nil {

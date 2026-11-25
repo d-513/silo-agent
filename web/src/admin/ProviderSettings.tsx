@@ -12,7 +12,8 @@ import { SearchBox } from "../SearchBox";
 import { Tip, TipTitle } from "../Tip";
 import { FieldRow } from "./FieldRow";
 import { accountsOf, capOf, isReady, providersInUse, resolveJobs, type Cap } from "./providerJobs";
-import { ProviderAccount, ProviderNotice } from "./ProviderAccount";
+import { ProviderNotice } from "./ProviderAccount";
+import { ProviderAccess } from "./ProviderProgram";
 import { ProviderMark, Status } from "./ProviderMap";
 import { ModelsHead } from "./roles";
 import { bareModel, filterModels, filterWord, fmtContext, kindOf, kindsIn, kindWord, removeTitle, withFast, type ModelKind } from "./providerModels";
@@ -217,10 +218,10 @@ function ProviderDetail({ provider }: { provider: Provider }) {
         <p className="min-w-0 flex-1 text-small leading-5 text-ink-2">{provider.description}</p>
         {unsaved ? <Tip content={t("Save your changes first. The list is asked with {{name}}'s saved settings.", { name: provider.name })}>{button}</Tip> : button}
       </div>
-      {provider.warning || provider.signIn ? (
+      {provider.warning || provider.signIn || provider.program ? (
         <div className="grid gap-3 px-5 pt-3 pb-2">
           {provider.warning ? <ProviderNotice text={provider.warning} /> : null}
-          {provider.signIn ? <ProviderAccount provider={provider} /> : null}
+          <ProviderAccess provider={provider} />
         </div>
       ) : null}
       <div className="divide-y divide-line-strong">

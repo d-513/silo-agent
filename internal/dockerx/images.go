@@ -30,8 +30,14 @@ var specs = map[string]string{
 	"egress":    "1",
 }
 
+// dialsCP are the roles whose container always dials the control plane
+// itself, at cp_url from cp_network: both are fixed at create, so a change
+// of either is a container to make again.
+var dialsCP = map[string]bool{"egress": true, "drive": true}
+
 // specOf is what SpecLabel should say for a role's container made now: its
-// generation, plus for a Bot's box the operator's limits, which are taken at
+// generation, where it dials the control plane when that is a network of the
+// engine's (dialsCP), plus for a Bot's box the operator's limits, which are taken at
 // create. "" for a role that carries none (the drive helper).
 func specOf(role string, cfg config.Config) string {
 	v := specs[role]
@@ -40,6 +46,9 @@ func specOf(role string, cfg config.Config) string {
 	}
 	if role == "bot" {
 		v += fmt.Sprintf(" mem=%d pids=%d", cfg.BotLimits.MemoryBytes(), cfg.BotLimits.PidsLimit())
+	}
+	if dialsCP[role] && strings.TrimSpace(cfg.CPNetwork) != "" {
+		v += " cp=" + strings.TrimSpace(cfg.CPURL) + " net=" + strings.TrimSpace(cfg.CPNetwork)
 	}
 	return v
 }

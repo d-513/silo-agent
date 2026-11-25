@@ -575,3 +575,48 @@ func TestLocalBuildHasNothingToFetch(t *testing.T) {
 		t.Error("the policy ran on a local build")
 	}
 }
+
+// Taking the first password off the console is one fixed file and two fixed
+// commands: the marker siloos-init reads at every boot, the banner written
+// again, and the prompts redrawn. Asked twice, the marker is not rewritten.
+func TestRetireFirstPassword(t *testing.T) {
+	f := newFake()
+	f.out["siloos-init"] = ""
+	f.out["agetty --reload"] = ""
+	s := newServer(t, f)
+	marker := filepath.Join(s.state, FirstPasswordRetired)
+	if _, err := os.Stat(marker); err == nil {
+		t.Fatal("retired before anyone said so")
+	}
+	if _, err := s.RetireFirstPassword(context.Background(), connect.NewRequest(&v1.RetireFirstPasswordRequest{})); err != nil {
+		t.Fatal(err)
+	}
+	first, err := os.ReadFile(marker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if i, j := f.ran("siloos-init"), f.ran("agetty --reload"); i < 0 || j < i {
+		t.Fatalf("the banner was not rewritten, then redrawn: %v", f.calls)
+	}
+	if _, err := s.RetireFirstPassword(context.Background(), connect.NewRequest(&v1.RetireFirstPasswordRequest{})); err != nil {
+		t.Fatal(err)
+	}
+	if again, _ := os.ReadFile(marker); string(again) != string(first) {
+		t.Fatal("the marker was written again")
+	}
+
+	// A banner that could not be written is an error, so the caller asks
+	// again; a prompt that could not be redrawn is not.
+	delete(f.out, "siloos-init")
+	f.fail["siloos-init"] = "no such file"
+	if _, err := s.RetireFirstPassword(context.Background(), connect.NewRequest(&v1.RetireFirstPasswordRequest{})); err == nil {
+		t.Fatal("a failed banner passed for done")
+	}
+	delete(f.fail, "siloos-init")
+	f.out["siloos-init"] = ""
+	delete(f.out, "agetty --reload")
+	f.fail["agetty --reload"] = "no tty"
+	if _, err := s.RetireFirstPassword(context.Background(), connect.NewRequest(&v1.RetireFirstPasswordRequest{})); err != nil {
+		t.Fatalf("a prompt that would not redraw failed the call: %v", err)
+	}
+}

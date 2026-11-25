@@ -98,6 +98,7 @@ function HttpsSettings() {
   const rows = fields.filter(
     (f) =>
       f.key === "caddy.admin" ||
+      f.key === "caddy.upstream" ||
       f.key === "caddy.mode" ||
       (acme && (f.key === "caddy.email" || f.key === "caddy.dns_provider" || (provider !== "" && f.key.startsWith(`caddy.dns.${provider}.`)))),
   );

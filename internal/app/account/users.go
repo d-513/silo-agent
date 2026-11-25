@@ -133,6 +133,7 @@ func (s *Service) DeleteUser(ctx context.Context, req *connect.Request[v1.Delete
 	if err := auth.EndUserSessions(s.db, u.ID, ""); err != nil {
 		return nil, err
 	}
+	defer s.changed()
 	// Their Workspaces go with their Bots (and those Workspaces' skills).
 	s.host.DropUserBots(ctx, u.ID)
 	err = s.db.Transaction(func(tx *gorm.DB) error {

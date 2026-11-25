@@ -57,3 +57,39 @@ func TestSiteOfPicksTheIssuer(t *testing.T) {
 		t.Error("a DNS provider under Caddy's own authority")
 	}
 }
+
+// A Caddy in a container of its own reaches the control plane where
+// caddy.upstream says, and is known for Caddy by auth.trusted_proxies, since
+// it is no longer a peer on loopback.
+func TestCaddyOnItsOwnNetwork(t *testing.T) {
+	c := config.Config{PublicURL: "https://silo.example.com", HTTPAddr: ":8080"}
+	if site, _ := SiteOf(c, nil); site.Upstream != "127.0.0.1:8080" {
+		t.Fatalf("upstream on one host: %q", site.Upstream)
+	}
+	c.Caddy.Upstream = "silo:8080"
+	site, _ := SiteOf(c, nil)
+	if site.Upstream != "silo:8080" || site.Ask != "http://silo:8080"+caddy.AskPath {
+		t.Fatalf("upstream %q ask %q", site.Upstream, site.Ask)
+	}
+
+	trusted, err := config.ParseProxies("10.212.0.3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for remote, want := range map[string]bool{
+		"127.0.0.1:4000":  true,
+		"[::1]:4000":      true,
+		"10.212.0.3:4000": true,
+		"10.212.0.4:4000": false, // another container on Caddy's network
+		"10.212.1.9:4000": false, // the gateway, carrying a Bot's request
+		"192.168.1.9:400": false,
+		"nonsense":        false,
+	} {
+		if got := isCaddy(remote, trusted); got != want {
+			t.Errorf("isCaddy(%s) = %v, want %v", remote, got, want)
+		}
+	}
+	if isCaddy("10.212.0.3:4000", nil) {
+		t.Error("a peer off loopback was taken for Caddy with no proxy trusted")
+	}
+}

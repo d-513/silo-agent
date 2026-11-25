@@ -95,3 +95,16 @@ func TestSOCKSRebindIsRefusedAtTheDial(t *testing.T) {
 		t.Errorf("reply code %d, want %d (not allowed: refused at the dial)", reply[1], socksNotAllowed)
 	}
 }
+
+// The control plane is found through the engine's own DNS, not through the
+// outside resolvers every other lookup of the gateway goes to: as a container
+// on the gateway's network its name is the engine's to answer.
+func TestControlPlaneIsDialedThroughTheEnginesResolver(t *testing.T) {
+	prev := net.DefaultResolver
+	t.Cleanup(func() { net.DefaultResolver = prev })
+	net.DefaultResolver = New(Config{}).Resolver()
+	d := cpDialer()
+	if d.Resolver == nil || d.Resolver == net.DefaultResolver || d.Resolver.Dial != nil {
+		t.Fatalf("the control plane's dialer resolves through %+v", d.Resolver)
+	}
+}

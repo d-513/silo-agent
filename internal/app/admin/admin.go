@@ -385,7 +385,7 @@ func (s *Service) providerProtos(ctx context.Context) []*v1.Provider {
 		p := &v1.Provider{
 			Id: d.ID, Name: d.Name, Description: d.Description,
 			SupportsCache: d.SupportsCache, CacheTtls: d.CacheTTLs,
-			SignIn: d.SignIn, Warning: d.Warning,
+			SignIn: d.SignIn, Program: d.Program, Warning: d.Warning,
 		}
 		if d.SignIn {
 			p.SignedIn = s.signedIn(ctx, d.ID)

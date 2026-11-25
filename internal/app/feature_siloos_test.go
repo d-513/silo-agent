@@ -55,7 +55,7 @@ func (r *osRun) Run(_ context.Context, name string, args ...string) ([]byte, err
 			built = "2026-10-01T00:00:00Z"
 		}
 		return []byte(`{"Created":"` + built + `","Labels":{"org.opencontainers.image.version":"` + version + `"}}`), nil
-	case strings.HasPrefix(line, "bootc switch "):
+	case strings.HasPrefix(line, "bootc switch "), line == "siloos-init", line == "agetty --reload":
 		return nil, nil
 	}
 	return nil, errors.New("unscripted: " + line)
@@ -268,5 +268,60 @@ func TestCaddyIsConfiguredAndAsks(t *testing.T) {
 		if got := ask(domain); got != want {
 			t.Errorf("ask %q = %d, want %d", domain, got, want)
 		}
+	}
+}
+
+// The console shows the first admin's generated password at every boot for
+// as long as it signs them in, and the control plane tells siloosd the moment
+// it no longer does: a sign-in alone changes nothing, changing the password
+// takes it off, once.
+func TestFirstPasswordLeavesTheConsoleWhenChanged(t *testing.T) {
+	run := &osRun{}
+	sock := siloOSD(t, run)
+	h := apptest.New(t, apptest.WithYAML("siloos:\n  socket: "+sock+"\nbootstrap:\n  email: admin@test.local\n  password: test-pass\n"))
+	asked := func() int {
+		run.mu.Lock()
+		defer run.mu.Unlock()
+		n := 0
+		for _, c := range run.calls {
+			if c == "siloos-init" {
+				n++
+			}
+		}
+		return n
+	}
+	// Signed in with it (the harness did), and still the way in.
+	h.App.SiloOS.CheckFirstPassword(h.Ctx())
+	if asked() != 0 {
+		t.Fatal("the password was taken off the console while it still signs the admin in")
+	}
+
+	if _, err := h.Client.ChangePassword(h.Ctx(), connect.NewRequest(&v1.ChangePasswordRequest{Current: "test-pass", Password: "a-new-and-long-password"})); err != nil {
+		t.Fatal(err)
+	}
+	for end := time.Now().Add(10 * time.Second); asked() == 0; time.Sleep(20 * time.Millisecond) {
+		if time.Now().After(end) {
+			t.Fatal("siloosd was not told the first password changed")
+		}
+	}
+	if !run.ran("agetty --reload") {
+		t.Error("the prompts on screen were not redrawn")
+	}
+	// Told once: later account changes and starts ask nothing more.
+	h.App.SiloOS.CheckFirstPassword(h.Ctx())
+	if n := asked(); n != 1 {
+		t.Fatalf("siloosd was told %d times", n)
+	}
+}
+
+// Off SiloOS, and with no generated password, nothing is asked of anyone.
+func TestFirstPasswordIsNobodysElsewhere(t *testing.T) {
+	h := apptest.New(t)
+	h.App.SiloOS.CheckFirstPassword(h.Ctx())
+	run := &osRun{}
+	h2 := apptest.New(t, apptest.WithYAML("siloos:\n  socket: "+siloOSD(t, run)+"\n"))
+	h2.App.SiloOS.CheckFirstPassword(h2.Ctx())
+	if run.ran("siloos-init") {
+		t.Fatal("a machine whose admin the operator named was told to drop a password it never showed")
 	}
 }

@@ -59,7 +59,7 @@ if [ ! -s "$dir/postgres.env" ] || [ ! -s "$dir/secrets.env" ]; then
 		POSTGRES_PASSWORD=$db
 	END
 	{
-		echo "SILO_DATABASE_URL=postgres://silo:$db@127.0.0.1:5432/silo?sslmode=disable"
+		echo "SILO_DATABASE_URL=postgres://silo:$db@silodb:5432/silo?sslmode=disable"
 		if [ "$own_admin" = no ]; then
 			# The first admin, made at the control plane's first start. Once an
 			# admin exists these do nothing (docs/CONFIGURATION.md § Sign-in).
@@ -69,20 +69,28 @@ if [ ! -s "$dir/postgres.env" ] || [ ! -s "$dir/secrets.env" ]; then
 	} | put "$dir/secrets.env"
 fi
 
+# A machine set up while the database was on the host's loopback: it is on
+# Silo's own network now, by name (silodb.container).
+if grep -q '^SILO_DATABASE_URL=.*@127\.0\.0\.1:5432/' "$dir/secrets.env" 2>/dev/null; then
+	sed -i '/^SILO_DATABASE_URL=/s|@127\.0\.0\.1:5432/|@silodb:5432/|' "$dir/secrets.env"
+fi
+
 # The console says where Silo is and, until an admin of the operator's own
 # was named, the generated first admin: the media carry no login, so whoever
-# is at the console (or a VM's) is the one who sets the machine up. It is
-# only the first password: changing it on the Account page makes this line
-# stale, and once an admin exists bootstrap does nothing.
+# is at the console (or a VM's) is the one who sets the machine up, and may
+# come back to it days later. So the first password is shown at every boot
+# for as long as it is the way in. The control plane knows when it stops
+# being that (the admin changed it): it tells siloosd, which leaves the
+# marker below and runs this script again, so the password is off the screen
+# at once and at every later boot (internal/siloosd/banner.go,
+# internal/app/siloos/firstpassword.go).
 install -d -m 0755 /etc/issue.d
 email=$(sed -n 's/^SILO_BOOTSTRAP__EMAIL=//p' "$dir/secrets.env" 2>/dev/null)
 pass=$(sed -n 's/^SILO_BOOTSTRAP__PASSWORD=//p' "$dir/secrets.env" 2>/dev/null)
-if [ -n "$pass" ] && [ -e /var/lib/silo/data/first-admin-signed-in ]; then
-	# Silo writes the marker at the first admin's first sign-in
-	# (account.FirstAdminMarker): from the next boot the password is not shown.
-	who="Sign in as your admin. (The first password: sudo cat /etc/silo/secrets.env)"
+if [ -n "$pass" ] && [ -e /var/lib/siloosd/first-password-retired ]; then
+	who="Sign in as your admin. (The first password was changed, and is not shown here any more.)"
 elif [ -n "$pass" ]; then
-	who="First sign-in: $email / $pass  (change the password once in)"
+	who="First sign-in: $email / $pass  (shown here until you change it, on the Account page)"
 else
 	who="Sign in as the first admin your user-data or silo.yaml named."
 fi

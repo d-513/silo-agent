@@ -42,6 +42,10 @@ type Service struct {
 	local   []string
 	localAt time.Time
 	rootCA  string
+	// retired says siloosd was told the first password is off the console
+	// (firstpassword.go); checking guards one check at a time.
+	retired  bool
+	checking sync.Mutex
 }
 
 // New makes the service.

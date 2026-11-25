@@ -140,5 +140,7 @@ func NewClient(cpURL, token string) (silov1connect.EgressHostClient, error) {
 	if strings.TrimSpace(cpURL) == "" || strings.TrimSpace(token) == "" {
 		return nil, errors.New("cp url and gateway token required")
 	}
-	return silov1connect.NewEgressHostClient(rpcx.H2CClient(dialTimeout), cpURL, connect.WithInterceptors(rpcx.Bearer(token))), nil
+	d := cpDialer()
+	d.Timeout, d.FallbackDelay = dialTimeout, 100*time.Millisecond
+	return silov1connect.NewEgressHostClient(rpcx.H2CDialer(d), cpURL, connect.WithInterceptors(rpcx.Bearer(token))), nil
 }

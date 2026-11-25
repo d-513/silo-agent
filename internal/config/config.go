@@ -1,6 +1,7 @@
 package config
 
 import (
+	"net"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -266,7 +267,9 @@ func (r Runs) Timeout() time.Duration {
 	return d
 }
 
-const DefaultModel = "openrouter/openai/gpt-5.6-luna"
+// No model is built in. Every model Silo calls is one the operator chose:
+// a kind's allowlist and its roles start empty, and a job with no model says
+// so instead of calling a provider nobody set up.
 
 // The images a default config runs are this build's own (version.Image): a
 // dev build's are the local ones `make images` tags, a prod build's are in
@@ -279,27 +282,34 @@ func DefaultBotImage() string { return version.Image("silo-bot") }
 // DefaultMCPStdioImage runs a STDIO connector's sidecar.
 func DefaultMCPStdioImage() string { return version.Image("silo-mcp-stdio") }
 
-// DefaultEmbeddingModel embeds memories. Its vectors must be
-// llm.EmbedDims wide (text-embedding-3 honours the dimensions parameter).
-const DefaultEmbeddingModel = "openrouter/openai/text-embedding-3-small"
-
-// DefaultTranscribeModel turns speech into text for composer dictation and the
-// Bot's transcribe tool. TranscribeOff disables voice.
-const (
-	DefaultTranscribeModel = "openrouter/openai/whisper-1"
-	TranscribeOff          = "off"
-)
+// TranscribeOff, as transcribe_model, turns speech-to-text off; so does
+// leaving it unset. (embedding_model's vectors must be llm.EmbedDims wide:
+// text-embedding-3 honours the dimensions parameter.)
+const TranscribeOff = "off"
 
 // DefaultDatabaseURL is the dev Postgres from dev/compose.yml.
 const DefaultDatabaseURL = "postgres://silo:silo@localhost:5433/silo?sslmode=disable"
 
 type Config struct {
-	HTTPAddr      string `koanf:"http_addr"`
-	PublicURL     string `koanf:"public_url"`
-	DataDir       string `koanf:"data_dir"`
-	DatabaseURL   string `koanf:"database_url"`
-	DockerHost    string `koanf:"docker_host"`
-	CPURL         string `koanf:"cp_url"`
+	HTTPAddr    string `koanf:"http_addr"`
+	PublicURL   string `koanf:"public_url"`
+	DataDir     string `koanf:"data_dir"`
+	DatabaseURL string `koanf:"database_url"`
+	DockerHost  string `koanf:"docker_host"`
+	CPURL       string `koanf:"cp_url"`
+	// WorkerAddr is a second listener that serves only what a Bot's machine
+	// and a STDIO sidecar call (the worker and bridge APIs), and is where the
+	// network filter's gateway forwards them: a box behind the filter then
+	// reaches none of the console. Empty: no such listener, and the gateway
+	// forwards to cp_url's own port, console and all.
+	WorkerAddr string `koanf:"worker_addr"`
+	// CPNetwork is the engine network the control plane itself is on, when
+	// it runs as a container there: what dials the control plane directly
+	// (the network filter's gateway, drive sidecars, and a box or STDIO
+	// sidecar while the filter is off) joins it and finds the control plane
+	// by cp_url's name. Empty: they reach it through the host
+	// (host.containers.internal).
+	CPNetwork     string `koanf:"cp_network"`
 	BotImage      string `koanf:"bot_image"`
 	MCPStdioImage string `koanf:"mcp_stdio_image"`
 	Model         string `koanf:"model"`
@@ -428,7 +438,6 @@ const (
 	DefaultVoiceMaxMin  = 30
 	DefaultVoiceIdleMin = 3
 	DefaultVoiceUDPPort = 3479
-	DefaultSpeechModel  = "openrouter/hexgrad/kokoro-82m"
 )
 
 // VoiceMode is talker only while a talker model is set.
@@ -580,10 +589,7 @@ func (c Config) TitleModel() string {
 	if m := strings.TrimSpace(c.ModelTitle); m != "" {
 		return m
 	}
-	if m := strings.TrimSpace(c.Model); m != "" {
-		return m
-	}
-	return DefaultModel
+	return strings.TrimSpace(c.Model)
 }
 
 // TranscribeModel returns the speech-to-text model id, or "" when voice is
@@ -592,9 +598,6 @@ func (c Config) TranscribeModel() string {
 	m := strings.TrimSpace(c.Transcribe)
 	if strings.EqualFold(m, TranscribeOff) {
 		return ""
-	}
-	if m == "" {
-		return DefaultTranscribeModel
 	}
 	return m
 }
@@ -712,6 +715,8 @@ var fieldDefs = []fieldMeta{
 	{Key: "http_addr", Restart: true},
 	{Key: "public_url"},
 	{Key: "cp_url"},
+	{Key: "worker_addr", Restart: true},
+	{Key: "cp_network"},
 	{Key: "data_dir", Restart: true},
 	{Key: "database_url", Secret: true, Restart: true},
 	{Key: "docker_host", Restart: true},
@@ -732,6 +737,7 @@ var fieldDefs = []fieldMeta{
 	{Key: "egress.feeds"},
 	{Key: "egress.dns"},
 	{Key: "caddy.admin"},
+	{Key: "caddy.upstream"},
 	{Key: "caddy.mode"},
 	{Key: "caddy.email"},
 	{Key: "caddy.dns_provider"},
@@ -768,6 +774,10 @@ type Caddy struct {
 	// Admin is Caddy's admin API: unix//path/to/admin.sock or
 	// http://host:port. Empty leaves Caddy (if any) to the operator.
 	Admin string `koanf:"admin"`
+	// Upstream is the control plane's address as that Caddy reaches it
+	// (host:port). Empty: http_addr's port on 127.0.0.1, a Caddy on the
+	// same host.
+	Upstream string `koanf:"upstream"`
 	// Mode is where certificates come from: auto (Let's Encrypt for a public
 	// domain, else Caddy's own authority), acme (Let's Encrypt), internal
 	// (Caddy's own authority, which browsers warn about until its root is
@@ -880,4 +890,17 @@ func KnownKey(key string) bool {
 		}
 	}
 	return driveSystemKey(key)
+}
+
+// WorkerPort is worker_addr's port, "" when there is no such listener.
+func (c Config) WorkerPort() string {
+	addr := strings.TrimSpace(c.WorkerAddr)
+	if addr == "" {
+		return ""
+	}
+	_, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return ""
+	}
+	return port
 }

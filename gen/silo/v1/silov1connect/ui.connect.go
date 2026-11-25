@@ -383,6 +383,11 @@ const (
 	UIFinishProviderSignInProcedure = "/silo.v1.UI/FinishProviderSignIn"
 	// UISignOutProviderProcedure is the fully-qualified name of the UI's SignOutProvider RPC.
 	UISignOutProviderProcedure = "/silo.v1.UI/SignOutProvider"
+	// UIGetProviderProgramProcedure is the fully-qualified name of the UI's GetProviderProgram RPC.
+	UIGetProviderProgramProcedure = "/silo.v1.UI/GetProviderProgram"
+	// UIInstallProviderProgramProcedure is the fully-qualified name of the UI's InstallProviderProgram
+	// RPC.
+	UIInstallProviderProgramProcedure = "/silo.v1.UI/InstallProviderProgram"
 	// UISetConnectorVarsProcedure is the fully-qualified name of the UI's SetConnectorVars RPC.
 	UISetConnectorVarsProcedure = "/silo.v1.UI/SetConnectorVars"
 	// UISetAutoenableConnectorsProcedure is the fully-qualified name of the UI's
@@ -819,6 +824,10 @@ type UIClient interface {
 	BeginProviderSignIn(context.Context, *connect.Request[v1.BeginProviderSignInRequest]) (*connect.Response[v1.BeginProviderSignInResponse], error)
 	FinishProviderSignIn(context.Context, *connect.Request[v1.FinishProviderSignInRequest]) (*connect.Response[v1.ProviderAccount], error)
 	SignOutProvider(context.Context, *connect.Request[v1.SignOutProviderRequest]) (*connect.Response[v1.ProviderAccount], error)
+	// The program a provider runs on the control plane's machine, which Silo
+	// does not ship: whether it is there, and fetching it (admins only).
+	GetProviderProgram(context.Context, *connect.Request[v1.GetProviderProgramRequest]) (*connect.Response[v1.ProviderProgram], error)
+	InstallProviderProgram(context.Context, *connect.Request[v1.InstallProviderProgramRequest]) (*connect.Response[v1.ProviderProgram], error)
 	SetConnectorVars(context.Context, *connect.Request[v1.SetConnectorVarsRequest]) (*connect.Response[v1.Settings], error)
 	SetAutoenableConnectors(context.Context, *connect.Request[v1.SetAutoenableConnectorsRequest]) (*connect.Response[v1.Settings], error)
 	// The audit timeline: tool calls and their decisions, tool results the output
@@ -1979,6 +1988,18 @@ func NewUIClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.
 			connect.WithSchema(uIMethods.ByName("SignOutProvider")),
 			connect.WithClientOptions(opts...),
 		),
+		getProviderProgram: connect.NewClient[v1.GetProviderProgramRequest, v1.ProviderProgram](
+			httpClient,
+			baseURL+UIGetProviderProgramProcedure,
+			connect.WithSchema(uIMethods.ByName("GetProviderProgram")),
+			connect.WithClientOptions(opts...),
+		),
+		installProviderProgram: connect.NewClient[v1.InstallProviderProgramRequest, v1.ProviderProgram](
+			httpClient,
+			baseURL+UIInstallProviderProgramProcedure,
+			connect.WithSchema(uIMethods.ByName("InstallProviderProgram")),
+			connect.WithClientOptions(opts...),
+		),
 		setConnectorVars: connect.NewClient[v1.SetConnectorVarsRequest, v1.Settings](
 			httpClient,
 			baseURL+UISetConnectorVarsProcedure,
@@ -2614,6 +2635,8 @@ type uIClient struct {
 	beginProviderSignIn      *connect.Client[v1.BeginProviderSignInRequest, v1.BeginProviderSignInResponse]
 	finishProviderSignIn     *connect.Client[v1.FinishProviderSignInRequest, v1.ProviderAccount]
 	signOutProvider          *connect.Client[v1.SignOutProviderRequest, v1.ProviderAccount]
+	getProviderProgram       *connect.Client[v1.GetProviderProgramRequest, v1.ProviderProgram]
+	installProviderProgram   *connect.Client[v1.InstallProviderProgramRequest, v1.ProviderProgram]
 	setConnectorVars         *connect.Client[v1.SetConnectorVarsRequest, v1.Settings]
 	setAutoenableConnectors  *connect.Client[v1.SetAutoenableConnectorsRequest, v1.Settings]
 	listAuditEvents          *connect.Client[v1.ListAuditEventsRequest, v1.ListAuditEventsResponse]
@@ -3562,6 +3585,16 @@ func (c *uIClient) SignOutProvider(ctx context.Context, req *connect.Request[v1.
 	return c.signOutProvider.CallUnary(ctx, req)
 }
 
+// GetProviderProgram calls silo.v1.UI.GetProviderProgram.
+func (c *uIClient) GetProviderProgram(ctx context.Context, req *connect.Request[v1.GetProviderProgramRequest]) (*connect.Response[v1.ProviderProgram], error) {
+	return c.getProviderProgram.CallUnary(ctx, req)
+}
+
+// InstallProviderProgram calls silo.v1.UI.InstallProviderProgram.
+func (c *uIClient) InstallProviderProgram(ctx context.Context, req *connect.Request[v1.InstallProviderProgramRequest]) (*connect.Response[v1.ProviderProgram], error) {
+	return c.installProviderProgram.CallUnary(ctx, req)
+}
+
 // SetConnectorVars calls silo.v1.UI.SetConnectorVars.
 func (c *uIClient) SetConnectorVars(ctx context.Context, req *connect.Request[v1.SetConnectorVarsRequest]) (*connect.Response[v1.Settings], error) {
 	return c.setConnectorVars.CallUnary(ctx, req)
@@ -4218,6 +4251,10 @@ type UIHandler interface {
 	BeginProviderSignIn(context.Context, *connect.Request[v1.BeginProviderSignInRequest]) (*connect.Response[v1.BeginProviderSignInResponse], error)
 	FinishProviderSignIn(context.Context, *connect.Request[v1.FinishProviderSignInRequest]) (*connect.Response[v1.ProviderAccount], error)
 	SignOutProvider(context.Context, *connect.Request[v1.SignOutProviderRequest]) (*connect.Response[v1.ProviderAccount], error)
+	// The program a provider runs on the control plane's machine, which Silo
+	// does not ship: whether it is there, and fetching it (admins only).
+	GetProviderProgram(context.Context, *connect.Request[v1.GetProviderProgramRequest]) (*connect.Response[v1.ProviderProgram], error)
+	InstallProviderProgram(context.Context, *connect.Request[v1.InstallProviderProgramRequest]) (*connect.Response[v1.ProviderProgram], error)
 	SetConnectorVars(context.Context, *connect.Request[v1.SetConnectorVarsRequest]) (*connect.Response[v1.Settings], error)
 	SetAutoenableConnectors(context.Context, *connect.Request[v1.SetAutoenableConnectorsRequest]) (*connect.Response[v1.Settings], error)
 	// The audit timeline: tool calls and their decisions, tool results the output
@@ -5374,6 +5411,18 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 		connect.WithSchema(uIMethods.ByName("SignOutProvider")),
 		connect.WithHandlerOptions(opts...),
 	)
+	uIGetProviderProgramHandler := connect.NewUnaryHandler(
+		UIGetProviderProgramProcedure,
+		svc.GetProviderProgram,
+		connect.WithSchema(uIMethods.ByName("GetProviderProgram")),
+		connect.WithHandlerOptions(opts...),
+	)
+	uIInstallProviderProgramHandler := connect.NewUnaryHandler(
+		UIInstallProviderProgramProcedure,
+		svc.InstallProviderProgram,
+		connect.WithSchema(uIMethods.ByName("InstallProviderProgram")),
+		connect.WithHandlerOptions(opts...),
+	)
 	uISetConnectorVarsHandler := connect.NewUnaryHandler(
 		UISetConnectorVarsProcedure,
 		svc.SetConnectorVars,
@@ -6180,6 +6229,10 @@ func NewUIHandler(svc UIHandler, opts ...connect.HandlerOption) (string, http.Ha
 			uIFinishProviderSignInHandler.ServeHTTP(w, r)
 		case UISignOutProviderProcedure:
 			uISignOutProviderHandler.ServeHTTP(w, r)
+		case UIGetProviderProgramProcedure:
+			uIGetProviderProgramHandler.ServeHTTP(w, r)
+		case UIInstallProviderProgramProcedure:
+			uIInstallProviderProgramHandler.ServeHTTP(w, r)
 		case UISetConnectorVarsProcedure:
 			uISetConnectorVarsHandler.ServeHTTP(w, r)
 		case UISetAutoenableConnectorsProcedure:
@@ -7035,6 +7088,14 @@ func (UnimplementedUIHandler) FinishProviderSignIn(context.Context, *connect.Req
 
 func (UnimplementedUIHandler) SignOutProvider(context.Context, *connect.Request[v1.SignOutProviderRequest]) (*connect.Response[v1.ProviderAccount], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.SignOutProvider is not implemented"))
+}
+
+func (UnimplementedUIHandler) GetProviderProgram(context.Context, *connect.Request[v1.GetProviderProgramRequest]) (*connect.Response[v1.ProviderProgram], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.GetProviderProgram is not implemented"))
+}
+
+func (UnimplementedUIHandler) InstallProviderProgram(context.Context, *connect.Request[v1.InstallProviderProgramRequest]) (*connect.Response[v1.ProviderProgram], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("silo.v1.UI.InstallProviderProgram is not implemented"))
 }
 
 func (UnimplementedUIHandler) SetConnectorVars(context.Context, *connect.Request[v1.SetConnectorVarsRequest]) (*connect.Response[v1.Settings], error) {

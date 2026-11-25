@@ -19,7 +19,11 @@ import (
 // knowledge, which is what the CP serves (ConnectRPC bidi streams need h2).
 // dialTimeout bounds one TCP dial; the stream itself has no deadline.
 func H2CClient(dialTimeout time.Duration) *http.Client {
-	dialer := &net.Dialer{Timeout: dialTimeout, FallbackDelay: 100 * time.Millisecond}
+	return H2CDialer(&net.Dialer{Timeout: dialTimeout, FallbackDelay: 100 * time.Millisecond})
+}
+
+// H2CDialer is H2CClient over a dialer of the caller's (its own resolver).
+func H2CDialer(dialer *net.Dialer) *http.Client {
 	return &http.Client{Transport: &http2.Transport{
 		AllowHTTP: true,
 		DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {

@@ -7,6 +7,7 @@ package llm
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -339,6 +340,9 @@ type Descriptor struct {
 	// SignIn marks a provider the operator signs in to (its client is an
 	// Account); KeyOptional goes with it.
 	SignIn bool
+	// Program marks a provider that runs a program Silo does not ship and
+	// can fetch (its client is a Program).
+	Program bool
 	// Warning is what the operator must know before using the provider,
 	// shown above its settings.
 	Warning string
@@ -477,9 +481,10 @@ var builtinProviders = []registered{
 			Description: "Claude on a Claude subscription, through the official Claude Code program on this server. It runs with Silo's prompt and only Silo's tools; you sign in instead of pasting a key.",
 			KeyOptional: true,
 			SignIn:      true,
+			Program:     true,
 			Warning:     claudeWarning,
 			Settings: []SettingDef{
-				{Key: "binary", Label: "Claude Code program", Description: "Path of the claude binary. Empty: claude on the server's PATH."},
+				{Key: "binary", Label: "Claude Code program", Description: "Path of a claude binary of your own. Empty: the copy installed above, else claude on the server's PATH."},
 				{Key: "dir", Label: "Directory", Description: "Where the sign-in and Claude Code's sessions are kept. Empty: claude under Silo's data directory."},
 				{Key: "oauth_token", Label: "Long-lived token", Description: "A token from claude setup-token (a year). Create one below, or paste one made elsewhere. Set, it is used instead of the sign-in.", Secret: true},
 			},
@@ -728,7 +733,14 @@ func Split(modelID string) (provider, model string, ok bool) {
 }
 
 // Parse validates a model id against the registry and returns its parts.
+// ErrNoModel is the answer to a job whose model nobody chose: Silo has no
+// built-in models, so until an admin picks one there is nothing to call.
+var ErrNoModel = errors.New("no model is set for this: an admin picks one under Admin → Settings → Models")
+
 func Parse(modelID string) (provider, model string, err error) {
+	if strings.TrimSpace(modelID) == "" {
+		return "", "", ErrNoModel
+	}
 	p, m, ok := Split(modelID)
 	if !ok {
 		return "", "", fmt.Errorf("model id %q must be provider/model", modelID)

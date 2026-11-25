@@ -51,6 +51,11 @@ service SiloOSD {
   // Power reboots or powers off a few seconds after answering.
   rpc Power(PowerRequest) returns (PowerResponse);
   rpc ReadLogs(ReadLogsRequest) returns (ReadLogsResponse);
+  // RetireFirstPassword stops the console from showing the first admin's
+  // generated password, now and at every later boot. The control plane calls
+  // it by itself once that password no longer signs anyone in; nobody asks
+  // for it, and it takes nothing: there is nothing to choose.
+  rpc RetireFirstPassword(RetireFirstPasswordRequest) returns (RetireFirstPasswordResponse);
 }
 
 message GetSystemRequest {}
@@ -319,3 +324,7 @@ message ProxyStatus {
   // anything: what people trust on their devices to stop the warnings.
   string root_ca = 11;
 }
+
+message RetireFirstPasswordRequest {}
+
+message RetireFirstPasswordResponse {}

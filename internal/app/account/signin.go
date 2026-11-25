@@ -150,5 +150,9 @@ func (s *Service) setPassword(userID, password, keep string) error {
 	if err := s.db.Where("user_id = ?", userID).Delete(&db.Invite{}).Error; err != nil {
 		return err
 	}
-	return auth.EndUserSessions(s.db, userID, keep)
+	if err := auth.EndUserSessions(s.db, userID, keep); err != nil {
+		return err
+	}
+	s.changed()
+	return nil
 }

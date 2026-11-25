@@ -64,6 +64,10 @@ type Service struct {
 	tickets tickets
 	rtc     rtc
 	calls   calls
+
+	// HostAddrs, when set, are the machine's own addresses where the control
+	// plane cannot see them itself (SiloOS, see behindEngine).
+	HostAddrs func() ([]string, error)
 }
 
 func New(gdb *gorm.DB, cfg func() config.Config, m *models.Service, ws *workspace.Service, host Host) *Service {

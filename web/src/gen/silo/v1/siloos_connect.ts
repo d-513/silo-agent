@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ApplyConnectionRequest, ConfirmNetworkRequest, GetNetworkRequest, GetSystemRequest, GetUpdatesRequest, ListUpdateChannelsRequest, Network, PowerRequest, PowerResponse, ReadLogsRequest, ReadLogsResponse, RollBackNetworkRequest, RunUpdateRequest, SetHostnameRequest, SetTimeRequest, SetUpdateChannelRequest, SetUpdatePolicyRequest, SystemInfo, UpdateChannels, Updates } from "./siloos_pb.js";
+import { ApplyConnectionRequest, ConfirmNetworkRequest, GetNetworkRequest, GetSystemRequest, GetUpdatesRequest, ListUpdateChannelsRequest, Network, PowerRequest, PowerResponse, ReadLogsRequest, ReadLogsResponse, RetireFirstPasswordRequest, RetireFirstPasswordResponse, RollBackNetworkRequest, RunUpdateRequest, SetHostnameRequest, SetTimeRequest, SetUpdateChannelRequest, SetUpdatePolicyRequest, SystemInfo, UpdateChannels, Updates } from "./siloos_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -171,6 +171,20 @@ export const SiloOSD = {
       name: "ReadLogs",
       I: ReadLogsRequest,
       O: ReadLogsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * RetireFirstPassword stops the console from showing the first admin's
+     * generated password, now and at every later boot. The control plane calls
+     * it by itself once that password no longer signs anyone in; nobody asks
+     * for it, and it takes nothing: there is nothing to choose.
+     *
+     * @generated from rpc silo.v1.SiloOSD.RetireFirstPassword
+     */
+    retireFirstPassword: {
+      name: "RetireFirstPassword",
+      I: RetireFirstPasswordRequest,
+      O: RetireFirstPasswordResponse,
       kind: MethodKind.Unary,
     },
   }

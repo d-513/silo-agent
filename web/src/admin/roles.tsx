@@ -77,11 +77,9 @@ function RoleRow({ role: r }: { role: Role }) {
   const rows = r.takes === "either" ? eitherKind(models, decisionModels) : modelOptions(list, live);
   const none = t(NONE[kind]);
   const own = values[r.key] ?? "";
-  // A setting left to its built-in default (model, embedding_model) still
-  // reads as that model from the server; the picker shows it as no choice.
-  const builtin = f?.source === ConfigSource.DEFAULT && !!f.value && own === f.value && r.unsetValue === undefined;
-  const shown = builtin ? "" : own;
-  const pick = (v: string) => setValue(r.key, v === "" && f?.source === ConfigSource.DEFAULT ? f.value : v);
+  // No model is built in: an empty setting is no choice, and stays one.
+  const shown = own;
+  const pick = (v: string) => setValue(r.key, v);
   const use = effective(values, r.key);
   const chosen = list.find((m) => m.id === use.model);
   const placeholder = r.unset ? t(r.unset) : list.length ? t("Select…") : none;

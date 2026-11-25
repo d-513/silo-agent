@@ -2,9 +2,15 @@
 # (docs/CONFIGURATION.md § Running the control plane in a container) on silo's
 # rootless Podman, whose socket it is handed to make the Bots' boxes.
 #
-# Host network: it sees each client's real address (sign-in throttling), a
-# call's WebRTC offers the machine's own addresses, and the Bots' boxes reach
-# it at its default cp_url, host.containers.internal:8080.
+# On two of Silo's own networks and never the host's, so its HTTP port (the
+# console, and the API the Bots' machines dial) is on no interface of the
+# machine:
+#   silofront  Caddy reaches it as silo:8080, and it reaches silodb.
+#   siloback   the network filter's gateway and the drive sidecars, which it
+#              puts there itself (cp_network), dial it as silo:8080.
+# Only mail and calls are published. Their senders' real addresses (SPF and
+# the listener's limits need them) come through Podman's pasta port forwarder
+# (/etc/containers/containers.conf.d/50-siloos.conf).
 [Unit]
 Description=Silo control plane
 Requires=podman.socket silodb.service
@@ -14,7 +20,12 @@ After=podman.socket silodb.service
 ContainerName=silo
 # Set at build time (images/os/Containerfile, SILO_IMAGE).
 Image=@SILO_IMAGE@
-Network=host
+Network=silofront.network
+Network=siloback.network
+# Mail (the listener's default port inside) and calls.
+PublishPort=25:2525
+PublishPort=3479:3479/udp
+PublishPort=3479:3479/tcp
 # The container's uid 1000 is silo here, which owns the socket and data/.
 UserNS=keep-id:uid=1000,gid=1000
 # It holds the engine's socket, so SELinux confinement would only break it.
@@ -28,13 +39,20 @@ Volume=/run/siloosd:/run/siloosd
 Volume=%t/silocaddy:/run/silocaddy
 Environment=SILO_SILOOS__SOCKET=/run/siloosd/siloosd.sock
 Environment=SILO_CADDY__ADMIN=unix//run/silocaddy/admin.sock
+# Where Caddy, and what the control plane starts on siloback, find it.
+Environment=SILO_CADDY__UPSTREAM=silo:8080
+Environment=SILO_CP_URL=http://silo:8080
+Environment=SILO_CP_NETWORK=siloback
+# The machine's resolvers, for the network filter's gateway: this container's
+# own resolv.conf names only its networks' DNS.
+Volume=/run/systemd/resolve:/run/systemd/resolve:ro
 # Later files win: the operator's silo.env over the generated secrets.
 EnvironmentFile=/etc/silo/secrets.env
 EnvironmentFile=/etc/silo/silo.env
-# Port 25 directly (net.ipv4.ip_unprivileged_port_start, sysctl.d/60-siloos.conf).
-Environment=SILO_MAIL__ADDR=:25
-# silocaddy, on the same host network, is the one proxy to believe.
-Environment=SILO_AUTH__TRUSTED_PROXIES=127.0.0.1,::1
+# silocaddy, at its fixed address on silofront, is the one proxy to believe
+# (X-Forwarded-For, and the certificate ask). Not the network: the gateway
+# carries the Bots' own requests to this same port.
+Environment=SILO_AUTH__TRUSTED_PROXIES=10.212.0.3
 Pull=missing
 
 [Service]

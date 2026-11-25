@@ -188,3 +188,36 @@ func TestClaudeProviderSignIn(t *testing.T) {
 		t.Fatalf("token kept: %q", got)
 	}
 }
+
+// Claude Code is not part of Silo. Admin is told whether the program is on
+// the server, and a program the operator named themselves is never
+// downloaded over. (The download itself is the provider's:
+// internal/llm/claude_install_test.go.)
+func TestClaudeProviderProgram(t *testing.T) {
+	h := claudeHarness(t)
+	settings, err := h.Client.GetSettings(h.Ctx(), connect.NewRequest(&v1.GetSettingsRequest{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range settings.Msg.GetProviders() {
+		if want := p.GetId() == "claude"; p.GetProgram() != want {
+			t.Fatalf("provider %s: program = %v", p.GetId(), p.GetProgram())
+		}
+	}
+	prog, err := h.Client.GetProviderProgram(h.Ctx(), connect.NewRequest(&v1.GetProviderProgramRequest{Provider: "claude"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p := prog.Msg; !p.GetInstalled() || p.GetManaged() || p.GetCanInstall() || p.GetName() != "Claude Code" || p.GetAbout() == "" {
+		t.Fatalf("the operator's own program: %+v", p)
+	}
+	_, err = h.Client.InstallProviderProgram(h.Ctx(), connect.NewRequest(&v1.InstallProviderProgramRequest{Provider: "claude"}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("an install over the operator's own program: %v", err)
+	}
+	// A provider with a key runs no program.
+	_, err = h.Client.GetProviderProgram(h.Ctx(), connect.NewRequest(&v1.GetProviderProgramRequest{Provider: "openrouter"}))
+	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("openrouter's program: %v", err)
+	}
+}

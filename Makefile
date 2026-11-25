@@ -346,7 +346,7 @@ claude-bin: ## Download the official Claude Code binary to build/claude (the Cla
 	mkdir -p build/claude
 	cd build/claude && npm pack --silent @anthropic-ai/claude-agent-sdk-$(CLAUDE_PLATFORM) && tar xzf *.tgz && rm -f *.tgz
 	build/claude/package/claude --version
-	@echo "Set providers.claude.binary: build/claude/package/claude in silo.yaml"
+	@echo "Set providers.claude.binary: build/claude/package/claude in silo.yaml (or use Install in Admin, which needs neither)"
 
 ## --- database ------------------------------------------------------------
 

@@ -208,6 +208,8 @@ var RPCs = map[string]RPCNeed{
 	"BeginProviderSignIn":      InstanceAdmin,
 	"FinishProviderSignIn":     InstanceAdmin,
 	"SignOutProvider":          InstanceAdmin,
+	"GetProviderProgram":       InstanceAdmin,
+	"InstallProviderProgram":   InstanceAdmin,
 	"SetConnectorVars":         InstanceAdmin,
 	"SetAutoenableConnectors":  InstanceAdmin,
 	"ListAuditEvents":          AdminOrBotManage,

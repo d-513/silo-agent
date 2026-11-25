@@ -82,13 +82,18 @@ type Service struct {
 
 	// ResolvConfs are where the system's resolvers are read when the
 	// operator named none (egress.dns), first file with a usable one wins:
-	// the file every program reads, then systemd-resolved's list of its own
-	// upstreams, for a host whose resolv.conf names only the 127.0.0.53 stub.
+	// systemd-resolved's list of its own upstreams, then the file every
+	// program reads. In that order because /etc/resolv.conf is the less
+	// telling of the two wherever both exist: on a host with resolved it
+	// names only the 127.0.0.53 stub, and in a control plane that is a
+	// container on an engine network (cp_network, with the host's
+	// /run/systemd/resolve bound in) it names that network's own DNS, which
+	// the gateway is not on.
 	ResolvConfs []string
 }
 
 // DefaultResolvConfs is Service.ResolvConfs on a real host.
-var DefaultResolvConfs = []string{"/etc/resolv.conf", "/run/systemd/resolve/resolv.conf"}
+var DefaultResolvConfs = []string{"/run/systemd/resolve/resolv.conf", "/etc/resolv.conf"}
 
 func New(gdb *gorm.DB, d dockerx.Host, store *config.Store, cfg func() config.Config) *Service {
 	return &Service{db: gdb, docker: d, store: store, cfg: cfg, hub: &hub{}, ResolvConfs: DefaultResolvConfs}
@@ -160,13 +165,19 @@ func splitHostPortRaw(addr string) (string, string, error) {
 	return addr[:i], addr[i+1:], nil
 }
 
-// cpAddr is host:port the gateway forwards a client's control-plane link to.
+// cpAddr is host:port the gateway forwards a client's control-plane link to:
+// cp_url's host at the workers' own port (worker_addr), where only what a box
+// or a sidecar calls is served, so nothing behind the filter reaches the
+// console through the link. With no such listener it is cp_url's own port.
 func (s *Service) cpAddr() string {
 	raw := strings.TrimSpace(s.cfg().CPURL)
 	if raw == "" {
 		return ""
 	}
 	if u, err := url.Parse(raw); err == nil && u.Host != "" {
+		if port := s.cfg().WorkerPort(); port != "" && port != "0" {
+			return net.JoinHostPort(u.Hostname(), port)
+		}
 		if u.Port() != "" {
 			return u.Host
 		}
@@ -245,6 +256,7 @@ func (s *Service) ensureGateway(ctx context.Context) (string, error) {
 				"SILO_CP_URL=" + s.cfg().CPURL,
 				"SILO_EGRESS_TOKEN=" + token,
 			},
+			Primary: strings.TrimSpace(s.cfg().CPNetwork),
 		})
 		if err != nil {
 			return "", err

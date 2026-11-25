@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"maps"
 	"net/http"
@@ -357,6 +358,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Models.Seen = a.Runlog.Seen
 	a.Pause = pause.New(a.DB)
 	a.SiloOS = siloos.New(a.DB, a.cfg)
+	a.Voice.HostAddrs = a.SiloOS.HostAddrs
 	a.Spaces = space.New(a.DB, a.cfg, spaceHost{a})
 	a.Spaces.OnDelete(a.Skills.DropSpace)
 	a.Spaces.OnDelete(a.Connectors.DropSpace)
@@ -370,6 +372,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Tunnels = tunnels.New(a.DB, a.Hub, a.cfg, a)
 	a.Mail = mailbox.New(a.DB, a.cfg, a, a, a.Workspace)
 	a.Accounts = account.New(a.DB, a.cfg, a)
+	a.Accounts.Changed = func() { go a.SiloOS.CheckFirstPassword(context.Background()) }
 	a.Admin = admin.New(a.DB, a.Store, a.cfg, a.Models, a.Voice, a.Accounts.OIDCRedirectURL)
 	a.Tools = a.newTools()
 	a.Slash = command.New(a.commandDefs())
@@ -398,6 +401,7 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 		// Caddy is given what public_url and content.host call for, and given it
 		// again if it lost it.
 		go func() {
+			a.SiloOS.CheckFirstPassword(context.Background())
 			a.SiloOS.SyncProxy(context.Background())
 			tickLoop(a.stopAutomations, siloos.Tick, func(time.Time) { a.SiloOS.SyncProxy(context.Background()) })
 		}()
@@ -554,11 +558,26 @@ func (a *App) Shutdown() {
 	// orphans are reclaimed by reconcileStdio on the next start.
 }
 
-func ListenAndServe(cfg *config.Config, h http.Handler, onStop func()) error {
+// ListenAndServe serves h on http_addr and, when worker_addr is set, workers
+// on that second listener (App.WorkerHandler). Either failing ends both: a
+// control plane whose workers' port is taken would have every box behind the
+// filter waiting on nothing.
+func ListenAndServe(cfg *config.Config, h, workers http.Handler, onStop func()) error {
 	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: h}
 	rpcx.EnableH2C(srv)
-	errc := make(chan error, 1)
+	errc := make(chan error, 2)
 	go func() { errc <- srv.ListenAndServe() }()
+	if addr := strings.TrimSpace(cfg.WorkerAddr); addr != "" && workers != nil {
+		wsrv := &http.Server{Addr: addr, Handler: workers}
+		rpcx.EnableH2C(wsrv)
+		go func() {
+			if err := wsrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				errc <- fmt.Errorf("worker_addr %s: %w", addr, err)
+			}
+		}()
+		defer wsrv.Close()
+		log.Printf("silo: the Bots' machines are served on %s", addr)
+	}
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM)
 	select {
@@ -688,6 +707,22 @@ func currentBot(ctx context.Context) *db.Bot {
 
 func (a *App) botFromToken(h string) (*db.Bot, string, error) {
 	return access.RowByToken[db.Bot](a.DB, "token_hash", h)
+}
+
+// WorkerHandler is what a Bot's machine and a STDIO sidecar call, and nothing
+// else: the worker and bridge APIs, each opened by its own token. It is what
+// worker_addr serves and where the network filter's gateway forwards a box,
+// which therefore cannot open the console, an artifact, the sign-in or any
+// other route of Handler through that forward. A route a box must reach this
+// way is added here on purpose, never by serving Handler.
+func (a *App) WorkerHandler() http.Handler {
+	mux := http.NewServeMux()
+	wkPath, wkH := silov1connect.NewBotWorkerHandler(a, connect.WithInterceptors(rpcx.Handler{Unary: a.interceptWorker, Stream: a.interceptWorkerStream}))
+	brPath, brH := silov1connect.NewMCPHostHandler(a.Connectors, connect.WithInterceptors(rpcx.Handler{Stream: a.Connectors.InterceptBridge}))
+	mux.Handle(wkPath, wkH)
+	mux.Handle(brPath, brH)
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
+	return access.WithHTTP(mux)
 }
 
 func (a *App) Handler() http.Handler {

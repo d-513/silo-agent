@@ -391,7 +391,9 @@ func (s *Service) Recover() {
 // synced.
 func (s *Service) Sweep(now time.Time) int {
 	cfg := s.cfg().Knowledge
-	if s.db == nil || !cfg.Enabled || now.UnixNano() < s.pause.Load() {
+	// With no embedding model (none is built in) there is nothing to index
+	// with: folders wait as they are until an admin picks one.
+	if s.db == nil || !cfg.Enabled || now.UnixNano() < s.pause.Load() || s.models.EmbedModelID() == "" {
 		return 0
 	}
 	s.unstick()

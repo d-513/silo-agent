@@ -47,12 +47,15 @@ type claudeConf struct {
 	token  string
 }
 
-// path finds the binary: the configured path, else claude on PATH. A relative
-// path is read against the control plane's directory, not the one the binary
-// runs in.
+// path finds the binary: the configured path, else the copy Silo installed
+// (claude_install.go), else claude on PATH. A relative path is read against
+// the control plane's directory, not the one the binary runs in.
 func (c claudeConf) path() (string, error) {
 	name := c.binary
 	if name == "" {
+		if fi, err := os.Stat(c.installed()); err == nil && fi.Mode().IsRegular() {
+			return c.installed(), nil
+		}
 		name = "claude"
 	}
 	if strings.ContainsRune(name, filepath.Separator) {
@@ -67,7 +70,10 @@ func (c claudeConf) path() (string, error) {
 	}
 	p, err := exec.LookPath(name)
 	if err != nil {
-		return "", fmt.Errorf("the Claude Code program %q is not on this server's PATH; install it or set providers.claude.binary", name)
+		if c.binary == "" {
+			return "", errors.New("Claude Code is not installed on this server: install it under Admin → Settings → Models → Providers → Claude Agent, or set providers.claude.binary")
+		}
+		return "", fmt.Errorf("the Claude Code program %q is not on this server's PATH (providers.claude.binary)", name)
 	}
 	return filepath.Abs(p)
 }

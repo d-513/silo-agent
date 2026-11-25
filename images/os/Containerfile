@@ -67,6 +67,19 @@ RUN set -e; install -d /etc/yum.repos.d; \
       ln -sf ../../usr/share/dnf5/repos.d/$r.repo /etc/yum.repos.d/$r.repo; \
     done
 
+# Silo's containers are on Podman networks of their own with a few ports
+# published (rootfs/etc/containers/systemd/users/1000). A container sees who
+# connected to such a port only through Podman 6's pasta port forwarder, so
+# it is turned on where this Podman has it. An older one keeps its default
+# forwarder and everything still runs; it only loses the addresses (sign-in
+# throttling counts every visitor as one, and no mail passes SPF).
+RUN set -e; \
+    if grep -q 'rootless_port_forwarder' /usr/share/containers/containers.conf; then \
+      install -D -m 0644 /usr/share/siloos/containers/50-siloos.conf /etc/containers/containers.conf.d/50-siloos.conf; \
+    else \
+      echo "siloos: $(podman --version) has no pasta port forwarder; published ports will not carry client addresses" >&2; \
+    fi
+
 # The user every Silo container runs under. Made now, not only by sysusers at
 # first boot, so a user made at install (cloud-init, a kickstart)
 # never takes uid 1000. Its subordinate ids are what its containers' users map

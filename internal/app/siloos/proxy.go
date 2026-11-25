@@ -2,9 +2,11 @@ package siloos
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"slices"
 	"strings"
@@ -144,7 +146,7 @@ func SiteOf(cfg config.Config, local []string) (caddy.Site, string) {
 	if mode == config.CaddyOff {
 		return caddy.Site{}, "caddy.mode is off."
 	}
-	up := upstream(cfg.HTTPAddr)
+	up := upstream(cfg)
 	site := caddy.Site{Upstream: up, Ask: "http://" + up + caddy.AskPath, Email: strings.TrimSpace(cfg.Caddy.Email)}
 	host, note := publicHost(cfg.PublicURL)
 	if host != "" {
@@ -223,9 +225,14 @@ func dnsOf(cfg config.Config) *caddy.DNS {
 	return &caddy.DNS{Provider: id, Fields: fields}
 }
 
-// upstream is the control plane's own address from a Caddy on the same host.
-func upstream(httpAddr string) string {
-	host, port, err := net.SplitHostPort(strings.TrimSpace(httpAddr))
+// upstream is the control plane's own address from Caddy: caddy.upstream
+// when the two are not on one host's network (each a container on an engine
+// network), else http_addr's port on this host.
+func upstream(cfg config.Config) string {
+	if up := strings.TrimSpace(cfg.Caddy.Upstream); up != "" {
+		return up
+	}
+	host, port, err := net.SplitHostPort(strings.TrimSpace(cfg.HTTPAddr))
 	if err != nil || port == "" {
 		return "127.0.0.1:8080"
 	}
@@ -239,14 +246,16 @@ func upstream(httpAddr string) string {
 // Encrypt over HTTP, for content names): yes (200) for the control plane's
 // own name and for a tunnel, live app or share that exists, no (404) for
 // everything else, so nobody can make Caddy ask Let's Encrypt for names at
-// will. Only Caddy on this machine may ask.
+// will. Only Caddy may ask: a peer on loopback (a Caddy on this host), or one
+// of auth.trusted_proxies (a Caddy in a container of its own, which is named
+// there for its X-Forwarded-For already).
 func (s *Service) ServeAsk(w http.ResponseWriter, r *http.Request) {
-	if !loopback(r.RemoteAddr) {
+	cfg := s.cfg()
+	if !isCaddy(r.RemoteAddr, cfg.TrustedProxies()) {
 		http.NotFound(w, r)
 		return
 	}
 	domain := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("domain")))
-	cfg := s.cfg()
 	host, _ := publicHost(cfg.PublicURL)
 	if domain != "" && (domain == host || s.contentKnown(cfg, domain)) {
 		w.WriteHeader(http.StatusOK)
@@ -275,11 +284,42 @@ func (s *Service) contentKnown(cfg config.Config, domain string) bool {
 	return n > 0
 }
 
-func loopback(remote string) bool {
-	host, _, err := net.SplitHostPort(remote)
+func isCaddy(remote string, trusted []netip.Prefix) bool {
+	ap, err := netip.ParseAddrPort(remote)
 	if err != nil {
 		return false
 	}
-	ip := net.ParseIP(host)
-	return ip != nil && ip.IsLoopback()
+	ip := ap.Addr().Unmap()
+	if ip.IsLoopback() {
+		return true
+	}
+	for _, p := range trusted {
+		if p.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// HostAddrs are a SiloOS machine's own addresses, as siloosd last gave them;
+// none, and no error, anywhere else. A control plane that is a container on
+// an engine network does not have them on any interface of its own. On
+// SiloOS, not learning them is an error: whoever asked must not go on as if
+// the machine had none.
+func (s *Service) HostAddrs() ([]string, error) {
+	if s.daemon() == nil {
+		return nil, nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var out []string
+	for _, n := range s.localNames(ctx) {
+		if net.ParseIP(n) != nil {
+			out = append(out, n)
+		}
+	}
+	if len(out) == 0 {
+		return nil, errors.New("the machine's addresses could not be read from siloosd")
+	}
+	return out, nil
 }

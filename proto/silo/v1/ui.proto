@@ -295,6 +295,10 @@ service UI {
   rpc BeginProviderSignIn(BeginProviderSignInRequest) returns (BeginProviderSignInResponse);
   rpc FinishProviderSignIn(FinishProviderSignInRequest) returns (ProviderAccount);
   rpc SignOutProvider(SignOutProviderRequest) returns (ProviderAccount);
+  // The program a provider runs on the control plane's machine, which Silo
+  // does not ship: whether it is there, and fetching it (admins only).
+  rpc GetProviderProgram(GetProviderProgramRequest) returns (ProviderProgram);
+  rpc InstallProviderProgram(InstallProviderProgramRequest) returns (ProviderProgram);
   rpc SetConnectorVars(SetConnectorVarsRequest) returns (Settings);
   rpc SetAutoenableConnectors(SetAutoenableConnectorsRequest) returns (Settings);
 
@@ -2951,6 +2955,9 @@ message Provider {
   // signed_in says a sign-in provider has an account to work with (a
   // sign-in or a saved token): what a key is to the others.
   bool signed_in = 11;
+  // program marks a provider that runs a program Silo does not ship and can
+  // install (GetProviderProgram).
+  bool program = 12;
 }
 
 message ProviderField {
@@ -3045,6 +3052,41 @@ message FinishProviderSignInRequest {
 
 message SignOutProviderRequest {
   string provider = 1;
+}
+
+message GetProviderProgramRequest {
+  string provider = 1;
+}
+
+// InstallProviderProgram starts downloading the newest release and answers
+// at once; GetProviderProgram follows it (installing, done_bytes).
+message InstallProviderProgramRequest {
+  string provider = 1;
+}
+
+// ProviderProgram is the program a provider runs on the control plane's
+// machine (Claude Code), which is its publisher's and not part of Silo.
+message ProviderProgram {
+  // name is what the program is called; about says where an install gets
+  // it and under whose terms.
+  string name = 1;
+  string about = 2;
+  bool installed = 3;
+  string version = 4;
+  string path = 5;
+  // managed says it is the copy Silo installed, not one the operator named
+  // or the machine's own.
+  bool managed = 6;
+  // can_install is false when the operator named the program in the
+  // provider's settings: a download would not be the one that runs.
+  bool can_install = 7;
+  // installing is a download under way: done_bytes of total_bytes (0 when
+  // unknown).
+  bool installing = 8;
+  int64 done_bytes = 9;
+  int64 total_bytes = 10;
+  // problem is why the last install failed or the program does not run.
+  string problem = 11;
 }
 
 // ConnectorVar is one operator-defined connector variable. These are plain

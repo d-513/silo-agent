@@ -231,3 +231,49 @@ func TestFailedRenderIsRetriedAndItsProblemCleared(t *testing.T) {
 		t.Fatalf("the problem stayed: %q", p)
 	}
 }
+
+// A control plane that is a container on an engine network has that
+// network's DNS in its own resolv.conf, which the gateway is not on: the
+// host's upstream list (bound in beside it) is read first.
+func TestDNSServersPreferTheHostsUpstreams(t *testing.T) {
+	if DefaultResolvConfs[0] != "/run/systemd/resolve/resolv.conf" {
+		t.Fatalf("read first: %s", DefaultResolvConfs[0])
+	}
+	dir := t.TempDir()
+	resolved := filepath.Join(dir, "resolved.conf")
+	own := filepath.Join(dir, "resolv.conf")
+	if err := os.WriteFile(resolved, []byte("nameserver 192.168.10.1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(own, []byte("search dns.podman\nnameserver 10.212.0.1\nnameserver 10.212.1.1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s := New(nil, nil, nil, func() config.Config { return config.Config{} })
+	s.ResolvConfs = []string{resolved, own}
+	if got, src := s.dnsServers(); src != "system" || strings.Join(got, ",") != "192.168.10.1:53" {
+		t.Fatalf("got %v %q", got, src)
+	}
+	// No resolved on the host: the control plane's own file is all there is.
+	s.ResolvConfs = []string{filepath.Join(dir, "missing"), own}
+	if got, _ := s.dnsServers(); strings.Join(got, ",") != "10.212.0.1:53,10.212.1.1:53" {
+		t.Fatalf("fallback %v", got)
+	}
+}
+
+// The gateway forwards a box to the workers' own port, where the console is
+// not served; with no such listener, to cp_url's port as before.
+func TestGatewayForwardsToTheWorkersPort(t *testing.T) {
+	c := config.Config{CPURL: "http://silo:8080"}
+	s := New(nil, nil, nil, func() config.Config { return c })
+	if got := s.cpAddr(); got != "silo:8080" {
+		t.Fatalf("no workers' port: %q", got)
+	}
+	c.WorkerAddr = ":8081"
+	if got := s.cpAddr(); got != "silo:8081" {
+		t.Fatalf("workers' port: %q", got)
+	}
+	c.CPURL, c.WorkerAddr = "http://host.containers.internal", "0.0.0.0:9000"
+	if got := s.cpAddr(); got != "host.containers.internal:9000" {
+		t.Fatalf("a URL with no port: %q", got)
+	}
+}

@@ -7,10 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"time"
 
 	"connectrpc.com/connect"
@@ -44,6 +41,17 @@ type Service struct {
 	oidc  oidcState
 	// HTTP talks to the OIDC provider.
 	HTTP *http.Client
+	// Changed, when set, is told after an account's password or email
+	// changed or an account was deleted: what it does must not hold the
+	// request up (SiloOS's console stops showing a first password that no
+	// longer signs anyone in).
+	Changed func()
+}
+
+func (s *Service) changed() {
+	if s.Changed != nil {
+		s.Changed()
+	}
 }
 
 func New(gdb *gorm.DB, cfg func() config.Config, host Host) *Service {
@@ -101,11 +109,6 @@ func (s *Service) signIn(w http.ResponseWriter, r *http.Request, u *db.User, met
 // a new installation is set up (providers, models, the rest).
 const WelcomePath = "/admin"
 
-// FirstAdminMarker is the file, in data_dir, that says the first admin has
-// signed in. SiloOS's console banner shows the generated first password only
-// until it exists (images/os/rootfs/usr/libexec/siloos/init).
-const FirstAdminMarker = "first-admin-signed-in"
-
 // welcome reports whether u is the first admin signing in for the first
 // time, and marks it done: once, even for two sign-ins at the same moment.
 func (s *Service) welcome(u *db.User) bool {
@@ -115,11 +118,6 @@ func (s *Service) welcome(u *db.User) bool {
 	res := s.db.Model(&db.User{}).Where("id = ? AND welcome = ?", u.ID, true).Update("welcome", false)
 	if res.Error != nil || res.RowsAffected == 0 {
 		return false
-	}
-	if dir := s.cfg().DataDir; dir != "" {
-		if err := os.WriteFile(filepath.Join(dir, FirstAdminMarker), []byte(time.Now().UTC().Format(time.RFC3339)+"\n"), 0o644); err != nil {
-			log.Printf("first admin: %v", err)
-		}
 	}
 	return true
 }

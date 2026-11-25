@@ -31,6 +31,10 @@ var commands = map[string]string{
 	// bootc depends on it (its image proxy); siloosd asks the registry with
 	// it about tags of the release's own repository.
 	"skopeo": "/usr/bin/skopeo",
+	// What writes the console's banner at boot, run again when the banner
+	// must change (RetireFirstPassword), and the getty that draws it.
+	"siloos-init": "/usr/libexec/siloos/init",
+	"agetty":      "/usr/sbin/agetty",
 }
 
 func (Exec) Run(ctx context.Context, name string, args ...string) ([]byte, error) {

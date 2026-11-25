@@ -178,12 +178,14 @@ func New(t *testing.T, opts ...Option) *H {
 		}
 	}
 
-	a := app.New(store, gdb, host)
-	t.Cleanup(a.Shutdown)
-
+	// Before the control plane starts, as in cmd/silo: what it does at start
+	// may read who the first admin is.
 	if err := auth.EnsureBootstrap(gdb, o.email, o.password); err != nil {
 		t.Fatalf("bootstrap: %v", err)
 	}
+
+	a := app.New(store, gdb, host)
+	t.Cleanup(a.Shutdown)
 
 	srv := &http.Server{Handler: a.Handler()}
 	rpcx.EnableH2C(srv)
@@ -228,6 +230,7 @@ func DefaultYAML(dataDir string) string {
 	return fmt.Sprintf(`http_addr: ":0"
 data_dir: %q
 cp_url: http://127.0.0.1:0
+worker_addr: ""
 model: dummy/echo
 model_title: dummy/echo
 embedding_model: dummy/embed

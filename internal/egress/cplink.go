@@ -28,9 +28,23 @@ func (l *CPLink) dial(ctx context.Context, network, addr string) (net.Conn, erro
 	if l.Dial != nil {
 		return l.Dial(ctx, network, addr)
 	}
-	var d net.Dialer
-	return d.DialContext(ctx, network, addr)
+	return cpDialer().DialContext(ctx, network, addr)
 }
+
+// engineResolver looks a name up as the container engine set this container
+// up to (its resolv.conf and hosts file), whatever net.DefaultResolver has
+// become.
+var engineResolver = &net.Resolver{PreferGo: true}
+
+// cpDialer dials the control plane, and is the one dialer that does not
+// resolve through the gateway's own Resolver. That one sends every lookup to
+// the outside resolvers the control plane named, which is right for what a
+// client asks for and wrong for the control plane itself: when it is a
+// container on the gateway's network (cp_network) its name is one only the
+// engine's DNS knows, and with it unresolved no worker gets through the link
+// and the gateway never finds the control plane again after its first
+// session.
+func cpDialer() *net.Dialer { return &net.Dialer{Resolver: engineResolver} }
 
 // Serve accepts CP-link connections until ctx ends.
 func (l *CPLink) Serve(ctx context.Context, ln net.Listener) error {

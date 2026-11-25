@@ -13,9 +13,15 @@ ContainerName=silocaddy
 # Set at build time (images/os/Containerfile, CADDY_IMAGE): the same release as the
 # control plane.
 Image=@CADDY_IMAGE@
-# On the host network, so it sees each visitor's real address and reaches the
-# control plane at 127.0.0.1:8080.
-Network=host
+# On Silo's front network at a fixed address, which is how the control plane
+# knows it for its proxy (silo.container, SILO_AUTH__TRUSTED_PROXIES), and
+# where it reaches the control plane as silo:8080. It sees each visitor's
+# real address through Podman's pasta port forwarder
+# (/etc/containers/containers.conf.d/50-siloos.conf).
+Network=silofront.network:ip=10.212.0.3
+PublishPort=80:80
+PublishPort=443:443
+PublishPort=443:443/udp
 # Its admin API only on the socket, never on a port. The image runs
 # `caddy run --resume`: what the control plane last loaded survives a restart.
 Environment=CADDY_ADMIN=unix//run/silocaddy/admin.sock

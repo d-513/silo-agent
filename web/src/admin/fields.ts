@@ -51,7 +51,10 @@ export const LABELS: Record<string, string> = {
   http_addr: msg("Listen address"),
   public_url: msg("Public URL"),
   cp_url: msg("Control plane URL"),
+  cp_network: msg("Control plane network"),
+  worker_addr: msg("Workers' listen address"),
   "caddy.admin": msg("Caddy admin API"),
+  "caddy.upstream": msg("Silo's address from Caddy"),
   "caddy.mode": msg("Certificates"),
   "caddy.email": msg("Let's Encrypt email"),
   "caddy.dns_provider": msg("DNS provider"),
@@ -97,6 +100,9 @@ export const LABELS: Record<string, string> = {
 };
 
 export const HINTS: Record<string, string> = {
+  worker_addr: msg("A second port that serves only what a Bot's machine and a connector's sidecar call. The network filter forwards them here, so nothing behind the filter can open the console. It must be reachable where the Control plane URL's host is, and needs no TLS. Empty turns it off: the filter then forwards to the main port. Restart required."),
+  cp_network: msg("Only when Silo itself runs as a container on a network of your container engine: its name. The network filter's gateway and the drive sidecars join it and reach Silo by the name in Control plane URL, so Silo's port need not be open on the host. Empty when Silo runs on the host. SiloOS sets it."),
+  "caddy.upstream": msg("Where that Caddy reaches Silo, as host:port. Empty means this machine, on Silo's listen port. Set it when Caddy is a container of its own, and name Caddy's address in Trusted proxies. SiloOS sets it."),
   "caddy.admin": msg("A Caddy server Silo configures itself: HTTPS for the Public URL's name and the content domain. unix//path/to/admin.sock or http://host:port. SiloOS sets it."),
   "caddy.mode": msg("Automatic uses Let's Encrypt for a public domain and Silo's own certificate authority for an address or a name on the local network. Browsers warn about Silo's own until its root certificate is installed on the device."),
   "caddy.email": msg("Optional: Let's Encrypt writes here before a certificate would expire unrenewed."),

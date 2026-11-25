@@ -59,7 +59,9 @@ type EgressSpec struct {
 	Image string
 	Env   []string
 	// Primary is the ordinary network the gateway joins on top of every
-	// client network; it is how the gateway reaches the control plane.
+	// client network; it is how the gateway reaches the control plane and
+	// the internet. Empty is the control plane's own network (cp_network),
+	// else the engine's default.
 	Primary string
 }
 
@@ -82,8 +84,8 @@ const (
 	clientIDLabel  = "silo.client_id"
 )
 
-// EgressUp creates and starts the gateway when it is absent, attached to the
-// ordinary network. Idempotent: an existing container is returned as-is.
+// EgressUp creates and starts the gateway when it is absent, attached to its
+// ordinary network (EgressSpec.Primary). Idempotent: an existing container is returned as-is.
 func (e *Engine) EgressUp(ctx context.Context, spec EgressSpec) (string, error) {
 	if spec.Image == "" {
 		spec.Image = e.store.Config().EgressImage()
@@ -102,6 +104,8 @@ func (e *Engine) EgressUp(ctx context.Context, spec EgressSpec) (string, error) 
 	}
 	if spec.Primary != "" {
 		host.NetworkMode = container.NetworkMode(spec.Primary)
+	} else {
+		e.reachCP(host)
 	}
 	resp, err := e.create(ctx, &container.Config{
 		Image:  spec.Image,
@@ -303,6 +307,18 @@ func (e *Engine) Runtime(ctx context.Context) (string, error) {
 	default:
 		return "unknown", nil
 	}
+}
+
+// reachCP puts a container that dials the control plane directly where it can:
+// on the control plane's own network (cp_network) when it has one, else on the
+// engine's default with the host's name, since the control plane is then on
+// the host.
+func (e *Engine) reachCP(host *container.HostConfig) {
+	if n := strings.TrimSpace(e.store.Config().CPNetwork); n != "" {
+		host.NetworkMode = container.NetworkMode(n)
+		return
+	}
+	host.ExtraHosts = []string{"host.containers.internal:host-gateway"}
 }
 
 // clientNetworkConfig is the networking config for a client container: its own

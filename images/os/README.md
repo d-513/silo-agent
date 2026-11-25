@@ -14,9 +14,9 @@ Quadlets in `rootfs/etc/containers/systemd/users/1000/`:
 
 | Container | What | Where |
 | --- | --- | --- |
-| `silodb` | Postgres 17 + pgvector | `127.0.0.1:5432`, volume `silodb-data` |
-| `silo` | The control plane with the console (`ghcr.io/d-513/silo`) | host network: 8080 (HTTP), 25 (mail), 3479 UDP/TCP (calls) |
-| `silocaddy` | `silo-caddy` (`images/caddy/`): Caddy with 17 DNS providers, configured by the control plane (`caddy.*`, `internal/caddy`) | host network: 80, 443; admin API only on a socket in `/run/user/1000/silocaddy` |
+| `silodb` | Postgres 17 + pgvector | `silofront` as `silodb:5432`, no port on the host; volume `silodb-data` |
+| `silo` | The control plane with the console (`ghcr.io/d-513/silo`) | `silofront` and `siloback` as `silo:8080` (HTTP, never published); published: 25 (mail), 3479 UDP/TCP (calls) |
+| `silocaddy` | `silo-caddy` (`images/caddy/`): Caddy with 17 DNS providers, configured by the control plane (`caddy.*`, `internal/caddy`) | `silofront` at the fixed `10.212.0.3`; published: 80, 443 (TCP and UDP); admin API only on a socket in `/run/user/1000/silocaddy` |
 | `silo-…` | The Bots' boxes and sidecars, made by the control plane through `silo`'s Podman socket | their own networks |
 
 On the host, as root, runs **siloosd** (`cmd/siloosd`, `internal/siloosd`,
@@ -25,9 +25,52 @@ SiloOS (shown only on SiloOS) talks to it through the control plane.
 
 The control plane runs as `docs/CONFIGURATION.md` § Running the control plane
 in a container says: the socket at `/run/docker.sock`, `/var/lib/silo` bound at
-the same path, keep-id so its uid 1000 is the host's `silo`. It is on the host
-network so it sees each client's real address, a call's WebRTC offers the
-machine's own addresses, and the Bots' boxes reach it at the default `cp_url`.
+the same path, keep-id so its uid 1000 is the host's `silo`.
+
+### Networks
+
+Nothing of Silo's is on the host's network. Two Podman networks carry it
+(`silofront.network`, `siloback.network`), and every Bot's box has one of its
+own:
+
+| Network | On it | For |
+| --- | --- | --- |
+| `silofront` (`10.212.0.0/24`) | `silocaddy`, `silo`, `silodb` | Caddy reaches the control plane as `silo:8080`, the control plane its database as `silodb:5432` |
+| `siloback` (`10.212.1.0/24`) | `silo`, and what it puts there itself (`cp_network`): `silo-egress`, the drive sidecars | They dial the control plane as `silo:8080` (`cp_url`); it is also their way out |
+| `silo-egress-…` (internal, from `10.213.0.0/16`) | one box or STDIO sidecar, and `silo-egress` | The box's only link: the gateway filters what leaves and forwards its worker to the control plane |
+
+So the control plane's HTTP port is on no interface of the machine: people
+come through Caddy, the Bots' machines through the gateway, which forwards
+them to the workers' own port (`silo:8081`, `worker_addr`), where only the
+worker and sidecar APIs answer and the console does not. A box cannot
+reach `silo`, `silodb` or `silocaddy` at all, and the gateway is not on the
+network Caddy and the database are on.
+
+- **Who is believed.** The control plane takes `X-Forwarded-For`, and the
+  question Caddy asks before a certificate on demand, from `10.212.0.3` only
+  (`SILO_AUTH__TRUSTED_PROXIES`): Caddy's fixed address, not the network. The
+  gateway carries the Bots' own requests to that same port from `siloback`.
+- **Real addresses.** A published port of a rootless Podman network is
+  forwarded by `rootlessport` by default, a proxy that makes every connection
+  look as if the container made it. SiloOS turns on Podman 6's pasta
+  forwarder instead (`/etc/containers/containers.conf.d/50-siloos.conf`,
+  `rootless_port_forwarder = "pasta"`, experimental in Podman), which keeps
+  the visitor's address: sign-in throttling counts by it, and mail needs it
+  for SPF and its own limits. The image build installs that file only when
+  its Podman knows the option; without it everything still runs, every
+  visitor counts as one address, and no mail is ever verified (so nothing
+  wakes a Bot by mail). The option must only change while no container runs:
+  reboot after touching the file.
+- **Calls.** The control plane's own addresses are its containers', which
+  mean nothing to a browser, so a call is offered the machine's addresses
+  (asked of siloosd when the first call starts) on the published port 3479.
+  After the machine's address changes, `siloctl restart silo`; or name them
+  yourself in `voice.webrtc.public_ips`.
+- **DNS.** `/run/systemd/resolve` is bound into the control plane read-only,
+  so it can hand the gateway the machine's real resolvers (`egress.dns`
+  overrides them).
+- A machine installed before this had its database on `127.0.0.1:5432`;
+  `siloos-init` rewrites that one address in `/etc/silo/secrets.env` at boot.
 
 **The OS is the release.** The image names one control plane (`SILO_IMAGE`,
 baked in at build), and that control plane runs the bot, STDIO, drive and
@@ -216,20 +259,22 @@ sudo bootc switch ghcr.io/d-513/silo-os:latest && sudo reboot
 
    ```
    SiloOS  ·  https://192.168.1.20
-   First sign-in: admin@silo.local / k7mp-x3qa-9ten  (change the password once in)
+   First sign-in: admin@silo.local / k7mp-x3qa-9ten  (shown here until you change it, on the Account page)
    ```
 
-   The banner is written at every boot. Once the first admin has signed in
-   (Silo leaves `/var/lib/silo/data/first-admin-signed-in`), the next boot
-   shows no password, only where to find it (`/etc/silo/secrets.env`).
+   The banner is written at every boot, and shows that password for as long
+   as it is the way in: you may come back to the machine days after setting
+   it up. When you change it (or the first admin's email, or remove them),
+   Silo tells siloosd, which takes it off the console at once and for every
+   later boot (`/var/lib/siloosd/first-password-retired`).
 
    The first start pulls the images, which takes a few minutes. With a shell
    (`ssh admin@…`), `siloctl logs` shows it, and
    `sudo cat /etc/silo/secrets.env` has the same first admin.
 2. Open `https://<address>` (the browser warns once: the certificate is Silo's
-   own until there is a domain; `http://<address>:8080` also answers) and
-   sign in. The first admin's first sign-in opens Admin. Change the password on the Account page: the console's line is
-   only the first one, and goes stale once you do.
+   own until there is a domain) and
+   sign in. The first admin's first sign-in opens Admin. Change the password on the Account page: the console
+   stops showing the first one as soon as you do.
 3. For a domain, point its DNS here and set Admin → Settings → Server →
    Public URL to `https://<that name>`. Within 15 s Caddy has a Let's Encrypt
    certificate for it (Admin → Settings → HTTPS, below).
@@ -336,12 +381,15 @@ from a shell can point it anywhere, which on purpose the console cannot.
 - **Wi-Fi, IPv6, bonds and VLANs** are shown, not edited: siloosd changes a
   wired connection's IPv4 only.
 - **SSH keys and a firewall** are not managed from the console yet.
-- **Port 8080 is plain HTTP on every interface**, because the Bots' boxes
-  reach the control plane there. It should answer only them.
-- **Not tried on a real machine yet:** whether rootless Podman's forwarding
-  makes a Bot box's connection to the control plane look like it comes from
-  `127.0.0.1`. If it does, `auth.trusted_proxies=127.0.0.1` would let a Bot
-  set its own `X-Forwarded-For`, and the Caddy ask endpoint would answer it.
+- **Not tried on a real machine yet: the networks above.** The pieces were
+  tried one by one on Podman 6.1 (a fixed address and names across two
+  networks, the gateway by name before and after a restart, a box reaching
+  nothing, and the pasta forwarder carrying the caller's address where
+  `rootlessport` shows the container's own), but not a booted SiloOS with a
+  visitor from another machine, mail from outside, or a call.
+- **A connection from the machine itself** to a published port arrives, under
+  the pasta forwarder, as the machine's or its router's address, so local
+  sign-in attempts share one throttle.
 - **Files a Bot writes** belong to a subordinate uid of `silo` on the host
   (rootless Podman maps the box's uid 1000 there), as in rootless development:
   the control plane cannot delete them by itself.

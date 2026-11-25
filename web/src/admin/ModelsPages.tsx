@@ -86,7 +86,7 @@ const pages: Record<ModelPage, () => React.ReactNode> = {
 
 // The text jobs. Every one but the default may follow another.
 const TEXT_ROLES: Role[] = [
-  { key: "model", takes: "text", unset: msg("Built-in default"), hint: msg("What a chat writes with, unless its Bot or the chat picks another allowed text model.") },
+  { key: "model", takes: "text", hint: msg("What a chat writes with, unless its Bot or the chat picks another allowed text model.") },
   { key: "model_title", takes: "text", unset: msg("Same as default"), hint: msg("Names a chat from its first message. A small, fast model is enough.") },
   { key: "model_subagent", takes: "text", unset: msg("Same as the lead"), hint: msg("Default for subagents a lead starts. A cheaper model keeps parallel work affordable; the lead can still pick another.") },
   { key: "model_memory", takes: "text", unset: msg("Same as title model"), hint: msg("Reads chats once they go quiet and saves the facts the Bot missed. A cheap model is enough.") },
@@ -130,7 +130,7 @@ function DecisionModels() {
   );
 }
 
-const EMBED_ROLES: Role[] = [{ key: "embedding_model", takes: "embedding", unset: msg("Built-in default") }];
+const EMBED_ROLES: Role[] = [{ key: "embedding_model", takes: "embedding" }];
 
 function EmbeddingModels() {
   return (

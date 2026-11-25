@@ -49,7 +49,7 @@ func main() {
 		log.Printf("silo: serving the web console at %s", cfg.HTTPAddr)
 	}
 	log.Printf("silo images: bot=%s stdio=%s drive=%s egress=%s pull=%s", cfg.BotImage, cfg.MCPStdioImage, cfg.DriveImage(), cfg.EgressImage(), cfg.PullPolicy())
-	if err := app.ListenAndServe(&cfg, a.Handler(), a.Shutdown); err != nil {
+	if err := app.ListenAndServe(&cfg, a.Handler(), a.WorkerHandler(), a.Shutdown); err != nil {
 		log.Fatal(err)
 	}
 }

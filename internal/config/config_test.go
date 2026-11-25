@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"silo.agent/internal/llm"
 )
 
 func TestEnvKeyNesting(t *testing.T) {
@@ -71,8 +73,14 @@ func TestLoadSearchEngineDefault(t *testing.T) {
 	if c.MCPStdioImage != DefaultMCPStdioImage() {
 		t.Fatalf("mcp_stdio_image %q", c.MCPStdioImage)
 	}
-	if c.Model != DefaultModel {
-		t.Fatalf("model %q", c.Model)
+	// No model is built in: every one is the operator's choice.
+	if c.Model != "" || c.EmbedModel != "" || c.TranscribeModel() != "" || c.Voice.SpeechModel != "" {
+		t.Fatalf("a model nobody chose: model %q embedding %q transcribe %q speech %q", c.Model, c.EmbedModel, c.TranscribeModel(), c.Voice.SpeechModel)
+	}
+	for _, kind := range llm.Kinds {
+		if got := c.KindModels(kind.ID); len(got) != 0 {
+			t.Fatalf("%s models allowed by default: %q", kind.ID, got)
+		}
 	}
 	if c.Runs.Timeout() != 120*time.Minute {
 		t.Fatalf("runs.max_duration default %v", c.Runs.Timeout())
@@ -245,7 +253,7 @@ func TestValidateRejectsBadProviderAndModel(t *testing.T) {
 }
 
 func TestTranscribeModel(t *testing.T) {
-	if got := (Config{}).TranscribeModel(); got != DefaultTranscribeModel {
+	if got := (Config{}).TranscribeModel(); got != "" {
 		t.Fatalf("unset = %q", got)
 	}
 	if got := (Config{Transcribe: " OFF "}).TranscribeModel(); got != "" {
@@ -263,8 +271,8 @@ func TestTranscribeModel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.Config().TranscribeModel() != DefaultTranscribeModel {
-		t.Fatal("default should load")
+	if s.Config().TranscribeModel() != "" {
+		t.Fatal("a transcription model nobody chose")
 	}
 	if err := s.WriteYAML([]byte("transcribe_model: whisper\n")); err == nil {
 		t.Fatal("a bare model id must be rejected")
@@ -319,7 +327,7 @@ func TestPatchEmptyModelRoleUnsets(t *testing.T) {
 		}
 	}
 	c := s.Config()
-	if c.Model != DefaultModel || c.EmbedModel != DefaultEmbeddingModel || c.ModelTitle != "" {
+	if c.Model != "" || c.EmbedModel != "" || c.ModelTitle != "" {
 		t.Fatalf("model %q embedding %q title %q", c.Model, c.EmbedModel, c.ModelTitle)
 	}
 	if s.Source("model") != SourceDefault {

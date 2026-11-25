@@ -42,6 +42,7 @@ func (s *Service) setEmail(u *db.User, raw string, selfSet bool) error {
 	if email == u.Email && (selfSet || !u.EmailSelfSet) {
 		return nil
 	}
+	defer s.changed()
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var taken int64
 		if err := tx.Model(&db.User{}).Where("lower(email) = ? AND id <> ?", email, u.ID).Count(&taken).Error; err != nil {

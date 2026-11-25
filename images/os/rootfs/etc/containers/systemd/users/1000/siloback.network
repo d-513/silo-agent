@@ -1,0 +1,11 @@
+# Silo's back network: the control plane and what dials it by itself, which
+# the control plane puts here (cp_network): the network filter's gateway and
+# the drive sidecars. A Bot's box is never on it: a box has a network of its
+# own with the gateway, and reaches the control plane through the gateway's
+# forward only.
+#
+# Not internal: it is the gateway's and the sidecars' way out.
+[Network]
+NetworkName=siloback
+Subnet=10.212.1.0/24
+Gateway=10.212.1.1
