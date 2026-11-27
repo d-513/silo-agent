@@ -57,13 +57,13 @@ export function NewRoomPage() {
   return (
     <div className="silo-page silo-page-sm rise">
       <h1 className="mb-2 text-title">{t("New room")}</h1>
-      <p className="mb-6 text-body text-ink-2">{t("A conversation you share with several Bots and people. Every Bot hears what is said there; each keeps its own work, tools and rules.")}</p>
+      <p className="mb-5 text-body text-ink-2">{t("A conversation you share with several Bots and people. Every Bot hears what is said there; each keeps its own work, tools and rules.")}</p>
       <form onSubmit={create}>
         <label htmlFor="room-name" className="mb-1.5 block text-label font-medium text-ink-3">
           {t("Name")}
         </label>
-        <input id="room-name" className={`${inputClass} mb-6`} placeholder={t("Launch plan")} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
-        <section className="mb-6">
+        <input id="room-name" className={`${inputClass} mb-5`} placeholder={t("Launch plan")} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+        <section className="mb-5">
           <h2 className="mb-1 text-row font-medium text-ink">{t("Bots")}</h2>
           <p className="mb-3 text-meta text-ink-2">{t("The Bots you manage in this workspace.")}</p>
           {mine.length === 0 ? (
@@ -80,7 +80,7 @@ export function NewRoomPage() {
           )}
         </section>
         {others.length > 0 ? (
-          <section className="mb-6">
+          <section className="mb-5">
             <h2 className="mb-1 text-row font-medium text-ink">{t("People")}</h2>
             <p className="mb-3 text-meta text-ink-2">{t("Everyone in a room is on every Bot in it: someone who is not on one of yours cannot join.")}</p>
             <div className="flex flex-wrap gap-2">

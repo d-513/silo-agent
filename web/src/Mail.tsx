@@ -79,7 +79,7 @@ export function MailPane({ bot, onError, actions }: { bot: Bot; onError: (s: str
         {box === null ? (
           <SkeletonRows rows={3} height={64} />
         ) : rows.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
+          <div className="flex flex-col items-center gap-2 rounded-card bg-well px-5 py-8 text-center">
             <MailIcon size={20} className="text-ink-3" />
             <p className="text-ink-2">{t("No mail yet.")}</p>
             {box.address ? <p className="max-w-sm text-meta text-ink-3">{t("Anything sent to the address above lands here, usually within a minute.")}</p> : null}

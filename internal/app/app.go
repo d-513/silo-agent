@@ -339,6 +339,12 @@ func New(store *config.Store, gdb *gorm.DB, eng dockerx.Host) *App {
 	a.Skills = skill.New(a.DB, a.Hub, a.cfg, a.Workspace)
 	a.Artifacts = artifact.New(a.DB, a.cfg, a.Workspace, a.Skills, a)
 	a.Channels = channel.New(a.DB, a.cfg, a, a, a.Mask, a.Workspace, a.Voice)
+	a.Channels.Refused = func(ch *db.Channel, who string) {
+		var bot db.Bot
+		if a.DB.First(&bot, "id = ?", ch.BotID).Error == nil {
+			a.audit(&bot, "", "channel", "channels."+ch.Name+": a message from "+who+" was not answered (not on the channel's list)", "deny")
+		}
+	}
 	a.Connectors = connector.New(a.DB, a.Docker, a.Hub, a.Store, a.cfg, a.Workspace, a.Mask, a)
 	a.Drives = drive.New(a.DB, a.Docker, a.Store, a.cfg, a.Connectors, func() *http.Client { return a.DriveHTTP })
 	a.Drives.OnChange = a.Changes.RecordDrive
@@ -748,6 +754,7 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/tunnels/auth", a.Tunnels.ServeAuth)
 	mux.HandleFunc(caddy.AskPath, a.SiloOS.ServeAsk)
 	mux.HandleFunc(mailbox.RawPath, a.Mail.ServeRaw)
+	mux.HandleFunc(channel.HookPath, a.Channels.ServeHook)
 	mux.HandleFunc(account.OIDCStartPath, a.Accounts.ServeOIDCStart)
 	mux.HandleFunc(account.OIDCCallbackPath, a.Accounts.ServeOIDCCallback)
 	// A build that carries the console (the webui tag) serves it under every

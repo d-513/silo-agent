@@ -136,11 +136,7 @@ func (s *Service) ListFeed(ctx context.Context, req *connect.Request[v1.ListFeed
 	var rows []db.FeedPost
 	s.db.Where("bot_id = ?", req.Msg.GetBotId()).Order("created_at desc").Find(&rows)
 	readAt := s.ReadAt(req.Msg.GetBotId(), access.User(ctx).ID)
-	out := &v1.ListFeedResponse{}
-	for i := range rows {
-		out.Posts = append(out.Posts, Proto(&rows[i], readAt))
-	}
-	return connect.NewResponse(out), nil
+	return connect.NewResponse(&v1.ListFeedResponse{Posts: s.protos(rows, readAt)}), nil
 }
 
 func (s *Service) MarkFeedRead(ctx context.Context, req *connect.Request[v1.MarkFeedReadRequest]) (*connect.Response[v1.MarkFeedReadResponse], error) {
@@ -161,9 +157,30 @@ func (s *Service) UnreadPosts(botID, userID string, n int) []*v1.FeedPost {
 	var posts []db.FeedPost
 	readAt := s.ReadAt(botID, userID)
 	unread(s.db.Where("bot_id = ?", botID), readAt).Order("created_at desc").Limit(n).Find(&posts)
+	return s.protos(posts, readAt)
+}
+
+// protos are posts as the UI reads them, each naming the automation whose
+// log it was posted from while that automation still exists.
+func (s *Service) protos(posts []db.FeedPost, readAt *time.Time) []*v1.FeedPost {
+	var chatIDs []string
+	for i := range posts {
+		if posts[i].SourceKind == "automation" && posts[i].ChatID != "" {
+			chatIDs = append(chatIDs, posts[i].ChatID)
+		}
+	}
+	automation := map[string]string{}
+	if len(chatIDs) > 0 {
+		var logs []db.Chat
+		s.db.Select("id", "automation_id").Where("id IN ? AND bot_id = ? AND automation_id <> ''", chatIDs, posts[0].BotID).Find(&logs)
+		for _, c := range logs {
+			automation[c.ID] = c.AutomationID
+		}
+	}
 	out := make([]*v1.FeedPost, len(posts))
 	for i := range posts {
 		out[i] = Proto(&posts[i], readAt)
+		out[i].AutomationId = automation[posts[i].ChatID]
 	}
 	return out
 }

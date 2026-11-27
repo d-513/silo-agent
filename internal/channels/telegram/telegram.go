@@ -657,6 +657,7 @@ func (a *Adapter) onMessage(ch *db.Channel, cfg channels.Config, liveSince int64
 			ExternalID: ref.externalID(),
 			Title:      title,
 			Author:     authorName(uctx, m),
+			AuthorID:   authorID(m),
 			Text:       text,
 			Files:      files,
 		})
@@ -908,6 +909,20 @@ func chatOf(res tg.MessagesDialogsClass, pc tg.PeerClass) string {
 	case *tg.PeerChannel:
 		if c := chats.ChannelToMap()[p.ChannelID]; c != nil {
 			return c.Title
+		}
+	}
+	return ""
+}
+
+// authorID is the sender's Telegram user id, which no name change moves: the
+// one who wrote in a group, or the other side of a private chat.
+func authorID(m *tg.Message) string {
+	if pu, ok := m.FromID.(*tg.PeerUser); ok {
+		return strconv.FormatInt(pu.UserID, 10)
+	}
+	if m.FromID == nil {
+		if p, ok := m.PeerID.(*tg.PeerUser); ok {
+			return strconv.FormatInt(p.UserID, 10)
 		}
 	}
 	return ""

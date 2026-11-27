@@ -273,7 +273,7 @@ type OperatorRule struct {
 type Chat struct {
 	ID string `gorm:"primaryKey"`
 	// ChannelID is empty for a Web UI chat. Non-empty binds the thread to a
-	// channel (Telegram, WhatsApp, Discord, Slack, …) and ExternalID is the adapter's conversation id.
+	// channel (Telegram, WhatsApp, Discord, Slack, Teams, Signal, Matrix, …) and ExternalID is the adapter's conversation id.
 	BotID      string `gorm:"index"`
 	ChannelID  string `gorm:"index"`
 	ExternalID string

@@ -20,9 +20,9 @@ export function AccountPage() {
   // Every panel answers with the account as it now is.
   const setUser = (u: User) => patch(UI.method.me, {}, (prev) => ({ ...prev, user: u }));
   return (
-    <div className="silo-page silo-page-lg pb-12">
-      <h1 className="mb-2 text-title">{t("Account")}</h1>
-      <p className="mb-6 text-ink-2">{t("How you sign in to Silo, and the language you read it in.")}</p>
+    <div className="silo-page">
+      <h1 className="mb-1 text-title">{t("Account")}</h1>
+      <p className="mb-4 text-ink-2">{t("How you sign in to Silo, and the language you read it in.")}</p>
       {me.error ? <ErrorWell className="mb-5">{fail(me.error)}</ErrorWell> : null}
       {!user ? (
         me.error ? null : (

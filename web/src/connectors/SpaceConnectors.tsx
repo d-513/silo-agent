@@ -12,7 +12,6 @@ import { UI, type Connector } from "../gen/silo/v1/ui_pb";
 import { t } from "../i18n.ts";
 import { ErrorWell } from "../Field";
 import { Modal } from "../Modal";
-import { widePage } from "../PageHead";
 import { reload } from "../query";
 import { BotsStep, ChooseBots, useManagedBots } from "./BotPick";
 import { ConnectorToolbar } from "./ConnectorToolbar";
@@ -113,8 +112,8 @@ export function SpaceConnectors() {
   const used = (c: Connector) => c.usedBy.map(nameOf).filter(Boolean);
 
   return (
-    <div className={widePage}>
-      <div className="mb-6 space-y-1.5">
+    <div className="silo-page">
+      <div className="mb-4 space-y-1.5">
         <h1 className="text-title text-ink">{t("Connectors")}</h1>
         <p className="max-w-3xl text-small leading-relaxed text-ink-2">
           {t("Connect a service once for the whole workspace, then choose which Bots can use it. Each Bot keeps its own session and its own rules for it.")}
@@ -146,7 +145,7 @@ export function SpaceConnectors() {
 
       {tab === "space" ? (
         rows.length === 0 ? (
-          <div className="rounded-card border border-dashed border-line bg-surface px-5 py-8 text-center wide:p-12">
+          <div className="rounded-card border border-dashed border-line bg-surface px-5 py-8 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-well text-ink-3">
               <Plug size={28} />
             </div>

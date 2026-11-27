@@ -81,6 +81,10 @@ type Extra struct {
 	Bot *BotFrom
 	// Room marks what a room said, handed to a Bot in its seat.
 	Room *RoomFrom
+	// Sender names who wrote a message that came over a channel, as the
+	// platform shows them. It is frozen on the message's stamp, so a Bot in a
+	// group can tell the people in it apart.
+	Sender string
 }
 
 // RoomFrom is the room a Bot is handed messages from: its title as it was,

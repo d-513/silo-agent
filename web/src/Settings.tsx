@@ -156,9 +156,9 @@ export function SettingsPane({
 
   const over = form.soul.length > 8000;
   return (
-    <div className="silo-page silo-page-wide">
+    <div className="silo-page">
       <h2 className="text-title">{t("General")}</h2>
-      <p className="mb-6 text-ink-2">{t("This Bot only. SOUL is in the prompt and the Bot can edit it too. Memories are on the Memories page.")}</p>
+      <p className="mb-4 text-ink-2">{t("This Bot only. SOUL is in the prompt and the Bot can edit it too. Memories are on the Memories page.")}</p>
       <form
         onSubmit={(e: FormEvent) => {
           e.preventDefault();

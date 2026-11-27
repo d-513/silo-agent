@@ -1586,6 +1586,9 @@ message FeedPost {
   string chat_id = 6;
   string created_at = 7;
   bool read = 8;
+  // AutomationId is the automation whose run posted it, while it still
+  // exists: the page links the post to that automation's log.
+  string automation_id = 9;
 }
 
 message ListFeedRequest {

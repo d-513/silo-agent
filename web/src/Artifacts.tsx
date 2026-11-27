@@ -62,13 +62,13 @@ export function ArtifactsPane({
   }
 
   return (
-    <div className="silo-page pb-12">
+    <div className="silo-page">
       <h2 className="text-title">{t("Artifacts")}</h2>
-      <p className="mb-6 text-ink-2">{t("Files, skills, and apps this Bot has handed you across conversations, newest first.")}</p>
+      <p className="mb-4 text-ink-2">{t("Files, skills, and apps this Bot has handed you across conversations, newest first.")}</p>
       {items === null ? (
         <p className="text-ink-3">{t("Loading\u2026")}</p>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-card bg-well px-5 py-8 text-center">
           <Package size={20} className="text-ink-3" />
           <p className="text-ink-2">{t("No artifacts yet.")}</p>
           <p className="max-w-sm text-meta text-ink-3">{t("When the Bot hands you a file, a skill, or an app with the artifact tool, it is kept here across versions.")}</p>

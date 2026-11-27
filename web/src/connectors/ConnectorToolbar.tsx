@@ -26,7 +26,7 @@ export function ConnectorToolbar<M extends string>({
 }) {
   const first = tab === tabs[0]?.mode;
   return (
-    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <TabPills>
         {tabs.map((x) => (
           <TabPill key={x.mode} on={tab === x.mode} onClick={() => setTab(x.mode)} count={x.count}>

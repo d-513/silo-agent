@@ -143,7 +143,7 @@ function WorkspaceChanges({ botId, data, onError }: { botId: string; data: ListC
         </p>
       ) : null}
       {rows.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-card bg-well px-5 py-8 text-center">
           <GitCompareArrows size={20} className="text-ink-3" />
           <p className="text-ink-2">{t("Nothing has changed yet.")}</p>
           <p className="max-w-sm text-meta text-ink-3">{t("When the Bot, a script it runs, or you change a file in /workspace, the difference shows here.")}</p>
@@ -193,7 +193,7 @@ function DriveJournal({ entries, keep, off }: { entries: DriveChangeEntry[]; kee
   return (
     <>
       {entries.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-card bg-well px-5 py-8 text-center">
           <HardDrive size={20} className="text-ink-3" />
           <p className="text-ink-2">{t("Nothing has been changed on a drive yet.")}</p>
           <p className="max-w-sm text-meta text-ink-3">{t("A file written, deleted or renamed under /workspace/drives is noted here, whatever did it.")}</p>

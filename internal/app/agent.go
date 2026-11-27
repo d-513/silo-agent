@@ -34,6 +34,8 @@ type inboxMsg struct {
 	id   string
 	at   time.Time
 	zone string
+	// from names a non-human sender, as on the written event.
+	from string
 }
 
 // StartRun records a run and launches the agent loop. Callers with a live run
@@ -182,7 +184,7 @@ func (a *App) inject(botID, chatID, runID, text string, ex run.Extra, from strin
 	}
 	id, at, zn := ids.New(), time.Now(), a.botZone(botID)
 	select {
-	case lr.inbox <- inboxMsg{text: text, ex: ex, id: id, at: at, zone: zn}:
+	case lr.inbox <- inboxMsg{text: text, ex: ex, id: id, at: at, zone: zn, from: from}:
 		a.emitUserAt(botID, chatID, runID, id, at, zn, text, ex, from)
 		a.saveLastTask(botID, text)
 		lr.signal("message")
@@ -219,7 +221,8 @@ func (a *App) drainInbox(lr *liveRun, msgs []llm.Message, fold bool) []llm.Messa
 	lr.injecting.Unlock()
 	for _, m := range got {
 		a.DB.Exec("UPDATE run_events SET seq = nextval(pg_get_serial_sequence('run_events', 'seq')) WHERE id = ?", m.id)
-		text := stampUserText(userTurnText(a.kept(lr.botID, m.text), a.userMeta(lr.botID, m.ex)), m.at, m.zone)
+		_, author := a.writerOf(lr.botID, lr.chatID, m.ex, m.from)
+		text := stampAuthored(userTurnText(a.kept(lr.botID, m.text), a.userMeta(lr.botID, m.ex)), m.at, m.zone, author)
 		if n := len(msgs); fold && n > 0 && msgs[n-1].Role == llm.RoleUser {
 			msgs[n-1].Text += "\n\n" + text
 		} else {

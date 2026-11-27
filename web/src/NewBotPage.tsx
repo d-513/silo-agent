@@ -80,13 +80,13 @@ export function NewBotPage() {
   }
   return (
     <div className="silo-page silo-page-sm rise">
-      <h1 className="mb-6 text-title">{t("New Bot")}</h1>
+      <h1 className="mb-4 text-title">{t("New Bot")}</h1>
       <form onSubmit={create}>
         <div className="mb-5 flex flex-col items-center gap-4">
           <Crest index={crest} size={88} />
           <span className="text-label text-ink-3">{t("Pick a crest for this machine")}</span>
         </div>
-        <div className="mb-6">
+        <div className="mb-5">
           <CrestPicker value={crest} onChange={setCrest} />
         </div>
         <label htmlFor="bot-name" className="mb-1.5 block text-label font-medium text-ink-3">
@@ -112,14 +112,14 @@ export function NewBotPage() {
         />
         <p className="mb-4 text-small text-ink-2">{t("A Bot is its own machine. It does not share files with the others.")}</p>
         <ToggleRow
-          className="mb-6 rounded-control bg-well px-3.5 py-3"
+          className="mb-5 rounded-control bg-well px-3.5 py-3"
           label={t("Start with a short interview")}
           hint={t("The Bot asks what you want help with, offers what to connect, and how proactive to be. You can skip any step, or run /onboard later.")}
           on={interview}
           onChange={setInterview}
         />
         {conns.length + drives.length + skills.length > 0 ? (
-          <section className="mb-6">
+          <section className="mb-5">
             <h2 className="mb-1 text-row font-medium text-ink">{t("What it can use")}</h2>
             <p className="mb-3 text-meta text-ink-2">{t("The workspace's connectors, drives and skills. Untick what this Bot should not have; you can change it later in Customize.")}</p>
             <div className="flex flex-wrap gap-2">
@@ -142,7 +142,7 @@ export function NewBotPage() {
           </section>
         ) : null}
         {people.length > 0 ? (
-          <section className="mb-6">
+          <section className="mb-5">
             <h2 className="mb-1 text-row font-medium text-ink">{t("Who can use it")}</h2>
             <p className="mb-3 text-meta text-ink-2">{t("Just you, unless you pick people. Everyone on a Bot shares what it holds: its memory, files and connections.")}</p>
             <div className="flex flex-wrap gap-2">

@@ -6,7 +6,6 @@ import { SaveButton, useSave } from "../Feedback";
 import { ErrorWell, Field, inputClass, textareaClass } from "../Field";
 import { FieldInput } from "../FieldInput";
 import type { Channel, ChannelAdapter, ChannelField } from "../gen/silo/v1/ui_pb";
-import { widePage } from "../PageHead";
 import { Step } from "../Step";
 import { ToggleRow } from "../Switch";
 import { splitPrefill } from "../setup/prefill";
@@ -105,7 +104,7 @@ export function ChannelForm({
   }
 
   return (
-    <div className={widePage}>
+    <div className="silo-page">
       <AdapterHead
         adapter={adapter}
         title={channel ? channel.name : adapter.name}

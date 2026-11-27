@@ -61,8 +61,8 @@ export function SpacePeople() {
   }
 
   return (
-    <div className="silo-page silo-page-wide rise">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="silo-page rise">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-title text-ink">{t("People")}</h2>
           <p className="mt-1 max-w-[560px] text-row leading-[20px] text-ink-2">

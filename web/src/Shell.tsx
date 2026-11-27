@@ -5,7 +5,9 @@ import { preloadMarkdown } from "./mdPlugins";
 import { OfflineBanner } from "./Offline";
 import { type Page } from "./nav/chrome";
 import { NavButton, NavSheet } from "./nav/NavSheet";
+import { isFoldKey, setFolded, toggleFolded, useFolded } from "./nav/navStore";
 import { Sidebar } from "./nav/Sidebar";
+import { SidebarRail } from "./nav/SidebarRail";
 import { SiloMark } from "./SiloMark";
 import { t } from "./i18n.ts";
 import { useWide } from "./useWide";
@@ -36,8 +38,8 @@ function NarrowBar({ page }: { page: Page }) {
   );
 }
 
-// Shell is every signed-in page: the sidebar (a sheet from the left when
-// narrow), and the page beside it.
+// Shell is every signed-in page: the sidebar (folded to a rail of crests when
+// the reader hid it; a sheet from the left when narrow), and the page beside it.
 export function Shell() {
   const { pathname } = useLocation();
   const wide = useWide();
@@ -53,11 +55,29 @@ export function Shell() {
         : "bots";
   // Replies with code are common: fetch the highlighter once the browser is idle.
   useEffect(() => preloadMarkdown(), []);
+  const folded = useFolded();
+  // Ctrl/⌘+B folds the wide sidebar and brings it back.
+  useEffect(() => {
+    if (!wide || page === "admin") return;
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target instanceof HTMLElement ? e.target : null;
+      const typing = !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
+      if (!isFoldKey(e, typing)) return;
+      e.preventDefault();
+      toggleFolded();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [wide, page]);
   return (
     <div className="flex h-dvh overflow-hidden max-wide:flex-col">
       {page === "admin" ? null : wide ? (
         // Admin draws a sidebar of its own (AdminLayout).
-        <Sidebar page={page} activeBotId={activeBotId} activeRoomId={activeRoomId} />
+        folded ? (
+          <SidebarRail page={page} activeBotId={activeBotId} onOpen={() => setFolded(false)} />
+        ) : (
+          <Sidebar page={page} activeBotId={activeBotId} activeRoomId={activeRoomId} onFold={() => setFolded(true)} />
+        )
       ) : activeBotId || activeRoomId ? null : (
         // A Bot page carries its own top bar, which opens the same sheet.
         <NarrowBar page={page} />

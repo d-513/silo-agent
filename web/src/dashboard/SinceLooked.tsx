@@ -8,6 +8,7 @@ import { t } from "../i18n.ts";
 import { Md } from "../Md";
 import { apart } from "../links";
 import { sourceLabel } from "../sources";
+import { summary } from "../feedView";
 
 // SinceLooked is the Feed's new posts, shown on the Dashboard for the visit
 // that read them: the server marks them read when the page opens, and they
@@ -29,6 +30,7 @@ export function SinceLooked({ botId, posts, onQuote }: { botId: string; posts: F
         {posts.map((p) => {
           const on = open === p.id;
           const src = sourceLabel(p.sourceKind, p.sourceName);
+          const { head, rest } = summary(p);
           return (
             <li key={p.id} className={`rounded-control transition-colors duration-[160ms] ${on ? "bg-well" : "hover:bg-well"}`}>
               <button
@@ -40,11 +42,11 @@ export function SinceLooked({ botId, posts, onQuote }: { botId: string; posts: F
                 <span aria-label={t("New")} className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-cobalt" />
                 <span className="min-w-0 flex-1">
                   <span className="flex min-w-0 items-baseline gap-2.5 text-small">
-                    <span className="truncate font-medium text-ink">{p.title || t("Post")}</span>
+                    <span className="truncate font-medium text-ink">{head || t("Post")}</span>
                     {src ? <span className="hidden shrink-0 truncate font-mono text-label text-ink-3 sm:inline">{src}</span> : null}
                     <span className="ml-auto shrink-0 font-mono text-label text-ink-3">{feedStamp(p.createdAt)}</span>
                   </span>
-                  {!on ? <span className="mt-px block truncate text-meta text-ink-3">{p.body.replace(/[#*_`>]/g, "").slice(0, 200)}</span> : null}
+                  {!on && rest ? <span className="mt-px block truncate text-meta text-ink-3">{rest}</span> : null}
                 </span>
                 <ChevronRight size={14} className={`mt-[3px] shrink-0 text-ink-3 transition-transform duration-[260ms] ease-quiet ${on ? "rotate-90" : ""}`} />
               </button>

@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Phone, Plus, Settings2 } from "lucide-react";
-import { useMemo } from "react";
+import { PanelLeftClose, Phone, Plus, Settings2 } from "lucide-react";
+import { useMemo, type ReactNode } from "react";
 import { ActivityStrip } from "../bot/ActivityStrip";
 import { useHeard } from "../bot/heardStore";
 import { ActiveBar, UnreadBadge } from "../bot/SideNav";
@@ -20,14 +20,28 @@ import { Tip, TipTitle } from "../Tip";
 import { RoomList } from "../room/RoomList";
 import { byLastMessage, shortWhen } from "./botOrder";
 import { AccountControls, hit, type Page } from "./chrome";
-import { closeNav } from "./navStore";
+import { closeNav, foldHint } from "./navStore";
 
 // Sidebar is the wide layout's left column, on every signed-in page: Silo,
 // the Workspace the console is in (its name opens the switcher, the gear its
 // settings), that Workspace's Bots as a list of conversations (the newest
 // message first, each with its Call), its rooms, and the account at the foot. Below 960
-// it is the left sheet (NavSheet), at the sheet's width.
-export function Sidebar({ page, activeBotId, activeRoomId, className = "w-[280px]" }: { page: Page; activeBotId?: string; activeRoomId?: string; className?: string }) {
+// it is the left sheet (NavSheet), at the sheet's width. From 960 up the head
+// folds it to a rail of crests (SidebarRail), which the reader's browser keeps.
+export function Sidebar({
+  page,
+  activeBotId,
+  activeRoomId,
+  className = "w-[280px]",
+  onFold,
+}: {
+  page: Page;
+  activeBotId?: string;
+  activeRoomId?: string;
+  className?: string;
+  /** Folds the sidebar to its rail (SidebarRail): the wide layout only. */
+  onFold?: () => void;
+}) {
   const { bots, callEnabled } = useBots();
   const { space, spaces } = useCurrentSpace();
   const { pathname } = useLocation();
@@ -46,7 +60,15 @@ export function Sidebar({ page, activeBotId, activeRoomId, className = "w-[280px
 
   return (
     <aside className={`flex shrink-0 flex-col bg-well ${className}`} aria-label={"Silo"}>
-      <SidebarHead />
+      <SidebarHead>
+        {onFold ? (
+          <Tip content={<TipTitle aside={foldHint()}>{t("Hide the sidebar")}</TipTitle>}>
+            <button type="button" onClick={onFold} aria-label={t("Hide the sidebar")} aria-expanded className={hit(false)}>
+              <PanelLeftClose size={17} />
+            </button>
+          </Tip>
+        ) : null}
+      </SidebarHead>
       <div className="flex shrink-0 items-center gap-1 px-2">
         <SpaceSwitch space={space} spaces={spaces} />
         {space ? (
@@ -89,11 +111,12 @@ export function Sidebar({ page, activeBotId, activeRoomId, className = "w-[280px
 
 // SidebarHead is Silo's mark and name at the top of a sidebar (Admin has
 // one of its own).
-export function SidebarHead() {
+export function SidebarHead({ children }: { children?: ReactNode }) {
   return (
-    <div className="flex h-14 shrink-0 items-center gap-2.5 px-4">
+    <div className="flex h-14 shrink-0 items-center gap-2.5 pr-2 pl-4">
       <SiloMark className="h-7 w-7" />
-      <span className="text-card-title text-ink">{"Silo"}</span>
+      <span className="min-w-0 flex-1 text-card-title text-ink">{"Silo"}</span>
+      {children}
     </div>
   );
 }

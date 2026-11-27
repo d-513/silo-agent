@@ -28,11 +28,11 @@ export function RunsPane({ bot, onError }: { bot: Bot; onError: (s: string) => v
   const [view, setView] = useState<"runs" | "background">("runs");
   useEffect(() => setView("runs"), [bot.id]);
   return (
-    <div className="silo-page pb-12">
+    <div className="silo-page">
       <div className="mb-1 flex items-center gap-2.5">
         <h2 className="text-title text-ink">{t("Runs")}</h2>
       </div>
-      <p className="mb-5 text-ink-2">
+      <p className="mb-4 text-ink-2">
         {t("Everything {{name}} did: each time it worked, what started it, what it used and what it cost. Only its managers see this.", { name: bot.name })}
       </p>
       <div className="mb-5 flex">
@@ -86,7 +86,7 @@ function RunList({ bot, onError }: { bot: Bot; onError: (s: string) => void }) {
         </div>
       ) : null}
       {runs.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-card bg-well px-5 py-8 text-center">
           <ListTree size={20} className="text-ink-3" />
           <p className="text-ink-2">{t("No runs yet")}</p>
           <p className="max-w-sm text-meta text-ink-3">{t("A run is listed here each time {{name}} works: a reply, an automation, a subagent, its housekeeping.", { name: bot.name })}</p>
@@ -355,7 +355,7 @@ function Background({ botId, onError }: { botId: string; onError: (s: string) =>
         {since && !Number.isNaN(since.getTime()) ? ` ${t("Listed since the server started, {{when}}.", { when: fullTime(since) })}` : ""}
       </p>
       {calls.length === 0 ? (
-        <div className="rounded-card bg-well px-6 py-10 text-center text-ink-2">{t("Nothing in the background yet.")}</div>
+        <div className="rounded-card bg-well px-5 py-8 text-center text-ink-2">{t("Nothing in the background yet.")}</div>
       ) : (
         <ul className="rounded-card bg-surface px-4 py-2 shadow-card">
           {calls.map((c, i) => (

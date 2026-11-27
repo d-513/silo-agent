@@ -53,7 +53,7 @@ export function LibraryTab({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-card shadow-card bg-surface p-8 text-center text-ink-3">
+        <div className="rounded-card shadow-card bg-surface px-5 py-8 text-center text-ink-3">
           <p className="text-small">{t("No catalog connectors found matching your criteria.")}</p>
           <button
             type="button"

@@ -268,9 +268,9 @@ export function KnowledgePane({ bot, onError, onStart }: { bot: Bot; onError: (s
   }
 
   return (
-    <div className="silo-page pb-12">
+    <div className="silo-page">
       <h2 className="text-title">{t("Knowledge")}</h2>
-      <p className="mb-6 text-ink-2">
+      <p className="mb-4 text-ink-2">
         {t("Pick folders of documents and the Bot can search them by meaning and by exact words, with the file and page cited. Files stay on the Bot's machine; only their text and an embedding are kept in the control plane.")}
       </p>
       {!enabled && <p className="mb-4 text-small text-vermilion">{t("The operator turned knowledge off (knowledge.enabled), so nothing new is indexed and the Bot has no search_docs tool.")}</p>}

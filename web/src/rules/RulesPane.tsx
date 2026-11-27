@@ -28,7 +28,7 @@ export function RulesPane({ botId }: { botId: string }) {
   const output = side === "output";
 
   return (
-    <div className="silo-page silo-page-wide">
+    <div className="silo-page">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
         <div>
           <h2 className="text-title text-ink">{t("Rules")}</h2>
@@ -98,7 +98,7 @@ export function RulesPane({ botId }: { botId: string }) {
       {!loaded && !err ? <SkeletonRows rows={4} height={52} /> : null}
 
       {loaded && visible.length === 0 && (
-        <div className="rounded-card border border-dashed border-line bg-surface p-8 text-center text-ink-3">
+        <div className="rounded-card border border-dashed border-line bg-surface px-5 py-8 text-center text-ink-3">
           {t("No matching rules found for “{{filter}}”", { filter })}
         </div>
       )}

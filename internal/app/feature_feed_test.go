@@ -105,6 +105,18 @@ func TestFeedPostFromAutomation(t *testing.T) {
 	if len(posts) != 1 || posts[0].GetSourceKind() != "automation" || posts[0].GetSourceName() != "Nightly check" {
 		t.Fatalf("posts %v\n%s", posts, h.RunBody(res.Msg.GetRunId()))
 	}
+	// The post names its automation, so the page can open that log; once the
+	// automation is gone the post stays and names none.
+	if posts[0].GetAutomationId() != au.GetId() {
+		t.Fatalf("automation id %q, want %q", posts[0].GetAutomationId(), au.GetId())
+	}
+	if _, err := h.Client.DeleteAutomation(h.Ctx(), connect.NewRequest(&v1.DeleteAutomationRequest{BotId: bot.GetId(), Id: au.GetId()})); err != nil {
+		t.Fatal(err)
+	}
+	posts = listFeed(t, h, bot.GetId())
+	if len(posts) != 1 || posts[0].GetAutomationId() != "" || posts[0].GetSourceName() != "Nightly check" {
+		t.Fatalf("after the automation was deleted: %v", posts)
+	}
 }
 
 func TestFeedQuoteStartsChatWithPostInContext(t *testing.T) {

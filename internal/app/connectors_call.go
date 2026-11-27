@@ -135,6 +135,8 @@ func (a *App) AuthorizeAction(ctx context.Context, bot *db.Bot, runID, conn, act
 			return "", err
 		}
 		a.Emit(bot.ID, a.ChatOfRun(runID), runID, "approval", ap.ID, conn+"."+action)
+		// On a channel nobody sees the slip: the conversation is told it waits.
+		a.Channels.NeedsApproval(bot.ID, a.ChatOfRun(runID))
 		var dec string
 		select {
 		case <-ctx.Done():

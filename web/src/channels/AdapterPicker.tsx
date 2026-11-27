@@ -4,7 +4,7 @@ import { useQuery } from "@connectrpc/connect-query";
 import { useNavigate } from "@tanstack/react-router";
 import { btnClass } from "../Btn";
 import { UI, type ChannelAdapter } from "../gen/silo/v1/ui_pb";
-import { PageHead, widePage } from "../PageHead";
+import { PageHead } from "../PageHead";
 import { ToolbarSearch } from "../ToolbarSearch";
 import { AdapterLogo } from "./AdapterLogo";
 import { adapterPoints, adapterTraits, filterAdapters } from "./model";
@@ -24,8 +24,8 @@ function AdapterCard({ a, count, onAdd }: { a: ChannelAdapter; count: number; on
       />
       <div className="relative flex flex-1 flex-col gap-4 p-6">
         <div className="flex items-start justify-between gap-3">
-          <div className="rounded-card bg-surface p-2 shadow-card">
-            <AdapterLogo adapter={a} size={56} />
+          <div className="rounded-full shadow-card">
+            <AdapterLogo adapter={a} size={64} />
           </div>
           {count > 0 ? (
             <span className="mt-1 inline-flex items-center gap-1 text-micro font-medium text-emerald">
@@ -89,11 +89,11 @@ export function AdapterPicker({
   const [search, setSearch] = useState("");
   const shown = useMemo(() => filterAdapters(adapters, search), [adapters, search]);
   return (
-    <div className={widePage}>
+    <div className="silo-page">
       <PageHead title={t("Add a channel")} subtitle={t("Pick the app you want to talk to this Bot from.")} onBack={onBack} />
 
       {adapters.length > searchable ? (
-        <div className="mb-6">
+        <div className="mb-4">
           <ToolbarSearch value={search} onChange={setSearch} placeholder={t("Search channels...")} className="sm:w-80" />
         </div>
       ) : null}
@@ -105,9 +105,9 @@ export function AdapterPicker({
           ))}
         </div>
       ) : adapters.length === 0 ? (
-        <div className="rounded-card border border-dashed border-line bg-surface px-5 py-8 text-center wide:p-12 text-ink-3">{t("No channel adapters available on this system.")}</div>
+        <div className="rounded-card border border-dashed border-line bg-surface px-5 py-8 text-center text-ink-3">{t("No channel adapters available on this system.")}</div>
       ) : shown.length === 0 ? (
-        <div className="rounded-card bg-surface p-8 text-center text-ink-3 shadow-card">
+        <div className="rounded-card bg-surface px-5 py-8 text-center text-ink-3 shadow-card">
           <p className="text-small">{t("No channels match “{{search}}”.", { search })}</p>
           <button type="button" className="mt-2 text-label font-medium text-cobalt hover:underline" onClick={() => setSearch("")}>
             {t("Clear search")}

@@ -61,7 +61,7 @@ export function DriveForm({
 
 
   return (
-    <div className="silo-page">
+    <div className="silo-page silo-page-sm">
       <PageHead title={editing ? drive!.name : tpl.title} subtitle={editing ? tpl.title : tpl.blurb} mark={<DriveMark svg={tpl.iconSvg} size={44} />} onBack={onDone} />
 
       {!editing && tpl.guide ? (

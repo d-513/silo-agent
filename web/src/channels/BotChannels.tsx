@@ -6,7 +6,7 @@ import { btnClass } from "../Btn";
 import { fail } from "../errors";
 import { ErrorWell } from "../Field";
 import { UI, type Channel, type ChannelAdapter } from "../gen/silo/v1/ui_pb";
-import { PageHead, widePage } from "../PageHead";
+import { PageHead } from "../PageHead";
 import { reload } from "../query";
 import { AdapterLogo } from "./AdapterLogo";
 import { AdapterPicker } from "./AdapterPicker";
@@ -22,7 +22,7 @@ const noChannels: Channel[] = [];
 
 function Opening({ onBack }: { onBack: () => void }) {
   return (
-    <div className={widePage}>
+    <div className="silo-page">
       <PageHead title={t("Channels")} onBack={onBack} />
       <p className="text-ink-2 text-small">{t("Opening…")}</p>
     </div>
@@ -99,15 +99,15 @@ export function ChannelsList({ botId }: { botId: string }) {
   const [log, setLog] = useState<Channel | null>(null);
 
   return (
-    <div className={widePage}>
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="silo-page">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2.5">
             <h1 className="text-title text-ink">{t("Channels")}</h1>
             {loaded ? <Count n={channels.length} /> : null}
           </div>
           <p className="max-w-3xl text-small leading-relaxed text-ink-2">
-            {t("Channels let you talk to this Bot from chat apps like Telegram, WhatsApp, Discord or Slack. Each one binds an adapter to a single conversation: the Bot answers there, and can send to it from its tools.")}
+            {t("Channels let you talk to this Bot from where you already talk: Telegram, WhatsApp, Discord, Slack, Teams, Signal, Matrix, Mattermost or email. Each one binds an adapter to a single conversation: the Bot answers there, and can send to it from its tools.")}
           </p>
         </div>
 
@@ -126,7 +126,7 @@ export function ChannelsList({ botId }: { botId: string }) {
           ))}
         </div>
       ) : channels.length === 0 ? (
-        <div className="rounded-card border border-dashed border-line bg-surface px-6 py-12 text-center">
+        <div className="rounded-card border border-dashed border-line bg-surface px-5 py-8 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-well text-ink-3">
             <Radio size={28} />
           </div>

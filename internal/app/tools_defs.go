@@ -563,7 +563,7 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "offer_setup",
-			Description: "Offer the owner something to add from Silo's catalog, as a card in this chat with its logo: a library connector (target = its identifier: email, calendar, gmail, github, …), a channel (telegram, whatsapp, discord, slack) or a drive (gdrive, onedrive, dropbox, …). They open Silo's own form with the options you fill in and submit it; you are told when they set it up or skip it. Give only the target for the form's defaults. Offer several at once when they fit (they show side by side), and say in your message what they are for; then let the owner answer on the cards.",
+			Description: "Offer the owner something to add from Silo's catalog, as a card in this chat with its logo: a library connector (target = its identifier: email, calendar, gmail, github, …), a channel (telegram, whatsapp, discord, slack, teams, signal, matrix, mattermost, or email as a conversation by mail) or a drive (gdrive, onedrive, dropbox, …). They open Silo's own form with the options you fill in and submit it; you are told when they set it up or skip it. Give only the target for the form's defaults. Offer several at once when they fit (they show side by side), and say in your message what they are for; then let the owner answer on the cards.",
 			Params: tool.Object(map[string]any{
 				"kind":    map[string]any{"type": "string", "enum": []string{"connector", "channel", "drive"}},
 				"target":  map[string]any{"type": "string", "description": "library identifier, channel adapter or drive provider"},
@@ -772,7 +772,7 @@ func (a *App) toolDefs() []tool.Def {
 		},
 		{
 			Name:        "channel",
-			Description: "Send a message to one of this Bot's channels (Telegram, WhatsApp, Discord, Slack, …). Defaults to the channel this conversation came from; pass channel to send to a different one. A channel is bound to one chat, so there is no destination to choose.",
+			Description: "Send a message to one of this Bot's channels (Telegram, WhatsApp, Discord, Slack, Teams, Signal, Matrix, Mattermost, email, …). Defaults to the channel this conversation came from; pass channel to send to a different one. A channel is bound to one chat, so there is no destination to choose.",
 			Params: tool.Object(map[string]any{
 				"channel": map[string]any{"type": "string", "description": "channel name; omit for the current channel"},
 				"text":    map[string]any{"type": "string"},

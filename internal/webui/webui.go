@@ -73,7 +73,7 @@ func New(fsys fs.FS) http.Handler {
 
 // apiPrefixes are the control plane's own path families. A path under one
 // that reached this handler matched no route, and is an error, not a page.
-var apiPrefixes = []string{"silo.v1.", "caddy/", "assets/", "vad/", "oauth/", "auth/", "voice/", "tunnels/", "mail/", "connectors/", "artifacts/"}
+var apiPrefixes = []string{"silo.v1.", "caddy/", "assets/", "vad/", "oauth/", "auth/", "voice/", "tunnels/", "mail/", "connectors/", "artifacts/", "channels/hook/"}
 
 // page reports whether a path with no file behind it is one of the console's
 // own addresses: no extension, and not under an API prefix.

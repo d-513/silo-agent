@@ -96,7 +96,7 @@ export function TunnelsPane({ botId }: { botId: string }) {
   const full = data ? rows.length >= data.max : false;
 
   return (
-    <div className="silo-page silo-page-wide">
+    <div className="silo-page">
       <h2 className="text-title">{t("Tunnels & Links")}</h2>
       <p className="mb-5 mt-1 text-row leading-[20px] text-ink-2">
         {t("Addresses for services running on this Bot's machine. A private tunnel opens for you, signed in to Silo; a public one opens for anyone with the link. The Bot can open tunnels too.")}
@@ -150,7 +150,7 @@ export function TunnelsPane({ botId }: { botId: string }) {
       {data === null ? (
         <SkeletonRows rows={2} height={84} />
       ) : rows.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-card bg-well px-5 py-8 text-center">
           <Globe size={20} className="text-ink-3" />
           <p className="text-ink-2">{t("No tunnels yet.")}</p>
           <p className="max-w-sm text-meta text-ink-3">{t("Start a service on the Bot's machine, then add its port here, or ask the Bot to open one.")}</p>
@@ -201,14 +201,14 @@ export function TunnelsPane({ botId }: { botId: string }) {
         </ul>
       )}
 
-      <h2 className="mt-10 text-title">{t("Shared links")}</h2>
+      <h2 className="mt-7 text-title">{t("Shared links")}</h2>
       <p className="mb-5 mt-1 text-row leading-[20px] text-ink-2">
         {t("Public links you created from artifact cards. Each link stays pinned to the version you shared and works while the Bot is stopped.")}
       </p>
       {sq.data === undefined ? (
         <SkeletonRows rows={1} height={76} />
       ) : shares.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-10 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-card bg-well px-5 py-8 text-center">
           <Link2 size={20} className="text-ink-3" />
           <p className="text-ink-2">{t("No shared links yet.")}</p>
           <p className="max-w-sm text-meta text-ink-3">{t("Use Share on a file or app artifact card in a chat to create a public link.")}</p>

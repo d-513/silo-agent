@@ -180,12 +180,12 @@ export function MemoriesPane({ bot, onError }: { bot: Bot; onError: (s: string) 
   const rows = searchMode ? hits : shown;
 
   return (
-    <div className="silo-page pb-12">
+    <div className="silo-page">
       <div className="mb-1 flex items-center gap-2.5">
         <h2 className="text-title text-ink">{t("Memories")}</h2>
         {live > 0 ? <Count n={live} /> : null}
       </div>
-      <p className="mb-6 text-ink-2">
+      <p className="mb-4 text-ink-2">
         {t("What the Bot keeps across conversations: facts, how you want things done, what it learned works, and what it was last working on. It is told your preferences, its lessons and its most recent work every time, and the facts in full while they are few, as a summary once they are many.")}
       </p>
 
@@ -213,7 +213,7 @@ export function MemoriesPane({ bot, onError }: { bot: Bot; onError: (s: string) 
       {rows === null ? (
         <SkeletonRows rows={4} height={64} />
       ) : !searchMode && all !== null && all.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-card bg-well px-6 py-12 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-card bg-well px-5 py-8 text-center">
           <Brain size={20} className="text-ink-3" />
           <p className="text-ink-2">{t("No memories yet")}</p>
           <p className="max-w-sm text-meta text-ink-3">
@@ -221,7 +221,7 @@ export function MemoriesPane({ bot, onError }: { bot: Bot; onError: (s: string) 
           </p>
         </div>
       ) : rows.length === 0 ? (
-        <div className="rounded-card bg-surface px-6 py-10 text-center text-ink-3 shadow-card">
+        <div className="rounded-card bg-surface px-5 py-8 text-center text-ink-3 shadow-card">
           <p className="text-row text-ink-2">{searchErr ? t("Search failed.") : t("Nothing matches.")}</p>
           <button
             type="button"

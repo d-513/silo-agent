@@ -91,7 +91,7 @@ export function Panel({
   );
 }
 
-// SettingGroup is one block of a settings page (silo-page-wide): its title and
+// SettingGroup is one block of a settings page (silo-page): its title and
 // note in a column of their own beside the card once the page is wide, above
 // it otherwise. The card holds SettingRows, one line between each.
 export function SettingGroup({
@@ -108,7 +108,7 @@ export function SettingGroup({
   return (
     <section
       data-tone={tone}
-      className="grid gap-3 py-6 shadow-[inset_0_1px_0_var(--color-line)] first:pt-0 first:shadow-none @4xl/page:grid-cols-[220px_minmax(0,1fr)] @4xl/page:gap-8"
+      className="grid gap-3 py-5 shadow-[inset_0_1px_0_var(--color-line)] first:pt-0 first:shadow-none @4xl/page:grid-cols-[220px_minmax(0,1fr)] @4xl/page:gap-8"
     >
       <header className="min-w-0 @4xl/page:pt-3.5">
         <h3 className={`text-card-title leading-5 ${tone === "danger" ? "text-vermilion" : "text-ink"}`}>{title}</h3>

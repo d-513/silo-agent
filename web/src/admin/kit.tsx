@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 /** AdminHead opens an admin page: its name, one sentence, and at the end a figure or the page's action. */
 export function AdminHead({ title, note, aside, children }: { title: string; note?: ReactNode; aside?: ReactNode; children?: ReactNode }) {
   return (
-    <header className="mb-7">
+    <header className="mb-5">
       <div className="flex items-start gap-6">
         <div className="min-w-0 flex-1">
           <h2 className="text-title text-ink">{title}</h2>
@@ -34,7 +34,7 @@ export function Figure({ label, warn, children }: { label: string; warn?: boolea
 
 /** Groups stacks a page's groups at one distance. */
 export function Groups({ children }: { children: ReactNode }) {
-  return <div className="grid gap-8">{children}</div>;
+  return <div className="grid gap-6">{children}</div>;
 }
 
 /**

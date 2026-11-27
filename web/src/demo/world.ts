@@ -238,10 +238,10 @@ export const widgets: Widget[] = [
 ];
 
 export const posts: Post[] = [
-  { id: "p1", botId: ATLAS, title: "Two quotes came in overnight", body: "**Kestrel Print** quoted €0.41 a unit at 2,000 and **Fold & Co** €0.47. Both are in `vendors/quotes.csv`; the comparison is updated.", sourceKind: "automation", sourceName: "Heartbeat", createdAt: ago(200), read: false },
-  { id: "p2", botId: ATLAS, title: "Proofing tool is slow again", body: "Response time has been over 2 s since 07:40. Nothing is down. I'll post again if it clears or gets worse.", sourceKind: "automation", sourceName: "Heartbeat", createdAt: ago(380), read: true },
+  { id: "p1", botId: ATLAS, title: "Two quotes came in overnight", body: "**Kestrel Print** quoted €0.41 a unit at 2,000 and **Fold & Co** €0.47. Both are in `vendors/quotes.csv`; the comparison is updated.", sourceKind: "automation", sourceName: "Heartbeat", automationId: "a-heart", createdAt: ago(200), read: false },
+  { id: "p2", botId: ATLAS, title: "Proofing tool is slow again", body: "Response time has been over 2 s since 07:40. Nothing is down. I'll post again if it clears or gets worse.", sourceKind: "automation", sourceName: "Heartbeat", automationId: "a-heart", createdAt: ago(380), read: true },
   { id: "p3", botId: ATLAS, title: "", body: "Booked **The Quay** for the trade fair, two nights, free to cancel until the 3rd. The confirmation is in `trade-fair/`.", sourceKind: "chat", sourceName: "Trade fair travel", chatId: "atlas-fair", createdAt: ago(60 * 5), read: true },
-  { id: "p4", botId: SCOUT, title: "Morning brief", body: "Two price changes and one new competitor.\n\n- **Papyrus Lab** dropped A5 flyers by 6%.\n- **Inkwell** now charges for proofs.\n- New: **Grainline**, recycled stock only, launching next month.", sourceKind: "automation", sourceName: "Morning brief", createdAt: ago(60 * 26), read: false },
+  { id: "p4", botId: SCOUT, title: "Morning brief", body: "Two price changes and one new competitor.\n\n- **Papyrus Lab** dropped A5 flyers by 6%.\n- **Inkwell** now charges for proofs.\n- New: **Grainline**, recycled stock only, launching next month.", sourceKind: "automation", sourceName: "Morning brief", automationId: "a-brief", createdAt: ago(60 * 26), read: false },
 ];
 
 const mem = (id: string, kind: string, content: string, days: number, more: Partial<Memory> = {}): Memory => ({ id, botId: ATLAS, kind, content, status: "active", createdAt: ago(days * 1440), lastUsedAt: ago(days * 300), useCount: 3, ...more });

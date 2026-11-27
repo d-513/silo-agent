@@ -483,6 +483,7 @@ func (a *Adapter) onMessage(ctx context.Context, ch *db.Channel, cfg channels.Co
 		ExternalID: m.channel,
 		Title:      a.title(ctx, c, ch.ID, m.channel),
 		Author:     a.userName(ctx, c, ch.ID, m.user),
+		AuthorID:   m.user,
 		Text:       text,
 		ReplyTo:    reply,
 		Files:      files,

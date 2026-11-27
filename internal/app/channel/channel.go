@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -30,7 +31,12 @@ import (
 
 	// Register built-in adapters.
 	_ "silo.agent/internal/channels/discord"
+	_ "silo.agent/internal/channels/email"
+	_ "silo.agent/internal/channels/matrix"
+	_ "silo.agent/internal/channels/mattermost"
+	_ "silo.agent/internal/channels/signal"
 	_ "silo.agent/internal/channels/slack"
+	_ "silo.agent/internal/channels/teams"
 	_ "silo.agent/internal/channels/telegram"
 	_ "silo.agent/internal/channels/whatsapp"
 	"silo.agent/internal/db"
@@ -66,7 +72,15 @@ type Service struct {
 	lanes   lanes
 	typing  typists
 	replies replies
+	told    told
+	refused refusals
+
+	// Refused, when set, notes a message the channel did not answer because
+	// its sender is not on the channel's list (the App files it in the Audit).
+	Refused func(ch *db.Channel, who string)
 }
+
+func (s *Service) logf(format string, args ...any) { log.Printf(format, args...) }
 
 func New(gdb *gorm.DB, cfg func() config.Config, e run.Engine, h Host, mask func(botID string) *masker.Masker, ws *workspace.Service, v *voice.Service) *Service {
 	return &Service{db: gdb, cfg: cfg, engine: e, host: h, mask: mask, ws: ws, voice: v,
@@ -133,7 +147,7 @@ func (s *Service) All(botID string) []db.Channel {
 
 // channelConfig resolves non-secret config plus decrypted secret fields.
 func (s *Service) channelConfig(ch *db.Channel) channels.Config {
-	cfg := channels.Config{Values: map[string]string{}}
+	cfg := channels.Config{Values: map[string]string{}, Net: s.cfg().OutboundPolicy(), HookURL: s.hookURL(ch.ID)}
 	if strings.TrimSpace(ch.ConfigJSON) != "" {
 		_ = json.Unmarshal([]byte(ch.ConfigJSON), &cfg.Values)
 	}
@@ -186,13 +200,16 @@ func (s *Service) channelSecretsSet(ch *db.Channel) []string {
 func (s *Service) saveChannelConfig(ch *db.Channel, ad channels.Adapter, config, secrets map[string]string) error {
 	desc := ad.Descriptor()
 	values := map[string]string{}
-	for _, f := range desc.Fields {
+	for _, f := range s.fieldsOf(desc) {
 		if f.Type == channels.FieldSecret {
 			continue
 		}
 		if v, ok := config[f.Key]; ok {
 			values[f.Key] = v
 		}
+	}
+	if err := s.checkHostConfig(values); err != nil {
+		return err
 	}
 	if len(values) > 0 {
 		b, err := json.Marshal(values)
@@ -540,6 +557,10 @@ func (s *Service) deliverInbound(ctx context.Context, ch *db.Channel, in channel
 	if external == "" {
 		return nil
 	}
+	if !answers(allowList(ch), in) {
+		s.refuse(ch, in)
+		return nil
+	}
 	c, err := s.findOrCreateConversation(ch, external, in.Title)
 	if err != nil {
 		return err
@@ -571,7 +592,7 @@ func (s *Service) hand(ch *db.Channel, c *db.Chat, external string, in channels.
 		}
 		return nil
 	}
-	text, ex := in.Text, run.Extra{}
+	text, ex := in.Text, run.Extra{Sender: in.Author}
 	if len(in.Files) > 0 {
 		text, ex.Files = s.readFiles(ch.BotID, in)
 	}
@@ -596,7 +617,7 @@ func (s *Service) findOrCreateConversation(ch *db.Channel, external, title strin
 	}
 	c = db.Chat{
 		ID: ids.New(), BotID: ch.BotID, ChannelID: ch.ID, ExternalID: external,
-		Title: title, CreatedAt: time.Now(), UpdatedAt: time.Now(),
+		Title: title, Model: s.channelModel(ch), CreatedAt: time.Now(), UpdatedAt: time.Now(),
 	}
 	if err := s.db.Create(&c).Error; err != nil {
 		return nil, err
@@ -617,9 +638,11 @@ func protoChannelField(f channels.Field) *v1.ChannelField {
 	return out
 }
 
-func protoChannelAdapter(d channels.Descriptor) *v1.ChannelAdapter {
+// protoChannelAdapter is an adapter as the form draws it: fields are its own
+// followed by the host's (Service.fieldsOf).
+func protoChannelAdapter(d channels.Descriptor, fields []channels.Field) *v1.ChannelAdapter {
 	out := &v1.ChannelAdapter{Slug: d.Slug, Name: d.Name, Description: d.Description, Logo: d.Logo, Guide: d.Guide, RequiresTarget: d.RequiresTarget}
-	for _, f := range d.Fields {
+	for _, f := range fields {
 		out.Fields = append(out.Fields, protoChannelField(f))
 	}
 	for _, a := range d.Actions {
@@ -667,7 +690,7 @@ func (s *Service) ListChannelAdapters(ctx context.Context, _ *connect.Request[v1
 	}
 	out := &v1.ListChannelAdaptersResponse{}
 	for _, d := range channels.Descriptors() {
-		out.Adapters = append(out.Adapters, protoChannelAdapter(d))
+		out.Adapters = append(out.Adapters, protoChannelAdapter(d, s.fieldsOf(d)))
 	}
 	return connect.NewResponse(out), nil
 }
@@ -741,8 +764,13 @@ func (s *Service) UpdateChannel(ctx context.Context, req *connect.Request[v1.Upd
 		ch.ExternalID = next
 	}
 	ch.TargetTitle = strings.TrimSpace(req.Msg.GetTargetTitle())
+	modelWas := s.channelModel(&ch)
 	if err := s.saveChannelConfig(&ch, ad, req.Msg.GetConfig(), req.Msg.GetSecrets()); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	// A new model for the channel is the model of the conversations it has.
+	if m := s.channelModel(&ch); m != modelWas {
+		s.db.Model(&db.Chat{}).Where("bot_id = ? AND channel_id = ?", ch.BotID, ch.ID).Update("model", m)
 	}
 	// Only the columns this edits: the adapter writes state_json and the
 	// status while it runs (WhatsApp's paired JID is there), and a whole-row
@@ -919,4 +947,42 @@ func ConversationPrompt(ch *db.Channel) string {
 	}
 	b.WriteString(strings.TrimSpace(prompts.Channel))
 	return b.String()
+}
+
+// HookPath is where a channel's webhook is served: HookPath + the channel's id.
+const HookPath = "/channels/hook/"
+
+// hookURL is the public address of a channel's webhook, "" with no public_url.
+func (s *Service) hookURL(channelID string) string {
+	base := strings.TrimRight(strings.TrimSpace(s.cfg().PublicURL), "/")
+	if base == "" {
+		return ""
+	}
+	return base + HookPath + channelID
+}
+
+// ServeHook hands a request at a channel's webhook to its adapter
+// (channels.Webhook). The id in the path is no secret and nobody is signed in:
+// the adapter proves who is calling. An unknown, disabled or suspended channel
+// and an adapter with no webhook are all the same 404.
+func (s *Service) ServeHook(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, HookPath)
+	var ch db.Channel
+	if id != "" && !strings.Contains(id, "/") {
+		s.db.Where("id = ? AND enabled = ?", id, true).Limit(1).Find(&ch)
+	}
+	if ch.ID == "" || access.Suspended(s.db, ch.BotID) {
+		http.NotFound(w, r)
+		return
+	}
+	ad, _ := channels.Lookup(ch.Adapter)
+	hook, ok := ad.(channels.Webhook)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	s.mu.Lock()
+	wk := s.workers[ch.ID]
+	s.mu.Unlock()
+	hook.Hook(w, r, &ch, s.channelConfig(&ch), adapterHost{s, wk})
 }

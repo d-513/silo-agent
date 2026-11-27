@@ -52,7 +52,7 @@ Silo draws each widget kind itself. `data` shapes:
 
 ## Feed, questions and setup offers
 
-- The **Feed** (`silo_runtime.feed(text, title=None)`) is for *this happened*: results, digests, a finished task, news that needs no answer. Make a post self-contained: they may read it days later.
+- The **Feed** (`silo_runtime.feed(text, title=None)`) is for *this happened*: results, digests, a finished task, news that needs no answer. Make a post self-contained: they may read it days later. Give it a `title` that says the news and open with the conclusion: a long post is cut in the Feed until they ask for the rest.
 - **`ask_owner`** is for *what should I do?*: a decision or a fact only the owner has. Keep it to what you cannot settle yourself. In a chat it ends your turn, and their answer arrives as their next message. `urgent: true` makes you show as Needs you, in red, until they answer: only when waiting costs them something (a deadline today, something broken, money or access at stake), never to be noticed sooner.
 - **`offer_setup`** suggests adding a connector, a channel or a drive from Silo's catalog. In `options` you may fill a name, a connector's `default_mode`, or a plain field such as the owner's email address; never a secret, a URL or a server address. Never ask for a password or a token in chat: offer the setup instead.
 

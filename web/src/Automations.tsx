@@ -251,11 +251,11 @@ export function AutomationNew({ bot, onError }: { bot: Bot; onError: (s: string)
   const { upsert } = useAutomations(bot, onError);
   return (
     <div className="min-h-0 flex-1 overflow-auto">
-      <div className="silo-page">
+      <div className="silo-page silo-page-sm">
         <Link to="/bots/$botId/automations" params={{ botId: bot.id }} className="mb-3 inline-flex items-center gap-1 text-small text-ink-2 hover:text-ink">
           <ChevronLeft size={14} /> {t("Automations")}
         </Link>
-        <h2 className="mb-6 text-title">{t("New automation")}</h2>
+        <h2 className="mb-4 text-title">{t("New automation")}</h2>
         <Panel>
           <Editor
             bot={bot}
@@ -392,7 +392,7 @@ export function AutomationsList({ bot, onError }: { bot: Bot; onError: (s: strin
   return (
     <div className="min-h-0 flex-1 overflow-auto">
       <div className="silo-page">
-        <div className="mb-6 flex items-start justify-between gap-3">
+        <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h2 className="text-title">{t("Automations")}</h2>
             <p className="text-ink-2">{t("Prompts {{name}} runs on its own, on a schedule. Each run starts fresh and lands in its log.", { name: bot.name })}</p>

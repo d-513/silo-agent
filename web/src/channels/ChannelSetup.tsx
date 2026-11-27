@@ -6,7 +6,6 @@ import { fail } from "../errors";
 import { ErrorWell, inputClass, Panel } from "../Field";
 import type { Channel, ChannelAdapter, ChannelState } from "../gen/silo/v1/ui_pb";
 import { Lamp } from "../Lamp";
-import { widePage } from "../PageHead";
 import { channelLook } from "../statusLook";
 import { AdapterHead } from "./AdapterHead";
 import { GuideCard } from "./GuideCard";
@@ -112,7 +111,7 @@ export function ChannelSetup({
     state?.message && state.kind !== "qr" && state.kind !== "error" ? <div className="rounded-sm bg-well p-3 text-small text-ink-2">{state.message}</div> : null;
 
   return (
-    <div className={widePage}>
+    <div className="silo-page">
       <AdapterHead adapter={adapter} title={channel.name} subtitle={t("{{name}} setup", { name: adapter.name })} onBack={onBack} />
 
       <div className={`grid items-start gap-6 ${adapter.guide ? "lg:grid-cols-[minmax(0,1fr)_360px]" : "max-w-3xl"}`}>

@@ -113,7 +113,7 @@ export function AdminDebug() {
       {logs.length === 0 && loading ? (
         <SkeletonRows rows={3} height={52} />
       ) : logs.length === 0 ? (
-        <div className="rounded-card bg-well p-8 text-center text-small text-ink-3">{t("No model calls captured yet.")}</div>
+        <div className="rounded-card bg-well px-5 py-8 text-center text-small text-ink-3">{t("No model calls captured yet.")}</div>
       ) : (
         <div className="grid gap-2">
           {logs.map((l) => (

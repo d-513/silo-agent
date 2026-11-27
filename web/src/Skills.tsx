@@ -12,7 +12,6 @@ import { skillSource } from "./fs";
 import { UI, type Bot, type Skill } from "./gen/silo/v1/ui_pb";
 import { ChooseBots, UsedBy, useManagedBots } from "./connectors/BotPick";
 import { reload } from "./query";
-import { widePage } from "./PageHead";
 import { InstallPanel } from "./skills/InstallPanel";
 import { filterSkills } from "./skills/model";
 import { SkillCard } from "./skills/SkillCard";
@@ -40,7 +39,7 @@ function Section({ title, count, children }: { title: string; count: number; chi
 
 function EmptyState({ title, children, actions }: { title: string; children: ReactNode; actions?: ReactNode }) {
   return (
-    <div className="rounded-card border border-dashed border-line bg-surface px-5 py-8 text-center wide:p-12">
+    <div className="rounded-card border border-dashed border-line bg-surface px-5 py-8 text-center">
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-well text-ink-3">
         <BookOpen size={28} />
       </div>
@@ -53,7 +52,7 @@ function EmptyState({ title, children, actions }: { title: string; children: Rea
 
 function NoMatch({ search, onClear }: { search: string; onClear: () => void }) {
   return (
-    <div className="rounded-card bg-surface p-8 text-center text-ink-3 shadow-card">
+    <div className="rounded-card bg-surface px-5 py-8 text-center text-ink-3 shadow-card">
       <p className="text-small">{t("No skills match “{{search}}”.", { search })}</p>
       <button type="button" className="mt-2 text-label font-medium text-cobalt hover:underline" onClick={onClear}>
         {t("Clear search")}
@@ -74,7 +73,7 @@ function SkeletonCards() {
 
 function Header({ title, count, children }: { title: string; count?: number; children: ReactNode }) {
   return (
-    <div className="mb-6 space-y-1.5">
+    <div className="mb-4 space-y-1.5">
       <div className="flex items-center gap-2.5">
         <h1 className="text-title text-ink">{title}</h1>
         {count !== undefined ? <Count n={count} /> : null}
@@ -176,7 +175,7 @@ export function AdminSkills() {
           {t("Re-add defaults")}
         </Btn>
       </div>
-      <p className="mb-6 text-small leading-relaxed text-ink-2">{t("Site skills every Bot can enable. Install from a GitHub URL, owner/repo, or a skill zip.")}</p>
+      <p className="mb-4 text-small leading-relaxed text-ink-2">{t("Site skills every Bot can enable. Install from a GitHub URL, owner/repo, or a skill zip.")}</p>
       {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
       <InstallPanel scope="library" onDone={() => void load()} />
       {rows === null ? (
@@ -235,14 +234,14 @@ export function SpaceSkills() {
   const added = shown.filter((s) => !s.seeded);
 
   return (
-    <div className={widePage}>
+    <div className="silo-page">
       <Header title={t("Skills")}>
         {t("Skills are instructions and scripts a Bot loads when a task calls for them. Workspace skills belong to this workspace; Library skills are site-wide. Choose which of your Bots have each one on.")}
       </Header>
 
       {err ? <ErrorWell className="mb-4">{err}</ErrorWell> : null}
 
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <TabPills>
           <TabPill on={scope === "space"} onClick={() => setScope("space")} count={lists?.space.length}>
             <span>{t("Workspace")}</span>

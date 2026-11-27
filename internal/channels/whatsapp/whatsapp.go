@@ -731,6 +731,7 @@ func (a *Adapter) onMessage(ctx context.Context, ch *db.Channel, cfg channels.Co
 		ExternalID: target.String(),
 		Title:      c.title(ctx, target, info),
 		Author:     c.author(info),
+		AuthorID:   senderID(info),
 		Text:       text,
 		Files:      files,
 	})
@@ -754,6 +755,16 @@ func (c *client) author(info types.MessageInfo) string {
 		return "+" + info.Sender.User
 	}
 	return ""
+}
+
+// senderID is the sender's phone number without the plus, which is what the
+// owner knows them by; a sender that arrived as a LID is named by the number
+// it stands for when the message carries it.
+func senderID(info types.MessageInfo) string {
+	if info.Sender.Server == types.HiddenUserServer && info.SenderAlt.User != "" {
+		return info.SenderAlt.User
+	}
+	return info.Sender.User
 }
 
 // title names the conversation: the group's subject, or the contact's name.

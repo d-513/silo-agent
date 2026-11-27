@@ -19,7 +19,7 @@ type Surface int
 const (
 	// Web is the owner's console or app: every command.
 	Web Surface = iota
-	// Channel is a channel conversation (Telegram, Discord, WhatsApp, Slack), where
+	// Channel is a channel conversation (Telegram, Discord, WhatsApp, Slack, Teams, Signal, Matrix, Mattermost, email), where
 	// the sender may be anyone the conversation lets in: only commands that
 	// destroy nothing and change no setting of the owner's.
 	Channel

@@ -34,8 +34,9 @@ type Props = {
   // Close the tip when the control is clicked (its state is about to change).
   closeOnClick?: boolean;
   // Where the card sits: above the control (below with no room), or to its
-  // left, for a control on the right edge of the screen (the Bot's rail).
-  side?: "above" | "left";
+  // left, for a control on the right edge of the screen (the Bot's rail), or
+  // to its right, for one on the left edge (the folded sidebar).
+  side?: "above" | "left" | "right";
 };
 
 export function Tip({ content, children, closeOnClick = true, side = "above" }: Props) {
@@ -77,9 +78,10 @@ export function Tip({ content, children, closeOnClick = true, side = "above" }: 
     const a = anchor.current?.getBoundingClientRect();
     const c = card.current?.getBoundingClientRect();
     if (!a || !c) return;
-    if (side === "left") {
+    if (side !== "above") {
       const middle = a.top + a.height / 2 - c.height / 2;
-      setPos({ left: Math.max(EDGE, a.left - GAP - c.width), top: Math.max(EDGE, Math.min(middle, window.innerHeight - EDGE - c.height)), below: false, beside: true });
+      const left = side === "left" ? Math.max(EDGE, a.left - GAP - c.width) : Math.min(a.right + GAP, window.innerWidth - EDGE - c.width);
+      setPos({ left, top: Math.max(EDGE, Math.min(middle, window.innerHeight - EDGE - c.height)), below: false, beside: true });
       return;
     }
     const below = a.top - GAP - c.height < EDGE;

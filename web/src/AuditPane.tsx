@@ -54,7 +54,7 @@ export function AuditPane({ botId, embedded = false }: { botId: string; embedded
   }, [botId, unread]);
 
   return (
-    <div className={embedded ? "" : "silo-page silo-page-wide"}>
+    <div className={embedded ? "" : "silo-page"}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <TabPills>
           <TabPill on={view === "attention"} onClick={() => setView("attention")}>
@@ -130,7 +130,7 @@ function Events({ botId, view, query }: { botId: string; view: "attention" | "al
     <>
       {err ? <p className="mb-3 text-small text-vermilion">{err}</p> : null}
       {events.length === 0 && !err ? (
-        <div className="rounded-card border border-dashed border-line bg-surface p-8 text-center text-ink-3">
+        <div className="rounded-card border border-dashed border-line bg-surface px-5 py-8 text-center text-ink-3">
           {view === "attention" ? t("Nothing needs your attention.") : t("Nothing on the timeline yet.")}
         </div>
       ) : (
@@ -340,7 +340,7 @@ function Traffic({ botId, query }: { botId: string; query: string }) {
   if (err) return <p className="text-small text-vermilion">{err}</p>;
   if (rows.length === 0)
     return (
-      <div className="rounded-card border border-dashed border-line bg-surface p-8 text-center text-ink-3">
+      <div className="rounded-card border border-dashed border-line bg-surface px-5 py-8 text-center text-ink-3">
         {t("No traffic recorded yet.")}
       </div>
     );

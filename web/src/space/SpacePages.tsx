@@ -149,7 +149,7 @@ function SpaceSettingsForm({ id, name: savedName, mark: savedMark, role }: { id:
   }
 
   return (
-    <div className="silo-page silo-page-wide rise">
+    <div className="silo-page rise">
       <SettingGroup title={t("General")}>
         <form onSubmit={save} className="px-5 py-5">
           <NameFields name={name} mark={mark} onName={setName} onMark={setMark} />

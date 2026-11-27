@@ -9434,10 +9434,13 @@ type FeedPost struct {
 	// Source names where it was posted from: "chat", "automation", or "channel".
 	SourceKind string `protobuf:"bytes,4,opt,name=source_kind,json=sourceKind,proto3" json:"source_kind,omitempty"`
 	// SourceName is the chat title, automation name, or channel name.
-	SourceName    string `protobuf:"bytes,5,opt,name=source_name,json=sourceName,proto3" json:"source_name,omitempty"`
-	ChatId        string `protobuf:"bytes,6,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
-	CreatedAt     string `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	Read          bool   `protobuf:"varint,8,opt,name=read,proto3" json:"read,omitempty"`
+	SourceName string `protobuf:"bytes,5,opt,name=source_name,json=sourceName,proto3" json:"source_name,omitempty"`
+	ChatId     string `protobuf:"bytes,6,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
+	CreatedAt  string `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Read       bool   `protobuf:"varint,8,opt,name=read,proto3" json:"read,omitempty"`
+	// AutomationId is the automation whose run posted it, while it still
+	// exists: the page links the post to that automation's log.
+	AutomationId  string `protobuf:"bytes,9,opt,name=automation_id,json=automationId,proto3" json:"automation_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9526,6 +9529,13 @@ func (x *FeedPost) GetRead() bool {
 		return x.Read
 	}
 	return false
+}
+
+func (x *FeedPost) GetAutomationId() string {
+	if x != nil {
+		return x.AutomationId
+	}
+	return ""
 }
 
 type ListFeedRequest struct {
@@ -32962,7 +32972,7 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\x15RestoreChangeResponse\x12\x1a\n" +
 	"\brestored\x18\x01 \x01(\x05R\brestored\x12.\n" +
 	"\askipped\x18\x02 \x03(\v2\x14.silo.v1.RestoreSkipR\askipped\x12#\n" +
-	"\rskipped_total\x18\x03 \x01(\x05R\fskippedTotal\"\xd2\x01\n" +
+	"\rskipped_total\x18\x03 \x01(\x05R\fskippedTotal\"\xf7\x01\n" +
 	"\bFeedPost\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\x12\x14\n" +
@@ -32974,7 +32984,8 @@ const file_silo_v1_ui_proto_rawDesc = "" +
 	"\achat_id\x18\x06 \x01(\tR\x06chatId\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\a \x01(\tR\tcreatedAt\x12\x12\n" +
-	"\x04read\x18\b \x01(\bR\x04read\"(\n" +
+	"\x04read\x18\b \x01(\bR\x04read\x12#\n" +
+	"\rautomation_id\x18\t \x01(\tR\fautomationId\"(\n" +
 	"\x0fListFeedRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\";\n" +
 	"\x10ListFeedResponse\x12'\n" +

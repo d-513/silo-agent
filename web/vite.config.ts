@@ -42,6 +42,8 @@ export default defineConfig({
       "/tunnels": { target: "http://127.0.0.1:8080" },
       // A received message's original bytes (.eml download).
       "/mail/raw": { target: "http://127.0.0.1:8080" },
+      // A channel's webhook (a platform that delivers by calling in).
+      "/channels/hook": { target: "http://127.0.0.1:8080" },
     },
   },
 });

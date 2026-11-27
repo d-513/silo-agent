@@ -223,7 +223,7 @@ export function DashboardPane({ bot, onError, onQuoted }: { bot: Bot; onError: (
 
   if (empty && !working) {
     return (
-      <div ref={ref} className="silo-page flex min-h-full max-w-[680px] flex-col justify-center pb-24">
+      <div ref={ref} className="silo-page mx-auto flex min-h-full max-w-[680px] flex-col justify-center pb-16">
         <h2 className="text-center text-display-sm leading-[38px] font-medium tracking-[-0.02em] text-ink wide:text-display wide:leading-[48px]">{t("Nothing on the board yet")}</h2>
         <p className="mt-2 mb-7 text-center text-ink-2">
           {t("Say what you want to keep an eye on. {{name}} builds it once and keeps it current.", { name: bot.name })}

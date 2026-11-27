@@ -148,7 +148,7 @@ require (
 	github.com/vektah/gqlparser/v2 v2.5.64 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
-	github.com/yuin/goldmark v1.8.7 // indirect
+	github.com/yuin/goldmark v1.8.7
 	go.mau.fi/libsignal v0.2.3 // indirect
 	go.mau.fi/util v0.11.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.2 // indirect

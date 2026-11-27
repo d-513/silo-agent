@@ -87,7 +87,7 @@ export function SpaceDrives() {
 
   return (
     <div className="silo-page">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-title text-ink">{t("Drives")}</h2>
           <p className="mt-1 max-w-[520px] text-row leading-[20px] text-ink-2">
@@ -114,7 +114,7 @@ export function SpaceDrives() {
       {drives === null || templates === null ? (
         <SkeletonRows rows={2} height={92} />
       ) : drives.length === 0 ? (
-        <div className="rounded-card border border-dashed border-line bg-surface px-5 py-8 text-center wide:p-12">
+        <div className="rounded-card border border-dashed border-line bg-surface px-5 py-8 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-well text-ink-3">
             <HardDrive size={28} />
           </div>

@@ -637,58 +637,39 @@ button {
 
 /* ---------------------------------------------------------------- layout */
 
-.silo-page {
-  width: 100%;
-  max-width: 760px;
-  margin-inline: auto;
-  padding: 16px 16px 48px;
-}
-.silo-page-sm {
-  max-width: 560px;
-}
-.silo-page-lg {
-  max-width: 1000px;
-}
-/* Admin: every page starts at the sidebar's edge and is as wide as the next
-   one, so nothing jumps between them. It is the `page` container SettingRow
-   lays itself out against. Settings puts its categories beside a narrower
-   column of the same kind (silo-admin-form). */
-.silo-admin,
-.silo-admin-form {
-  width: 100%;
-  min-width: 0;
-  padding: 16px 16px 64px;
-  container: page / inline-size;
-}
-.silo-admin {
-  max-width: 1040px;
-}
-.silo-admin-form {
-  max-width: 880px;
-}
-@media (min-width: 960px) {
-  .silo-admin {
-    padding: 28px 32px 64px;
-  }
-  .silo-admin-form {
-    padding: 28px 32px 64px 24px;
-  }
-}
-/* A Bot's Settings tabs: anchored under the tab strip, not centred in the
-   window, and wide enough for a label column beside each group. It is the
-   `page` container SettingGroup and SettingRow lay themselves out against. */
-.silo-page-wide {
-  max-width: 1120px;
-  margin-inline: 0;
-  container: page / inline-size;
-}
-@media (min-width: 960px) {
+/* In the components layer, so a utility on the same element can still
+   narrow or pad one page. */
+@layer components {
+  /* One frame for every page that is not a conversation: it starts at the
+     edge of what is beside it (the sidebar, a tab strip), never centred in the
+     window, at one width and one padding, so nothing jumps between pages and a
+     wide window is not mostly margin. It is the `page` container SettingGroup
+     and SettingRow lay themselves out against. */
   .silo-page,
-  .silo-page-sm {
-    padding: 28px;
+  .silo-admin,
+  .silo-admin-form {
+    width: 100%;
+    min-width: 0;
+    max-width: 1120px;
+    padding: 14px 16px 40px;
+    container: page / inline-size;
   }
-  .silo-page-wide {
-    padding: 24px 20px 48px;
+  /* A form (New Bot, an automation, a drive) and prose keep a reading width. */
+  .silo-page-sm {
+    max-width: 720px;
+  }
+  /* Admin -> Settings puts its categories beside a narrower column. */
+  .silo-admin-form {
+    max-width: 880px;
+  }
+  @media (min-width: 960px) {
+    .silo-page,
+    .silo-admin {
+      padding: 20px 24px 40px;
+    }
+    .silo-admin-form {
+      padding: 20px 24px 40px 20px;
+    }
   }
 }
 

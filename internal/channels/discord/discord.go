@@ -246,6 +246,7 @@ func (a *Adapter) onMessage(ctx context.Context, ch *db.Channel, cfg channels.Co
 		ExternalID: m.ChannelID,
 		Title:      a.title(s, m),
 		Author:     authorName(m),
+		AuthorID:   authorID(m),
 		Text:       text,
 		Files:      files,
 	})
@@ -330,6 +331,14 @@ func authorName(m *discordgo.Message) string {
 		return m.Author.GlobalName
 	}
 	return m.Author.Username
+}
+
+// authorID is the sender's Discord user id, which no nickname changes.
+func authorID(m *discordgo.Message) string {
+	if m.Author == nil {
+		return ""
+	}
+	return m.Author.ID
 }
 
 // title names the conversation: "#general · My Server" or "DM · alice".

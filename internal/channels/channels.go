@@ -10,12 +10,14 @@ package channels
 import (
 	"context"
 	"errors"
+	"net/http"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"silo.agent/internal/db"
+	"silo.agent/internal/netguard"
 )
 
 // FieldType controls the generated form input in the Channels tab.
@@ -110,8 +112,20 @@ type State struct {
 }
 
 // Config is a channel's resolved config, including decrypted secrets.
+//
+// Net is the operator's policy for connections the Control Plane makes to an
+// address a user typed (outbound.block_private). An adapter whose server the
+// owner names (a Matrix homeserver, a Mattermost, IMAP or signal-cli host)
+// takes every dialer and HTTP client from it (Net.Client, Net.DialContext);
+// one that only talks to its platform's own hosts does not need it. The zero
+// Policy refuses nothing.
+//
+// HookURL is the public address of this channel's webhook (see Webhook), ""
+// when Silo has no public address to give.
 type Config struct {
-	Values map[string]string
+	Values  map[string]string
+	Net     netguard.Policy
+	HookURL string
 }
 
 func (c Config) Get(key string) string {
@@ -153,10 +167,16 @@ type Media struct {
 // hands the newest one back as Outbound.ReplyTo on everything a run in that
 // conversation delivers (sections, a command's reply), until a message names
 // another or none.
+//
+// Author is the sender's name as the platform shows it, and AuthorID what the
+// platform knows them by whatever they call themselves (a user id, a number, an
+// address): the host tells the Bot the name and holds the owner's "only answer"
+// list against both.
 type Inbound struct {
 	ExternalID string
 	Title      string
 	Author     string
+	AuthorID   string
 	Text       string
 	ReplyTo    string
 	Files      []Media
@@ -244,6 +264,15 @@ type Adapter interface {
 // A failure is logged, never blocks the delete.
 type Remover interface {
 	Remove(ctx context.Context, ch *db.Channel, host Host) error
+}
+
+// Webhook is an optional Adapter hook for a platform that delivers by calling
+// us (Microsoft Teams): the host serves Config.HookURL and hands every request
+// there to Hook. Nothing has checked the caller: the adapter proves who is
+// calling (a signed token) before it believes a word, and answers the request
+// itself. It must not block on the Bot: DeliverInbound returns at once.
+type Webhook interface {
+	Hook(w http.ResponseWriter, r *http.Request, ch *db.Channel, cfg Config, host Host)
 }
 
 // Typer is an optional Adapter hook for a platform that can show the Bot typing.
