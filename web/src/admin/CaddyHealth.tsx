@@ -1,12 +1,12 @@
 import { useQuery } from "@connectrpc/connect-query";
 import { Download } from "lucide-react";
 import { Btn } from "../Btn";
-import { Panel } from "../Field";
 import { Status } from "../Lamp";
 import { UI } from "../gen/silo/v1/ui_pb";
 import type { ProxyStatus } from "../gen/silo/v1/siloos_pb";
 import { t } from "../i18n.ts";
 import { proxyLook } from "../statusLook";
+import { Group, Line } from "./kit";
 
 // saveRoot hands the viewer Caddy's root certificate, to install on their
 // devices so Silo's own certificates are trusted.
@@ -19,20 +19,12 @@ function saveRoot(pem: string) {
   URL.revokeObjectURL(url);
 }
 
-function Line({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-3 py-1.5 text-small">
-      <span className="text-ink-3">{label}</span>
-      <span className="min-w-0 break-words text-ink">{children}</span>
-    </div>
-  );
-}
-
-// ProxyLines says what Caddy serves and where each certificate comes from.
+// ProxyLines says what Caddy serves and where each certificate comes from,
+// as the rows of a group.
 export function ProxyLines({ proxy }: { proxy: ProxyStatus }) {
   const issuer = proxy.issuer === "internal" ? t("Silo's own certificate authority") : proxy.dnsProvider ? t("Let's Encrypt, through {{provider}}", { provider: proxy.dnsProvider }) : t("Let's Encrypt, on port 80");
   return (
-    <div>
+    <>
       <Line label={t("State")}>
         <Status look={proxyLook(proxy.state)} />
       </Line>
@@ -56,7 +48,7 @@ export function ProxyLines({ proxy }: { proxy: ProxyStatus }) {
           <span className="font-mono">{proxy.local.join(", ")}</span> · {t("Silo's own certificate authority")}
         </Line>
       ) : null}
-    </div>
+    </>
   );
 }
 
@@ -76,12 +68,12 @@ export function CaddyHealth() {
   const proxy = useQuery(UI.method.getSiloOS, {}, { refetchInterval: 15_000 }).data?.proxy;
   if (!proxy?.configured) return null;
   return (
-    <Panel
+    <Group
       title={t("What Caddy serves")}
       note={t("Silo compares this with Caddy every 15 seconds and loads it again when they differ. Install the root certificate on a device to trust Silo's own certificates there.")}
       action={<RootButton proxy={proxy} />}
     >
       <ProxyLines proxy={proxy} />
-    </Panel>
+    </Group>
   );
 }

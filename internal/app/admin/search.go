@@ -15,9 +15,6 @@ import (
 // testTimeout bounds the search an admin runs from the settings page.
 const testTimeout = 30 * time.Second
 
-// testHits is how many results of that search are shown.
-const testHits = 5
-
 // CheckSearch is the web search engine's health for an admin: the Built-in
 // Scraper's sources as this process has seen them since it started and, with
 // a query, one real search with the saved settings. A search that fails is an
@@ -57,7 +54,9 @@ func runSearchTest(ctx context.Context, id string, settings search.Settings, que
 	ctx, cancel := context.WithTimeout(ctx, testTimeout)
 	defer cancel()
 	start := time.Now()
-	res, err := eng.Search(ctx, search.Query{Text: query, Max: testHits})
+	// As many results as a Bot's search gets when it names no number, so
+	// the page shows what a Bot would be handed.
+	res, err := eng.Search(ctx, search.Query{Text: query, Max: search.DefaultMaxResults})
 	out.TookMs = int32(time.Since(start).Milliseconds())
 	if err != nil {
 		out.Error = err.Error()

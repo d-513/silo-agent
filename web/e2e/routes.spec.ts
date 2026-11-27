@@ -303,8 +303,12 @@ test("admin settings form tracks and discards edits", async ({ page }) => {
   const saved = await field.inputValue();
   await field.fill(`${saved}x`);
   await expect(page.getByText("1 unsaved change")).toBeVisible();
-  await categories.getByRole("link", { name: "Providers" }).click();
-  await expect(page.getByRole("button", { name: "List models" }).first()).toBeVisible();
+  // Models has its pages as tabs in its own head.
+  await categories.getByRole("link", { name: "Models" }).click();
+  const models = page.getByRole("navigation", { name: "Models" });
+  await models.getByRole("link", { name: "Providers" }).click();
+  await expect(page).toHaveURL(/\/admin\/settings\/models\/providers$/);
+  await expect(models.locator("[data-tab-on]")).toHaveText(/Providers/);
   await expect(page.getByText("1 unsaved change")).toBeVisible();
   await categories.getByRole("link", { name: "Server" }).click();
   await expect(field).toHaveValue(`${saved}x`);
@@ -312,7 +316,7 @@ test("admin settings form tracks and discards edits", async ({ page }) => {
   await expect(field).toHaveValue(saved);
   await expect(page.getByText("1 unsaved change")).toHaveCount(0);
   // Every category is a page of its own, and an unknown one falls back to the first.
-  for (const s of ["search", "memory", "runs", "connectors", "tunnels", "signin", "yaml", "audit"]) {
+  for (const s of ["search", "memory", "runs", "voice", "rules", "connectors", "tunnels", "mail", "network", "https", "signin", "server", "yaml"]) {
     await page.goto(`/admin/settings/${s}`);
     await expect(page).toHaveURL(new RegExp(`/admin/settings/${s}$`));
     await expect(categories.locator("[data-tab-on]")).toHaveCount(1);
@@ -323,18 +327,31 @@ test("admin settings form tracks and discards edits", async ({ page }) => {
   await expect(page.getByText(/\/auth\/oidc\/callback$/)).toBeVisible();
   await page.goto("/admin/settings/nope");
   await expect(page).toHaveURL(/\/admin\/settings\/models$/);
-  // Models is the map, with a page per kind under it; the old Providers and
-  // Voice categories land on theirs, an unknown page on the map.
-  for (const m of ["providers", "text", "decision", "embedding", "image", "voice"]) {
+  // Models opens on its jobs (the map), with Providers and Allowed models
+  // under it; an unknown page lands on the jobs.
+  for (const m of ["providers", "allowed"]) {
     await page.goto(`/admin/settings/models/${m}`);
     await expect(page).toHaveURL(new RegExp(`/admin/settings/models/${m}$`));
     await expect(categories.locator("[data-tab-on]")).toHaveCount(1);
+    await expect(models.locator("[data-tab-on]")).toHaveCount(1);
     await expect(page.getByText("This page hit a snag")).toHaveCount(0);
   }
-  for (const old of ["providers", "voice"]) {
-    await page.goto(`/admin/settings/${old}`);
-    await expect(page).toHaveURL(new RegExp(`/admin/settings/models/${old}$`));
+  // A job is picked on the map: pressing one opens the models it can be given.
+  await page.goto("/admin/settings/models");
+  await page.getByRole("button", { name: /^Chat/ }).first().click();
+  await expect(page.getByRole("dialog", { name: "Chat" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  // The addresses from before still land somewhere: a kind's page on its
+  // allowlist, Voice on its category, the old Providers category under Models.
+  for (const kind of ["text", "decision", "embedding", "image"]) {
+    await page.goto(`/admin/settings/models/${kind}`);
+    await expect(page).toHaveURL(new RegExp(`/admin/settings/models/allowed\\?kind=${kind}$`));
   }
+  await page.goto("/admin/settings/models/voice");
+  await expect(page).toHaveURL(/\/admin\/settings\/voice$/);
+  await page.goto("/admin/settings/providers");
+  await expect(page).toHaveURL(/\/admin\/settings\/models\/providers$/);
   await page.goto("/admin/settings/models/nope");
   await expect(page).toHaveURL(/\/admin\/settings\/models$/);
   // Search & Extract was a tab; its old address lands on the category.

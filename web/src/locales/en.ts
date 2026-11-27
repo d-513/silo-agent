@@ -86,6 +86,8 @@ const en: Record<string, string> = {
   "old results cleared {{count}} times_other": "old results cleared {{count}} times",
   "Last of {{count}} errors_one": "Error",
   "Last of {{count}} errors_other": "Last of {{count}} errors",
+  "{{count}} entries_one": "{{count}} entry",
+  "{{count}} entries_other": "{{count}} entries",
 };
 
 export default en;

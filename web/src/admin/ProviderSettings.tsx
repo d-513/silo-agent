@@ -1,12 +1,12 @@
 import { useQuery } from "@connectrpc/connect-query";
-import { AudioLines, Binary, Check, ChevronRight, Ear, Image, List as ListIcon, Plug, Plus, RefreshCw, Split, Type, Volume2, X } from "lucide-react";
+import { AudioLines, Binary, Check, ChevronRight, Ear, Image, List as ListIcon, Plus, RefreshCw, Split, Type, Volume2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSearch } from "@tanstack/react-router";
 import { Btn } from "../Btn";
 import { Segmented } from "../connectors/form/atoms";
 import { fail } from "../errors";
 import { Spinner } from "../Feedback";
-import { ErrorWell, Panel, SkeletonRows } from "../Field";
+import { ErrorWell, SkeletonRows } from "../Field";
 import { ConfigSource, UI, type Provider, type ProviderModel } from "../gen/silo/v1/ui_pb";
 import { SearchBox } from "../SearchBox";
 import { Tip, TipTitle } from "../Tip";
@@ -15,7 +15,8 @@ import { accountsOf, capOf, isReady, providersInUse, resolveJobs, type Cap } fro
 import { ProviderNotice } from "./ProviderAccount";
 import { ProviderAccess } from "./ProviderProgram";
 import { ProviderMark, Status } from "./ProviderMap";
-import { ModelsHead } from "./roles";
+import { Band, Figure, Group, Groups } from "./kit";
+import { ModelsHead } from "./ModelsHead";
 import { bareModel, filterModels, filterWord, fmtContext, kindOf, kindsIn, kindWord, removeTitle, withFast, type ModelKind } from "./providerModels";
 import { useSettingsForm } from "./useAdminSettings";
 import { LiveChip } from "./LiveChip";
@@ -45,18 +46,19 @@ export function ProviderSettings() {
 
   return (
     <>
-      <ModelsHead icon={Plug} title={t("Providers")} note={t("Who serves your models. Each row says what a provider can do and how many of its models you allow; open one for its key and its own list of models.")}>
-        <div className="flex shrink-0 flex-col items-end gap-1.5 pt-1 max-sm:hidden">
-          <span className="text-section text-ink-3">{t("Set up")}</span>
-          <span className="font-mono text-heading leading-6 text-ink tabular-nums">
+      <ModelsHead
+        page="providers"
+        note={t("Who serves your models. Each row says what a provider can do and how many of its models you allow; open one for its key and its own list of models.")}
+        aside={
+          <Figure label={t("Set up")}>
             {setUp}
             <span className="text-ink-3">/{providers.length}</span>
-          </span>
-        </div>
-      </ModelsHead>
-      <Panel padded={false}>
-        <div className="@container">
-          <div className="hidden h-9 items-center gap-2 pr-4 pl-5 text-section text-ink-3 @min-[640px]:grid @min-[640px]:grid-cols-[minmax(0,1fr)_repeat(6,3.25rem)_6.5rem]">
+          </Figure>
+        }
+      />
+      <Groups>
+        <Group>
+          <div className="hidden h-9 items-center gap-2 pr-4 pl-5 text-section text-ink-3 @2xl/page:grid @2xl/page:grid-cols-[minmax(0,1fr)_repeat(6,3.25rem)_6.5rem]">
             <span>{t("Provider")}</span>
             {CAP_KINDS.map((k) => (
               <Tip key={k.kind} content={t(k.label)}>
@@ -67,21 +69,19 @@ export function ProviderSettings() {
             ))}
             <span className="text-right">{t("Status")}</span>
           </div>
-          <ul className="divide-y divide-line shadow-[inset_0_1px_0_var(--color-line)]">
-            {sorted.map((p) => (
-              <ProviderRow key={p.id} provider={p} open={open === p.id} ready={ready(p.id)} inUse={inUse.includes(p.id)} allowed={allowed} onToggle={() => setOpen(open === p.id ? "" : p.id)} />
-            ))}
-          </ul>
+          {sorted.map((p) => (
+            <ProviderRow key={p.id} provider={p} open={open === p.id} ready={ready(p.id)} inUse={inUse.includes(p.id)} allowed={allowed} onToggle={() => setOpen(open === p.id ? "" : p.id)} />
+          ))}
           <Legend />
-        </div>
-      </Panel>
+        </Group>
+      </Groups>
     </>
   );
 }
 
 // The kinds a provider is read for, as the grid's columns.
 const CAP_KINDS: { kind: ModelKind; label: string; icon: typeof Type }[] = [
-  { kind: "text", label: msg("Text: chats, the talker and the text roles"), icon: Type },
+  { kind: "text", label: msg("Text: chats, the talker and the other text jobs"), icon: Type },
   { kind: "decision", label: msg("Decisions: typed answers with probabilities"), icon: Split },
   { kind: "transcription", label: msg("Speech-to-text: dictation and what you say on a call"), icon: Ear },
   { kind: "speech", label: msg("Speech: Read aloud and a Bot's voice on a call"), icon: Volume2 },
@@ -94,12 +94,12 @@ function ProviderRow({ provider, open, ready, inUse, allowed, onToggle }: { prov
   const { values } = useSettingsForm();
   const caps = CAP_KINDS.map((k) => ({ k, cap: capOf(provider, k.kind, allowed[k.kind] ?? [], values) }));
   return (
-    <li id={`provider-${provider.id}`} className="scroll-mt-4">
+    <div id={`provider-${provider.id}`} className="scroll-mt-4">
       <button
         type="button"
         aria-expanded={open}
         onClick={onToggle}
-        className={`relative grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 py-3 pr-4 pl-5 text-left transition-colors duration-[160ms] ease-quiet hover:bg-well @min-[640px]:grid-cols-[minmax(0,1fr)_repeat(6,3.25rem)_6.5rem] ${open ? "bg-well" : ""}`}
+        className={`relative grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 py-3 pr-4 pl-5 text-left transition-colors duration-[160ms] ease-quiet hover:bg-well @2xl/page:grid-cols-[minmax(0,1fr)_repeat(6,3.25rem)_6.5rem] ${open ? "bg-well" : ""}`}
       >
         {open ? <span aria-hidden className="absolute top-3 bottom-3 left-0 w-[2px] rounded-full bg-cobalt" /> : null}
         <span className="flex min-w-0 items-center gap-3">
@@ -114,29 +114,29 @@ function ProviderRow({ provider, open, ready, inUse, allowed, onToggle }: { prov
           </span>
         </span>
         {/* Wide: one column per kind. Narrow: the same cells in a strip. */}
-        <span className="col-span-2 flex flex-wrap gap-x-4 gap-y-1 pl-[3.25rem] @min-[640px]:contents">
+        <span className="col-span-2 flex flex-wrap gap-x-4 gap-y-1 pl-[3.25rem] @2xl/page:contents">
           {caps.map(({ k, cap }) => (
             <CapCell key={k.kind} provider={provider.name} kind={k} cap={cap} />
           ))}
         </span>
-        <span className="row-start-1 flex justify-end @min-[640px]:col-start-7">
+        <span className="row-start-1 flex justify-end @2xl/page:col-start-7">
           <Status ok={ready} />
         </span>
       </button>
       <div className={`grid transition-[grid-template-rows] duration-[320ms] ease-quiet ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
         <div className="min-h-0 overflow-hidden">{open ? <ProviderDetail provider={provider} /> : null}</div>
       </div>
-    </li>
+    </div>
   );
 }
 
 // CapCell is one kind of one provider: nothing (a hairline), available (an
 // open square), allowed (a filled square and how many), live (a waveform).
 function CapCell({ provider, kind, cap }: { provider: string; kind: (typeof CAP_KINDS)[number]; cap: Cap }) {
-  const narrowLabel = <span className="text-label text-ink-3 @min-[640px]:hidden">{kindWord(kind.kind)}</span>;
+  const narrowLabel = <span className="text-label text-ink-3 @2xl/page:hidden">{kindWord(kind.kind)}</span>;
   if (!cap.served) {
     return (
-      <span className="hidden items-center justify-center @min-[640px]:flex" aria-label={t("{{provider}} has no models of this kind", { provider })}>
+      <span className="hidden items-center justify-center @2xl/page:flex" aria-label={t("{{provider}} has no models of this kind", { provider })}>
         <span className="h-px w-2.5 bg-line-strong" />
       </span>
     );
@@ -151,7 +151,7 @@ function CapCell({ provider, kind, cap }: { provider: string; kind: (typeof CAP_
         </>
       }
     >
-      <span className="flex items-center gap-1.5 @min-[640px]:justify-center">
+      <span className="flex items-center gap-1.5 @2xl/page:justify-center">
         {cap.live ? (
           <AudioLines size={13} className={cap.allowed ? "text-ink" : "text-ink-3"} aria-label={t("Live")} />
         ) : (
@@ -167,7 +167,7 @@ function CapCell({ provider, kind, cap }: { provider: string; kind: (typeof CAP_
 // Legend is the grid's key, on the well band under it.
 function Legend() {
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 bg-well px-5 py-3 text-label text-ink-3 shadow-[inset_0_1px_0_var(--color-line)]">
+    <Band className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-label text-ink-3">
       <span className="flex items-center gap-1.5">
         <span aria-hidden className="h-[7px] w-[7px] rounded-[2px] bg-ink" />
         {t("Allowed, with how many")}
@@ -184,7 +184,7 @@ function Legend() {
         <span aria-hidden className="h-px w-2.5 bg-line-strong" />
         {t("Not offered")}
       </span>
-    </div>
+    </Band>
   );
 }
 
@@ -213,24 +213,20 @@ function ProviderDetail({ provider }: { provider: Provider }) {
   );
 
   return (
-    <div className="bg-surface shadow-[inset_0_1px_0_var(--color-line)]">
-      <div className="flex items-start gap-3 px-5 pt-4 pb-1">
-        <p className="min-w-0 flex-1 text-small leading-5 text-ink-2">{provider.description}</p>
+    <div className="divide-y divide-line shadow-[inset_0_1px_0_var(--color-line)]">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+        <p className="min-w-0 flex-1 basis-[260px] text-small leading-5 text-ink-2">{provider.description}</p>
         {unsaved ? <Tip content={t("Save your changes first. The list is asked with {{name}}'s saved settings.", { name: provider.name })}>{button}</Tip> : button}
       </div>
       {provider.warning || provider.signIn || provider.program ? (
-        <div className="grid gap-3 px-5 pt-3 pb-2">
+        <div className="grid gap-3 px-5 py-4">
           {provider.warning ? <ProviderNotice text={provider.warning} /> : null}
           <ProviderAccess provider={provider} />
         </div>
       ) : null}
-      <div className="divide-y divide-line-strong">
-        {rows.map((f) => (
-          <div key={f.key} className="px-5 py-3.5">
-            <FieldRow field={f} value={values[f.key] ?? ""} engines={engines} providers={providers} onChange={(v) => setValue(f.key, v)} />
-          </div>
-        ))}
-      </div>
+      {rows.map((f) => (
+        <FieldRow key={f.key} field={f} value={values[f.key] ?? ""} engines={engines} providers={providers} onChange={(v) => setValue(f.key, v)} />
+      ))}
       {open ? <ModelsDialog provider={provider} onClose={() => setOpen(false)} /> : null}
     </div>
   );

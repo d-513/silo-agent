@@ -646,9 +646,33 @@ button {
 .silo-page-sm {
   max-width: 560px;
 }
-/* Admin: room for the Settings categories beside the form. */
 .silo-page-lg {
   max-width: 1000px;
+}
+/* Admin: every page starts at the sidebar's edge and is as wide as the next
+   one, so nothing jumps between them. It is the `page` container SettingRow
+   lays itself out against. Settings puts its categories beside a narrower
+   column of the same kind (silo-admin-form). */
+.silo-admin,
+.silo-admin-form {
+  width: 100%;
+  min-width: 0;
+  padding: 16px 16px 64px;
+  container: page / inline-size;
+}
+.silo-admin {
+  max-width: 1040px;
+}
+.silo-admin-form {
+  max-width: 880px;
+}
+@media (min-width: 960px) {
+  .silo-admin {
+    padding: 28px 32px 64px;
+  }
+  .silo-admin-form {
+    padding: 28px 32px 64px 24px;
+  }
 }
 /* A Bot's Settings tabs: anchored under the tab strip, not centred in the
    window, and wide enough for a label column beside each group. It is the

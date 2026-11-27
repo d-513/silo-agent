@@ -1,29 +1,18 @@
-import { createQueryOptions, useTransport } from "@connectrpc/connect-query";
-import { useQueries } from "@tanstack/react-query";
 import { Check, Plus, RefreshCw, X } from "lucide-react";
 import { useState } from "react";
 import { Btn } from "../Btn";
 import { fail } from "../errors";
 import { Spinner } from "../Feedback";
 import { ErrorWell, SkeletonRows } from "../Field";
-import { ConfigSource, UI, type Provider, type ProviderModel } from "../gen/silo/v1/ui_pb";
 import { locale, t } from "../i18n.ts";
 import { Modal } from "../Modal";
 import { SearchBox } from "../SearchBox";
 import { FilterChip } from "../FilterChip";
 import { LiveChip } from "./LiveChip";
 import { ProviderMark } from "./ProviderMap";
-import { accountsOf, isReady } from "./providerJobs";
-import { filterModels, filterWord, fmtContext, kindOf, kindWord, removeTitle, withFast, type ModelKind } from "./providerModels";
+import { filterModels, filterWord, fmtContext, kindWord, removeTitle, type ModelKind } from "./providerModels";
+import { useProviderLists } from "./useProviderLists";
 import { useSettingsForm } from "./useAdminSettings";
-
-/** The providers that serve a kind and have what they need to be asked, by their saved settings. */
-export function useAskable(kind: ModelKind): Provider[] {
-  const { providers, fields } = useSettingsForm();
-  // The list is asked with the saved settings, so an unsaved key does not count.
-  const saved = Object.fromEntries(fields.map((f) => [f.key, f.value]));
-  return providers.filter((p) => p.kinds.includes(kind) && isReady(p.id, fields, saved, ConfigSource.ENV, accountsOf(providers)));
-}
 
 // KindModelsDialog lists one kind's models from every provider that is set
 // up, each under its full provider/model id, so a model is found without
@@ -32,25 +21,15 @@ export function useAskable(kind: ModelKind): Provider[] {
 export function KindModelsDialog({ kind, onClose }: { kind: ModelKind; onClose: () => void }) {
   const form = useSettingsForm();
   const { allowedOf, setModel, busyModels } = form;
-  const asked = useAskable(kind);
-  const transport = useTransport();
-  const lists = useQueries({
-    queries: asked.map((p) => ({ ...createQueryOptions(UI.method.listProviderModels, { provider: p.id }, { transport }), staleTime: Infinity, retry: false })),
-  });
+  const lists = useProviderLists([kind]);
+  const { asked, pending, fetching, failed } = lists;
   const [query, setQuery] = useState("");
   // "" is every provider.
   const [only, setOnly] = useState("");
 
-  const rows: (ProviderModel & { provider: Provider; fastOf?: string })[] = [];
-  asked.forEach((p, i) => {
-    if (only && only !== p.id) return;
-    for (const m of withFast((lists[i].data?.models ?? []).filter((m) => kindOf(m) === kind))) rows.push({ ...m, provider: p });
-  });
+  const rows = lists.rows.filter((m) => !only || m.provider.id === only);
   const shown = filterModels(rows, query);
   const allowed = allowedOf(kind);
-  const pending = lists.filter((l) => l.isPending).length;
-  const fetching = lists.some((l) => l.isFetching);
-  const failed = asked.flatMap((p, i) => (lists[i].error ? [{ provider: p, error: lists[i].error }] : []));
   const title = t("{{kind}} models from your providers", { kind: kindWord(kind) });
 
   return (
@@ -67,7 +46,7 @@ export function KindModelsDialog({ kind, onClose }: { kind: ModelKind; onClose: 
             <div className="min-w-0 flex-1">
               <SearchBox value={query} onChange={setQuery} placeholder={filterWord(kind, rows.length)} searching={false} />
             </div>
-            <Btn kind="ghost" size="sm" iconOnly title={t("Ask again")} aria-label={t("Ask again")} disabled={fetching} onClick={() => lists.forEach((l) => void l.refetch())}>
+            <Btn kind="ghost" size="sm" iconOnly title={t("Ask again")} aria-label={t("Ask again")} disabled={fetching} onClick={lists.refetch}>
               {fetching ? <Spinner size={13} /> : <RefreshCw size={14} />}
             </Btn>
           </div>

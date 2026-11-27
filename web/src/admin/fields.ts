@@ -1,17 +1,7 @@
-import { ConfigSource, type CaddyDNSProvider, type Provider, type SearchEngine } from "../gen/silo/v1/ui_pb";
+import { type CaddyDNSProvider, type Provider, type SearchEngine } from "../gen/silo/v1/ui_pb";
 import { msg, t } from "../i18n.ts";
 
 export const LABELS: Record<string, string> = {
-  model: msg("Default model"),
-  model_title: msg("Chat title model"),
-  model_approval: msg("Auto-approval model"),
-  model_filter: msg("Output filter model"),
-  model_subagent: msg("Subagent model"),
-  model_memory: msg("Memory save model"),
-  model_decision: msg("Default decision model"),
-  embedding_model: msg("Embedding model"),
-  model_image: msg("Default image model"),
-  transcribe_model: msg("Speech-to-text model"),
   "voice.enabled": msg("Voice"),
   "voice.max_minutes": msg("Longest call (minutes)"),
   "voice.idle_minutes": msg("Hang up after silence (minutes)"),
@@ -116,7 +106,6 @@ export const HINTS: Record<string, string> = {
   "rules.approval_policy": msg("Read before a Bot's own auto-approval policy, whenever a rule is set to Auto. Says what may run without a human. Empty means the Bot's own policy stands alone."),
   "rules.output_policy": msg("Read before a Bot's own output policy, whenever a result is set to Check. Says what makes a result suspicious (flagged) or malicious (withheld). Empty means the Bot's own policy stands alone."),
   "runs.max_duration": msg("How long one run may go on (120m, 2h). -1 is unlimited. A lead waiting on its subagents counts its sleep toward this."),
-  embedding_model: msg("For memories and indexed documents. OpenAI-compatible, 1536-wide; switching models makes old memories match poorly (documents are re-embedded on the next sync)."),
   "knowledge.sync_interval": msg("A Go duration such as 15m or 1h (minimum 1m)."),
   "knowledge.ocr": msg("Reads scanned PDF pages and image files (English and Polish) with tesseract in the Bot's box. A folder of photos makes syncing slow; turn it off for those."),
   "content.host": msg("Tunnels, live apps and public links are served at <kind>-<name>.<this domain>. Needs a wildcard DNS record and TLS certificate for *.<this domain> pointing at the control plane, on a domain separate from the control plane's own. Unset, local development uses localhost and the control plane's port."),
@@ -169,7 +158,6 @@ export const HINTS: Record<string, string> = {
   "oidc.allowed_domains": msg("Comma-separated. Limits creating accounts on sign-in to these email domains. Empty allows any."),
   "oidc.groups_claim": msg("The ID token claim that lists a person's groups."),
   "oidc.admin_group": msg("Members of this group are admins, checked at each sign-in. Empty leaves roles to Admin → Users."),
-  transcribe_model: msg("Composer dictation and the transcribe tool. Any OpenAI-compatible /audio/transcriptions model (local/… for LocalAI, Speaches, vLLM, whisper.cpp). off disables voice."),
   "voice.enabled": msg("Read aloud on a Bot's messages, and Talk: a spoken conversation with a Bot. Off hides both everywhere."),
   "voice.max_minutes": msg("A call ends after this long."),
   "voice.idle_minutes": msg("A call nobody speaks in ends after this long."),
@@ -182,8 +170,6 @@ export const HINTS: Record<string, string> = {
 
 export const PLACEHOLDERS: Record<string, string> = {
   "caddy.admin": "unix//run/caddy/admin.sock",
-  embedding_model: "openrouter/openai/text-embedding-3-small",
-  transcribe_model: "openrouter/openai/whisper-1",
   "voice.opus_library": "libopus.so.0",
   "voice.webrtc.public_ips": "203.0.113.7",
   "voice.webrtc.ice_servers": "stun:stun.l.google.com:19302",
@@ -325,10 +311,4 @@ export function hintOf(key: string, engines: SearchEngine[], providers: Provider
 /** The example a field shows while empty. */
 export function placeholderOf(key: string): string | undefined {
   return PLACEHOLDERS[key] ? t(PLACEHOLDERS[key]) : undefined;
-}
-
-export function sourceWord(s: ConfigSource) {
-  if (s === ConfigSource.ENV) return "env";
-  if (s === ConfigSource.YAML) return "yaml";
-  return "default";
 }

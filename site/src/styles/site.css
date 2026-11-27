@@ -15,6 +15,12 @@ html {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   scroll-behavior: smooth;
+  /* An anchor lands below the sticky header, not under it. */
+  scroll-padding-top: 72px;
+}
+
+.site-header[data-stuck] {
+  border-bottom-color: var(--color-line);
 }
 
 @media (prefers-reduced-motion: reduce) {

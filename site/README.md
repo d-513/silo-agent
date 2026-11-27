@@ -4,10 +4,13 @@ The landing page and the docs, built with [Astro](https://astro.build) and Starl
 
 | Where | What |
 | --- | --- |
-| `src/pages/` | The landing page |
+| `src/pages/` | The landing page (`index.astro`) and the security page (`security.astro`) |
+| `src/layouts/Page.astro` | The frame of every non-docs page: the sticky header with the site's pages (Security, Docs; the logo is Home), the one you are on lit, and Install |
+| `src/components/SecurityTeaser.astro`, `Security.astro`, `SecurityShield.astro` | Security: the landing's short section (the layers named beside the shield), the six layers in full for the security page, and the shield both draw (layers in `src/lib/security.ts`) |
 | `src/content/docs/docs/` | The docs, served under `/docs` (Markdown and MDX) |
 | `src/components/Demo.astro` | The console demo in a frame, for the landing and any docs page |
 | `src/components/Crest.astro` | A Bot's crest, drawn at build time by the console's `web/src/stack.ts` |
+| `src/components/Providers.astro` | The Models section: every model provider wired to the kinds it serves, read from `internal/llm/llm.go` by `src/lib/providers.ts` and drawn with Admin's marks |
 | `src/styles/` | `site.css` (Tailwind for the landing) and `docs.css` (Starlight's variables), both over `web/src/tokens.css` |
 | `public/demo/` | The console demo, built from `web/` (not in git) |
 
@@ -29,8 +32,8 @@ pnpm --dir site dev             # the site on :4321 (build the demo first)
 
 - Build command: `pnpm --dir web install --frozen-lockfile && pnpm --dir web build:demo && pnpm --dir site install --frozen-lockfile && pnpm --dir site build`
 - Output directory: `site/dist`
-- Root directory: the repository root (the site reads `web/`, `brand/` and `internal/catalog/`)
+- Root directory: the repository root (the site reads `web/`, `brand/`, `internal/catalog/` and `internal/llm/llm.go`)
 - `SITE_URL`: the public address, for the sitemap
-- Watch paths: `site/**`, `web/src/**`, `brand/**`, `internal/catalog/**`, `internal/drives/catalog/**`
+- Watch paths: `site/**`, `web/src/**`, `brand/**`, `internal/catalog/**`, `internal/drives/catalog/**`, `internal/llm/llm.go`
 
 Nothing needs a Worker yet. `public/_headers` sets the caching.

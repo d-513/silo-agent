@@ -15,8 +15,8 @@ import { Tip } from "../Tip";
 // above its settings.
 export function ProviderNotice({ text }: { text: string }) {
   return (
-    <p className="flex items-start gap-2 rounded-sm border-l-4 border-vermilion bg-well px-3 py-2 text-small leading-5 text-ink">
-      <TriangleAlert className="mt-0.5 shrink-0 text-vermilion" size={16} />
+    <p className="flex items-start gap-2.5 rounded-control bg-well px-3 py-2.5 text-small leading-5 text-ink-2">
+      <TriangleAlert className="mt-0.5 shrink-0 text-vermilion" size={15} />
       <span>{text}</span>
     </p>
   );

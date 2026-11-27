@@ -16,36 +16,178 @@ export function modelOf(id: string): string {
   return i > 0 ? id.slice(i + 1) : id;
 }
 
-export type Job = {
+export type JobGroup = "chat" | "judges" | "voice" | "tools";
+
+/** The groups the jobs are listed under, in the map's order. */
+export const JOB_GROUPS: { id: JobGroup; label: string }[] = [
+  { id: "chat", label: msg("Conversations") },
+  { id: "judges", label: msg("Judges") },
+  { id: "voice", label: msg("Voice") },
+  { id: "tools", label: msg("Tools") },
+];
+
+/** The kinds of model a job takes; "either" is a decision model or a text model. */
+export type Takes = "text" | "decision" | "transcription" | "speech" | "embedding" | "image" | "either";
+
+// A job is a setting that names a model: what it is for, the kind of model
+// it takes, and what its empty choice means.
+export type JobDef = {
   key: string;
+  // Its short name, on the map and in an allowlist's "used by" line.
   label: string;
-  // The Models page where it is set.
-  page: JobPage;
+  group: JobGroup;
+  takes: Takes;
+  // What the job is, in a sentence or two.
+  hint: string;
+  // The empty choice, in the picker's words, and its value when that is not "".
+  unset: string;
+  unsetValue?: string;
+  // What the map says where nobody does the job.
+  idle: string;
+};
+
+// Every job a model is given, in the order the map reads: a conversation
+// first, then who rules on it, then a call, then the tools.
+export const JOBS: JobDef[] = [
+  {
+    key: "model",
+    label: msg("Chat"),
+    group: "chat",
+    takes: "text",
+    hint: msg("What a chat writes with, unless its Bot or the chat picks another allowed text model."),
+    unset: msg("None: each Bot or chat has to pick one"),
+    idle: msg("Not set"),
+  },
+  {
+    key: "model_title",
+    label: msg("Titles"),
+    group: "chat",
+    takes: "text",
+    hint: msg("Names a chat from its first message. A small, fast model is enough."),
+    unset: msg("Same as Chat"),
+    idle: msg("Not set"),
+  },
+  {
+    key: "model_subagent",
+    label: msg("Subagents"),
+    group: "chat",
+    takes: "text",
+    hint: msg("Default for subagents a lead starts. A cheaper model keeps parallel work affordable; the lead can still pick another."),
+    unset: msg("Same as the lead"),
+    idle: msg("Same as the lead"),
+  },
+  {
+    key: "model_memory",
+    label: msg("Memory"),
+    group: "chat",
+    takes: "text",
+    hint: msg("Reads chats once they go quiet and saves the facts the Bot missed. A cheap model is enough."),
+    unset: msg("Same as Titles"),
+    idle: msg("Not set"),
+  },
+  {
+    key: "model_approval",
+    label: msg("Auto-approval"),
+    group: "judges",
+    takes: "either",
+    hint: msg("Decides rules set to Auto. A decision model answers in a fraction of a second and only a sure yes approves; a text model is asked for one word."),
+    unset: msg("Same as Titles"),
+    idle: msg("Not set"),
+  },
+  {
+    key: "model_filter",
+    label: msg("Output filter"),
+    group: "judges",
+    takes: "either",
+    hint: msg("Judges tool results for rules set to Check, once per result. A decision model is the fast, cheap choice; a text model is asked for one word."),
+    unset: msg("Same as Auto-approval"),
+    idle: msg("Not set"),
+  },
+  {
+    key: "model_voice",
+    label: msg("Talker"),
+    group: "voice",
+    takes: "text",
+    hint: msg("A fast text model that holds the conversation on a call and hands real work to the Bot, so answers start in under a second. Without one, the Bot answers every turn itself: smarter, slower."),
+    unset: msg("None: the Bot answers every turn"),
+    idle: msg("The Bot answers every turn"),
+  },
+  {
+    key: "transcribe_model",
+    label: msg("Dictation"),
+    group: "voice",
+    takes: "transcription",
+    hint: msg("Hears what you say: dictation in the composer, the transcribe tool, and calls unless Hears calls names another."),
+    unset: msg("Off: no dictation and no calls"),
+    unsetValue: "off",
+    idle: msg("Off"),
+  },
+  {
+    key: "voice.transcribe_model",
+    label: msg("Hears calls"),
+    group: "voice",
+    takes: "transcription",
+    hint: msg("Hears every turn of a call. A live model hears you as you speak and has the words ready when you stop; dictation can stay on a cheaper one."),
+    unset: msg("Same as Dictation"),
+    idle: msg("Off"),
+  },
+  {
+    key: "voice.speech_model",
+    label: msg("Speaks"),
+    group: "voice",
+    takes: "speech",
+    hint: msg("The voice a Bot speaks with unless its own Settings pick another allowed speech model."),
+    unset: msg("None: no Read aloud and no calls"),
+    idle: msg("No voice"),
+  },
+  {
+    key: "model_decision",
+    label: msg("Decisions"),
+    group: "tools",
+    takes: "decision",
+    hint: msg("What the Bot's decide tool asks unless it names another allowed decision model."),
+    unset: msg("None: no decide tool"),
+    idle: msg("No decision model"),
+  },
+  {
+    key: "embedding_model",
+    label: msg("Embeddings"),
+    group: "tools",
+    takes: "embedding",
+    hint: msg("For memories and indexed documents. OpenAI-compatible, 1536-wide; switching models makes old memories match poorly (documents are re-embedded on the next sync)."),
+    unset: msg("None: no memories and no document search"),
+    idle: msg("No embedding model"),
+  },
+  {
+    key: "model_image",
+    label: msg("Images"),
+    group: "tools",
+    takes: "image",
+    hint: msg("What a Bot's generate_image tool asks unless it names another allowed image model. Each image is billed by its provider."),
+    unset: msg("None: no image generation"),
+    idle: msg("No image model"),
+  },
+];
+
+/** The kinds of model a job's picker offers, the first being what an id nobody lists is taken for. */
+export function kindsOf(takes: Takes): ("text" | "decision" | "transcription" | "speech" | "embedding" | "image")[] {
+  return takes === "either" ? ["decision", "text"] : [takes];
+}
+
+/** A job's short name by its setting ("" for a setting that is no job). */
+export function jobName(key: string): string {
+  return JOBS.find((j) => j.key === key)?.label ?? "";
+}
+
+// A job as the map draws it: its definition, and what does it now.
+export type Job = JobDef & {
   // The model doing it, "" when nobody does (off or unset).
   model: string;
   // inherited names the setting it follows when its own is unset.
   inherited: string;
-  // A sentence for a job nobody does.
-  idle: string;
+  // Its own value: "" while it follows another setting or nobody does it.
+  own: string;
 };
-
-export type JobPage = "text" | "decision" | "embedding" | "voice" | "image";
-
-type JobDef = { key: string; label: string; page: JobPage; idle?: string };
-
-// The jobs a model is given, in the order the map reads: a conversation
-// first, then a call, then the quieter ones.
-export const JOBS: JobDef[] = [
-  { key: "model", label: msg("Chat"), page: "text" },
-  { key: "model_voice", label: msg("Talker"), page: "voice", idle: msg("The Bot answers every turn") },
-  { key: "voice.transcribe_model", label: msg("Hears calls"), page: "voice", idle: msg("Off") },
-  { key: "voice.speech_model", label: msg("Speaks"), page: "voice", idle: msg("No voice") },
-  { key: "transcribe_model", label: msg("Dictation"), page: "voice", idle: msg("Off") },
-  { key: "model_approval", label: msg("Auto-approval"), page: "decision" },
-  { key: "model_decision", label: msg("Decisions"), page: "decision", idle: msg("No decision model") },
-  { key: "embedding_model", label: msg("Embeddings"), page: "embedding" },
-  { key: "model_image", label: msg("Images"), page: "image", idle: msg("No image model") },
-];
 
 // What a setting left empty follows, nearest first, as the server reads it.
 export const FOLLOWS: Record<string, string[]> = {
@@ -80,12 +222,17 @@ export function effective(values: Record<string, string>, key: string): { model:
   return { model: model === "off" ? "" : model, from };
 }
 
-/** What each job is done with, given the form's values and the allowed decision models. */
+/** What each job is done with, given the form's values. */
 export function resolveJobs(values: Record<string, string>): Job[] {
   return JOBS.map((j) => {
     const { model, from } = effective(values, j.key);
-    return { key: j.key, label: j.label, page: j.page, model, inherited: from, idle: j.idle ?? msg("Not set") };
+    return { ...j, model, inherited: from, own: from ? "" : model };
   });
+}
+
+/** The jobs whose own setting names this model: what a removal would leave without one. */
+export function jobsUsing(values: Record<string, string>, id: string): JobDef[] {
+  return JOBS.filter((j) => (values[j.key] ?? "").trim() === id);
 }
 
 /** Providers in the order the map lists them: by the first job they do. */

@@ -2,10 +2,11 @@ import { Plus, Trash2, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SaveButton, useSave } from "../Feedback";
 import { Btn } from "../Btn";
-import { Panel, inputClass } from "../Field";
+import { inputClass } from "../Field";
 import { ConfigSource, type ConnectorVar } from "../gen/silo/v1/ui_pb";
 import { t } from "../i18n.ts";
 import { Trans } from "../Trans.tsx";
+import { Band, Empty, Group, Notice } from "./kit";
 
 type VarDraft = { name: string; value: string; source: ConfigSource; envName: string };
 
@@ -35,67 +36,51 @@ export function ConnectorVarsPanel({
   }
 
   return (
-    <Panel
+    <Group
       title={t("Connector variables")}
       note={t("Use these in a connector URL, headers, OAuth fields, command, arguments, or env values as ${NAME}.")}
-    >
-      <p className="mb-4 flex items-start gap-2 rounded-sm border-l-4 border-vermilion bg-well px-3 py-2 text-small text-ink">
-        <TriangleAlert className="mt-0.5 shrink-0 text-vermilion" size={16} />
-        <span>
-          <Trans i18nKey="These are variables, not secrets. Values are stored in plain text in <mono>silo.yaml</mono> and are not protected — anyone who can read the config can see them. Use a Bot Secret for credentials." components={{ mono: <span className="font-mono" /> }} />
-        </span>
-      </p>
-      {draft.length === 0 ? (
-        <p className="mb-3 text-small text-ink-2">{t("No variables yet.")}</p>
-      ) : (
-        <div className="mb-3 grid gap-2">
-          {draft.map((r, i) => {
-            const locked = r.source === ConfigSource.ENV;
-            return (
-              <div key={i} className="flex flex-wrap items-center gap-2">
-                <input
-                  className={`${inputClass} w-48 font-mono text-small`}
-                  placeholder={"NAME"}
-                  value={r.name}
-                  disabled={locked}
-                  onChange={(e) => update(i, { name: e.target.value })}
-                />
-                <span className="text-ink-3">=</span>
-                <input
-                  className={`${inputClass} min-w-[160px] flex-1 font-mono text-small`}
-                  placeholder={t("value")}
-                  value={r.value}
-                  disabled={locked}
-                  onChange={(e) => update(i, { value: e.target.value })}
-                />
-                {locked ? (
-                  <span className="inline-flex items-center gap-1 text-micro text-vermilion" title={r.envName}>
-                    <TriangleAlert size={14} />
-                    {r.envName}
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    title={t("Remove")}
-                    className="rounded-sm p-1 text-ink-2 transition-colors hover:bg-pressed hover:text-vermilion"
-                    onClick={() => setDraft((prev) => prev.filter((_, j) => j !== i))}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-      <div className="flex items-center gap-3">
-        <Btn onClick={() => setDraft((prev) => [...prev, { name: "", value: "", source: ConfigSource.DEFAULT, envName: "" }])}>
-          <Plus size={14} /> {t("Add variable")}
-        </Btn>
-        <SaveButton state={varSaver.state} onClick={save}>
+      action={
+        <SaveButton size="sm" state={varSaver.state} onClick={save}>
           {t("Save variables")}
         </SaveButton>
-      </div>
-    </Panel>
+      }
+    >
+      <Notice tone="warn">
+        <Trans i18nKey="These are variables, not secrets. Values are stored in plain text in <mono>silo.yaml</mono> and are not protected — anyone who can read the config can see them. Use a Bot Secret for credentials." components={{ mono: <span className="font-mono" /> }} />
+      </Notice>
+      {draft.length === 0 ? <Empty>{t("No variables yet.")}</Empty> : null}
+      {draft.map((r, i) => {
+        const locked = r.source === ConfigSource.ENV;
+        return (
+          <div key={i} className="flex flex-wrap items-center gap-2 px-5 py-2.5">
+            <input className={`${inputClass} w-48 font-mono text-small`} placeholder={"NAME"} aria-label={t("Name")} value={r.name} disabled={locked} onChange={(e) => update(i, { name: e.target.value })} />
+            <span className="text-ink-3">=</span>
+            <input
+              className={`${inputClass} min-w-[160px] flex-1 font-mono text-small`}
+              placeholder={t("value")}
+              aria-label={t("value")}
+              value={r.value}
+              disabled={locked}
+              onChange={(e) => update(i, { value: e.target.value })}
+            />
+            {locked ? (
+              <span className="inline-flex items-center gap-1 font-mono text-micro text-vermilion" title={r.envName}>
+                <TriangleAlert size={12} />
+                {r.envName}
+              </span>
+            ) : (
+              <Btn kind="ghost" size="sm" iconOnly title={t("Remove")} aria-label={t("Remove")} className="hover:text-vermilion" onClick={() => setDraft((prev) => prev.filter((_, j) => j !== i))}>
+                <Trash2 size={14} />
+              </Btn>
+            )}
+          </div>
+        );
+      })}
+      <Band>
+        <Btn size="sm" onClick={() => setDraft((prev) => [...prev, { name: "", value: "", source: ConfigSource.DEFAULT, envName: "" }])}>
+          <Plus size={14} /> {t("Add variable")}
+        </Btn>
+      </Band>
+    </Group>
   );
 }

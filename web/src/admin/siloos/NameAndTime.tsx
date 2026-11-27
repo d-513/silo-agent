@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { Btn } from "../../Btn";
-import { SettingGroup, SettingRow, inputClass } from "../../Field";
+import { SettingRow, inputClass } from "../../Field";
+import { Group } from "../kit";
 import { Switch } from "../../Switch";
 import { ui } from "../../api";
 import { fail } from "../../errors";
@@ -37,7 +38,7 @@ export function NameAndTime({ sys }: { sys: SystemInfo }) {
 
   const drift = Math.round((Date.parse(sys.now) - Date.now()) / 1000);
   return (
-    <SettingGroup title={t("Name and time")}>
+    <Group title={t("Name and time")}>
       <SettingRow label={t("Host name")} hint={t("How the machine names itself on the network.")} error={err.name}>
         <div className="flex w-full gap-2">
           <input
@@ -88,6 +89,6 @@ export function NameAndTime({ sys }: { sys: SystemInfo }) {
       >
         <Switch on={sys.ntp} disabled={busy} title={t("Set the clock from the internet (NTP)")} onChange={(v) => void save("ntp", () => ui.setSiloOSTime({ ntp: v }))} />
       </SettingRow>
-    </SettingGroup>
+    </Group>
   );
 }

@@ -102,7 +102,7 @@ Besides OpenRouter, OpenAI and `local`, a provider each for the fastest pieces o
 
 ### Voice
 
-Read aloud (a speaker button on every reply) and **calls** (Talk, in the composer: a spoken conversation with a Bot, held in a chat). Admin → Settings → Models → Voice.
+Read aloud (a speaker button on every reply) and **calls** (Talk, in the composer: a spoken conversation with a Bot, held in a chat). Admin → Settings → Voice & calls holds the switch, the limits and the call network; the models (what hears, what speaks, the talker) are jobs under Admin → Settings → Models.
 
 | Key | Default | What it does |
 | --- | --- | --- |
@@ -190,7 +190,7 @@ Audio is never kept: what is said on a call is written into its chat as text, an
 | `runs.max_duration` | `120m` | `SILO_RUNS__MAX_DURATION` | Cap on one agent run (a Go duration such as `120m`/`2h`, or bare minutes). `-1` means unlimited. Subagent runs and a lead sleeping while its subagents work count toward it. A run that reaches it ends with an error saying so |
 | `context.windows` | (none) | — | Per-model window overrides (YAML list of `{model, window}`; a list because model ids contain dots). Wins over the provider's report |
 | `thinking.levels` | (none) | — | Per-model thinking-level overrides for the composer's Thinking picker (YAML list of `{model, levels}`; levels from `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`; `[]` hides the picker). Wins over the provider's report: OpenRouter `/models` `supported_parameters`, the Anthropic Models API `capabilities`, OpenAI's reasoning families (`o*`, `gpt-5*` → low/medium/high). `local` models have no levels unless listed here (sent as `reasoning_effort`) |
-| `models` | (none) | — | Allowlist of text models (YAML list). Admin → Settings → Models → Text edits it; under Providers, **List models** asks a provider what its saved key can call and adds a model with one press |
+| `models` | (none) | — | Allowlist of text models (YAML list). Admin → Settings → Models → Allowed models edits it, and picking a model for a job under Models → Jobs allows it too; under Providers, **List models** asks a provider what its saved key can call and adds a model with one press |
 | `decision_models` | (none) | — | Allowlist of decision models (YAML list), edited in the same two places. Only `openrouter` and `typesafe` ids are accepted, and an id cannot be in `models` too. Empty: no `decide` tool |
 | `providers.<id>.api_key` | (none) | `SILO_PROVIDERS__<ID>__API_KEY` | Provider key. Required when that provider is used (optional for `local`) |
 | `providers.<id>.base_url` | (provider default) | `SILO_PROVIDERS__<ID>__BASE_URL` | Override the API base URL |

@@ -114,12 +114,12 @@ export function useAdminSettings() {
 
   // Allowlist changes run one after another, each on top of what the server
   // last answered, so two quick presses cannot drop each other's model. kind
-  // names the allowlist: a model is a text model or a decision model.
-  const modelQueue = useRef<Promise<void>>(Promise.resolve());
-  function setModel(id: string, on: boolean, kind: ModelKind = "text") {
+  // names the allowlist. It answers whether the list now is as asked.
+  const modelQueue = useRef<Promise<unknown>>(Promise.resolve());
+  function setModel(id: string, on: boolean, kind: ModelKind = "text"): Promise<boolean> {
     setErr("");
     setBusy((prev) => new Set(prev).add(id));
-    modelQueue.current = modelQueue.current.then(async () => {
+    const done = modelQueue.current.then(async () => {
       try {
         const saved = peek(UI.method.getSettings, {});
         // What silo.yaml lists: a role's own model is shown on its list but
@@ -130,8 +130,10 @@ export function useAdminSettings() {
           applyAside(await ui.setModels({ models: next, kind }));
           modelsChanged();
         }
+        return true;
       } catch (ex) {
         setErr(fail(ex));
+        return false;
       } finally {
         setBusy((prev) => {
           const left = new Set(prev);
@@ -140,7 +142,8 @@ export function useAdminSettings() {
         });
       }
     });
-    return modelQueue.current;
+    modelQueue.current = done;
+    return done;
   }
 
   async function saveConnVars(list: { name: string; value: string }[]) {

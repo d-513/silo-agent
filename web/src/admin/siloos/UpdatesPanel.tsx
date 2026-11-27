@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Btn } from "../../Btn";
 import { ChipRadio } from "../../ChipRadio";
 import { ArmedButton } from "../../Feedback";
-import { ErrorWell, SettingGroup, SettingRow } from "../../Field";
+import { ErrorWell, SettingRow } from "../../Field";
+import { Group } from "../kit";
 import { Status } from "../../Lamp";
 import { Select } from "../../Select";
 import { ui } from "../../api";
@@ -66,7 +67,7 @@ export function UpdatesPanel() {
   const running = !!u?.job?.running;
   const local = u?.channel === "local";
   return (
-    <SettingGroup title={t("Updates")} note={t("Silo and the system update together: each version of SiloOS is one image.")}>
+    <Group title={t("Updates")} note={t("Silo and the system update together: each version of SiloOS is one image.")}>
       {q.error ? (
         <div className="px-5 py-4">
           <ErrorWell>{fail(q.error)}</ErrorWell>
@@ -164,7 +165,7 @@ export function UpdatesPanel() {
           ) : null}
         </>
       ) : null}
-    </SettingGroup>
+    </Group>
   );
 }
 

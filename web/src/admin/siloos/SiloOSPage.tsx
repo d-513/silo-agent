@@ -3,7 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { Power, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { ArmedButton } from "../../Feedback";
-import { ErrorWell, Panel, SettingGroup, SettingRow, SkeletonRows } from "../../Field";
+import { ErrorWell, SettingRow, SkeletonRows } from "../../Field";
+import { AdminHead, Empty, Group, Groups } from "../kit";
 import { ui } from "../../api";
 import { fail } from "../../errors";
 import { fmtBytes } from "../../format";
@@ -25,48 +26,38 @@ export function SiloOSPage() {
   if (!st) return q.error ? <ErrorWell>{fail(q.error)}</ErrorWell> : <SkeletonRows rows={4} height={88} />;
   if (!st.available) {
     return (
-      <Panel title={t("Not on SiloOS")} note={t("This control plane does not run on SiloOS, so there is no machine to manage from here.")}>
-        <p className="text-small text-ink-2">{t("SiloOS is a bootable image that runs Silo and nothing else. See images/os/README.md in the repository.")}</p>
-      </Panel>
+      <>
+        <AdminHead title={t("SiloOS")} note={t("This control plane does not run on SiloOS, so there is no machine to manage from here.")} />
+        <Group>
+          <Empty>{t("SiloOS is a bootable image that runs Silo and nothing else. See images/os/README.md in the repository.")}</Empty>
+        </Group>
+      </>
     );
   }
   return (
-    <div className="@container/page">
-      <div className="mb-5">
-        <h2 className="text-title">{t("SiloOS")}</h2>
-        <p className="mt-0.5 text-ink-2">{t("The machine Silo runs on: its network, name, clock, updates and power.")}</p>
-      </div>
-      {st.error ? (
-        <ErrorWell className="mb-5">{t("The host daemon (siloosd) is not answering: {{error}}", { error: st.error })}</ErrorWell>
-      ) : st.system ? (
-        <Summary sys={st.system} />
-      ) : null}
-      <SettingGroup title={t("HTTPS")} note={t("Caddy in front of Silo, configured by Silo from Admin → Settings → HTTPS.")}>
-        <SettingRow
-          label={t("Certificates")}
-          meta={st.proxy ? <RootButton proxy={st.proxy} /> : undefined}
-          hint={t("Install the root certificate on a device to trust Silo's own certificates there.")}
-        >
-          <Link to="/admin/settings/$section" params={{ section: "https" }} className="text-small font-medium text-cobalt hover:underline">
-            {t("HTTPS settings")}
-          </Link>
-        </SettingRow>
-        {st.proxy?.configured ? (
-          <div className="px-5 py-3">
-            <ProxyLines proxy={st.proxy} />
-          </div>
-        ) : null}
-      </SettingGroup>
-      {st.error ? null : (
-        <>
-          <NetworkPanel />
-          {st.system ? <NameAndTime sys={st.system} /> : null}
-          <UpdatesPanel />
-          <PowerGroup />
-          <LogsPanel />
-        </>
-      )}
-    </div>
+    <>
+      <AdminHead title={t("SiloOS")} note={t("The machine Silo runs on: its network, name, clock, updates and power.")} />
+      <Groups>
+        {st.error ? <ErrorWell>{t("The host daemon (siloosd) is not answering: {{error}}", { error: st.error })}</ErrorWell> : st.system ? <Summary sys={st.system} /> : null}
+        <Group title={t("HTTPS")} note={t("Caddy in front of Silo, configured by Silo from Admin → Settings → HTTPS.")} action={st.proxy ? <RootButton proxy={st.proxy} /> : undefined}>
+          <SettingRow label={t("Certificates")} hint={t("Install the root certificate on a device to trust Silo's own certificates there.")}>
+            <Link to="/admin/settings/$section" params={{ section: "https" }} className="text-small font-medium text-cobalt hover:text-cobalt-deep">
+              {t("HTTPS settings")}
+            </Link>
+          </SettingRow>
+          {st.proxy?.configured ? <ProxyLines proxy={st.proxy} /> : null}
+        </Group>
+        {st.error ? null : (
+          <>
+            <NetworkPanel />
+            {st.system ? <NameAndTime sys={st.system} /> : null}
+            <UpdatesPanel />
+            <PowerGroup />
+            <LogsPanel />
+          </>
+        )}
+      </Groups>
+    </>
   );
 }
 
@@ -86,7 +77,7 @@ function Summary({ sys }: { sys: SystemInfo }) {
   const memTotal = Number(sys.memoryTotal);
   const memFree = Number(sys.memoryAvailable);
   return (
-    <div className="mb-6 grid grid-cols-2 gap-4 rounded-card bg-well px-5 py-4 @2xl/page:grid-cols-5">
+    <div className="grid grid-cols-2 gap-x-6 gap-y-4 rounded-card bg-well px-5 py-4 @2xl/page:grid-cols-5">
       <Stat label={t("Machine")} value={sys.hostname || "—"} note={sys.osName} />
       <Stat label={t("Version")} value={sys.imageVersion || "—"} note={sys.image} />
       <Stat label={t("Up")} value={uptime(Number(sys.uptimeSeconds))} note={t("load {{load}} on {{cpus}} CPUs", { load: sys.load1.toFixed(2), cpus: sys.cpus })} />
@@ -116,7 +107,7 @@ function PowerGroup() {
     }
   }
   return (
-    <SettingGroup title={t("Power")} tone="danger" note={t("Every Bot stops with the machine, and starts again with it.")}>
+    <Group title={t("Power")} tone="danger" note={t("Every Bot stops with the machine, and starts again with it.")}>
       <SettingRow label={t("Restart the machine")} hint={gone || t("Also how a downloaded update is put to use.")} error={err}>
         <ArmedButton kind="secondary" armedLabel={t("Click again to restart")} icon={<RotateCcw size={13} />} onConfirm={() => void power("reboot")} disabled={!!gone}>
           {t("Restart")}
@@ -127,6 +118,6 @@ function PowerGroup() {
           {t("Shut down")}
         </ArmedButton>
       </SettingRow>
-    </SettingGroup>
+    </Group>
   );
 }

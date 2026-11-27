@@ -1,0 +1,37 @@
+---
+// The landing's Security section, kept short: the claim and the six layers
+// named beside their shield (pointing at one lights its band), then a way to
+// the security page (pages/security.astro), which shows each one at work.
+import SecurityShield from "./SecurityShield.astro";
+import { LAYERS } from "../lib/security.ts";
+---
+
+<section id="security" class="security mx-auto mt-28 max-w-[1200px] px-5">
+  <div class="grid items-center gap-x-12 gap-y-10 lg:grid-cols-[7fr_5fr]">
+    <div>
+      <p class="text-[13px] font-medium text-ink-3">Security</p>
+      <h2 class="mt-2 max-w-[24ch] text-[30px] font-semibold leading-[1.15] tracking-[-0.02em]">Safe when the agent is wrong.</h2>
+      <p class="mt-4 max-w-[58ch] text-[16px] leading-[1.65] text-ink-2">
+        An agent that reads the web will sooner or later be told to do something it should not. Silo does not rely on the model refusing. Six layers stand between a misled agent and anything you would mind, and each one works without the others.
+      </p>
+
+      <ol class="mt-6 grid gap-x-4 gap-y-0.5 sm:grid-cols-2">
+        {
+          LAYERS.map((l, i) => (
+            <li data-layer={i + 1} tabindex="0" class="flex items-baseline gap-3 rounded-sm px-2.5 py-2 transition-colors hover:bg-well focus-visible:bg-well">
+              <span class="font-mono text-[12.5px] text-ink-3">{i + 1}</span>
+              <span class="text-[14.5px] font-medium">{l.title}</span>
+            </li>
+          ))
+        }
+      </ol>
+
+      <a href="/security/" class="press mt-7 inline-flex items-center gap-2 rounded-control bg-ink px-4 py-2.5 text-[15px] font-medium text-on-ink hover:bg-ink-deep">
+        See each layer at work
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+      </a>
+    </div>
+
+    <SecurityShield class="max-w-[320px]" />
+  </div>
+</section>

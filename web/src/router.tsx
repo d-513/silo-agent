@@ -1,5 +1,5 @@
 import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Outlet, redirect } from "@tanstack/react-router";
-import { FIRST_SECTION, isModelPage, isSection } from "./admin/sections";
+import { FIRST_SECTION, OLD_KIND_PAGES, isModelPage, isSection } from "./admin/sections";
 import { getSession, onSession, takeLanding } from "./auth";
 import { history } from "./history";
 import { BotPage } from "./bot/BotPage";
@@ -62,7 +62,7 @@ import { SpaceIndex, SpaceLayout } from "./space/Workspace";
 //     /account
 //     /admin                       admins only: one tab per page
 //       settings/$section          Settings and its categories
-//       settings/models[/$page]    the model map, and its pages: providers text decision embedding image voice
+//       settings/models[/$page]    Models: its jobs (the model map), and its pages: providers allowed
 //       users[/invite|/$userId]
 //       connectors[/new|/$id]  skills  drives  audit  siloos (on SiloOS)  debug
 //     /bots/$botId                 BotPage: the tab bar, the right rail, what survives a page change
@@ -186,21 +186,30 @@ const adminSettingsSection = createRoute({
   getParentRoute: () => adminSettings,
   path: "$section",
   beforeLoad: ({ params }) => {
-    // Providers and Voice were categories of their own; they are under Models now.
+    // Providers was a category of its own; it is under Models now.
     if (isModelPage(params.section)) throw redirect({ to: "/admin/settings/models/$page", params: { page: params.section }, replace: true });
     if (!isSection(params.section)) toFirstSection();
   },
   component: adminPage("SettingsSection"),
 });
-// Models is the map, with a page per kind of job under it.
+// Models opens on its jobs (the map); Providers and Allowed models are under it.
 const adminModels = createRoute({ getParentRoute: () => adminSettings, path: "models" });
 const adminModelsIndex = createRoute({ getParentRoute: () => adminModels, path: "/", component: adminPage("ModelMapPage") });
 const adminModelsPage = createRoute({
   getParentRoute: () => adminModels,
   path: "$page",
-  // provider opens one provider on the Providers page (the map's press).
-  validateSearch: (s: Record<string, unknown>): { provider?: string } => (typeof s.provider === "string" && s.provider ? { provider: s.provider } : {}),
+  // provider opens one provider on the Providers page (the map's press);
+  // kind is the allowlist Allowed models shows.
+  validateSearch: (s: Record<string, unknown>): { provider?: string; kind?: string } => ({
+    ...(typeof s.provider === "string" && s.provider ? { provider: s.provider } : {}),
+    ...(typeof s.kind === "string" && s.kind ? { kind: s.kind } : {}),
+  }),
   beforeLoad: ({ params }) => {
+    // A page per kind stood here once: each is that kind's allowlist now,
+    // and Voice is a category of Settings.
+    const kind = OLD_KIND_PAGES[params.page];
+    if (kind) throw redirect({ to: "/admin/settings/models/$page", params: { page: "allowed" }, search: { kind }, replace: true });
+    if (params.page === "voice") throw redirect({ to: "/admin/settings/$section", params: { section: "voice" }, replace: true });
     if (!isModelPage(params.page)) throw redirect({ to: "/admin/settings/models", replace: true });
   },
   component: adminPage("ModelsPage"),

@@ -1,0 +1,60 @@
+---
+// The shield: the six layers as nested bands around one agent, the
+// outermost layer 6 and the innermost layer 1. Put it inside an element with
+// the class `security`: anything in there with `data-layer="n"` lights band
+// n while it is pointed at or holds focus (CSS :has, no script).
+import Crest from "./Crest.astro";
+import { LAYERS } from "../lib/security.ts";
+
+interface Props {
+  class?: string;
+  crest?: number;
+}
+const { class: className = "", crest = 52 } = Astro.props;
+
+const shield = "M160 20 290 62V170C290 250 235 310 160 340 85 310 30 250 30 170V62Z";
+const cx = 160;
+const cy = 185;
+const scale = (n: number) => 0.28 + 0.12 * n;
+const top = (n: number) => cy - (cy - 20) * scale(n);
+const order = LAYERS.map((_, i) => LAYERS.length - i);
+const lit = LAYERS.map((_, i) => `.security:has([data-layer="${i + 1}"]:is(:hover,:focus-within))`);
+const css = LAYERS.map((_, i) => `${lit[i]} .security-ring-${i + 1} path{stroke:var(--color-cobalt);stroke-width:2}${lit[i]} .security-ring-${i + 1} text{fill:var(--color-cobalt)}`).join("\n");
+---
+
+<figure class:list={["relative mx-auto w-full", className]}>
+  <svg viewBox="0 0 320 360" class="block h-auto w-full" role="img" aria-label="A shield of six nested layers around one agent">
+    {
+      order.map((n) => (
+        <g class={`security-ring security-ring-${n}`}>
+          <path d={shield} transform={`translate(${cx} ${cy}) scale(${scale(n)}) translate(${-cx} ${-cy})`} vector-effect="non-scaling-stroke" />
+          <text x={cx} y={top(n) + 14.5} text-anchor="middle">{n}</text>
+        </g>
+      ))
+    }
+  </svg>
+  <span class="absolute left-1/2 top-[53.5%] -translate-x-1/2 -translate-y-1/2">
+    <Crest index={25} size={crest} label="An agent" />
+  </span>
+</figure>
+
+<Fragment set:html={`<style>${css}</style>`} />
+
+<style is:global>
+  .security-ring path {
+    fill: var(--color-well);
+    stroke: var(--color-line-strong);
+    stroke-width: 1;
+    transition:
+      fill 160ms var(--ease-quiet),
+      stroke 160ms var(--ease-quiet);
+  }
+  .security-ring:nth-child(even) path {
+    fill: var(--color-canvas);
+  }
+  .security-ring text {
+    fill: var(--color-ink-3);
+    font: 500 10px "Geist Mono Variable", ui-monospace, monospace;
+    transition: fill 160ms var(--ease-quiet);
+  }
+</style>

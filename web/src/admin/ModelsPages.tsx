@@ -1,162 +1,105 @@
-import { Binary, Cpu, Image, Split, Type } from "lucide-react";
-import { useNavigate, useParams } from "@tanstack/react-router";
-import { Panel } from "../Field";
+import { useState } from "react";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { btnClass } from "../Btn";
 import { ConfigSource } from "../gen/silo/v1/ui_pb";
+import { TabPill, TabPills } from "../TabPills";
 import { AllowedModels } from "./AllowedModels";
+import { Band, Group, Groups, Notice } from "./kit";
+import { ModelsHead } from "./ModelsHead";
+import { ModelPicker } from "./ModelPicker";
 import { ProviderSettings } from "./ProviderSettings";
 import { ProviderMap } from "./ProviderMap";
-import { accountsOf, isReady, providerOf, providersInUse, resolveJobs } from "./providerJobs";
-import { ModelsHead, RolePanel, type Role } from "./roles";
-import { isModelPage, type ModelPage } from "./sections";
+import { accountsOf, isReady, resolveJobs, type JobDef } from "./providerJobs";
+import { KINDS, kindWord, type ModelKind } from "./providerModels";
+import { isModelPage } from "./sections";
 import { useSettingsForm } from "./useAdminSettings";
-import { VoiceSettings } from "./VoiceSettings";
-import { msg, t } from "../i18n.ts";
+import { t } from "../i18n.ts";
 
-// The Models part of Admin → Settings: the map on its own page, then a page
-// per kind of job, each holding its pickers and the allowlists they pick from.
+// The Models part of Admin → Settings, as three pages under one head: Jobs
+// (the map, where every job's model is picked), Providers (who serves them),
+// and Allowed models (what a chat and a Bot may pick from).
 
+// ModelMapPage is Jobs: every job and the provider that does it. A job is
+// picked right here, so this page alone is enough to set Silo's models up.
 export function ModelMapPage() {
   const { providers, values, fields } = useSettingsForm();
   const navigate = useNavigate();
+  const [picking, setPicking] = useState<JobDef | null>(null);
   const jobs = resolveJobs(values);
   const ready = (id: string) => isReady(id, fields, values, ConfigSource.ENV, accountsOf(providers));
-  const used = providersInUse(jobs);
-  const missing = used.filter((p) => !ready(p)).length;
-  const idle = jobs.filter((j) => !providerOf(j.model)).length;
+  const none = providers.length > 0 && !providers.some((p) => ready(p.id));
 
   return (
-    <div className="grid gap-5">
-      <ModelsHead icon={Cpu} title={t("Models")} note={t("Which provider does each job. Press a job to change its model, or a provider for its settings.")}>
-        <dl className="flex shrink-0 gap-6 pt-1 max-sm:hidden">
-          <Fact label={t("Providers")} value={used.length} />
-          <Fact label={t("Need a key")} value={missing} warn={missing > 0} />
-          <Fact label={t("Not done", { context: "job" })} value={idle} />
-        </dl>
-      </ModelsHead>
-      <Panel>
-        <ProviderMap
-          jobs={jobs}
-          providers={providers}
-          ready={ready}
-          onJob={(j) => void navigate({ to: "/admin/settings/models/$page", params: { page: j.page } })}
-          onPick={(id) => void navigate({ to: "/admin/settings/models/$page", params: { page: "providers" }, search: { provider: id } })}
-        />
-        <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-1.5 pt-4 text-label text-ink-3 shadow-[inset_0_1px_0_var(--color-line)]">
-          <span className="flex items-center gap-2">
-            <span aria-hidden className="h-px w-5 bg-ink-3" />
-            {t("Set for this job")}
-          </span>
-          <span className="flex items-center gap-2">
-            <span aria-hidden className="w-5 border-t border-dashed border-ink-3" />
-            {t("Follows another setting")}
-          </span>
-          <span className="flex items-center gap-2">
-            <span aria-hidden className="h-[6px] w-[6px] rounded-full bg-canvas shadow-[inset_0_0_0_1px_var(--color-line-strong)]" />
-            {t("Nobody does it")}
-          </span>
-        </div>
-      </Panel>
-    </div>
-  );
-}
-
-function Fact({ label, value, warn }: { label: string; value: number; warn?: boolean }) {
-  return (
-    <div className="flex flex-col items-end gap-1.5">
-      <dt className="text-section text-ink-3">{label}</dt>
-      <dd className={`font-mono text-heading leading-6 tabular-nums ${warn ? "text-vermilion" : "text-ink"}`}>{value}</dd>
-    </div>
+    <>
+      <ModelsHead note={t("Which model does each job. Press a job to pick its model; the line shows who serves it.")} />
+      <Groups>
+        <Group>
+          {none ? (
+            <Notice>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <span className="min-w-0 flex-1 basis-[240px]">{t("No provider is set up yet. Give one its key first, then pick a model for each job.")}</span>
+                <Link to="/admin/settings/models/$page" params={{ page: "providers" }} className={btnClass("primary", "", "sm")}>
+                  {t("Set up a provider")}
+                </Link>
+              </div>
+            </Notice>
+          ) : null}
+          <ProviderMap
+            jobs={jobs}
+            providers={providers}
+            ready={ready}
+            onJob={(j) => setPicking(j)}
+            onPick={(id) => void navigate({ to: "/admin/settings/models/$page", params: { page: "providers" }, search: { provider: id } })}
+          />
+          <Band className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-label text-ink-3">
+            <span className="flex items-center gap-2">
+              <span aria-hidden className="h-px w-5 bg-ink-3" />
+              {t("Set for this job")}
+            </span>
+            <span className="flex items-center gap-2">
+              <span aria-hidden className="w-5 border-t border-dashed border-ink-3" />
+              {t("Follows another setting")}
+            </span>
+            <span className="flex items-center gap-2">
+              <span aria-hidden className="h-[6px] w-[6px] rounded-full bg-surface shadow-[inset_0_0_0_1px_var(--color-line-strong)]" />
+              {t("Nobody does it")}
+            </span>
+          </Band>
+        </Group>
+      </Groups>
+      {picking ? <ModelPicker job={picking} onClose={() => setPicking(null)} /> : null}
+    </>
   );
 }
 
 export function ModelsPage() {
   const { page } = useParams({ from: "/_authed/admin/settings/models/$page" });
   if (!isModelPage(page)) return null;
-  return <div className="grid gap-5">{pages[page]()}</div>;
+  return page === "providers" ? <ProviderSettings /> : <AllowedPage />;
 }
 
-const pages: Record<ModelPage, () => React.ReactNode> = {
-  providers: () => <ProviderSettings />,
-  text: () => <TextModels />,
-  decision: () => <DecisionModels />,
-  embedding: () => <EmbeddingModels />,
-  image: () => <ImageModels />,
-  voice: () => <VoiceSettings />,
-};
-
-// The text jobs. Every one but the default may follow another.
-const TEXT_ROLES: Role[] = [
-  { key: "model", takes: "text", hint: msg("What a chat writes with, unless its Bot or the chat picks another allowed text model.") },
-  { key: "model_title", takes: "text", unset: msg("Same as default"), hint: msg("Names a chat from its first message. A small, fast model is enough.") },
-  { key: "model_subagent", takes: "text", unset: msg("Same as the lead"), hint: msg("Default for subagents a lead starts. A cheaper model keeps parallel work affordable; the lead can still pick another.") },
-  { key: "model_memory", takes: "text", unset: msg("Same as title model"), hint: msg("Reads chats once they go quiet and saves the facts the Bot missed. A cheap model is enough.") },
-];
-
-function TextModels() {
+// AllowedPage is the allowlists, one kind at a time: what a chat's model
+// menu, a Bot's settings and the tools may name beyond the jobs' own models.
+function AllowedPage() {
+  const { allowedOf } = useSettingsForm();
+  const { kind: asked } = useSearch({ from: "/_authed/admin/settings/models/$page" });
+  const navigate = useNavigate();
+  const kind: ModelKind = (KINDS as string[]).includes(asked ?? "") ? (asked as ModelKind) : "text";
   return (
     <>
-      <ModelsHead icon={Type} title={t("Text")} note={t("Models that write: every chat, the jobs around it, and the talker on a call. A Bot and a chat can each pick another from the allowed list.")} kinds={["text"]} />
-      <RolePanel title={t("Jobs")} roles={TEXT_ROLES} />
-      <AllowedModels kind="text" />
-    </>
-  );
-}
-
-// The decide tool's model, and the two judges that take either kind.
-const DECIDE_ROLES: Role[] = [{ key: "model_decision", takes: "decision", unset: msg("None: no decide tool"), hint: msg("What the Bot's decide tool asks unless it names another allowed decision model.") }];
-const JUDGE_ROLES: Role[] = [
-  {
-    key: "model_approval",
-    takes: "either",
-    unset: msg("Same as title model"),
-    hint: msg("Decides rules set to Auto. A decision model answers in a fraction of a second and only a sure yes approves; a text model is asked for one word."),
-  },
-  {
-    key: "model_filter",
-    takes: "either",
-    unset: msg("Same as auto-approval model"),
-    hint: msg("Judges tool results for rules set to Check, once per result. A decision model is the fast, cheap choice; a text model is asked for one word."),
-  },
-];
-
-function DecisionModels() {
-  return (
-    <>
-      <ModelsHead icon={Split} title={t("Decisions")} note={t("Models that answer typed questions (yes or no, a choice, a score) with probabilities instead of text. They judge, they do not chat.")} kinds={["decision"]} />
-      <RolePanel title={t("The decide tool")} roles={DECIDE_ROLES} />
-      <RolePanel title={t("Judges")} note={t("They rule on what a Bot may do and what it may read. Each takes a decision model or a text model.")} roles={JUDGE_ROLES} />
-      <AllowedModels kind="decision" />
-    </>
-  );
-}
-
-const EMBED_ROLES: Role[] = [{ key: "embedding_model", takes: "embedding" }];
-
-function EmbeddingModels() {
-  return (
-    <>
-      <ModelsHead icon={Binary} title={t("Embeddings")} note={t("Models that turn text into vectors, so memories and indexed documents can be searched by meaning.")} kinds={["embedding"]} />
-      <RolePanel title={t("Jobs")} roles={EMBED_ROLES} />
-      <AllowedModels kind="embedding" />
-    </>
-  );
-}
-
-const IMAGE_ROLES: Role[] = [
-  {
-    key: "model_image",
-    takes: "image",
-    unset: msg("None: no image generation"),
-    hint: msg("What a Bot's generate_image tool asks unless it names another allowed image model. Each image is billed by its provider."),
-  },
-];
-
-function ImageModels() {
-  return (
-    <>
-      <ModelsHead icon={Image} title={t("Images")} note={t("Models that make pictures from a prompt, and edit the ones they are given. A Bot saves what they make in its workspace.")} kinds={["image"]} />
-      <RolePanel title={t("The generate_image tool")} roles={IMAGE_ROLES} />
-      <AllowedModels kind="image" />
+      <ModelsHead page="allowed" note={t("What a chat, a Bot and the tools may pick from, beyond the models the jobs use. A change here is saved at once.")} />
+      <div className="silo-scroll-x mb-6 flex">
+        <TabPills>
+          {KINDS.map((k) => (
+            <TabPill key={k} on={k === kind} count={allowedOf(k).length} onClick={() => void navigate({ to: "/admin/settings/models/$page", params: { page: "allowed" }, search: { kind: k }, replace: true })}>
+              <span className="whitespace-nowrap">{kindWord(k)}</span>
+            </TabPill>
+          ))}
+        </TabPills>
+      </div>
+      <Groups>
+        <AllowedModels kind={kind} />
+      </Groups>
     </>
   );
 }

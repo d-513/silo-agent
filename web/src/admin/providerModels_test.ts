@@ -1,5 +1,5 @@
 import { eq } from "../testing.ts";
-import { bareModel, eitherKind, filterModels, fmtContext, kindOf, kindsIn, withFast, withModel } from "./providerModels.ts";
+import { bareModel, filterModels, fmtContext, kindOf, kindsIn, withFast, withModel } from "./providerModels.ts";
 import { FIRST_SECTION, isFormSection, isSection, SECTIONS } from "./sections.ts";
 
 eq(bareModel("openrouter/openai/gpt-5.6-luna"), "openai/gpt-5.6-luna", "the model part keeps its own slashes");
@@ -38,15 +38,6 @@ eq(kindOf({}), "text", "a model from before kinds is text");
 eq(kindsIn([{ kind: "decision" }, { kind: "text" }]), ["text", "decision"], "text comes first");
 eq(kindsIn([{ kind: "decision" }]), ["decision"], "a decision-only provider");
 eq(kindsIn([]), [], "an empty list has no kinds");
-eq(
-  eitherKind([{ id: "a/write", label: "A · write" }], [{ id: "b/jev", label: "" }]),
-  [
-    { value: "b/jev", label: "b/jev", hint: "Decision model" },
-    { value: "a/write", label: "A · write", hint: "Text model" },
-  ],
-  "a role that takes either kind lists decision models first and names the kind",
-);
-
 eq(isSection(FIRST_SECTION), true, "the first section is a section");
 eq(isSection("nope"), false, "unknown section");
 eq(isSection(undefined), false, "no section");

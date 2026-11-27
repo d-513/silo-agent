@@ -3,7 +3,8 @@ import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Btn } from "../../Btn";
 import { ChipRadio } from "../../ChipRadio";
-import { ErrorWell, SettingGroup } from "../../Field";
+import { ErrorWell } from "../../Field";
+import { Group } from "../kit";
 import { fail } from "../../errors";
 import { UI } from "../../gen/silo/v1/ui_pb";
 import { msg, t } from "../../i18n.ts";
@@ -29,7 +30,7 @@ export function LogsPanel() {
   const lines = q.data?.lines ?? [];
   const now = new Date();
   return (
-    <SettingGroup title={t("Logs")}>
+    <Group title={t("Logs")}>
       <div className="grid gap-3 px-5 py-4">
         <div className="flex flex-wrap items-center gap-2">
           <ChipRadio size="sm" label={t("Which log")} value={source} onChange={setSource} className="w-fit flex-wrap" options={sources.map((s) => ({ value: s.value, label: t(s.label) }))} />
@@ -54,6 +55,6 @@ export function LogsPanel() {
           )}
         </div>
       </div>
-    </SettingGroup>
+    </Group>
   );
 }

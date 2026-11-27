@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { accountsOf, capOf, effective, isReady, markOf, modelOf, providerOf, providersInUse, resolveJobs } from "./providerJobs.ts";
+import { JOBS, JOB_GROUPS, accountsOf, capOf, effective, isReady, jobName, jobsUsing, kindsOf, markOf, modelOf, providerOf, providersInUse, resolveJobs } from "./providerJobs.ts";
 
 test("a job follows its setting's fallbacks", () => {
   const jobs = resolveJobs({ model: "openrouter/openai/gpt-5.6-luna", model_title: "", model_approval: "", transcribe_model: "openrouter/openai/whisper-1", "voice.transcribe_model": "", "voice.speech_model": "elevenlabs/eleven_flash_v2_5", model_voice: "groq/openai/gpt-oss-120b", embedding_model: "openrouter/openai/text-embedding-3-small", model_decision: "typesafe/jev-latest" });
@@ -10,6 +10,30 @@ test("a job follows its setting's fallbacks", () => {
   assert.equal(by.model_approval.model, "openrouter/openai/gpt-5.6-luna");
   assert.equal(by.model_decision.model, "typesafe/jev-latest");
   assert.deepEqual(providersInUse(jobs), ["openrouter", "groq", "elevenlabs", "typesafe"]);
+});
+
+test("every job is on the map, under a group, with an empty choice", () => {
+  const keys = JOBS.map((j) => j.key);
+  assert.equal(new Set(keys).size, keys.length);
+  // Every setting another one follows is itself a job, so a line can be drawn to it.
+  for (const k of ["model", "model_title", "model_approval", "transcribe_model"]) assert.ok(keys.includes(k), k);
+  for (const j of JOBS) {
+    assert.ok(JOB_GROUPS.some((g) => g.id === j.group), `${j.key} has no group`);
+    assert.ok(j.unset && j.hint && j.idle, `${j.key} is missing its words`);
+  }
+  assert.deepEqual(kindsOf("either"), ["decision", "text"]);
+  assert.deepEqual(kindsOf("speech"), ["speech"]);
+  assert.equal(jobName("model_title"), "Titles");
+  assert.equal(jobName("http_addr"), "");
+});
+
+test("a job knows its own setting from the one it follows", () => {
+  const by = Object.fromEntries(resolveJobs({ model: "a/chat", model_memory: "b/cheap" }).map((j) => [j.key, j]));
+  assert.equal(by.model_title.model, "a/chat");
+  assert.equal(by.model_title.own, "", "it only follows Chat");
+  assert.equal(by.model_memory.own, "b/cheap");
+  assert.equal(by.model_subagent.model, "", "the lead's model is not a setting");
+  assert.deepEqual(jobsUsing({ model: "a/chat", model_title: " a/chat ", model_memory: "b/cheap" }, "a/chat").map((j) => j.key), ["model", "model_title"]);
 });
 
 test("off is nobody", () => {

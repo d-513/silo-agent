@@ -1,13 +1,14 @@
-import { Trash2, TriangleAlert } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
 import { useState } from "react";
 import { ConnectorMark } from "../connectors/form";
 import { SaveButton, useSave } from "../Feedback";
-import { Panel } from "../Field";
+import { Btn } from "../Btn";
 import { ConfigSource, UI, type AutoenableConnectors } from "../gen/silo/v1/ui_pb";
 import { Select } from "../Select";
 import { t } from "../i18n.ts";
 import { Trans } from "../Trans.tsx";
+import { Band, Empty, Group, Notice } from "./kit";
 
 const none: string[] = [];
 
@@ -33,52 +34,46 @@ export function AutoenablePanel({ list, onSave }: { list?: AutoenableConnectors;
   }
 
   return (
-    <Panel
+    <Group
       title={t("On every new bot")}
       note={t("Library connectors every new Bot starts with, on top of the ones switched on in the Connectors Library. Removing one from a Bot does not re-add it.")}
+      action={
+        locked ? null : (
+          <SaveButton size="sm" state={saver.state} disabled={edit === null && saver.state !== "saved"} onClick={save}>
+            {t("Save list")}
+          </SaveButton>
+        )
+      }
     >
       {locked ? (
-        <p className="mb-4 flex items-start gap-2 text-small text-vermilion">
-          <TriangleAlert className="mt-0.5 shrink-0" size={16} />
-          <span>
-            <Trans i18nKey="Set by <mono>{{envName}}</mono>; change it there." values={{ envName: list?.envName }} components={{ mono: <span className="font-mono" /> }} />
-          </span>
-        </p>
+        <Notice tone="warn">
+          <Trans i18nKey="Set by <mono>{{envName}}</mono>; change it there." values={{ envName: list?.envName }} components={{ mono: <span className="font-mono" /> }} />
+        </Notice>
       ) : null}
-      {ids.length === 0 ? (
-        <p className="mb-3 text-small text-ink-2">{t("No connectors listed.")}</p>
-      ) : (
-        <ul className="mb-3 grid gap-2">
-          {ids.map((id) => {
-            const c = byIdent.get(id);
-            return (
-              <li key={id} className="flex items-center gap-3">
-                <ConnectorMark id={c?.id} hasImage={!!c?.hasImage} size={28} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-body text-ink">{c ? c.name : <span className="font-mono text-small">{id}</span>}</div>
-                  {c ? (
-                    <div className="truncate font-mono text-label text-ink-3">{id}</div>
-                  ) : lib.isPending ? null : (
-                    <div className="text-label text-vermilion">{t("Not in the library, so nothing is added.")}</div>
-                  )}
-                </div>
-                {locked ? null : (
-                  <button
-                    type="button"
-                    title={t("Remove")}
-                    className="rounded-sm p-1 text-ink-2 transition-colors hover:bg-pressed hover:text-vermilion"
-                    onClick={() => setEdit(ids.filter((x) => x !== id))}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      {ids.length === 0 ? <Empty>{t("No connectors listed.")}</Empty> : null}
+      {ids.map((id) => {
+        const c = byIdent.get(id);
+        return (
+          <div key={id} className="flex items-center gap-3 px-5 py-2.5">
+            <ConnectorMark id={c?.id} hasImage={!!c?.hasImage} size={28} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-row leading-5 font-medium text-ink">{c ? c.name : <span className="font-mono text-small font-normal">{id}</span>}</div>
+              {c ? (
+                <div className="truncate font-mono text-label leading-4 text-ink-3">{id}</div>
+              ) : lib.isPending ? null : (
+                <div className="text-label leading-4 text-vermilion">{t("Not in the library, so nothing is added.")}</div>
+              )}
+            </div>
+            {locked ? null : (
+              <Btn kind="ghost" size="sm" iconOnly title={t("Remove")} aria-label={t("Remove")} className="hover:text-vermilion" onClick={() => setEdit(ids.filter((x) => x !== id))}>
+                <Trash2 size={14} />
+              </Btn>
+            )}
+          </div>
+        );
+      })}
       {locked ? null : (
-        <div className="flex flex-wrap items-center gap-3">
+        <Band>
           <Select
             value=""
             onChange={(id) => setEdit([...ids, id])}
@@ -86,13 +81,10 @@ export function AutoenablePanel({ list, onSave }: { list?: AutoenableConnectors;
             placeholder={t("Add a connector…")}
             emptyLabel={t("Every library connector is listed")}
             ariaLabel={t("Add a connector to every new bot")}
-            className="max-w-[280px]"
+            className="max-w-[300px]"
           />
-          <SaveButton state={saver.state} onClick={save}>
-            {t("Save list")}
-          </SaveButton>
-        </div>
+        </Band>
       )}
-    </Panel>
+    </Group>
   );
 }

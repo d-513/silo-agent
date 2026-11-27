@@ -15,7 +15,11 @@ import (
 
 type checkedSearch struct{}
 
+// checkedMax is how many results the last test search asked for.
+var checkedMax int
+
 func (checkedSearch) Search(_ context.Context, q search.Query) (search.Result, error) {
+	checkedMax = q.Max
 	if q.Text == "broken" {
 		return search.Result{}, errors.New("the engine rejected the API key")
 	}
@@ -68,6 +72,11 @@ func TestCheckSearch(t *testing.T) {
 		test.GetHits()[0].GetUrl() != "https://one.test/" || test.GetHits()[0].GetEngines() != 2 ||
 		test.GetNote() != "a note" || len(test.GetBusy()) != 1 || test.GetError() != "" {
 		t.Fatalf("test %+v", got.Msg)
+	}
+	// The test asks for what a Bot's search gets when it names no number,
+	// so the page shows what a Bot would be handed.
+	if checkedMax != search.DefaultMaxResults {
+		t.Fatalf("the test search asked for %d results, a Bot's asks for %d", checkedMax, search.DefaultMaxResults)
 	}
 	got, err = h.Client.CheckSearch(h.Ctx(), connect.NewRequest(&v1.CheckSearchRequest{Query: "broken"}))
 	if err != nil || !strings.Contains(got.Msg.GetTest().GetError(), "rejected the API key") {

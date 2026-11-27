@@ -1,21 +1,21 @@
-import { ArrowRight, Server } from "lucide-react";
+import { ChevronsUpDown, Server } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { Provider } from "../gen/silo/v1/ui_pb";
 import { t } from "../i18n.ts";
 import { PROVIDER_ICONS } from "./providerIcons";
-import { markOf, modelOf, providerOf, providersInUse, type Job } from "./providerJobs";
+import { JOB_GROUPS, markOf, modelOf, providerOf, providersInUse, type Job } from "./providerJobs";
 
-// ProviderMap draws which provider does each job: the jobs down the left,
-// the providers they use down the right, a hairline from each job to its
-// provider (dashed where a job follows another setting). Hovering a job or a
-// provider brings its lines forward; pressing a job opens the page that sets
-// it, pressing a provider opens its settings. A narrow frame reads as a plain
-// list instead.
+// ProviderMap draws which provider does each job: every job down the left,
+// under the group it belongs to, the providers they use down the right, and a
+// hairline from each job to its provider (dashed where a job follows another
+// setting). Hovering a job or a provider brings its lines forward. A job is a
+// picker: pressing it opens the models it can be given. Pressing a provider
+// opens its settings. A narrow frame reads as a plain list instead.
 
 type Path = { job: string; provider: string; d: string; dashed: boolean };
 
 // Below this width the two columns and the lines between them do not fit.
-const NARROW = 560;
+const NARROW = 600;
 
 export function ProviderMap({ jobs, providers, ready, onJob, onPick }: { jobs: Job[]; providers: Provider[]; ready: (id: string) => boolean; onJob: (job: Job) => void; onPick: (id: string) => void }) {
   const box = useRef<HTMLDivElement>(null);
@@ -28,6 +28,7 @@ export function ProviderMap({ jobs, providers, ready, onJob, onPick }: { jobs: J
   const byID = new Map(providers.map((p) => [p.id, p]));
   const narrow = size.w > 0 && size.w < NARROW;
   const sig = jobs.map((j) => j.key + "=" + j.model).join("|");
+  const groups = JOB_GROUPS.map((g) => ({ ...g, jobs: jobs.filter((j) => j.group === g.id) }));
 
   useLayoutEffect(() => {
     const el = box.current;
@@ -63,32 +64,33 @@ export function ProviderMap({ jobs, providers, ready, onJob, onPick }: { jobs: J
 
   if (narrow) {
     return (
-      <div ref={box} className="divide-y divide-line">
-        {jobs.map((j) => {
-          const p = byID.get(providerOf(j.model));
-          return (
-            <div key={j.key} className="flex items-center gap-3 py-2.5 text-small">
-              <button type="button" className="w-28 shrink-0 text-left font-medium text-ink hover:text-cobalt" onClick={() => onJob(j)}>
-                {t(j.label)}
-              </button>
-              {p ? (
-                <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => onPick(p.id)}>
-                  <ArrowRight size={13} className="shrink-0 text-ink-3" />
-                  <span className="shrink-0 font-medium text-ink">{p.name}</span>
-                  <span className="min-w-0 truncate font-mono text-label text-ink-3">{modelOf(j.model)}</span>
-                </button>
-              ) : (
-                <span className="min-w-0 truncate text-ink-3">{t(j.idle)}</span>
-              )}
+      <div ref={box} className="grid gap-5 px-5 py-4">
+        {groups.map((g) => (
+          <div key={g.id}>
+            <h4 className="mb-1 text-section text-ink-3">{t(g.label)}</h4>
+            <div className="divide-y divide-line">
+              {g.jobs.map((j) => {
+                const p = byID.get(providerOf(j.model));
+                return (
+                  <button key={j.key} type="button" aria-haspopup="dialog" className="flex w-full items-center gap-3 py-2.5 text-left text-small" onClick={() => onJob(j)}>
+                    <span className="w-28 shrink-0 font-medium text-ink">{t(j.label)}</span>
+                    <span className="min-w-0 flex-1">
+                      {p ? <span className="block truncate text-ink-2">{p.name}</span> : null}
+                      <span className={`block truncate text-label leading-4 text-ink-3 ${j.model ? "font-mono" : ""}`}>{j.model ? modelOf(j.model) : t(j.idle)}</span>
+                    </span>
+                    <ChevronsUpDown size={13} className="shrink-0 text-ink-3" />
+                  </button>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     );
   }
 
   return (
-    <div ref={box} className="relative grid grid-cols-[minmax(0,15rem)_minmax(3.5rem,1fr)_minmax(0,15rem)] items-center gap-y-1.5" onMouseLeave={() => setHover({})} onBlur={() => setHover({})}>
+    <div ref={box} className="relative grid grid-cols-[minmax(0,17.5rem)_minmax(3.5rem,1fr)_minmax(0,15rem)] items-center px-3 py-4" onMouseLeave={() => setHover({})} onBlur={() => setHover({})}>
       <svg className="pointer-events-none absolute inset-0" width={size.w} height={size.h} aria-hidden>
         {paths.map((p) => {
           const on = lit(p.job, p.provider);
@@ -105,38 +107,47 @@ export function ProviderMap({ jobs, providers, ready, onJob, onPick }: { jobs: J
         })}
       </svg>
 
-      {/* Jobs, one row each, down the left. */}
-      <div className="col-start-1 row-start-1 grid gap-1.5" style={{ gridRow: `1 / span 1` }}>
-        {jobs.map((j) => {
-          const p = providerOf(j.model);
-          const missing = !!p && !ready(p);
-          return (
-            <button
-              type="button"
-              key={j.key}
-              ref={(el) => {
-                if (el) jobEls.current.set(j.key, el);
-                else jobEls.current.delete(j.key);
-              }}
-              onMouseEnter={() => setHover({ job: j.key })}
-              onFocus={() => setHover({ job: j.key })}
-              onClick={() => onJob(j)}
-              className={`relative flex h-11 min-w-0 flex-col justify-center rounded-control px-3 text-left transition-colors duration-[160ms] ease-quiet ${hover.job === j.key ? "bg-well" : ""}`}
-            >
-              <span className="flex items-center gap-1.5 text-small leading-[18px] font-medium text-ink">
-                {t(j.label)}
-                {missing ? <span className="text-label font-normal text-vermilion">{t("needs a key")}</span> : null}
-              </span>
-              <span className="truncate font-mono text-label leading-4 text-ink-3">{j.model ? modelOf(j.model) : t(j.idle)}</span>
-              {/* Where a line leaves; a job nobody does has an open end. */}
-              <span aria-hidden className={`absolute top-1/2 -right-[3px] h-[6px] w-[6px] -translate-y-1/2 rounded-full ${p ? "bg-ink-3" : "shadow-[inset_0_0_0_1px_var(--color-line-strong)] bg-canvas"}`} />
-            </button>
-          );
-        })}
+      {/* Every job, under its group, down the left. */}
+      <div className="col-start-1 row-start-1 grid gap-4">
+        {groups.map((g) => (
+          <div key={g.id} className="grid gap-0.5">
+            <h4 className="flex h-6 items-center px-3 text-section text-ink-3">{t(g.label)}</h4>
+            {g.jobs.map((j) => {
+              const p = providerOf(j.model);
+              const missing = !!p && !ready(p);
+              return (
+                <button
+                  type="button"
+                  key={j.key}
+                  aria-haspopup="dialog"
+                  ref={(el) => {
+                    if (el) jobEls.current.set(j.key, el);
+                    else jobEls.current.delete(j.key);
+                  }}
+                  onMouseEnter={() => setHover({ job: j.key })}
+                  onFocus={() => setHover({ job: j.key })}
+                  onClick={() => onJob(j)}
+                  className={`group/job relative flex h-11 min-w-0 items-center gap-2 rounded-control pr-2.5 pl-3 text-left transition-colors duration-[160ms] ease-quiet ${hover.job === j.key ? "bg-well" : ""}`}
+                >
+                  <span className="flex min-w-0 flex-1 flex-col justify-center">
+                    <span className="flex items-center gap-1.5 text-small leading-[18px] font-medium text-ink">
+                      {t(j.label)}
+                      {missing ? <span className="text-label font-normal text-vermilion">{t("needs a key")}</span> : null}
+                    </span>
+                    <span className={`truncate text-label leading-4 text-ink-3 ${j.model ? "font-mono" : ""}`}>{j.model ? modelOf(j.model) : t(j.idle)}</span>
+                  </span>
+                  <ChevronsUpDown size={13} className={`shrink-0 transition-colors duration-[160ms] ease-quiet ${hover.job === j.key ? "text-ink" : "text-ink-3"}`} />
+                  {/* Where a line leaves; a job nobody does has an open end. */}
+                  <span aria-hidden className={`absolute top-1/2 -right-[3px] h-[6px] w-[6px] -translate-y-1/2 rounded-full ${p ? "bg-ink-3" : "bg-surface shadow-[inset_0_0_0_1px_var(--color-line-strong)]"}`} />
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </div>
 
       {/* The providers in use, down the right. */}
-      <div className="col-start-3 row-start-1 grid content-center gap-2.5">
+      <div className="col-start-3 row-start-1 grid content-center gap-2.5 pr-2">
         {used.map((id) => {
           const p = byID.get(id);
           if (!p) return null;
@@ -154,7 +165,7 @@ export function ProviderMap({ jobs, providers, ready, onJob, onPick }: { jobs: J
               onMouseEnter={() => setHover({ provider: id })}
               onFocus={() => setHover({ provider: id })}
               onClick={() => onPick(id)}
-              className={`relative flex h-14 min-w-0 items-center gap-2.5 rounded-card bg-surface pr-3 pl-2.5 text-left transition-[box-shadow] duration-[160ms] ease-quiet ${on ? "shadow-float" : "shadow-card"}`}
+              className={`relative flex h-14 min-w-0 items-center gap-2.5 rounded-control bg-canvas pr-3 pl-2.5 text-left transition-[box-shadow] duration-[160ms] ease-quiet ${on ? "shadow-[0_0_0_1px_var(--color-line-strong)]" : "shadow-card"}`}
             >
               <span aria-hidden className="absolute top-1/2 -left-[3px] h-[6px] w-[6px] -translate-y-1/2 rounded-full bg-ink-3" />
               <ProviderMark id={id} name={p.name} />
@@ -166,6 +177,7 @@ export function ProviderMap({ jobs, providers, ready, onJob, onPick }: { jobs: J
             </button>
           );
         })}
+        {used.length === 0 ? <p className="px-1 text-meta leading-[18px] text-ink-3">{t("No job has a model yet. Press one to pick it.")}</p> : null}
       </div>
     </div>
   );

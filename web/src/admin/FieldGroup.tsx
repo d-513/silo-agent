@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
-import { Panel } from "../Field";
 import { type ConfigField } from "../gen/silo/v1/ui_pb";
 import { FieldRow } from "./FieldRow";
+import { Group } from "./kit";
 import { useSettingsForm } from "./useAdminSettings";
 
-// One panel of the settings form: a row per field, saved by the page's Save
-// bar. `children` sit under the rows, inside the same panel.
+// One group of the settings form: a row per field, saved by the page's Save
+// bar. `children` are more rows of the same card, under the fields.
 export function FieldGroup({
   title,
   note,
@@ -28,24 +28,21 @@ export function FieldGroup({
   const { values, engines, providers, dnsProviders, setValue } = useSettingsForm();
   if (rows.length === 0) return null;
   return (
-    <Panel title={title} note={note} action={action} padded={false}>
-      <div className="divide-y divide-line-strong">
-        {rows.map((f) => (
-          <div key={f.key} className="px-5 py-3.5">
-            <FieldRow
-              field={f}
-              value={values[f.key] ?? ""}
-              engines={engines}
-              providers={providers}
-              dns={dnsProviders}
-              placeholder={placeholders?.[f.key]}
-              hint={hints?.[f.key]}
-              onChange={(v) => setValue(f.key, v)}
-            />
-          </div>
-        ))}
-      </div>
+    <Group title={title} note={note} action={action}>
+      {rows.map((f) => (
+        <FieldRow
+          key={f.key}
+          field={f}
+          value={values[f.key] ?? ""}
+          engines={engines}
+          providers={providers}
+          dns={dnsProviders}
+          placeholder={placeholders?.[f.key]}
+          hint={hints?.[f.key]}
+          onChange={(v) => setValue(f.key, v)}
+        />
+      ))}
       {children}
-    </Panel>
+    </Group>
   );
 }

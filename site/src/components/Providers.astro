@@ -1,0 +1,485 @@
+---
+// The models section: every provider the control plane speaks to, wired to
+// the kinds of model it serves, around Silo's mark. The providers and their
+// kinds are read from the Go registry at build time (src/lib/providers.ts)
+// and drawn with the marks Admin uses (web/src/admin/providerIcons.ts).
+// Pointing at a provider or a kind lights its wires and says what it is (CSS
+// :has, no script); below 640px the ring would be too small to read, so the
+// same marks stand in a grid. Then the main ones in words, and Claude Code.
+import markSVG from "../assets/mark.svg?raw";
+import { CLAUDE_CODE_ICON } from "../../../web/src/admin/providerIcons.ts";
+import { KINDS, byID, providers, type KindID, type Provider } from "../lib/providers.ts";
+
+// --- The ring -------------------------------------------------------------
+
+// Clockwise from the top, so each provider sits near the kinds it serves:
+// the generalists between Embeddings and Text, the text models at the top,
+// the voices down the right, the image makers down the left. A provider
+// added to the registry and not named here joins at the end.
+const ORDER = ["local", "openai", "openrouter", "anthropic", "claude", "cerebras", "groq", "typesafe", "assemblyai", "soniox", "deepgram", "elevenlabs", "cartesia", "inworld", "fal", "replicate", "bfl", "stability", "google", "xai"];
+const ring = [...ORDER.filter((id) => byID.has(id)).map((id) => byID.get(id)!), ...providers.filter((p) => !ORDER.includes(p.id))];
+
+const SHORT: Record<string, string> = { claude: "Claude Code", bfl: "BFL", stability: "Stability" };
+const short = (p: Provider) => SHORT[p.id] ?? p.name;
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+// What the readout says of each, for someone deciding whether Silo fits;
+// the registry's own description (written for the operator) when unnamed.
+const SAYS: Record<string, string> = {
+  openrouter: "Hundreds of models behind one key, and every kind of model Silo uses, decision models included.",
+  openai: "GPT models, transcription that streams, voices, embeddings and GPT Image.",
+  anthropic: "Claude through the native Messages API, with prompt-cache breakpoints.",
+  claude: "Claude on your Claude subscription, through the official Claude Code program.",
+  local: "Any OpenAI-compatible server you host: Ollama, vLLM, LocalAI, Speaches, whisper.cpp.",
+  typesafe: "Jev, a decision model: typed answers with probabilities in well under a second.",
+  groq: "Open models on fast inference for a call's quick replies, and Whisper transcription.",
+  cerebras: "Open models with a very short time to the first word.",
+  deepgram: "Nova-3 and Flux transcription that streams, and Aura voices.",
+  elevenlabs: "Voices with word timings, in many languages, and Scribe transcription.",
+  cartesia: "Sonic voices that stay connected for a call, and Ink transcription.",
+  inworld: "TTS 2 voices. Flash is among the fastest to the first sound.",
+  soniox: "Live transcription in 60+ languages, switching between them mid-sentence.",
+  assemblyai: "Streaming transcription that hears when you have finished speaking.",
+  fal: "Hundreds of image models behind one key: FLUX, Nano Banana, Seedream, Ideogram.",
+  replicate: "Image models by owner and name. Each one's inputs are read from its own schema.",
+  bfl: "FLUX from its maker: FLUX 3, FLUX.2 and Kontext.",
+  stability: "Stable Image Ultra and Core, and Stable Diffusion 3.5.",
+  google: "Nano Banana: pictures made, edited and combined, good with text in an image.",
+  xai: "Grok Imagine image models.",
+};
+const says = (p: Provider) => SAYS[p.id] ?? p.description.split(/(?<=\.)\s/)[0];
+
+const SIZE = 760;
+const C = SIZE / 2;
+const R_TILE = 268; // provider tiles
+const R_LABEL = 306; // their names, above and below
+const R_KIND = 128; // the kinds
+const TILE = 42;
+const rad = (deg: number) => (deg * Math.PI) / 180;
+const at = (r: number, deg: number) => ({ x: C + r * Math.sin(rad(deg)), y: C - r * Math.cos(rad(deg)) });
+const f = (n: number) => Math.round(n * 10) / 10;
+
+const step = 360 / ring.length;
+const angle = new Map(ring.map((p, i) => [p.id, (i - 4) * step]));
+
+// A kind sits at the mean angle of the providers that serve it, counting
+// only the specialists (fewer than four kinds) when there are any, so it
+// lands among them rather than among the gateways. Then kinds closer than
+// 34° are pushed apart.
+const meanAngle = (degs: number[]) => {
+  const s = degs.reduce((a, d) => a + Math.sin(rad(d)), 0);
+  const c = degs.reduce((a, d) => a + Math.cos(rad(d)), 0);
+  return (Math.atan2(s, c) * 180) / Math.PI;
+};
+const servers = (k: KindID) => ring.filter((p) => p.kinds.includes(k));
+const kinds = KINDS.filter((k) => servers(k.id).length).map((k) => {
+  const all = servers(k.id);
+  const special = all.filter((p) => p.kinds.length < 4);
+  return { ...k, by: all, a: meanAngle((special.length ? special : all).map((p) => angle.get(p.id)!)) };
+});
+for (let pass = 0; pass < 20; pass++) {
+  kinds.sort((x, y) => x.a - y.a);
+  kinds.forEach((k, i) => {
+    const next = kinds[(i + 1) % kinds.length];
+    const gap = (next.a - k.a + 360) % 360;
+    if (gap < 34) {
+      k.a -= (34 - gap) / 2;
+      next.a += (34 - gap) / 2;
+    }
+  });
+}
+kinds.sort((x, y) => KINDS.findIndex((k) => k.id === x.id) - KINDS.findIndex((k) => k.id === y.id));
+
+// A wire bows from the tile in towards the kind it serves. Wires to one
+// kind gather at its pill; the web is faint until something is pointed at.
+const edges = ring.flatMap((p) =>
+  p.kinds.map((k) => {
+    const kind = kinds.find((x) => x.id === k)!;
+    const a = angle.get(p.id)!;
+    const P = (r: number, deg: number) => {
+      const q = at(r, deg);
+      return `${f(q.x)} ${f(q.y)}`;
+    };
+    return { p: p.id, k, live: p.live.includes(k), d: `M${P(R_TILE - TILE / 2 - 1, a)}C${P(205, a)} ${P(190, kind.a)} ${P(R_KIND, kind.a)}` };
+  }),
+);
+
+// The mark, nested at the centre.
+const MARK = 64;
+const mark = markSVG.replace(/\swidth="\d+"\sheight="\d+"/, ` x="${C - MARK / 2}" y="${C - MARK / 2}" width="${MARK}" height="${MARK}"`);
+
+const kindWord = (k: KindID) => KINDS.find((x) => x.id === k)!.word;
+const pill = (word: string) => word.length * 7.1 + 26;
+
+// Pointing at a provider lights its wires and the kinds it serves; pointing
+// at a kind lights its wires and the providers that serve it. One rule per
+// node, written here so the stylesheet never names a provider by hand.
+const on = (sel: string) => `.pm:has(${sel}:is(:hover,:focus-visible))`;
+const css = [
+  ...ring.map((p) => {
+    const me = `.pm-node[data-p="${p.id}"]`;
+    return [
+      `${on(me)} .pm-edge[data-p="${p.id}"]{stroke:var(--color-ink);stroke-width:1.6;opacity:1}`,
+      `${on(me)} .pm-edge[data-p="${p.id}"][data-live]{stroke:var(--color-cobalt)}`,
+      `${on(me)} .pm-node[data-p="${p.id}"], ${on(me)} .pm-kind[data-by~="${p.id}"]{opacity:1}`,
+      `${on(me)} .pm-kind[data-by~="${p.id}"] rect{fill:var(--color-ink)}`,
+      `${on(me)} .pm-kind[data-by~="${p.id}"] text{fill:var(--color-on-ink)}`,
+      `${on(me)} .pm-read[data-p="${p.id}"]{display:block}`,
+    ].join("");
+  }),
+  ...kinds.map((k) => {
+    const me = `.pm-kind[data-k="${k.id}"]`;
+    return [
+      `${on(me)} .pm-edge[data-k="${k.id}"]{stroke:var(--color-ink);stroke-width:1.6;opacity:1}`,
+      `${on(me)} .pm-edge[data-k="${k.id}"][data-live]{stroke:var(--color-cobalt)}`,
+      `${on(me)} .pm-node[data-serves~="${k.id}"], ${on(me)} ${me}{opacity:1}`,
+      `${on(me)} ${me} rect{fill:var(--color-ink)}`,
+      `${on(me)} ${me} text{fill:var(--color-on-ink)}`,
+      `${on(me)} .pm-read[data-k="${k.id}"]{display:block}`,
+    ].join("");
+  }),
+].join("\n");
+
+// --- The words ------------------------------------------------------------
+
+const live = providers.filter((p) => p.live.length).length;
+const marks = (ids: string[]) => ids.map((id) => byID.get(id)).filter((p): p is Provider => !!p);
+const groups = [
+  { title: "OpenRouter", ids: ["openrouter"], text: "One key for hundreds of models, and every kind of model Silo uses." },
+  { title: "OpenAI and Anthropic", ids: ["openai", "anthropic"], text: "Their own APIs, with prompt caching and fast mode where the model has it." },
+  { title: "Your own server", ids: ["local"], text: "Ollama, vLLM, LocalAI or anything OpenAI-compatible. Silo connects to it; it hosts no model itself." },
+  { title: "Fast talkers", ids: ["groq", "cerebras"], text: "Open models that answer a voice call in a fraction of a second." },
+  { title: "Voices and hearing", ids: ["deepgram", "elevenlabs", "cartesia", "inworld", "soniox", "assemblyai"], text: "Transcription that streams as you speak and voices that stay connected for a call." },
+  { title: "Images", ids: ["fal", "replicate", "bfl", "stability", "google", "xai"], text: "Make and edit pictures from a prompt, straight into the Bot's files." },
+].map((g) => ({ ...g, ps: marks(g.ids) }));
+
+const flow = [
+  { who: "Claude Code", line: "tool_use", code: "mcp__silo__send_email", tone: "text-on-hatch" },
+  { who: "Silo", line: "rule", code: "email.send · Ask", tone: "text-on-hatch" },
+  { who: "You", line: "slip", code: "Allow once", tone: "text-lamp" },
+  { who: "Silo", line: "result", code: "sent · back to Claude", tone: "text-on-hatch" },
+];
+const claude = byID.get("claude");
+---
+
+<section class="mx-auto mt-28 max-w-[1200px] px-5" id="models">
+  <div class="grid items-center gap-x-12 gap-y-10 lg:grid-cols-[5fr_7fr]">
+    <div>
+      <p class="text-[13px] font-medium text-ink-3">Models</p>
+      <h2 class="mt-2 max-w-[22ch] text-[30px] font-semibold leading-[1.15] tracking-[-0.02em]">{providers.length} providers, six kinds of model.</h2>
+      <p class="mt-4 max-w-[52ch] text-[16px] leading-[1.65] text-ink-2">
+        No model is built in. You add a provider's key in Admin, allow the models people may pick, and choose one for each job: the conversation, the approval gate, memory, calls and pictures. A Bot can switch between the models you allowed. The keys stay on the control plane; no Bot holds one.
+      </p>
+
+      <ul class="mt-7 grid gap-4">
+        {
+          groups.map((g) => (
+            <li class="flex gap-3.5">
+              <span class="flex w-[76px] shrink-0 flex-wrap content-start gap-1 pt-0.5" aria-hidden="true">
+                {g.ps.map((p) => (
+                  <span class="grid h-6 w-6 place-items-center rounded-xs bg-well text-ink-2" title={p.name}>
+                    {p.icon ? (
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" fill-rule={p.icon.evenOdd ? "evenodd" : undefined}>
+                        {p.icon.paths.map((d) => <path d={d} />)}
+                      </svg>
+                    ) : p.id === "local" ? (
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="20" height="8" x="2" y="2" rx="2" />
+                        <rect width="20" height="8" x="2" y="14" rx="2" />
+                        <path d="M6 6h.01M6 18h.01" />
+                      </svg>
+                    ) : (
+                      <span class="font-mono text-[9px] font-semibold">{initials(p.name)}</span>
+                    )}
+                  </span>
+                ))}
+              </span>
+              <p class="min-w-0 text-[14.5px] leading-[1.55]">
+                <span class="font-semibold">{g.title}.</span> <span class="text-ink-2">{g.text}</span>
+              </p>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+
+    <figure class="pm relative">
+      {/* The ring, from 640px up. */}
+      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} class="pm-ring hidden h-auto w-full sm:block" role="group" aria-label={`${providers.length} model providers around Silo, each wired to the kinds of model it serves`}>
+        <circle cx={C} cy={C} r={R_TILE} class="pm-orbit" />
+        <circle cx={C} cy={C} r={R_KIND} class="pm-orbit" />
+        {kinds.map((k) => {
+          const p = at(R_KIND - 18, k.a);
+          return <line x1={C} y1={C} x2={f(p.x)} y2={f(p.y)} class="pm-spoke" />;
+        })}
+        {edges.map((e) => (
+          <path d={e.d} class="pm-edge" data-p={e.p} data-k={e.k} data-live={e.live ? "" : undefined} />
+        ))}
+
+        <circle cx={C} cy={C} r={MARK / 2 + 14} class="pm-hub" />
+        <g set:html={mark} />
+
+        {kinds.map((k) => {
+          const p = at(R_KIND, k.a);
+          const w = pill(k.word);
+          return (
+            <g class="pm-kind" data-k={k.id} data-by={k.by.map((b) => b.id).join(" ")} tabindex="0" role="img" aria-label={`${k.word}: ${k.by.length} providers`}>
+              <rect x={f(p.x - w / 2)} y={f(p.y - 15)} width={f(w)} height="30" rx="15" />
+              <text x={f(p.x)} y={f(p.y + 4.5)} text-anchor="middle">
+                {k.word}
+              </text>
+            </g>
+          );
+        })}
+
+        {ring.map((p) => {
+          const a = angle.get(p.id)!;
+          const t = at(R_TILE, a);
+          // Names stand beside the tiles on the flanks, above or below them
+          // at the top and the bottom.
+          const side = Math.sin(rad(a));
+          const l = Math.abs(side) > 0.4 ? { x: t.x + Math.sign(side) * (TILE / 2 + 9), y: t.y } : at(R_LABEL, a);
+          const anchor = Math.abs(side) > 0.4 ? (side > 0 ? "start" : "end") : "middle";
+          const s = 22;
+          return (
+            <g class="pm-node" data-p={p.id} data-serves={p.kinds.join(" ")} tabindex="0" role="img" aria-label={`${p.name}: ${p.kinds.map(kindWord).join(", ")}`}>
+              <rect x={f(t.x - TILE / 2)} y={f(t.y - TILE / 2)} width={TILE} height={TILE} rx="11" class="pm-tile" />
+              {p.icon ? (
+                <svg x={f(t.x - s / 2)} y={f(t.y - s / 2)} width={s} height={s} viewBox="0 0 24 24" fill="currentColor" fill-rule={p.icon.evenOdd ? "evenodd" : undefined}>
+                  {p.icon.paths.map((d) => <path d={d} />)}
+                </svg>
+              ) : p.id === "local" ? (
+                <svg x={f(t.x - s / 2)} y={f(t.y - s / 2)} width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="20" height="8" x="2" y="2" rx="2" />
+                  <rect width="20" height="8" x="2" y="14" rx="2" />
+                  <path d="M6 6h.01M6 18h.01" />
+                </svg>
+              ) : (
+                <text x={f(t.x)} y={f(t.y + 4.5)} text-anchor="middle" class="pm-initials">
+                  {initials(p.name)}
+                </text>
+              )}
+              <text x={f(l.x)} y={f(l.y + 4)} text-anchor={anchor} class="pm-name">
+                {short(p)}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* The same marks in a grid, under 640px. */}
+      <ul class="grid grid-cols-4 gap-1.5 sm:hidden" aria-label="Model providers">
+        {
+          ring.map((p) => (
+            <li class="flex flex-col items-center gap-1.5 rounded-sm bg-well px-1 py-3">
+              <span class="grid h-8 w-8 place-items-center rounded-xs bg-surface text-ink shadow-card">
+                {p.icon ? (
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" fill-rule={p.icon.evenOdd ? "evenodd" : undefined} aria-hidden="true">
+                    {p.icon.paths.map((d) => <path d={d} />)}
+                  </svg>
+                ) : p.id === "local" ? (
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect width="20" height="8" x="2" y="2" rx="2" />
+                    <rect width="20" height="8" x="2" y="14" rx="2" />
+                    <path d="M6 6h.01M6 18h.01" />
+                  </svg>
+                ) : (
+                  <span class="font-mono text-[10px] font-semibold">{initials(p.name)}</span>
+                )}
+              </span>
+              <span class="max-w-full truncate text-[11.5px] text-ink-2">{short(p)}</span>
+            </li>
+          ))
+        }
+      </ul>
+
+      {/* The readout: what is under the pointer. */}
+      <figcaption class="pm-caption mx-auto mt-3 hidden min-h-[66px] max-w-[52ch] text-center sm:block">
+        <p class="pm-read pm-idle text-[13.5px] leading-[1.55] text-ink-3">
+          Point at a provider or a kind of model. Dashed wires are live: {live} providers hear or speak while you talk, which a call needs.
+        </p>
+        {
+          ring.map((p) => (
+            <div class="pm-read" data-p={p.id}>
+              <p class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[14px]">
+                <span class="font-semibold">{p.name}</span>
+                {p.kinds.map((k) => (
+                  <span class={`rounded-xs px-1.5 py-px text-[11.5px] ${p.live.includes(k) ? "bg-cobalt-pale text-cobalt" : "bg-well text-ink-2"}`}>
+                    {kindWord(k)}
+                    {p.live.includes(k) ? " · live" : ""}
+                  </span>
+                ))}
+              </p>
+              <p class="mt-1 text-[13.5px] leading-[1.55] text-ink-2">{says(p)}</p>
+            </div>
+          ))
+        }
+        {
+          kinds.map((k) => (
+            <div class="pm-read" data-k={k.id}>
+              <p class="text-[14px]">
+                <span class="font-semibold">{k.word}</span> <span class="text-ink-3">· {k.says}</span>
+              </p>
+              <p class="mt-1 text-[13.5px] leading-[1.55] text-ink-2">{k.by.map((p) => p.name).join(", ")}</p>
+            </div>
+          ))
+        }
+      </figcaption>
+    </figure>
+  </div>
+
+  {
+    claude && (
+      <div class="mt-12 grid items-center gap-8 overflow-hidden rounded-panel bg-hatch p-6 text-on-hatch sm:p-8 lg:grid-cols-[7fr_5fr]">
+        <div>
+          <p class="flex items-center gap-2.5 font-mono text-[12.5px] text-on-hatch/60">
+            <span class="grid h-7 w-7 place-items-center rounded-xs bg-on-hatch/10 text-on-hatch">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" fill-rule="evenodd" aria-hidden="true">
+                {CLAUDE_CODE_ICON.paths.map((d) => <path d={d} />)}
+              </svg>
+            </span>
+            Claude Code as a provider
+          </p>
+          <h3 class="mt-4 max-w-[26ch] text-[24px] font-semibold leading-[1.2] tracking-[-0.015em]">Run your Bots on your Claude subscription.</h3>
+          <p class="mt-3 max-w-[58ch] text-[15px] leading-[1.65] text-on-hatch/75">
+            Silo runs the official Claude Code program on the server, the way Anthropic's Agent SDK does, and you sign in from Admin instead of pasting a key. The program gets Silo's prompt and Silo's tools, nothing else: its own tools, settings and MCP servers are off, and a call to anything that is not Silo's stops it. Every tool call comes back to Silo and goes through the same rules, approvals and output filter as with any other model.
+          </p>
+          <ul class="mt-5 flex flex-wrap gap-1.5 font-mono text-[12px]">
+            {["Sign in, no key", "Executes nothing itself", "Fast mode", "Sessions resume after a restart"].map((c) => (
+              <li class="rounded-control bg-on-hatch/10 px-2.5 py-1">{c}</li>
+            ))}
+          </ul>
+          <p class="mt-5 max-w-[62ch] text-[13px] leading-[1.6] text-on-hatch/55">
+            A subscription is for your own use, not a team's or unattended Bots'; Admin says so above the setting. Silo does not ship the program: Admin installs Anthropic's copy, checked against its published hash.
+          </p>
+        </div>
+        <ol class="grid gap-1.5" aria-label="One tool call, from Claude Code through Silo">
+          {flow.map((s, i) => (
+            <li class="flex items-center gap-3 rounded-sm bg-on-hatch/[0.06] px-3.5 py-2.5">
+              <span class="w-4 shrink-0 font-mono text-[11.5px] text-on-hatch/40">{i + 1}</span>
+              <span class="w-[92px] shrink-0 text-[13px] font-medium">{s.who}</span>
+              <span class="min-w-0 truncate font-mono text-[12.5px]">
+                <span class="text-on-hatch/50">{s.line}</span> <span class={s.tone}>{s.code}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    )
+  }
+
+  <p class="mt-5 text-[14.5px] text-ink-2">
+    Keys and models are set in <a href="/docs/run/configuration/" class="font-medium text-cobalt hover:text-cobalt-deep">configuration</a> or from Admin.
+  </p>
+</section>
+
+<style is:global>
+  .pm-orbit {
+    fill: none;
+    stroke: var(--color-line);
+    stroke-dasharray: 2 5;
+  }
+  .pm-spoke {
+    stroke: var(--color-line-strong);
+    stroke-width: 1;
+  }
+  .pm-hub {
+    fill: var(--color-canvas);
+    stroke: var(--color-line);
+  }
+  .pm-edge {
+    fill: none;
+    stroke: var(--color-line-strong);
+    stroke-width: 1;
+    transition:
+      stroke 160ms var(--ease-quiet),
+      opacity 160ms var(--ease-quiet),
+      stroke-width 160ms var(--ease-quiet);
+  }
+  .pm-edge[data-live] {
+    stroke-dasharray: 3 3;
+  }
+  .pm-kind,
+  .pm-node {
+    cursor: default;
+    outline: none;
+    transition: opacity 160ms var(--ease-quiet);
+  }
+  .pm-kind rect {
+    fill: var(--color-surface);
+    stroke: var(--color-line-strong);
+    transition: fill 160ms var(--ease-quiet);
+  }
+  .pm-kind text {
+    fill: var(--color-ink);
+    font-size: 13px;
+    font-weight: 600;
+    transition: fill 160ms var(--ease-quiet);
+  }
+  .pm-tile {
+    fill: var(--color-surface);
+    stroke: var(--color-line);
+    transition: stroke 160ms var(--ease-quiet);
+  }
+  .pm-node {
+    color: var(--color-ink);
+  }
+  .pm-initials {
+    fill: var(--color-ink-2);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .pm-name {
+    fill: var(--color-ink-2);
+    font-size: 12.5px;
+  }
+  .pm-node:is(:hover, :focus-visible) .pm-tile {
+    stroke: var(--color-ink);
+    stroke-width: 1.5;
+  }
+  .pm-node:is(:hover, :focus-visible) .pm-name {
+    fill: var(--color-ink);
+    font-weight: 600;
+  }
+  .pm-kind:focus-visible rect,
+  .pm-node:focus-visible .pm-tile {
+    stroke: var(--color-cobalt);
+    stroke-width: 2;
+  }
+
+  /* While anything is pointed at, everything not lit by it steps back. */
+  .pm:has(:is(.pm-node, .pm-kind):is(:hover, :focus-visible)) :is(.pm-node, .pm-kind) {
+    opacity: 0.3;
+  }
+  .pm:has(:is(.pm-node, .pm-kind):is(:hover, :focus-visible)) .pm-edge {
+    opacity: 0.25;
+  }
+  .pm-read {
+    display: none;
+  }
+  .pm-idle {
+    display: block;
+  }
+  .pm:has(:is(.pm-node, .pm-kind):is(:hover, :focus-visible)) .pm-idle {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pm-edge,
+    .pm-kind,
+    .pm-node,
+    .pm-kind rect,
+    .pm-kind text,
+    .pm-tile {
+      transition: none;
+    }
+  }
+</style>
+<Fragment set:html={`<style>${css}</style>`} />

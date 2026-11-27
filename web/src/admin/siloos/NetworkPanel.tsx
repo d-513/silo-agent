@@ -2,7 +2,8 @@ import { useQuery } from "@connectrpc/connect-query";
 import { useEffect, useState } from "react";
 import { Btn } from "../../Btn";
 import { ChipRadio } from "../../ChipRadio";
-import { ErrorWell, Field, SettingGroup, SettingRow, inputClass, textareaClass } from "../../Field";
+import { ErrorWell, Field, SettingRow, inputClass, textareaClass } from "../../Field";
+import { Group } from "../kit";
 import { Status } from "../../Lamp";
 import { ToggleRow } from "../../Switch";
 import { ui } from "../../api";
@@ -22,7 +23,7 @@ export function NetworkPanel() {
   const q = useQuery(UI.method.getSiloOSNetwork, {}, { refetchInterval: (query) => (query.state.data?.pending ? 2_000 : 30_000) });
   const net = q.data;
   return (
-    <SettingGroup title={t("Network")} note={t("Wired connections can be changed here. A change is undone by itself unless you keep it in time.")}>
+    <Group title={t("Network")} note={t("Wired connections can be changed here. A change is undone by itself unless you keep it in time.")}>
       {q.error ? (
         <div className="px-5 py-4">
           <ErrorWell>{fail(q.error)}</ErrorWell>
@@ -31,7 +32,7 @@ export function NetworkPanel() {
       {net?.pending ? <Pending net={net} /> : null}
       {net && net.devices.length === 0 ? <div className="px-5 py-4 text-small text-ink-3">{t("NetworkManager lists no network devices.")}</div> : null}
       {net?.devices.map((d) => <Device key={d.name} dev={d} locked={!!net.pending} />)}
-    </SettingGroup>
+    </Group>
   );
 }
 

@@ -1,15 +1,17 @@
-import { Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useQuery } from "@connectrpc/connect-query";
 import { useState } from "react";
 import { ui } from "../api";
 import { fail } from "../errors";
 import { ArmedButton, SaveButton, useSave } from "../Feedback";
-import { inputClass, Panel } from "../Field";
+import { Btn } from "../Btn";
+import { inputClass } from "../Field";
 import { UI, type OperatorRule } from "../gen/silo/v1/ui_pb";
 import { reload } from "../query";
 import { Select } from "../Select";
 import { Switch } from "../Switch";
 import { t } from "../i18n.ts";
+import { Band, Block, Empty, Group } from "./kit";
 
 const callOptions = [
   { value: "", label: t("No call rule") },
@@ -52,54 +54,56 @@ export function OperatorRulesPanel() {
   }
 
   return (
-    <Panel
+    <Group
       title={t("Operator rules")}
       note={t("A rule here applies to every Bot, on top of whatever its owner set. A locked row is a floor: an owner may make it stricter, never looser. An unlocked one is only a default the owner overrides. Use * as the action to cover a whole connector.")}
       action={
         adding ? null : (
-          <SaveButton size="sm" kind="secondary" state="idle" onClick={() => setAdding(true)}>
-            {t("Add rule")}
-          </SaveButton>
+          <Btn size="sm" onClick={() => setAdding(true)}>
+            <Plus size={14} /> {t("Add rule")}
+          </Btn>
         )
       }
     >
-      {err ? <p className="mb-3 text-small text-vermilion">{err}</p> : null}
-
-      {rules.length === 0 && !adding ? <p className="mb-3 text-small text-ink-2">{t("No operator rules yet.")}</p> : null}
-
-      {rules.length > 0 ? (
-        <ul className="mb-3 grid gap-2">
-          {rules.map((r) => (
-            <RuleLine
-              key={`${r.connector}.${r.action}`}
-              rule={r}
-              onWrite={(next) => run(() => write(next))}
-              onDelete={() => run(async () => {
-                await ui.deleteOperatorRule({ connector: r.connector, action: r.action });
-                await reload(UI.method.listOperatorRules, {});
-              })}
-            />
-          ))}
-        </ul>
+      {err ? (
+        <Block>
+          <p className="text-small leading-5 text-vermilion">{err}</p>
+        </Block>
       ) : null}
-
+      {rules.length === 0 && !adding ? <Empty>{t("No operator rules yet.")}</Empty> : null}
+      {rules.map((r) => (
+        <RuleLine
+          key={`${r.connector}.${r.action}`}
+          rule={r}
+          onWrite={(next) => run(() => write(next))}
+          onDelete={() =>
+            run(async () => {
+              await ui.deleteOperatorRule({ connector: r.connector, action: r.action });
+              await reload(UI.method.listOperatorRules, {});
+            })
+          }
+        />
+      ))}
       {adding ? (
-        <div className="grid gap-2.5 rounded-card bg-well p-3">
+        <Band className="grid gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <input
-              className={`${inputClass} max-w-[200px] font-mono`}
+              className={`${inputClass} max-w-[180px] font-mono text-small`}
               placeholder={t("connector")}
+              aria-label={t("connector")}
               value={draft.connector}
               onChange={(e) => setDraft({ ...draft, connector: e.target.value })}
             />
+            <span className="text-ink-3">.</span>
             <input
-              className={`${inputClass} max-w-[200px] font-mono`}
+              className={`${inputClass} max-w-[180px] font-mono text-small`}
               placeholder={t("action")}
+              aria-label={t("action")}
               value={draft.action}
               onChange={(e) => setDraft({ ...draft, action: e.target.value })}
             />
-            <Select className="max-w-[170px]" value={draft.decision} onChange={(v) => setDraft({ ...draft, decision: v })} options={callOptions} ariaLabel={t("Call rule")} />
-            <Select className="max-w-[170px]" value={draft.output} onChange={(v) => setDraft({ ...draft, output: v })} options={outputOptions} ariaLabel={t("Output rule")} />
+            <Select className="max-w-[150px]" value={draft.decision} onChange={(v) => setDraft({ ...draft, decision: v })} options={callOptions} ariaLabel={t("Call rule")} />
+            <Select className="max-w-[150px]" value={draft.output} onChange={(v) => setDraft({ ...draft, output: v })} options={outputOptions} ariaLabel={t("Output rule")} />
             <label className="flex items-center gap-2 text-small text-ink-2">
               <Switch on={draft.locked} onChange={(v) => setDraft({ ...draft, locked: v })} />
               {t("Locked")}
@@ -120,30 +124,30 @@ export function OperatorRulesPanel() {
             >
               {t("Add rule")}
             </SaveButton>
-            <button type="button" className="text-small text-ink-3 hover:text-ink" onClick={() => setAdding(false)}>
+            <Btn kind="ghost" size="sm" onClick={() => setAdding(false)}>
               {t("Cancel")}
-            </button>
+            </Btn>
           </div>
-        </div>
+        </Band>
       ) : null}
-    </Panel>
+    </Group>
   );
 }
 
 // One row, written as it is changed: there is nothing to save in a batch.
 function RuleLine({ rule, onWrite, onDelete }: { rule: OperatorRule; onWrite: (next: OperatorRule) => void; onDelete: () => void }) {
   return (
-    <li className="flex flex-wrap items-center gap-2 border-t border-line pt-2 first:border-0 first:pt-0">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
       <span className="min-w-[160px] flex-1 truncate font-mono text-small text-ink">
         {rule.connector}.{rule.action}
       </span>
-      <Select className="w-[170px]" value={rule.decision} onChange={(v) => onWrite({ ...rule, decision: v })} options={callOptions} ariaLabel={t("Call rule")} />
-      <Select className="w-[170px]" value={rule.output} onChange={(v) => onWrite({ ...rule, output: v })} options={outputOptions} ariaLabel={t("Output rule")} />
+      <Select className="w-[150px]" value={rule.decision} onChange={(v) => onWrite({ ...rule, decision: v })} options={callOptions} ariaLabel={t("Call rule")} />
+      <Select className="w-[150px]" value={rule.output} onChange={(v) => onWrite({ ...rule, output: v })} options={outputOptions} ariaLabel={t("Output rule")} />
       <label className="flex items-center gap-2 text-small text-ink-2">
         <Switch on={rule.locked} onChange={(v) => onWrite({ ...rule, locked: v })} />
         {t("Locked")}
       </label>
       <ArmedButton iconOnly icon={<Trash2 size={14} />} title={t("Remove")} kind="ghost" onConfirm={onDelete} />
-    </li>
+    </div>
   );
 }

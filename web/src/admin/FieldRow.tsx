@@ -1,10 +1,11 @@
 import { TriangleAlert } from "lucide-react";
 import { type ReactNode } from "react";
-import { Field, inputClass, textareaClass } from "../Field";
+import { SettingRow, inputClass, textareaClass } from "../Field";
 import { Select } from "../Select";
-import { ToggleRow } from "../Switch";
+import { Switch } from "../Switch";
+import { Tip } from "../Tip";
 import { ConfigSource, type CaddyDNSProvider, type ConfigField, type Provider, type SearchEngine } from "../gen/silo/v1/ui_pb";
-import { hintOf, labelOf, placeholderOf, sourceWord } from "./fields";
+import { hintOf, labelOf, placeholderOf } from "./fields";
 import { msg, t } from "../i18n.ts";
 
 // caddy.mode's choices.
@@ -15,21 +16,32 @@ const caddyModes = [
   { value: "off", label: msg("Off") },
 ] as const;
 
+// SourceChips says what a reader has to know about where a setting comes
+// from, and nothing else: that it only applies after a restart, and that the
+// environment sets it, so it cannot be changed here.
 export function SourceChips({ field }: { field: ConfigField }) {
   return (
     <>
-      <span className="font-mono text-micro text-ink-3">{sourceWord(field.source)}</span>
-      {field.restartRequired ? <span className="text-micro text-ink-3">{t("restart")}</span> : null}
+      {field.restartRequired ? (
+        <Tip content={t("Takes effect when Silo next starts.")}>
+          <span className="rounded-xs bg-well px-1.5 py-0.5 text-micro leading-4 font-normal text-ink-3">{t("restart")}</span>
+        </Tip>
+      ) : null}
       {field.source === ConfigSource.ENV ? (
-        <span className="inline-flex items-center gap-1 text-micro text-vermilion" title={field.envName}>
-          <TriangleAlert size={14} />
-          {field.envName}
-        </span>
+        <Tip content={t("Set by the environment, which wins over silo.yaml. Change it there.")}>
+          <span className="inline-flex items-center gap-1 font-mono text-micro leading-4 font-normal text-vermilion">
+            <TriangleAlert size={12} />
+            {field.envName}
+          </span>
+        </Tip>
       ) : null}
     </>
   );
 }
 
+// FieldRow is one operator setting as a row: what it is and its sentence on
+// the left, its control on the right. A long text (a policy) takes the row's
+// whole width under its label.
 export function FieldRow({
   field,
   value,
@@ -52,58 +64,55 @@ export function FieldRow({
   onChange: (v: string) => void;
 }) {
   const locked = field.source === ConfigSource.ENV;
-  const label = labelOf(field.key, engines, providers, dns);
+  const name = labelOf(field.key, engines, providers, dns);
   const note = hint ?? hintOf(field.key, engines, providers, dns);
+  const label = (
+    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+      {name}
+      <SourceChips field={field} />
+    </span>
+  );
 
   if (field.type === "bool") {
     return (
-      <ToggleRow
-        label={label}
-        hint={note}
-        meta={<SourceChips field={field} />}
-        on={value === "true"}
-        disabled={locked}
-        onChange={(v) => onChange(v ? "true" : "false")}
-      />
+      <SettingRow label={label} hint={note}>
+        <Switch on={value === "true"} disabled={locked} title={name} onChange={(v) => onChange(v ? "true" : "false")} />
+      </SettingRow>
     );
   }
 
   let control: ReactNode;
   if (field.key === "search.engine") {
-    control = (
-      <Select
-        value={value}
-        onChange={onChange}
-        disabled={locked}
-        emptyLabel={t("No engines")}
-        options={engines.map((e) => ({ value: e.id, label: e.name }))}
-      />
-    );
+    control = <Select value={value} onChange={onChange} disabled={locked} ariaLabel={name} emptyLabel={t("No engines")} options={engines.map((e) => ({ value: e.id, label: e.name }))} />;
   } else if (field.key === "caddy.mode") {
-    control = <Select value={value || "auto"} onChange={onChange} disabled={locked} options={caddyModes.map((m) => ({ value: m.value, label: t(m.label) }))} />;
+    control = <Select value={value || "auto"} onChange={onChange} disabled={locked} ariaLabel={name} options={caddyModes.map((m) => ({ value: m.value, label: t(m.label) }))} />;
   } else if (field.key === "caddy.dns_provider") {
     control = (
       <Select
         value={value}
         onChange={onChange}
         disabled={locked}
+        ariaLabel={name}
         options={[{ value: "", label: t("None: Let's Encrypt reaches this machine on port 80") }, ...dns.map((d) => ({ value: d.id, label: d.name }))]}
       />
     );
   } else if (field.type === "select") {
     const m = /^providers\.(.+)\.cache_ttl$/.exec(field.key);
     const ttls = (m && providers.find((p) => p.id === m[1])?.cacheTtls) || [];
-    control = <Select value={value} onChange={onChange} disabled={locked} options={ttls.map((t) => ({ value: t, label: t }))} />;
+    control = <Select value={value} onChange={onChange} disabled={locked} ariaLabel={name} options={ttls.map((t) => ({ value: t, label: t }))} />;
   } else if (field.type === "text") {
-    control = (
-      <textarea
-        className={`${textareaClass} h-[140px]`}
-        autoComplete="off"
-        placeholder={placeholder ?? placeholderOf(field.key)}
-        value={value}
-        disabled={locked}
-        onChange={(e) => onChange(e.target.value)}
-      />
+    return (
+      <SettingRow label={label} hint={note} stack>
+        <textarea
+          className={`${textareaClass} h-[140px]`}
+          autoComplete="off"
+          aria-label={name}
+          placeholder={placeholder ?? placeholderOf(field.key)}
+          value={value}
+          disabled={locked}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </SettingRow>
     );
   } else {
     control = (
@@ -111,6 +120,7 @@ export function FieldRow({
         className={inputClass}
         type={field.secret ? "password" : "text"}
         autoComplete="off"
+        aria-label={name}
         placeholder={placeholder ?? placeholderOf(field.key)}
         value={value}
         disabled={locked}
@@ -120,8 +130,8 @@ export function FieldRow({
   }
 
   return (
-    <Field label={label} hint={note} headerRight={<SourceChips field={field} />}>
+    <SettingRow label={label} hint={note}>
       {control}
-    </Field>
+    </SettingRow>
   );
 }

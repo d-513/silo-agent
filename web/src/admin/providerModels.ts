@@ -97,12 +97,6 @@ export function removeTitle(k: ModelKind): string {
   }
 }
 
-/** A role's picker rows when it takes either kind: decision models first, each saying what it is. */
-export function eitherKind<T extends { id: string; label: string }>(text: T[], decision: T[]): { value: string; label: string; hint: string }[] {
-  const rows = (list: T[], hint: string) => list.map((m) => ({ value: m.id, label: m.label || m.id, hint }));
-  return [...rows(decision, t("Decision model")), ...rows(text, t("Text model"))];
-}
-
 /** The allowlist with `id` added at the end, or taken out; unchanged if there is nothing to do. */
 export function withModel(allowed: string[], id: string, on: boolean): string[] {
   const has = allowed.includes(id);
